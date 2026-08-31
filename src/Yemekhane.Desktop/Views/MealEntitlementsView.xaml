@@ -11,7 +11,7 @@
     <Grid Margin="22,18">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid>
-            <StackPanel><TextBlock Text="Yemek Hakedişleri" FontSize="22" FontWeight="SemiBold" Foreground="#17202A"/><TextBlock Text="Öğrenci bazlı hak, kullanım ve kalan miktar yönetimi" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
+            <StackPanel><TextBlock Text="Yemek Hakedişleri" FontSize="22" FontWeight="SemiBold" Foreground="#18222D"/><TextBlock Text="Öğrenci bazlı hak, kullanım ve kalan miktar yönetimi" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Border Background="#FFF3E5" CornerRadius="12" Padding="9,4" Margin="0,0,10,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="#8A681D"/></Border>
                 <Button Style="{StaticResource Action}" Content="Seçileni İptal Et" Command="{Binding RequestCancelCommand}" Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibility}}"/>
@@ -38,7 +38,7 @@
 
         <UniformGrid Grid.Row="2" Columns="3" Margin="0,0,0,10">
             <Border Background="White" BorderBrush="#E1E5E9" BorderThickness="1" Padding="12" Margin="0,0,5,0"><StackPanel><TextBlock Text="TOPLAM HAK" Foreground="#65717E" FontSize="10"/><TextBlock Text="{Binding TotalQuantity, StringFormat=N0}" FontSize="20" FontWeight="SemiBold"/></StackPanel></Border>
-            <Border Background="White" BorderBrush="#E1E5E9" BorderThickness="1" Padding="12" Margin="5,0"><StackPanel><TextBlock Text="KULLANILAN" Foreground="#65717E" FontSize="10"/><TextBlock Text="{Binding ConsumedQuantity, StringFormat=N0}" FontSize="20" FontWeight="SemiBold" Foreground="#156B63"/></StackPanel></Border>
+            <Border Background="White" BorderBrush="#E1E5E9" BorderThickness="1" Padding="12" Margin="5,0"><StackPanel><TextBlock Text="KULLANILAN" Foreground="#65717E" FontSize="10"/><TextBlock Text="{Binding ConsumedQuantity, StringFormat=N0}" FontSize="20" FontWeight="SemiBold" Foreground="#C33A02"/></StackPanel></Border>
             <Border Background="White" BorderBrush="#E1E5E9" BorderThickness="1" Padding="12" Margin="5,0,0,0"><StackPanel><TextBlock Text="KALAN" Foreground="#65717E" FontSize="10"/><TextBlock Text="{Binding RemainingQuantity, StringFormat=N0}" FontSize="20" FontWeight="SemiBold" Foreground="#356890"/></StackPanel></Border>
         </UniformGrid>
 

@@ -7,7 +7,7 @@
         UseLayoutRounding="True" SnapsToDevicePixels="True" AutomationProperties.Name="YemekhanePro giriş ekranı">
     <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="0.9*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
-        <Border Background="#17232C" Padding="46">
+        <Border Background="#0B131C" Padding="46">
             <StackPanel VerticalAlignment="Center">
                 <Image Source="pack://application:,,,/Yemekhane.Desktop;component/Assets/logo-256.png" Width="76" Height="76" HorizontalAlignment="Left"
                        Margin="0,0,0,20" RenderOptions.BitmapScalingMode="HighQuality"
@@ -28,9 +28,9 @@
                 <TextBlock Text="Parola" Foreground="#3E4A55" Margin="0,14,0,5"/>
                 <PasswordBox x:Name="PasswordBox" Height="38" MaxLength="256" PasswordChar="●"
                               AutomationProperties.Name="Parola" AutomationProperties.HelpText="Parolanızı güvenli alana girin"/>
-                <Border Background="#E7F5F2" BorderBrush="#84BEB5" BorderThickness="1" Padding="10" Margin="0,14,0,0"
+                <Border Background="#FDEDE3" BorderBrush="#F0A874" BorderThickness="1" Padding="10" Margin="0,14,0,0"
                         Visibility="{Binding HasSetupMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <TextBlock Text="{Binding SetupMessage}" Foreground="#174F48" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding SetupMessage}" Foreground="#8A3305" TextWrapping="Wrap"/>
                 </Border>
                 <Border Background="#FFF2E1" BorderBrush="#E6C48F" BorderThickness="1" Padding="10" Margin="0,14,0,0"
                         Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -41,7 +41,7 @@
                            HorizontalAlignment="Right" Margin="0,10,0,0"
                            AutomationProperties.Name="Uygulama sürümü"/>
                 <Button Content="Giriş yap" Height="40" Margin="0,18,0,0" IsDefault="True" Click="LoginClick"
-                        Background="#12675F" Foreground="White" BorderBrush="#0E574F" FontWeight="SemiBold"
+                        Background="#C33A02" Foreground="White" BorderBrush="#A33002" FontWeight="SemiBold"
                         AutomationProperties.Name="Giriş yap"/>
                 <TextBlock Text="Bağlantı kurulamazsa bilgileriniz gönderilmez; yeniden deneyebilirsiniz." Foreground="#687681" TextWrapping="Wrap" Margin="0,14,0,0"/>
             </StackPanel>

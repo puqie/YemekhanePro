@@ -21,7 +21,7 @@
 
         <Grid>
             <StackPanel>
-                <TextBlock Text="Kart Yükleme Durumu" FontSize="22" FontWeight="SemiBold" Foreground="#17202A"/>
+                <TextBlock Text="Kart Yükleme Durumu" FontSize="22" FontWeight="SemiBold" Foreground="#18222D"/>
                 <TextBlock Text="{Binding SummaryText}" Foreground="#65717E" Margin="0,4,0,0"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -71,7 +71,7 @@
                                 <StackPanel>
                                     <Grid>
                                         <TextBlock Text="{Binding DeviceName}" FontSize="16" FontWeight="SemiBold"
-                                                   Foreground="#17202A"/>
+                                                   Foreground="#18222D"/>
                                         <Border CornerRadius="12" Padding="9,4" HorizontalAlignment="Right">
                                             <Border.Style>
                                                 <Style TargetType="Border">

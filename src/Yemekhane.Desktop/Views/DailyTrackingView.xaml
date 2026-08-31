@@ -4,7 +4,7 @@
     Background="#F4F5F7" FontFamily="Segoe UI" FontSize="12">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
-        <SolidColorBrush x:Key="Ink" Color="#17202A"/>
+        <SolidColorBrush x:Key="Ink" Color="#18222D"/>
         <SolidColorBrush x:Key="Muted" Color="#65717E"/>
         <Style x:Key="Field" TargetType="Control">
             <Setter Property="Margin" Value="0,0,8,0"/><Setter Property="Height" Value="32"/>

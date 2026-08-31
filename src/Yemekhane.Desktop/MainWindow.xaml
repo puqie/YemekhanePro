@@ -8,10 +8,10 @@
          UseLayoutRounding="True" SnapsToDevicePixels="True" AutomationProperties.Name="YemekhanePro operasyon merkezi">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <SolidColorBrush x:Key="Ink" Color="#17202A" />
+        <SolidColorBrush x:Key="Ink" Color="#18222D" />
         <SolidColorBrush x:Key="Muted" Color="#65717E" />
         <SolidColorBrush x:Key="Line" Color="#E1E5E9" />
-        <SolidColorBrush x:Key="Accent" Color="#156B63" />
+        <SolidColorBrush x:Key="Accent" Color="#C33A02" />
         <Style TargetType="Border" x:Key="Panel">
             <Setter Property="Background" Value="White" />
             <Setter Property="BorderBrush" Value="{StaticResource Line}" />
@@ -55,7 +55,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="#17202A">
+        <Border Grid.Column="0" Background="#18222D">
             <Grid Margin="18,22,14,18">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -74,23 +74,23 @@
                 </StackPanel>
                 <TextBlock Grid.Row="1" Text="OPERASYON" Foreground="#73808D" FontWeight="SemiBold" FontSize="10" Margin="5,0,0,9" />
                 <StackPanel x:Name="NavigationButtons" Grid.Row="2">
-                    <Button Tag="dashboard" Command="{Binding NavigateDashboardCommand}" Background="#25433F" BorderThickness="0" Padding="11,10" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Dashboard sayfasını aç">
+                    <Button Tag="dashboard" Command="{Binding NavigateDashboardCommand}" Background="#2F3B49" BorderThickness="0" Padding="11,10" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Dashboard sayfasını aç">
                         <TextBlock Text="▦   Dashboard" Foreground="#E7FFFA" FontWeight="SemiBold" />
                     </Button>
-                    <Button Tag="daily-tracking" Command="{Binding NavigateDailyTrackingCommand}" Content="Günlük Takip" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Günlük Takip sayfasını aç" />
-                    <Button Tag="students" Command="{Binding NavigateStudentsCommand}" Content="Öğrenciler" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Öğrenciler sayfasını aç" />
-                    <Button Tag="entitlements" Command="{Binding NavigateEntitlementsCommand}" Content="Yemek Hakedişleri" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Yemek hakedişleri sayfasını aç" Visibility="{Binding CanNavigateEntitlements, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <Button Tag="holiday-transfer" Command="{Binding NavigateCalendarCommand}" Content="Takvim / Tatil" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Operasyon takvimini aç" Visibility="{Binding CanNavigateCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <Button Tag="devices" Command="{Binding NavigateDevicesCommand}" Content="Cihazlar / Turnikeler" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Cihazlar ve turnikeler sayfasını aç" />
-                    <Button Tag="device-cards" Command="{Binding NavigateDeviceCardsCommand}" Content="Kart Yükleme Durumu" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Kart yükleme durumu sayfasını aç" />
-                    <Button Tag="sms" Command="{Binding NavigateSmsCommand}" Content="SMS Merkezi" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="SMS merkezini aç" Visibility="{Binding CanNavigateSms, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <Button Tag="cash" Command="{Binding NavigateCashCommand}" Content="Kasa" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Kasa sayfasını aç" Visibility="{Binding CanNavigateCash, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <Button Tag="reports" Command="{Binding NavigateReportsCommand}" Content="Raporlar" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Rapor merkezini aç" Visibility="{Binding CanNavigateReports, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <Button Tag="settings" Command="{Binding NavigateSettingsCommand}" Content="Ayarlar" Foreground="#D8E4E2" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Sistem ayarlarını aç" Visibility="{Binding CanNavigateSettings, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Tag="daily-tracking" Command="{Binding NavigateDailyTrackingCommand}" Content="Günlük Takip" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Günlük Takip sayfasını aç" />
+                    <Button Tag="students" Command="{Binding NavigateStudentsCommand}" Content="Öğrenciler" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Öğrenciler sayfasını aç" />
+                    <Button Tag="entitlements" Command="{Binding NavigateEntitlementsCommand}" Content="Yemek Hakedişleri" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Yemek hakedişleri sayfasını aç" Visibility="{Binding CanNavigateEntitlements, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Tag="holiday-transfer" Command="{Binding NavigateCalendarCommand}" Content="Takvim / Tatil" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Operasyon takvimini aç" Visibility="{Binding CanNavigateCalendar, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Tag="devices" Command="{Binding NavigateDevicesCommand}" Content="Cihazlar / Turnikeler" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Cihazlar ve turnikeler sayfasını aç" />
+                    <Button Tag="device-cards" Command="{Binding NavigateDeviceCardsCommand}" Content="Kart Yükleme Durumu" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Kart yükleme durumu sayfasını aç" />
+                    <Button Tag="sms" Command="{Binding NavigateSmsCommand}" Content="SMS Merkezi" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="SMS merkezini aç" Visibility="{Binding CanNavigateSms, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Tag="cash" Command="{Binding NavigateCashCommand}" Content="Kasa" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Kasa sayfasını aç" Visibility="{Binding CanNavigateCash, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Tag="reports" Command="{Binding NavigateReportsCommand}" Content="Raporlar" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Rapor merkezini aç" Visibility="{Binding CanNavigateReports, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Tag="settings" Command="{Binding NavigateSettingsCommand}" Content="Ayarlar" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Sistem ayarlarını aç" Visibility="{Binding CanNavigateSettings, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </StackPanel>
                 <Border Grid.Row="3" BorderBrush="#34414C" BorderThickness="0,1,0,0" Padding="4,14,0,0">
                     <StackPanel>
-                        <Button Content="Kısayollar  F1" Click="OpenShortcutHelp" Foreground="#D8E4E2" Background="Transparent" BorderBrush="#4A5864" Padding="8,5" Margin="0,0,0,12" Cursor="Hand" AutomationProperties.Name="Klavye kısayollarını göster"/>
+                        <Button Content="Kısayollar  F1" Click="OpenShortcutHelp" Foreground="#D6DBE0" Background="Transparent" BorderBrush="#4A5864" Padding="8,5" Margin="0,0,0,12" Cursor="Hand" AutomationProperties.Name="Klavye kısayollarını göster"/>
                         <TextBlock Text="API OTURUMU" Foreground="#73808D" FontSize="10" FontWeight="SemiBold" />
                         <TextBlock Text="JWT ile güvenli bağlantı" Foreground="#B4BEC7" Margin="0,5,0,0" />
                     </StackPanel>
@@ -121,12 +121,12 @@
                                 </Border>
                             </Grid>
                         </Button>
-                        <Border Background="#EEF2F2" CornerRadius="12" Padding="9,4" Margin="0,0,10,0">
+                        <Border Background="#F7F4F2" CornerRadius="12" Padding="9,4" Margin="0,0,10,0">
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="7" Height="7" Margin="0,0,6,0">
                                     <Ellipse.Style>
                                         <Style TargetType="Ellipse"><Setter Property="Fill" Value="#C4483F" />
-                                            <Style.Triggers><DataTrigger Binding="{Binding IsOffline}" Value="False"><Setter Property="Fill" Value="#218C74" /></DataTrigger></Style.Triggers>
+                                            <Style.Triggers><DataTrigger Binding="{Binding IsOffline}" Value="False"><Setter Property="Fill" Value="#1E7A54" /></DataTrigger></Style.Triggers>
                                         </Style>
                                     </Ellipse.Style>
                                 </Ellipse>
@@ -152,7 +152,7 @@
                             <Border Style="{StaticResource Panel}" Margin="0,0,7,0" Padding="13,11"><StackPanel><TextBlock Text="AKTİF ÖĞRENCİ" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock Text="{Binding Snapshot.Kpis.ActiveStudents, StringFormat=N0}" FontSize="25" FontWeight="SemiBold" Foreground="{StaticResource Ink}" Margin="0,4,0,0"/></StackPanel></Border>
                             <Border Style="{StaticResource Panel}" Margin="7,0" Padding="13,11"><StackPanel><TextBlock Text="HAK SAHİBİ" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock Text="{Binding Snapshot.Kpis.EntitledStudents, StringFormat=N0}" FontSize="25" FontWeight="SemiBold" Foreground="{StaticResource Ink}" Margin="0,4,0,0"/></StackPanel></Border>
                             <Border Style="{StaticResource Panel}" Margin="7,0" Padding="13,11"><StackPanel><TextBlock Text="HAKEDİŞ" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock Text="{Binding Snapshot.Kpis.EntitlementQuantity, StringFormat=N0}" FontSize="25" FontWeight="SemiBold" Foreground="{StaticResource Ink}" Margin="0,4,0,0"/></StackPanel></Border>
-                            <Border Style="{StaticResource Panel}" Margin="7,0" Padding="13,11"><StackPanel><TextBlock Text="KULLANILAN" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock Text="{Binding Snapshot.Kpis.Used, StringFormat=N0}" FontSize="25" FontWeight="SemiBold" Foreground="#156B63" Margin="0,4,0,0"/></StackPanel></Border>
+                            <Border Style="{StaticResource Panel}" Margin="7,0" Padding="13,11"><StackPanel><TextBlock Text="KULLANILAN" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock Text="{Binding Snapshot.Kpis.Used, StringFormat=N0}" FontSize="25" FontWeight="SemiBold" Foreground="#C33A02" Margin="0,4,0,0"/></StackPanel></Border>
                             <Border Style="{StaticResource Panel}" Margin="7,0" Padding="13,11"><StackPanel><TextBlock Text="KALAN" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock Text="{Binding Snapshot.Kpis.Remaining, StringFormat=N0}" FontSize="25" FontWeight="SemiBold" Foreground="#356890" Margin="0,4,0,0"/></StackPanel></Border>
                             <Border Style="{StaticResource Panel}" Margin="7,0" Padding="13,11"><StackPanel><TextBlock Text="İZİNLİ" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock Text="{Binding Snapshot.Kpis.OnLeave, StringFormat=N0}" FontSize="25" FontWeight="SemiBold" Foreground="#8A681D" Margin="0,4,0,0"/></StackPanel></Border>
                             <Border Style="{StaticResource Panel}" Margin="7,0,0,0" Padding="13,11"><StackPanel><TextBlock Text="REDDEDİLEN" Foreground="{StaticResource Muted}" FontSize="10"/><TextBlock Text="{Binding Snapshot.Kpis.Denied, StringFormat=N0}" FontSize="25" FontWeight="SemiBold" Foreground="#A4403A" Margin="0,4,0,0"/></StackPanel></Border>
@@ -189,11 +189,11 @@
                                 <Grid><Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="Auto"/><RowDefinition /></Grid.RowDefinitions>
                                      <Grid Margin="14,0"><TextBlock Text="Cihaz Durumu" Style="{StaticResource SectionTitle}" VerticalAlignment="Center"/><Button Content="Yönet" Command="{Binding NavigateDevicesCommand}" Style="{StaticResource QuietButton}" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
                                     <UniformGrid Grid.Row="1" Columns="3" Margin="12,0,12,8">
-                                        <StackPanel><TextBlock Text="{Binding Snapshot.DeviceSummary.Online}" FontSize="21" FontWeight="SemiBold" Foreground="#218C74" HorizontalAlignment="Center"/><TextBlock Text="Çevrimiçi" Foreground="{StaticResource Muted}" HorizontalAlignment="Center"/></StackPanel>
+                                        <StackPanel><TextBlock Text="{Binding Snapshot.DeviceSummary.Online}" FontSize="21" FontWeight="SemiBold" Foreground="#1E7A54" HorizontalAlignment="Center"/><TextBlock Text="Çevrimiçi" Foreground="{StaticResource Muted}" HorizontalAlignment="Center"/></StackPanel>
                                         <StackPanel><TextBlock Text="{Binding Snapshot.DeviceSummary.Offline}" FontSize="21" FontWeight="SemiBold" Foreground="#65717E" HorizontalAlignment="Center"/><TextBlock Text="Çevrimdışı" Foreground="{StaticResource Muted}" HorizontalAlignment="Center"/></StackPanel>
                                         <StackPanel><TextBlock Text="{Binding Snapshot.DeviceSummary.Error}" FontSize="21" FontWeight="SemiBold" Foreground="#A4403A" HorizontalAlignment="Center"/><TextBlock Text="Hata" Foreground="{StaticResource Muted}" HorizontalAlignment="Center"/></StackPanel>
                                     </UniformGrid>
-                                    <ListView Grid.Row="2" ItemsSource="{Binding Snapshot.Devices}" BorderThickness="0" Margin="7,0"><ListView.ItemTemplate><DataTemplate><Grid Margin="5,4"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/><TextBlock Text="{Binding Type}" Foreground="{StaticResource Muted}" FontSize="10"/></StackPanel><Border Grid.Column="1" Background="#EEF2F2" CornerRadius="9" Padding="8,3" VerticalAlignment="Center"><TextBlock Text="{Binding Status}" Foreground="{StaticResource Muted}"/></Border></Grid></DataTemplate></ListView.ItemTemplate></ListView>
+                                    <ListView Grid.Row="2" ItemsSource="{Binding Snapshot.Devices}" BorderThickness="0" Margin="7,0"><ListView.ItemTemplate><DataTemplate><Grid Margin="5,4"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/><TextBlock Text="{Binding Type}" Foreground="{StaticResource Muted}" FontSize="10"/></StackPanel><Border Grid.Column="1" Background="#F7F4F2" CornerRadius="9" Padding="8,3" VerticalAlignment="Center"><TextBlock Text="{Binding Status}" Foreground="{StaticResource Muted}"/></Border></Grid></DataTemplate></ListView.ItemTemplate></ListView>
                                 </Grid>
                             </Border>
                         </Grid>
@@ -251,9 +251,9 @@
                     <Grid Grid.Row="2"><ListBox ItemsSource="{Binding Items}" BorderThickness="0" MaxHeight="520">
                         <ListBox.ItemTemplate><DataTemplate><Button Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="0" HorizontalContentAlignment="Stretch">
                             <Grid Margin="2,8"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <Border Background="#EEF2F2" CornerRadius="11" Padding="6,3" VerticalAlignment="Top"><TextBlock Text="{Binding Severity}" FontSize="9" TextAlignment="Center"/></Border>
+                                <Border Background="#F7F4F2" CornerRadius="11" Padding="6,3" VerticalAlignment="Top"><TextBlock Text="{Binding Severity}" FontSize="9" TextAlignment="Center"/></Border>
                                 <StackPanel Grid.Column="1" Margin="9,0"><TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Message}" Foreground="#65717E" TextWrapping="Wrap" Margin="0,3,0,0"/><TextBlock Text="{Binding LatestAt, StringFormat={}{0:dd.MM HH:mm}}" Foreground="#89939D" FontSize="10" Margin="0,4,0,0"/></StackPanel>
-                                <TextBlock Grid.Column="2" Text="{Binding Count, StringFormat={}×{0}}" Foreground="#156B63" FontWeight="SemiBold" Visibility="{Binding Count}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Count, StringFormat={}×{0}}" Foreground="#C33A02" FontWeight="SemiBold" Visibility="{Binding Count}"/>
                             </Grid></Button></DataTemplate></ListBox.ItemTemplate>
                     </ListBox><TextBlock Text="Henüz bildirim yok." Foreground="#65717E" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,35" Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}"/></Grid>
                 </Grid>
@@ -286,8 +286,8 @@
                             <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" Foreground="#65717E" Margin="8,10,8,5"/>
                         </DataTemplate></GroupStyle.HeaderTemplate></GroupStyle></ListBox.GroupStyle>
                         <ListBox.ItemTemplate><DataTemplate><Grid Margin="8,7"><Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition/></Grid.ColumnDefinitions>
-                            <Border Width="28" Height="28" Background="#E8F3F1" CornerRadius="14"><TextBlock Text="{Binding Icon}" FontSize="9" Foreground="#156B63" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                            <StackPanel Grid.Column="1"><TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#17202A"/><TextBlock Text="{Binding Subtitle}" Foreground="#65717E" Margin="0,2,0,0"/></StackPanel>
+                            <Border Width="28" Height="28" Background="#FDEDE3" CornerRadius="14"><TextBlock Text="{Binding Icon}" FontSize="9" Foreground="#C33A02" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <StackPanel Grid.Column="1"><TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#18222D"/><TextBlock Text="{Binding Subtitle}" Foreground="#65717E" Margin="0,2,0,0"/></StackPanel>
                         </Grid></DataTemplate></ListBox.ItemTemplate>
                         <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
                     </ListBox>
@@ -302,7 +302,7 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Grid><StackPanel><TextBlock Text="Klavye Kısayolları" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Durumlar geçerli ekran ve oturum yetkilerine göre güncellenir." Foreground="#65717E" Margin="0,4,0,0"/></StackPanel><Button Content="Kapat" Click="CloseShortcutHelp" Style="{StaticResource QuietButton}" HorizontalAlignment="Right"/></Grid>
                     <ItemsControl x:Name="ShortcutHelpList" Grid.Row="1" Margin="0,16,0,10">
-                        <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/><ColumnDefinition Width="190"/></Grid.ColumnDefinitions><Border Background="#EEF2F2" CornerRadius="4" Padding="7,4" HorizontalAlignment="Left"><TextBlock Text="{Binding Gesture}" FontFamily="Consolas" FontWeight="SemiBold"/></Border><TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="#65717E" VerticalAlignment="Center" TextAlignment="Right"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Foreground" Value="#A4403A"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/><ColumnDefinition Width="190"/></Grid.ColumnDefinitions><Border Background="#F7F4F2" CornerRadius="4" Padding="7,4" HorizontalAlignment="Left"><TextBlock Text="{Binding Gesture}" FontFamily="Consolas" FontWeight="SemiBold"/></Border><TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="#65717E" VerticalAlignment="Center" TextAlignment="Right"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Foreground" Value="#A4403A"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid></DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <TextBlock Grid.Row="2" Text="Enter, çok satırlı metin alanlarında satır eklemeyi korur." Foreground="#65717E"/>
                 </Grid>

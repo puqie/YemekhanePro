@@ -12,7 +12,7 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <StackPanel><TextBlock Text="Öğrenciler" FontSize="22" FontWeight="SemiBold" Foreground="#17202A"/><TextBlock Text="Öğrenci, kart ve günlük kullanım yönetimi" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
+            <StackPanel><TextBlock Text="Öğrenciler" FontSize="22" FontWeight="SemiBold" Foreground="#18222D"/><TextBlock Text="Öğrenci, kart ve günlük kullanım yönetimi" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Border Background="#FFF3E5" CornerRadius="12" Padding="9,4" Margin="0,0,10,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="#8A681D"/></Border>
                 <Button Style="{StaticResource Action}" Content="Yeni Öğrenci" Command="{Binding NewStudentCommand}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Yeni öğrenci oluştur"/>

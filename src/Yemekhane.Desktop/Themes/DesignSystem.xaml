@@ -5,8 +5,8 @@
     <SolidColorBrush x:Key="InkBrush" Color="#18212A"/>
     <SolidColorBrush x:Key="MutedBrush" Color="#5D6975"/>
     <SolidColorBrush x:Key="BorderBrush" Color="#D8DEE3"/>
-    <SolidColorBrush x:Key="AccentBrush" Color="#12675F"/>
-    <SolidColorBrush x:Key="AccentHoverBrush" Color="#0E574F"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#C33A02"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#A33002"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="#176B4D"/>
     <SolidColorBrush x:Key="DangerBrush" Color="#9C342F"/>
     <SolidColorBrush x:Key="WarningBrush" Color="#7C5B16"/>

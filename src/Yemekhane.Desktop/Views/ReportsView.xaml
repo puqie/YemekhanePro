@@ -26,7 +26,7 @@
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel><TextBlock Text="Rapor Merkezi" FontSize="22" FontWeight="SemiBold" Foreground="#17202A"/><TextBlock Text="{Binding SelectedReport.Name, StringFormat={}{0} • sunucu filtreli görünüm • Europe/Istanbul}" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
+                <StackPanel><TextBlock Text="Rapor Merkezi" FontSize="22" FontWeight="SemiBold" Foreground="#18222D"/><TextBlock Text="{Binding SelectedReport.Name, StringFormat={}{0} • sunucu filtreli görünüm • Europe/Istanbul}" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="#FFF3E5" CornerRadius="12" Padding="9,4" Margin="0,0,9,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="#8A681D"/></Border>
                     <Button Style="{StaticResource Action}" Content="PDF" Command="{Binding ExportPdfCommand}" ToolTip="Geçerli filtrelerin tamamını PDF aktar (Ctrl+P komutu hazır)"/>
@@ -53,12 +53,12 @@
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDecisionFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="KARAR"/><TextBox Style="{StaticResource Field}" Width="90" Text="{Binding Decision, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowStatusFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="DURUM"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding Status, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                     </WrapPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Style="{StaticResource Action}" Content="Sıfırla" Command="{Binding ResetCommand}"/><Button Padding="16,6" Background="#156B63" Foreground="White" BorderThickness="0" Content="Uygula" Command="{Binding ApplyCommand}" IsDefault="True"/></StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Style="{StaticResource Action}" Content="Sıfırla" Command="{Binding ResetCommand}"/><Button Padding="16,6" Background="#C33A02" Foreground="White" BorderThickness="0" Content="Uygula" Command="{Binding ApplyCommand}" IsDefault="True"/></StackPanel>
                 </StackPanel>
             </Border>
 
             <Border Grid.Row="2" Style="{StaticResource Panel}" Padding="13,9" Margin="0,0,0,10">
-                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding SummaryText}" Foreground="#17202A" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding SummaryText}" Foreground="#18222D" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Button Style="{StaticResource Action}" Content="Seçilenleri Kopyala" Command="{Binding CopySelectedCommand}"/>
                         <Menu Background="White"><MenuItem Header="Kolonlar" ItemsSource="{Binding Columns}"><MenuItem.ItemContainerStyle><Style TargetType="MenuItem"><Setter Property="HeaderTemplate"><Setter.Value><DataTemplate><CheckBox Content="{Binding Header}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Click="ColumnVisibility_Click"/></DataTemplate></Setter.Value></Setter></Style></MenuItem.ItemContainerStyle></MenuItem></Menu>
@@ -77,7 +77,7 @@
             </Border>
 
             <Grid Grid.Row="4" Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel><TextBlock Text="{Binding ErrorMessage}" Foreground="#9C342F"/><TextBlock Text="{Binding StatusMessage}" Foreground="#156B63"/></StackPanel>
+                <StackPanel><TextBlock Text="{Binding ErrorMessage}" Foreground="#9C342F"/><TextBlock Text="{Binding StatusMessage}" Foreground="#C33A02"/></StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal"><ComboBox Width="66" Height="29" ItemsSource="{Binding PageSizes}" SelectedItem="{Binding PageSize}" ToolTip="Sayfa boyutu"/><TextBlock Text="{Binding PageText}" Foreground="#65717E" VerticalAlignment="Center" Margin="12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel>
             </Grid>
         </Grid>

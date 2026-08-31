@@ -1,0 +1,511 @@
+============================================================
+                 PAZAR / BOOTH LOG EXPORT
+============================================================
+  Karakter   : Im_Aura
+  Hesap      : hamitferdi2
+  Oyun       : Nova (NowaOnlineWorld)
+  Tarih      : 01 Eylül 2026 Salı
+  Saat       : 01:06:37 (+03:00)
+  Toplam satır: 500
+============================================================
+
+[01:04:33] [6F·sub2·ok] mSlot=2 invSlot=17 KABUL
+[01:04:36] [6F·sub2·send] mSlot=3 invSlot=59 tpl=0x169B0490 stack=1 maxUnits=9999 flag=1 unit=25.399.999 stackable=True split=False wire=6F00020000003B00000090049B1601000000BF92830103000000000000000000
+[01:04:36] [event] sub=3 status=0x00 wire=6F000300000000 son_sys·50="Slave Timeout." — listing REDDEDILDI
+[01:04:36] [6F·recv] listing_ack sub=3 status=0x00 wire=6F000300000000 son_sys·50="Slave Timeout." — REDDETILDI
+[01:04:36] [ack-wait] mSlot=3 191ms (RED)
+[01:04:36] [Hata][6F·sub2·red] mSlot=3 invSlot=59 tpl=0x169B0490 stack=1 price=25.399.999 REDDETILDI (sub=3 status=0x00) — sebep: non-tradeable / cooldown / fiyat-cap / stack-mismatch / konum. Onceki cycle red sayisi: 0. 2 CYCLE ust uste tum retry RED = 30dk blacklist (location-reject sayilmaz).
+[01:04:36] [plan·blacklist·skip] tpl=0x169B0490 so-close-lockout(5dk) → blacklist sayaci ARTIRILMADI (item degil, konum sorunu).
+[01:04:37] [6F·sub2·send] mSlot=3 invSlot=18 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000012000000D02EB92901000000D778DA0103000000000000000000
+[01:04:37] [6F·state] sub=0x4 satır=4
+[01:04:37] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:37] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:37] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:37] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:37] [ack-wait] mSlot=3 236ms (ACK)
+[01:04:37] [6F·sub2·ok] mSlot=3 invSlot=18 KABUL
+[01:04:38] [6F·sub2·send] mSlot=4 invSlot=19 tpl=0x29B94A28 stack=1 maxUnits=9999 flag=1 unit=31.989.998 stackable=True split=False wire=6F000200000013000000284AB92901000000EE20E80104000000000000000000
+[01:04:39] [6F·state] sub=0x4 satır=5
+[01:04:39] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:39] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:39] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:39] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:39] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:04:39] [ack-wait] mSlot=4 266ms (ACK)
+[01:04:39] [6F·sub2·ok] mSlot=4 invSlot=19 KABUL
+[01:04:40] [relog] Süreli relog ERTELENDI — asılı/kapatılamayan Slave oturumu ('close other merchant') tespit edildi; fresh session bunu temizlemiyor (Slave ~7-8h yaşar) → boşuna relog ATILMIYOR. Bot sub=6 ile kapatmayı deniyor; çözülemezse kalıcı-stuck escape durdurup uyaracak.
+[01:04:41] [6F·sub2·send] mSlot=5 invSlot=20 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000014000000D02EB92901000000D778DA0105000000000000000000
+[01:04:41] [6F·state] sub=0x4 satır=6
+[01:04:41] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:41] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:41] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:41] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:41] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:04:41] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:04:41] [ack-wait] mSlot=5 248ms (ACK)
+[01:04:41] [6F·sub2·ok] mSlot=5 invSlot=20 KABUL
+[01:04:44] [6F·sub2·send] mSlot=6 invSlot=21 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000015000000D02EB92901000000D778DA0106000000000000000000
+[01:04:45] [6F·state] sub=0x4 satır=7
+[01:04:45] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:45] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:45] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:45] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:45] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:04:45] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:04:45] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:04:45] [ack-wait] mSlot=6 327ms (ACK)
+[01:04:45] [6F·sub2·ok] mSlot=6 invSlot=21 KABUL
+[01:04:46] [6F·sub2·send] mSlot=7 invSlot=22 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000016000000D02EB92901000000D778DA0107000000000000000000
+[01:04:47] [6F·state] sub=0x4 satır=8
+[01:04:47] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:47] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:47] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:47] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:47] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:04:47] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:04:47] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:04:47] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:04:47] [ack-wait] mSlot=7 333ms (ACK)
+[01:04:47] [6F·sub2·ok] mSlot=7 invSlot=22 KABUL
+[01:04:50] [6F·sub2·send] mSlot=8 invSlot=23 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000017000000D02EB92901000000D778DA0108000000000000000000
+[01:04:50] [6F·state] sub=0x4 satır=9
+[01:04:50] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:51] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:51] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:51] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:51] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:04:51] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:04:51] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:04:51] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:04:51] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:04:51] [ack-wait] mSlot=8 251ms (ACK)
+[01:04:51] [6F·sub2·ok] mSlot=8 invSlot=23 KABUL
+[01:04:53] [6F·sub2·send] mSlot=9 invSlot=24 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000018000000D02EB92901000000D778DA0109000000000000000000
+[01:04:53] [6F·state] sub=0x4 satır=10
+[01:04:53] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:53] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:53] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:53] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:53] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:04:53] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:04:53] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:04:53] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:04:53] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:04:53] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:04:53] [ack-wait] mSlot=9 239ms (ACK)
+[01:04:53] [6F·sub2·ok] mSlot=9 invSlot=24 KABUL
+[01:04:55] [6F·sub2·send] mSlot=10 invSlot=25 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000019000000D02EB92901000000D778DA010A000000000000000000
+[01:04:56] [6F·state] sub=0x4 satır=11
+[01:04:56] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:56] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:56] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:56] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:56] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:04:56] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:04:56] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:04:56] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:04:56] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:04:56] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:04:56] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:04:56] [ack-wait] mSlot=10 258ms (ACK)
+[01:04:56] [6F·sub2·ok] mSlot=10 invSlot=25 KABUL
+[01:04:56] [6F·sub2·batch] toplam 12 satir gonderildi · KABUL 11 · RED 1 · TIMEOUT 0 · booth-slot=11
+[01:04:56] [nav] 12 satir hazirlandi (sub=2)
+[01:04:57] [nav] sub=2 batch KISMI: 11 KABUL · 1 RED (muhtemelen bound/price-cap; booth yine aciliyor kabul edilenlerle).
+[01:04:57] [nav] 0x006F sub=5 booth @ (378,6,0,0,312,2) facing=240° — 12 yeni satir
+[01:04:57] [6F·state] sub=0x1 satır=0
+[01:04:58] [nav] booth durum sorgu: 0x006F sub=0xC
+[01:04:59] [6F·state] sub=0xC satır=11
+[01:04:59] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:04:59] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:04:59] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:04:59] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:04:59] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:04:59] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:04:59] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:04:59] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:04:59] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:04:59] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:04:59] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:04:59] [event] Slave Expire: 04s 59dk
+[01:05:01] [!] nav: booth EKSIK kuruldu — 11/12 gönderilen satır aktif (planlanan=12, gönderilen=12; muhtemelen Slave Merchant Timeout / RED). Tek-sefer 'tamam' SAYILMADI, pasife geçilmiyor; cycle yenilenip yeniden denenecek.
+[01:05:01] [merchant] Tezgâh kurulamadı — CANLI LİSTELEME sıfırlandı (sunucu satırları onaylamadı veya tezgâh açılmadı).
+[01:05:01] [nav·yakın-tekrar] town/rota değişimi yok; en yakın uygun rastgele noktaya yürünüyor (2/3).
+[01:05:03] [booth-spot] uygun yer secildi @ (381,7,310,7) (en yakin diger pazar=27,4m, hedef≥3,0m, merchant_count=1, tier_r=3,5m)
+[01:05:03] [nav] booth spot (378,6,312,2) → (381,7,310,7) r=3,5m facing=334° · ideal
+[01:05:03] [ks·skip] relog 7s içinde (uyarlanabilir karartma · online pencere 1dk) — KS bu tick atlandı (DC sonrası taze kurulum)
+[01:05:04] [nav] server-truth prequery: 0x006F sub=0xC (local cache bos — server'da stale satir var mi?)
+[01:05:05] [6F·state] sub=0xC satır=11
+[01:05:05] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:05] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:05] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:05] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:05] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:05] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:05] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:05:05] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:05:05] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:05:05] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:05:05] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:05:05] [event] Slave Expire: 04s 59dk
+[01:05:08] [nav] server-truth: 11 stale satir bulundu — ön-boz (sub=6) ZORUNLU (local cache yanlişti).
+[01:05:08] [ks] ön-temizlik: 0x006F sub=1 (para tahsil · bekleyen ~0g)
+[01:05:10] [nav] ön-boz: mevcut tezgâh/pazar oturumu kapatılıyor (yeni kurulum öncesi zorunlu)
+[01:05:10] [nav] 0x006F sub=6 (boz) gonderildi — 11 canli satir, server-truth=11
+[01:05:10] [event] Merchant Items Received — boz onaylandi
+[01:05:10] [6F·state] sub=0xC satır=0
+[01:05:10] [event] Slave Expire: 04s 59dk
+[01:05:10] [relog] Süreli relog ERTELENDI — asılı/kapatılamayan Slave oturumu ('close other merchant') tespit edildi; fresh session bunu temizlemiyor (Slave ~7-8h yaşar) → boşuna relog ATILMIYOR. Bot sub=6 ile kapatmayı deniyor; çözülemezse kalıcı-stuck escape durdurup uyaracak.
+[01:05:11] [nav] ön-boz bitti — taze listeleme / sub=5 için devam
+[01:05:11] [6F·state] sub=0x0 satır=0
+[01:05:11] [plan·refresh] 0x0033 inventory refresh + 1000ms bekleme — server-truth plan icin gercek UID'ler bekleniyor
+[01:05:11] [inv·refresh] 0x33 probe gonderildi — 5sn 0x0032 burst kabul penceresi acildi (cache replay devre disi, gercek UID'ler korunuyor)
+[01:05:12] [plan] BuildMerchantRelistPlan: targets=3 inv-real=15 phantom-pending=5 max-slot=12
+[01:05:12] [plan·target] item=0x169B0490 (Tears of Karivdis) target=31.999.000 min=25.314.064 → envanter: 1 slot real-UID, toplam 2 adet
+[01:05:12] [plan·target] item=0x29B92ED0 (Trina's Piece) target=38.999.000 min=30.939.412 → envanter: 11 slot real-UID, toplam 11 adet
+[01:05:12] [plan·target] item=0x29B94A28 (Shadow Piece) target=38.999.000 min=30.939.412 → envanter: 2 slot real-UID, toplam 2 adet
+[01:05:12] [plan] sıra: faz1 (fair-share, her hedefe 1 listing) → faz2 (multi-list, kalan slot'lara cogalti)
+[01:05:12] [plan·ok] item=0x169B0490 (Tears of Karivdis) → invSlot=15 stack=1 price=25.399.999 (target=31999000 min=25314064 undercut=True ksGlobal=True belowMin=False total=1/1) serial=0xB5000000 [1/12]
+[01:05:12] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=16 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=1/1) serial=0xED000000 [2/12]
+[01:05:12] [plan·ok] item=0x29B94A28 (Shadow Piece) → invSlot=17 stack=1 price=31.989.998 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=1/1) serial=0xE7000000 [3/12]
+[01:05:12] [plan·faz1] her hedefe 1 listing tamamlandi — 3/3 hedef booth'a girdi (3/12 slot dolu)
+[01:05:12] [plan·ok] item=0x169B0490 (Tears of Karivdis) → invSlot=59 stack=1 price=25.399.999 (target=31999000 min=25314064 undercut=True ksGlobal=True belowMin=False total=2/1) serial=0x169B0490 [4/12]
+[01:05:12] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=18 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=2/1) serial=0xC1000000 [5/12]
+[01:05:12] [plan·ok] item=0x29B94A28 (Shadow Piece) → invSlot=19 stack=1 price=31.989.998 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=2/1) serial=0xC3000000 [6/12]
+[01:05:12] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=20 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=3/1) serial=0xC7000000 [7/12]
+[01:05:12] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=21 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=4/1) serial=0xBF000000 [8/12]
+[01:05:12] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=22 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=5/1) serial=0xD1000000 [9/12]
+[01:05:12] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=23 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=6/1) serial=0xC5000000 [10/12]
+[01:05:12] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=24 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=7/1) serial=0xD3000000 [11/12]
+[01:05:12] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=25 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=8/1) serial=0xCD000000 [12/12]
+[01:05:12] [plan·faz2] multi-list ile 9 ek slot dolduruldu (12/12)
+[01:05:12] [plan] sonuc: 12/3 hedef icin satir hazir (max 12)
+[01:05:12] [6F·sub2·send] mSlot=0 invSlot=15 tpl=0x169B0490 stack=1 maxUnits=9999 flag=1 unit=25.399.999 stackable=True split=False wire=6F00020000000F00000090049B1601000000BF92830100000000000000000000
+[01:05:13] [6F·state] sub=0x4 satır=1
+[01:05:13] [ack-wait] mSlot=0 303ms (ACK)
+[01:05:13] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:13] [6F·sub2·ok] mSlot=0 invSlot=15 KABUL
+[01:05:15] [6F·sub2·send] mSlot=1 invSlot=16 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000010000000D02EB92901000000D778DA0101000000000000000000
+[01:05:15] [6F·state] sub=0x4 satır=2
+[01:05:15] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:16] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:16] [ack-wait] mSlot=1 285ms (ACK)
+[01:05:16] [6F·sub2·ok] mSlot=1 invSlot=16 KABUL
+[01:05:18] [6F·sub2·send] mSlot=2 invSlot=17 tpl=0x29B94A28 stack=1 maxUnits=9999 flag=1 unit=31.989.998 stackable=True split=False wire=6F000200000011000000284AB92901000000EE20E80102000000000000000000
+[01:05:19] [6F·state] sub=0x4 satır=3
+[01:05:19] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:19] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:19] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:19] [ack-wait] mSlot=2 303ms (ACK)
+[01:05:19] [6F·sub2·ok] mSlot=2 invSlot=17 KABUL
+[01:05:22] [6F·sub2·send] mSlot=3 invSlot=59 tpl=0x169B0490 stack=1 maxUnits=9999 flag=1 unit=25.399.999 stackable=True split=False wire=6F00020000003B00000090049B1601000000BF92830103000000000000000000
+[01:05:22] [event] sub=3 status=0x00 wire=6F000300000000 son_sys·50="Slave Timeout." — listing REDDEDILDI
+[01:05:22] [6F·recv] listing_ack sub=3 status=0x00 wire=6F000300000000 son_sys·50="Slave Timeout." — REDDETILDI
+[01:05:22] [ack-wait] mSlot=3 261ms (RED)
+[01:05:22] [Hata][6F·sub2·red] mSlot=3 invSlot=59 tpl=0x169B0490 stack=1 price=25.399.999 REDDETILDI (sub=3 status=0x00) — sebep: non-tradeable / cooldown / fiyat-cap / stack-mismatch / konum. Onceki cycle red sayisi: 0. 2 CYCLE ust uste tum retry RED = 30dk blacklist (location-reject sayilmaz).
+[01:05:22] [plan·blacklist·skip] tpl=0x169B0490 so-close-lockout(5dk) → blacklist sayaci ARTIRILMADI (item degil, konum sorunu).
+[01:05:23] [6F·sub2·send] mSlot=3 invSlot=18 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000012000000D02EB92901000000D778DA0103000000000000000000
+[01:05:23] [6F·state] sub=0x4 satır=4
+[01:05:23] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:23] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:23] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:23] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:23] [ack-wait] mSlot=3 327ms (ACK)
+[01:05:23] [6F·sub2·ok] mSlot=3 invSlot=18 KABUL
+[01:05:26] [6F·sub2·send] mSlot=4 invSlot=19 tpl=0x29B94A28 stack=1 maxUnits=9999 flag=1 unit=31.989.998 stackable=True split=False wire=6F000200000013000000284AB92901000000EE20E80104000000000000000000
+[01:05:26] [6F·state] sub=0x4 satır=5
+[01:05:26] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:26] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:26] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:26] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:26] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:27] [ack-wait] mSlot=4 250ms (ACK)
+[01:05:27] [6F·sub2·ok] mSlot=4 invSlot=19 KABUL
+[01:05:28] [6F·sub2·send] mSlot=5 invSlot=20 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000014000000D02EB92901000000D778DA0105000000000000000000
+[01:05:28] [6F·state] sub=0x4 satır=6
+[01:05:28] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:28] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:28] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:28] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:28] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:28] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:28] [ack-wait] mSlot=5 308ms (ACK)
+[01:05:28] [6F·sub2·ok] mSlot=5 invSlot=20 KABUL
+[01:05:30] [6F·sub2·send] mSlot=6 invSlot=21 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000015000000D02EB92901000000D778DA0106000000000000000000
+[01:05:30] [6F·state] sub=0x4 satır=7
+[01:05:31] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:31] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:31] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:31] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:31] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:31] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:31] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:05:31] [ack-wait] mSlot=6 325ms (ACK)
+[01:05:31] [6F·sub2·ok] mSlot=6 invSlot=21 KABUL
+[01:05:32] [6F·sub2·send] mSlot=7 invSlot=22 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000016000000D02EB92901000000D778DA0107000000000000000000
+[01:05:33] [6F·state] sub=0x4 satır=8
+[01:05:33] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:33] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:33] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:33] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:33] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:33] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:33] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:05:33] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:05:33] [ack-wait] mSlot=7 308ms (ACK)
+[01:05:33] [6F·sub2·ok] mSlot=7 invSlot=22 KABUL
+[01:05:33] [ks·tick] booth semaphore tutulu (kurulum devam ediyor) — bu tick atlandı
+[01:05:35] [6F·sub2·send] mSlot=8 invSlot=23 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000017000000D02EB92901000000D778DA0108000000000000000000
+[01:05:35] [6F·state] sub=0x4 satır=9
+[01:05:35] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:35] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:35] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:36] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:36] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:36] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:36] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:05:36] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:05:36] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:05:36] [ack-wait] mSlot=8 234ms (ACK)
+[01:05:36] [6F·sub2·ok] mSlot=8 invSlot=23 KABUL
+[01:05:37] [6F·sub2·send] mSlot=9 invSlot=24 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000018000000D02EB92901000000D778DA0109000000000000000000
+[01:05:38] [6F·state] sub=0x4 satır=10
+[01:05:38] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:38] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:38] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:38] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:38] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:38] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:38] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:05:38] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:05:38] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:05:38] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:05:38] [ack-wait] mSlot=9 179ms (ACK)
+[01:05:38] [6F·sub2·ok] mSlot=9 invSlot=24 KABUL
+[01:05:40] [6F·sub2·send] mSlot=10 invSlot=25 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000019000000D02EB92901000000D778DA010A000000000000000000
+[01:05:40] [6F·state] sub=0x4 satır=11
+[01:05:40] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:40] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:40] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:40] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:41] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:41] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:41] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:05:41] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:05:41] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:05:41] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:05:41] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:05:41] [relog] Süreli relog ERTELENDI — asılı/kapatılamayan Slave oturumu ('close other merchant') tespit edildi; fresh session bunu temizlemiyor (Slave ~7-8h yaşar) → boşuna relog ATILMIYOR. Bot sub=6 ile kapatmayı deniyor; çözülemezse kalıcı-stuck escape durdurup uyaracak.
+[01:05:41] [ack-wait] mSlot=10 338ms (ACK)
+[01:05:41] [6F·sub2·ok] mSlot=10 invSlot=25 KABUL
+[01:05:41] [6F·sub2·batch] toplam 12 satir gonderildi · KABUL 11 · RED 1 · TIMEOUT 0 · booth-slot=11
+[01:05:41] [nav] 12 satir hazirlandi (sub=2)
+[01:05:41] [nav] sub=2 batch KISMI: 11 KABUL · 1 RED (muhtemelen bound/price-cap; booth yine aciliyor kabul edilenlerle).
+[01:05:41] [nav] 0x006F sub=5 booth @ (381,7,0,0,310,7) facing=334° — 12 yeni satir
+[01:05:42] [6F·state] sub=0x1 satır=0
+[01:05:43] [nav] booth durum sorgu: 0x006F sub=0xC
+[01:05:43] [6F·state] sub=0xC satır=11
+[01:05:43] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:43] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:43] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:43] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:43] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:43] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:43] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:05:43] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:05:44] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:05:44] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:05:44] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:05:44] [event] Slave Expire: 04s 59dk
+[01:05:46] [!] nav: booth EKSIK kuruldu — 11/12 gönderilen satır aktif (planlanan=12, gönderilen=12; muhtemelen Slave Merchant Timeout / RED). Tek-sefer 'tamam' SAYILMADI, pasife geçilmiyor; cycle yenilenip yeniden denenecek.
+[01:05:46] [merchant] Tezgâh kurulamadı — CANLI LİSTELEME sıfırlandı (sunucu satırları onaylamadı veya tezgâh açılmadı).
+[01:05:46] [nav·yakın-tekrar] town/rota değişimi yok; en yakın uygun rastgele noktaya yürünüyor (3/3).
+[01:05:47] [booth-spot] uygun yer secildi @ (380,2,307,7) (en yakin diger pazar=24,4m, hedef≥3,0m, merchant_count=1, tier_r=3,5m)
+[01:05:47] [nav] booth spot (381,4,310,8) → (380,2,307,7) r=3,5m facing=248° · ideal
+[01:05:49] [nav] server-truth prequery: 0x006F sub=0xC (local cache bos — server'da stale satir var mi?)
+[01:05:49] [6F·state] sub=0xC satır=11
+[01:05:49] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:49] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:05:49] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:05:50] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:05:50] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:05:50] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:05:50] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:05:50] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:05:50] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:05:50] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:05:50] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:05:50] [event] Slave Expire: 04s 59dk
+[01:05:52] [nav] server-truth: 11 stale satir bulundu — ön-boz (sub=6) ZORUNLU (local cache yanlişti).
+[01:05:53] [ks] ön-temizlik: 0x006F sub=1 (para tahsil · bekleyen ~0g)
+[01:05:54] [nav] ön-boz: mevcut tezgâh/pazar oturumu kapatılıyor (yeni kurulum öncesi zorunlu)
+[01:05:54] [nav] 0x006F sub=6 (boz) gonderildi — 11 canli satir, server-truth=11
+[01:05:55] [event] Merchant Items Received — boz onaylandi
+[01:05:55] [6F·state] sub=0xC satır=0
+[01:05:55] [event] Slave Expire: 04s 59dk
+[01:05:56] [nav] ön-boz bitti — taze listeleme / sub=5 için devam
+[01:05:56] [6F·state] sub=0x0 satır=0
+[01:05:57] [plan·refresh] 0x0033 inventory refresh + 1000ms bekleme — server-truth plan icin gercek UID'ler bekleniyor
+[01:05:57] [inv·refresh] 0x33 probe gonderildi — 5sn 0x0032 burst kabul penceresi acildi (cache replay devre disi, gercek UID'ler korunuyor)
+[01:05:58] [plan] BuildMerchantRelistPlan: targets=3 inv-real=15 phantom-pending=5 max-slot=12
+[01:05:58] [plan·target] item=0x169B0490 (Tears of Karivdis) target=31.999.000 min=25.314.064 → envanter: 1 slot real-UID, toplam 2 adet
+[01:05:58] [plan·target] item=0x29B92ED0 (Trina's Piece) target=38.999.000 min=30.939.412 → envanter: 11 slot real-UID, toplam 11 adet
+[01:05:58] [plan·target] item=0x29B94A28 (Shadow Piece) target=38.999.000 min=30.939.412 → envanter: 2 slot real-UID, toplam 2 adet
+[01:05:58] [plan] sıra: faz1 (fair-share, her hedefe 1 listing) → faz2 (multi-list, kalan slot'lara cogalti)
+[01:05:58] [plan·ok] item=0x169B0490 (Tears of Karivdis) → invSlot=15 stack=1 price=25.399.999 (target=31999000 min=25314064 undercut=True ksGlobal=True belowMin=False total=1/1) serial=0xB5000000 [1/12]
+[01:05:58] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=16 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=1/1) serial=0xED000000 [2/12]
+[01:05:58] [plan·ok] item=0x29B94A28 (Shadow Piece) → invSlot=17 stack=1 price=31.989.998 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=1/1) serial=0xE7000000 [3/12]
+[01:05:58] [plan·faz1] her hedefe 1 listing tamamlandi — 3/3 hedef booth'a girdi (3/12 slot dolu)
+[01:05:58] [plan·ok] item=0x169B0490 (Tears of Karivdis) → invSlot=59 stack=1 price=25.399.999 (target=31999000 min=25314064 undercut=True ksGlobal=True belowMin=False total=2/1) serial=0x169B0490 [4/12]
+[01:05:58] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=18 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=2/1) serial=0xC1000000 [5/12]
+[01:05:58] [plan·ok] item=0x29B94A28 (Shadow Piece) → invSlot=19 stack=1 price=31.989.998 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=2/1) serial=0xC3000000 [6/12]
+[01:05:58] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=20 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=3/1) serial=0xC7000000 [7/12]
+[01:05:58] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=21 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=4/1) serial=0xBF000000 [8/12]
+[01:05:58] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=22 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=5/1) serial=0xD1000000 [9/12]
+[01:05:58] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=23 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=6/1) serial=0xC5000000 [10/12]
+[01:05:58] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=24 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=7/1) serial=0xD3000000 [11/12]
+[01:05:58] [plan·ok] item=0x29B92ED0 (Trina's Piece) → invSlot=25 stack=1 price=31.094.999 (target=38999000 min=30939412 undercut=True ksGlobal=True belowMin=False total=8/1) serial=0xCD000000 [12/12]
+[01:05:58] [plan·faz2] multi-list ile 9 ek slot dolduruldu (12/12)
+[01:05:58] [plan] sonuc: 12/3 hedef icin satir hazir (max 12)
+[01:05:58] [6F·sub2·send] mSlot=0 invSlot=15 tpl=0x169B0490 stack=1 maxUnits=9999 flag=1 unit=25.399.999 stackable=True split=False wire=6F00020000000F00000090049B1601000000BF92830100000000000000000000
+[01:05:58] [6F·state] sub=0x4 satır=1
+[01:05:58] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:05:58] [ack-wait] mSlot=0 242ms (ACK)
+[01:05:58] [6F·sub2·ok] mSlot=0 invSlot=15 KABUL
+[01:06:01] [6F·sub2·send] mSlot=1 invSlot=16 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000010000000D02EB92901000000D778DA0101000000000000000000
+[01:06:01] [6F·state] sub=0x4 satır=2
+[01:06:01] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:01] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:01] [ack-wait] mSlot=1 173ms (ACK)
+[01:06:01] [6F·sub2·ok] mSlot=1 invSlot=16 KABUL
+[01:06:03] [6F·sub2·send] mSlot=2 invSlot=17 tpl=0x29B94A28 stack=1 maxUnits=9999 flag=1 unit=31.989.998 stackable=True split=False wire=6F000200000011000000284AB92901000000EE20E80102000000000000000000
+[01:06:03] [6F·state] sub=0x4 satır=3
+[01:06:03] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:03] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:03] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:03] [ack-wait] mSlot=2 212ms (ACK)
+[01:06:03] [6F·sub2·ok] mSlot=2 invSlot=17 KABUL
+[01:06:06] [ks·tick] booth semaphore tutulu (kurulum devam ediyor) — bu tick atlandı
+[01:06:07] [6F·sub2·send] mSlot=3 invSlot=59 tpl=0x169B0490 stack=1 maxUnits=9999 flag=1 unit=25.399.999 stackable=True split=False wire=6F00020000003B00000090049B1601000000BF92830103000000000000000000
+[01:06:07] [event] sub=3 status=0x00 wire=6F000300000000 son_sys·50="Slave Timeout." — listing REDDEDILDI
+[01:06:07] [6F·recv] listing_ack sub=3 status=0x00 wire=6F000300000000 son_sys·50="Slave Timeout." — REDDETILDI
+[01:06:07] [ack-wait] mSlot=3 199ms (RED)
+[01:06:07] [Hata][6F·sub2·red] mSlot=3 invSlot=59 tpl=0x169B0490 stack=1 price=25.399.999 REDDETILDI (sub=3 status=0x00) — sebep: non-tradeable / cooldown / fiyat-cap / stack-mismatch / konum. Onceki cycle red sayisi: 0. 2 CYCLE ust uste tum retry RED = 30dk blacklist (location-reject sayilmaz).
+[01:06:07] [plan·blacklist·skip] tpl=0x169B0490 so-close-lockout(5dk) → blacklist sayaci ARTIRILMADI (item degil, konum sorunu).
+[01:06:08] [6F·sub2·send] mSlot=3 invSlot=18 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000012000000D02EB92901000000D778DA0103000000000000000000
+[01:06:08] [6F·state] sub=0x4 satır=4
+[01:06:08] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:08] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:08] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:08] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:08] [ack-wait] mSlot=3 267ms (ACK)
+[01:06:08] [6F·sub2·ok] mSlot=3 invSlot=18 KABUL
+[01:06:10] [6F·sub2·send] mSlot=4 invSlot=19 tpl=0x29B94A28 stack=1 maxUnits=9999 flag=1 unit=31.989.998 stackable=True split=False wire=6F000200000013000000284AB92901000000EE20E80104000000000000000000
+[01:06:10] [6F·state] sub=0x4 satır=5
+[01:06:10] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:10] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:10] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:10] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:10] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:06:11] [ack-wait] mSlot=4 247ms (ACK)
+[01:06:11] [6F·sub2·ok] mSlot=4 invSlot=19 KABUL
+[01:06:11] [relog] Süreli relog ERTELENDI — asılı/kapatılamayan Slave oturumu ('close other merchant') tespit edildi; fresh session bunu temizlemiyor (Slave ~7-8h yaşar) → boşuna relog ATILMIYOR. Bot sub=6 ile kapatmayı deniyor; çözülemezse kalıcı-stuck escape durdurup uyaracak.
+[01:06:12] [6F·sub2·send] mSlot=5 invSlot=20 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000014000000D02EB92901000000D778DA0105000000000000000000
+[01:06:12] [6F·state] sub=0x4 satır=6
+[01:06:12] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:12] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:12] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:12] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:12] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:06:13] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:06:13] [ack-wait] mSlot=5 242ms (ACK)
+[01:06:13] [6F·sub2·ok] mSlot=5 invSlot=20 KABUL
+[01:06:14] [6F·sub2·send] mSlot=6 invSlot=21 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000015000000D02EB92901000000D778DA0106000000000000000000
+[01:06:14] [6F·state] sub=0x4 satır=7
+[01:06:14] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:14] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:14] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:14] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:14] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:06:14] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:06:15] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:06:15] [ack-wait] mSlot=6 275ms (ACK)
+[01:06:15] [6F·sub2·ok] mSlot=6 invSlot=21 KABUL
+[01:06:16] [6F·sub2·send] mSlot=7 invSlot=22 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000016000000D02EB92901000000D778DA0107000000000000000000
+[01:06:16] [6F·state] sub=0x4 satır=8
+[01:06:16] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:16] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:16] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:16] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:16] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:06:16] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:06:17] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:06:17] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:06:17] [ack-wait] mSlot=7 227ms (ACK)
+[01:06:17] [6F·sub2·ok] mSlot=7 invSlot=22 KABUL
+[01:06:19] [6F·sub2·send] mSlot=8 invSlot=23 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000017000000D02EB92901000000D778DA0108000000000000000000
+[01:06:19] [6F·state] sub=0x4 satır=9
+[01:06:19] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:19] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:19] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:19] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:19] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:06:19] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:06:19] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:06:20] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:06:20] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:06:20] [ack-wait] mSlot=8 251ms (ACK)
+[01:06:20] [6F·sub2·ok] mSlot=8 invSlot=23 KABUL
+[01:06:22] [6F·sub2·send] mSlot=9 invSlot=24 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000018000000D02EB92901000000D778DA0109000000000000000000
+[01:06:23] [6F·state] sub=0x4 satır=10
+[01:06:23] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:23] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:23] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:23] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:23] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:06:23] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:06:23] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:06:23] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:06:23] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:06:23] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:06:23] [ack-wait] mSlot=9 317ms (ACK)
+[01:06:23] [6F·sub2·ok] mSlot=9 invSlot=24 KABUL
+[01:06:24] [6F·sub2·send] mSlot=10 invSlot=25 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F000200000019000000D02EB92901000000D778DA010A000000000000000000
+[01:06:25] [6F·state] sub=0x4 satır=11
+[01:06:25] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:25] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:25] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:25] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:25] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:06:25] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:06:25] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:06:25] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:06:25] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:06:25] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:06:25] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:06:25] [ack-wait] mSlot=10 259ms (ACK)
+[01:06:25] [6F·sub2·ok] mSlot=10 invSlot=25 KABUL
+[01:06:25] [6F·sub2·batch] toplam 12 satir gonderildi · KABUL 11 · RED 1 · TIMEOUT 0 · booth-slot=11
+[01:06:25] [nav] 12 satir hazirlandi (sub=2)
+[01:06:26] [nav] sub=2 batch KISMI: 11 KABUL · 1 RED (muhtemelen bound/price-cap; booth yine aciliyor kabul edilenlerle).
+[01:06:26] [nav] 0x006F sub=5 booth @ (380,2,0,0,307,7) facing=248° — 12 yeni satir
+[01:06:26] [6F·state] sub=0x1 satır=0
+[01:06:27] [nav] booth durum sorgu: 0x006F sub=0xC
+[01:06:27] [6F·state] sub=0xC satır=11
+[01:06:27] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25399999 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:06:27] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:06:27] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:06:27] [6F·offer] slot=3 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=4
+[01:06:27] [6F·offer] slot=4 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=5
+[01:06:27] [6F·offer] slot=5 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=6
+[01:06:27] [6F·offer] slot=6 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=7
+[01:06:27] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:06:28] [6F·offer] slot=8 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=9
+[01:06:28] [6F·offer] slot=9 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:06:28] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:06:28] [event] Slave Expire: 04s 59dk
+[01:06:30] [!] nav: booth EKSIK kuruldu — 11/12 gönderilen satır aktif (planlanan=12, gönderilen=12; muhtemelen Slave Merchant Timeout / RED). Tek-sefer 'tamam' SAYILMADI, pasife geçilmiyor; cycle yenilenip yeniden denenecek.
+[01:06:30] [merchant] Tezgâh kurulamadı — CANLI LİSTELEME sıfırlandı (sunucu satırları onaylamadı veya tezgâh açılmadı).
+[01:06:30] [nav·fallback] 'Rota 1' rotasina 60sn (KISA — location reject/lockout) ceza (sebep: booth acilamadi (sub=2 red veya sub=0xC bos)). Bir sonraki cycle alternatif rota denenecek; ceza 59sn sonra kalkar.
+[01:06:30] [nav] booth açılamadı — 15sn sonra yeniden denenecek.
+[01:06:36] [ks·skip] relog 4s içinde (uyarlanabilir karartma · online pencere 1dk) — KS bu tick atlandı (DC sonrası taze kurulum)
