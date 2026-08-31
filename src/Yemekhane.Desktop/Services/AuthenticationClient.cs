@@ -40,8 +40,18 @@ public sealed class AuthenticationClient(HttpClient client, MutableJwtSession se
                 throw new AuthenticationException("Çok fazla giriş denemesi yapıldı. Kısa süre bekleyip yeniden deneyin.");
             if (!response.IsSuccessStatusCode)
                 throw new AuthenticationException("Giriş servisi şu anda kullanılamıyor. Daha sonra yeniden deneyin.");
-            return await response.Content.ReadFromJsonAsync<DesktopLoginResult>(cancellationToken: cancellationToken)
-                ?? throw new AuthenticationException("Giriş yanıtı okunamadı.");
+            // Bozuk/eksik govde ya da beklenmeyen icerik turu JsonException veya
+            // NotSupportedException firlatir. Cevrilmezse bu, async void olan giris
+            // isleyicisinde yakalanmadan kalir ve WPF uygulamayi mesaj gostermeden kapatir.
+            try
+            {
+                return await response.Content.ReadFromJsonAsync<DesktopLoginResult>(cancellationToken: cancellationToken)
+                    ?? throw new AuthenticationException("Giriş yanıtı okunamadı.");
+            }
+            catch (Exception exception) when (exception is System.Text.Json.JsonException or NotSupportedException)
+            {
+                throw new AuthenticationException("Giriş yanıtı anlaşılamadı. API sürümünü kontrol edin.");
+            }
         }
     }
 }

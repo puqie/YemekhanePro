@@ -74,6 +74,16 @@ public partial class LoginWindow : Window, INotifyPropertyChanged
             DialogResult = true;
         }
         catch (AuthenticationException exception) { ErrorMessage = exception.Message; PasswordBox.Clear(); PasswordBox.Focus(); }
+        // Son savunma: bu bir "async void" isleyicidir. Buradan disari sizan herhangi bir
+        // exception WPF tarafindan yakalanamaz ve uygulama HICBIR MESAJ GOSTERMEDEN kapanir --
+        // kullanici "giris tusuna bastim, program kayboldu" der. Beklenmeyen hata da olsa
+        // ekranda kalip nedeni soylemek, sessizce kapanmaktan her zaman iyidir.
+        catch (Exception exception)
+        {
+            ErrorMessage = $"Giriş sırasında beklenmeyen bir hata oluştu: {exception.Message}";
+            PasswordBox.Clear();
+            PasswordBox.Focus();
+        }
         finally { IsBusy = false; }
     }
 

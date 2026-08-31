@@ -1,0 +1,511 @@
+============================================================
+                 PAZAR / BOOTH LOG EXPORT
+============================================================
+  Karakter   : Im_Aura
+  Hesap      : hamitferdi2
+  Oyun       : Nova (NowaOnlineWorld)
+  Tarih      : 01 Eylül 2026 Salı
+  Saat       : 01:26:50 (+03:00)
+  Toplam satır: 500
+============================================================
+
+[01:14:02] [6F·sub2·ok] mSlot=9 invSlot=31 KABUL
+[01:14:04] [6F·sub2·send] mSlot=10 invSlot=26 tpl=0x29B92ED0 stack=1 maxUnits=9999 flag=1 unit=31.094.999 stackable=True split=False wire=6F00020000001A000000D02EB92901000000D778DA010A000000000000000000
+[01:14:04] [6F·state] sub=0x4 satır=11
+[01:14:04] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:14:04] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:14:04] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:14:04] [6F·offer] slot=3 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=4
+[01:14:04] [6F·offer] slot=4 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=5
+[01:14:04] [6F·offer] slot=5 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=6
+[01:14:04] [6F·offer] slot=6 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=7
+[01:14:04] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:14:04] [6F·offer] slot=8 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=9
+[01:14:04] [6F·offer] slot=9 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=10
+[01:14:04] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:14:04] [ack-wait] mSlot=10 192ms (ACK)
+[01:14:04] [6F·sub2·ok] mSlot=10 invSlot=26 KABUL
+[01:14:06] [6F·sub2·send] mSlot=11 invSlot=21 tpl=0x29B94A28 stack=1 maxUnits=9999 flag=1 unit=31.989.998 stackable=True split=False wire=6F000200000015000000284AB92901000000EE20E8010B000000000000000000
+[01:14:06] [6F·state] sub=0x4 satır=12
+[01:14:06] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:14:06] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:14:06] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:14:06] [6F·offer] slot=3 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=4
+[01:14:06] [6F·offer] slot=4 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=5
+[01:14:06] [6F·offer] slot=5 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=6
+[01:14:06] [6F·offer] slot=6 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=7
+[01:14:06] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:14:06] [6F·offer] slot=8 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=9
+[01:14:06] [6F·offer] slot=9 serial=0x169B0490 adet=1 mid=0 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=10
+[01:14:06] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=0 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:14:06] [6F·offer] slot=11 serial=0x29B94A28 adet=1 mid=0 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=12
+[01:14:06] [ack-wait] mSlot=11 301ms (ACK)
+[01:14:06] [6F·sub2·ok] mSlot=11 invSlot=21 KABUL
+[01:14:06] [6F·sub2·batch] toplam 12 satir gonderildi · KABUL 12 · RED 0 · TIMEOUT 0 · booth-slot=12
+[01:14:06] [ks] relist planı: 12 satır hazırlandı
+[01:14:07] [ks] Booth yeniden açılıyor: 12 kesin kabul / 12 gönderim @ (364,302)
+[01:14:07] [ks·skip] item=0x29B94A28 bu tick icinde zaten bir relist tetiklendi → bir sonraki tick
+[01:14:07] [6F·state] sub=0x1 satır=0
+[01:14:37] [pazar-sc] 0x01C2 paket: +1340 listing (toplam 1340, merchants 250/250, seller-yenile=0)
+[01:14:37] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:14:37] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:14:37] [rakip-ui] burst=devam item=0x29B94A28 pazarSatır=1340 aynıItem=0 → önceki rakip korunuyor
+[01:14:38] [pazar-sc] 0x01C2 paket: +1469 listing (toplam 2809, merchants 500/250, seller-yenile=0)
+[01:14:38] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:14:39] [pazar-sc] 0x01C2 paket: +1749 listing (toplam 4558, merchants 750/250, seller-yenile=0)
+[01:14:41] [pazar-sc] 0x01C2 paket: +1103 listing (toplam 5661, merchants 928/178, seller-yenile=0)
+[01:14:41] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=71 self=4 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:14:41] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:14:42] [ks·tarama] Tears of Karivdis (0x169B0490): 14 satır, 10 rakip — en ucuz toplam: 25.611.110 (rakip birim ≈ 25.611.110)
+[01:14:42] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=25.611.110), işlem yok
+[01:14:42] [ks·skip] item=0x29B92ED0 anti-flap: 13s sonra yeniden bakilacak
+[01:14:42] [ks·tarama] Shadow Piece (0x29B94A28): 7 satır, 3 rakip — en ucuz toplam: 31.989.999 (rakip birim ≈ 31.989.999)
+[01:14:42] [ks] Shadow Piece (0x29B94A28) — zaten en ucuz (biz=31.989.998 ≤ rakip=31.989.999), işlem yok
+[01:15:08] [pazar-sc] 0x01C2 paket: +1328 listing (toplam 1328, merchants 250/250, seller-yenile=0)
+[01:15:08] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:15:08] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:15:08] [rakip-ui] burst=devam item=0x29B94A28 pazarSatır=1328 aynıItem=0 → önceki rakip korunuyor
+[01:15:08] [pazar-sc] 0x01C2 paket: +1464 listing (toplam 2792, merchants 500/250, seller-yenile=0)
+[01:15:09] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:15:09] [pazar-sc] 0x01C2 paket: +1749 listing (toplam 4541, merchants 750/250, seller-yenile=0)
+[01:15:11] [pazar-sc] 0x01C2 paket: +1111 listing (toplam 5652, merchants 928/178, seller-yenile=0)
+[01:15:12] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:15:12] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:15:13] [ks·tarama] Tears of Karivdis (0x169B0490): 13 satır, 10 rakip — en ucuz toplam: 25.611.110 (rakip birim ≈ 25.611.110)
+[01:15:13] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=25.611.110), işlem yok
+[01:15:13] [ks·tarama] Trina's Piece (0x29B92ED0): 43 satır, 39 rakip — en ucuz toplam: 31.095.000 (rakip birim ≈ 31.095.000)
+[01:15:13] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=31.095.000), işlem yok
+[01:15:13] [ks·tarama] Shadow Piece (0x29B94A28): 7 satır, 3 rakip — en ucuz toplam: 31.989.999 (rakip birim ≈ 31.989.999)
+[01:15:13] [ks] Shadow Piece (0x29B94A28) — zaten en ucuz (biz=31.989.998 ≤ rakip=31.989.999), işlem yok
+[01:15:40] [ks] tek-sefer mod aktif — KS undercut YİNE DE çalışıyor (pazar güncel tutuluyor; rota yürüme tekrarı yok).
+[01:15:40] [pazar-sc] 0x01C2 paket: +1325 listing (toplam 1325, merchants 250/250, seller-yenile=0)
+[01:15:40] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:15:40] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:15:40] [rakip-ui] burst=devam item=0x29B94A28 pazarSatır=1325 aynıItem=0 → önceki rakip korunuyor
+[01:15:41] [pazar-sc] 0x01C2 paket: +1469 listing (toplam 2794, merchants 500/250, seller-yenile=0)
+[01:15:41] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:15:42] [pazar-sc] 0x01C2 paket: +1735 listing (toplam 4529, merchants 750/250, seller-yenile=0)
+[01:15:44] [pazar-sc] 0x01C2 paket: +1112 listing (toplam 5641, merchants 929/179, seller-yenile=0)
+[01:15:44] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:15:44] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:15:45] [ks·tarama] Tears of Karivdis (0x169B0490): 13 satır, 10 rakip — en ucuz toplam: 25.611.110 (rakip birim ≈ 25.611.110)
+[01:15:45] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=25.611.110), işlem yok
+[01:15:45] [ks·tarama] Trina's Piece (0x29B92ED0): 43 satır, 39 rakip — en ucuz toplam: 31.095.000 (rakip birim ≈ 31.095.000)
+[01:15:45] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=31.095.000), işlem yok
+[01:15:45] [ks·tarama] Shadow Piece (0x29B94A28): 7 satır, 3 rakip — en ucuz toplam: 31.989.999 (rakip birim ≈ 31.989.999)
+[01:15:45] [ks] Shadow Piece (0x29B94A28) — zaten en ucuz (biz=31.989.998 ≤ rakip=31.989.999), işlem yok
+[01:16:16] [pazar-sc] 0x01C2 paket: +1325 listing (toplam 1325, merchants 250/250, seller-yenile=0)
+[01:16:16] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:16:16] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:16:16] [rakip-ui] burst=devam item=0x29B94A28 pazarSatır=1325 aynıItem=0 → önceki rakip korunuyor
+[01:16:16] [pazar-sc] 0x01C2 paket: +1470 listing (toplam 2795, merchants 500/250, seller-yenile=0)
+[01:16:17] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:16:18] [pazar-sc] 0x01C2 paket: +1735 listing (toplam 4530, merchants 750/250, seller-yenile=0)
+[01:16:19] [pazar-sc] 0x01C2 paket: +1112 listing (toplam 5642, merchants 929/179, seller-yenile=0)
+[01:16:20] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:16:20] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:16:21] [ks·tarama] Tears of Karivdis (0x169B0490): 13 satır, 10 rakip — en ucuz toplam: 25.611.110 (rakip birim ≈ 25.611.110)
+[01:16:21] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=25.611.110), işlem yok
+[01:16:21] [ks·tarama] Trina's Piece (0x29B92ED0): 43 satır, 39 rakip — en ucuz toplam: 31.095.000 (rakip birim ≈ 31.095.000)
+[01:16:21] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=31.095.000), işlem yok
+[01:16:21] [ks·tarama] Shadow Piece (0x29B94A28): 7 satır, 3 rakip — en ucuz toplam: 31.989.999 (rakip birim ≈ 31.989.999)
+[01:16:21] [ks] Shadow Piece (0x29B94A28) — zaten en ucuz (biz=31.989.998 ≤ rakip=31.989.999), işlem yok
+[01:16:46] [pazar-sc] 0x01C2 paket: +1323 listing (toplam 1323, merchants 250/250, seller-yenile=0)
+[01:16:46] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:16:46] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:16:46] [rakip-ui] burst=devam item=0x29B94A28 pazarSatır=1323 aynıItem=0 → önceki rakip korunuyor
+[01:16:47] [pazar-sc] 0x01C2 paket: +1474 listing (toplam 2797, merchants 500/250, seller-yenile=0)
+[01:16:47] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:16:48] [pazar-sc] 0x01C2 paket: +1734 listing (toplam 4531, merchants 750/250, seller-yenile=0)
+[01:16:50] [pazar-sc] 0x01C2 paket: +1113 listing (toplam 5644, merchants 930/180, seller-yenile=0)
+[01:16:51] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:16:51] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:16:52] [ks·tarama] Tears of Karivdis (0x169B0490): 13 satır, 10 rakip — en ucuz toplam: 25.611.110 (rakip birim ≈ 25.611.110)
+[01:16:52] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=25.611.110), işlem yok
+[01:16:52] [ks·tarama] Trina's Piece (0x29B92ED0): 43 satır, 39 rakip — en ucuz toplam: 31.095.000 (rakip birim ≈ 31.095.000)
+[01:16:52] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=31.095.000), işlem yok
+[01:16:52] [ks·tarama] Shadow Piece (0x29B94A28): 7 satır, 3 rakip — en ucuz toplam: 31.989.999 (rakip birim ≈ 31.989.999)
+[01:16:52] [ks] Shadow Piece (0x29B94A28) — zaten en ucuz (biz=31.989.998 ≤ rakip=31.989.999), işlem yok
+[01:17:19] [pazar-sc] 0x01C2 paket: +1320 listing (toplam 1320, merchants 250/250, seller-yenile=0)
+[01:17:19] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:17:19] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:17:19] [rakip-ui] burst=devam item=0x29B94A28 pazarSatır=1320 aynıItem=0 → önceki rakip korunuyor
+[01:17:19] [pazar-sc] 0x01C2 paket: +1474 listing (toplam 2794, merchants 500/250, seller-yenile=0)
+[01:17:19] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:17:20] [pazar-sc] 0x01C2 paket: +1734 listing (toplam 4528, merchants 750/250, seller-yenile=0)
+[01:17:22] [pazar-sc] 0x01C2 paket: +1113 listing (toplam 5641, merchants 930/180, seller-yenile=0)
+[01:17:25] [ks·tarama] Tears of Karivdis (0x169B0490): 70 satır, 67 rakip — en ucuz toplam: 25.611.110 (rakip birim ≈ 25.611.110)
+[01:17:25] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=25.611.110), işlem yok
+[01:17:25] [ks·tarama] Trina's Piece (0x29B92ED0): 80 satır, 76 rakip — en ucuz toplam: 31.095.000 (rakip birim ≈ 31.095.000)
+[01:17:25] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=31.095.000), işlem yok
+[01:17:25] [ks·tarama] Shadow Piece (0x29B94A28): 21 satır, 17 rakip — en ucuz toplam: 31.989.999 (rakip birim ≈ 31.989.999)
+[01:17:25] [ks] Shadow Piece (0x29B94A28) — zaten en ucuz (biz=31.989.998 ≤ rakip=31.989.999), işlem yok
+[01:17:58] [6F·state] sub=0xC satır=12
+[01:17:58] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:17:58] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:17:58] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:17:58] [6F·offer] slot=3 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=4
+[01:17:58] [6F·offer] slot=4 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=5
+[01:17:58] [6F·offer] slot=5 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=6
+[01:17:58] [6F·offer] slot=6 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=7
+[01:17:58] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:17:58] [6F·offer] slot=8 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=9
+[01:17:58] [6F·offer] slot=9 serial=0x169B0490 adet=1 mid=1 sent=0 fiyat=25611109 SATILDI×1/24.330.552g 'Tears of Karivdis' → MerchantServerRows.Count=10
+[01:17:58] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=11
+[01:17:58] [6F·offer] slot=11 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=12
+[01:17:58] [event] Slave Expire: 04s 56dk
+[01:17:58] [ks] tek-sefer mod aktif — KS undercut YİNE DE çalışıyor (pazar güncel tutuluyor; rota yürüme tekrarı yok).
+[01:18:00] [pazar-sc] 0x01C2 paket: +1319 listing (toplam 1319, merchants 250/250, seller-yenile=0)
+[01:18:02] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:18:02] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:18:02] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1319 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:18:05] [pazar-sc] 0x01C2 paket: +1471 listing (toplam 2790, merchants 500/250, seller-yenile=0)
+[01:18:07] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=13 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:18:07] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=43 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:18:07] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:18:12] [pazar-sc] 0x01C2 paket: +1720 listing (toplam 4510, merchants 750/250, seller-yenile=0)
+[01:18:16] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=33 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:18:16] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:18:16] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=19 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:18:22] [pazar-sc] 0x01C2 paket: +1106 listing (toplam 5616, merchants 928/178, seller-yenile=0)
+[01:18:26] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:18:26] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:18:26] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=21 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:18:32] [nav·restock] 1 satir SATILDI (toplam 12, aktif 11) — take_back+relist tetiklendi (envanter yenilemesi).
+[01:18:32] [nav] booth kapandı — döngü yenileniyor (30sn sonra)
+[01:18:32] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:18:32] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:18:32] [ks·tarama] Trina's Piece (0x29B92ED0): 6 satır, 6 rakip — en ucuz toplam: 33.000.000 (rakip birim ≈ 33.000.000)
+[01:18:32] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=33.000.000), işlem yok
+[01:18:32] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1319 listing)
+[01:18:36] [pazar-sc] 0x01C2 paket: +1315 listing (toplam 1315, merchants 250/250, seller-yenile=0)
+[01:18:37] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:18:37] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:18:37] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1315 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:18:40] [pazar-sc] 0x01C2 paket: +1464 listing (toplam 2779, merchants 500/250, seller-yenile=0)
+[01:18:43] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=13 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:18:43] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=43 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:18:43] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:18:47] [pazar-sc] 0x01C2 paket: +1712 listing (toplam 4491, merchants 750/250, seller-yenile=0)
+[01:18:51] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=33 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:18:51] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:18:51] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=19 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:18:52] [pazar-sc] 0x01C2 paket: +1093 listing (toplam 5584, merchants 926/176, seller-yenile=0)
+[01:18:56] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:18:56] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:18:56] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=21 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:19:01] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:19:01] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:19:01] [ks·tarama] Trina's Piece (0x29B92ED0): 6 satır, 6 rakip — en ucuz toplam: 33.000.000 (rakip birim ≈ 33.000.000)
+[01:19:01] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=33.000.000), işlem yok
+[01:19:01] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1315 listing)
+[01:19:13] [pazar-sc] 0x01C2 paket: +1322 listing (toplam 1322, merchants 250/250, seller-yenile=0)
+[01:19:14] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:19:14] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:19:14] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1322 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:19:17] [pazar-sc] 0x01C2 paket: +1463 listing (toplam 2785, merchants 500/250, seller-yenile=0)
+[01:19:19] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=13 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:19:19] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=43 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:19:19] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:19:24] [pazar-sc] 0x01C2 paket: +1733 listing (toplam 4518, merchants 750/250, seller-yenile=0)
+[01:19:27] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=33 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:19:28] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:19:28] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=19 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:19:29] [pazar-sc] 0x01C2 paket: +1090 listing (toplam 5608, merchants 928/178, seller-yenile=0)
+[01:19:33] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:19:33] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:19:33] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=21 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:19:37] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:19:37] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:19:37] [ks·tarama] Trina's Piece (0x29B92ED0): 6 satır, 6 rakip — en ucuz toplam: 33.000.000 (rakip birim ≈ 33.000.000)
+[01:19:37] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=33.000.000), işlem yok
+[01:19:37] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1322 listing)
+[01:19:48] [pazar-sc] 0x01C2 paket: +1320 listing (toplam 1320, merchants 250/250, seller-yenile=0)
+[01:19:49] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:19:49] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:19:49] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1320 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:19:51] [pazar-sc] 0x01C2 paket: +1471 listing (toplam 2791, merchants 500/250, seller-yenile=0)
+[01:19:53] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=13 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:19:53] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=43 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:19:53] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=7 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:19:58] [pazar-sc] 0x01C2 paket: +1734 listing (toplam 4525, merchants 750/250, seller-yenile=0)
+[01:20:01] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=33 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:20:01] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:20:01] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=19 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:20:06] [pazar-sc] 0x01C2 paket: +1099 listing (toplam 5624, merchants 930/180, seller-yenile=0)
+[01:20:10] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:20:10] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:20:10] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=21 self=4 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:20:15] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:20:15] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:20:15] [ks·tarama] Trina's Piece (0x29B92ED0): 6 satır, 6 rakip — en ucuz toplam: 33.000.000 (rakip birim ≈ 33.000.000)
+[01:20:15] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=33.000.000), işlem yok
+[01:20:15] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1320 listing)
+[01:20:22] [ks] tek-sefer mod aktif — KS undercut YİNE DE çalışıyor (pazar güncel tutuluyor; rota yürüme tekrarı yok).
+[01:20:24] [pazar-sc] 0x01C2 paket: +1319 listing (toplam 1319, merchants 250/250, seller-yenile=0)
+[01:20:25] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:20:25] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:20:25] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1319 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:20:29] [pazar-sc] 0x01C2 paket: +1470 listing (toplam 2789, merchants 500/250, seller-yenile=0)
+[01:20:31] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=13 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:20:31] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=43 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:20:31] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=6 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:20:33] [pazar-sc] 0x01C2 paket: +1725 listing (toplam 4514, merchants 750/250, seller-yenile=0)
+[01:20:37] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=33 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:20:37] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:20:37] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=18 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:20:42] [pazar-sc] 0x01C2 paket: +1098 listing (toplam 5612, merchants 929/179, seller-yenile=0)
+[01:20:46] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:20:46] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:20:46] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=20 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:20:51] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:20:51] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:20:51] [ks·tarama] Trina's Piece (0x29B92ED0): 6 satır, 6 rakip — en ucuz toplam: 33.000.000 (rakip birim ≈ 33.000.000)
+[01:20:51] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=33.000.000), işlem yok
+[01:20:51] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1319 listing)
+[01:21:01] [pazar-sc] 0x01C2 paket: +1321 listing (toplam 1321, merchants 250/250, seller-yenile=0)
+[01:21:02] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:21:02] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:21:02] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1321 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:21:06] [pazar-sc] 0x01C2 paket: +1466 listing (toplam 2787, merchants 500/250, seller-yenile=0)
+[01:21:08] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=13 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:21:08] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=43 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:21:08] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=6 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:21:10] [pazar-sc] 0x01C2 paket: +1727 listing (toplam 4514, merchants 750/250, seller-yenile=0)
+[01:21:13] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=33 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:21:13] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:21:13] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=18 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:21:18] [pazar-sc] 0x01C2 paket: +1084 listing (toplam 5598, merchants 927/177, seller-yenile=0)
+[01:21:22] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=70 self=3 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:21:22] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:21:22] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=20 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:21:27] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:21:27] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:21:27] [ks·tarama] Trina's Piece (0x29B92ED0): 6 satır, 6 rakip — en ucuz toplam: 33.000.000 (rakip birim ≈ 33.000.000)
+[01:21:27] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=33.000.000), işlem yok
+[01:21:27] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1321 listing)
+[01:21:37] [pazar-sc] 0x01C2 paket: +1334 listing (toplam 1334, merchants 250/250, seller-yenile=0)
+[01:21:39] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:21:39] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:21:39] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1334 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:21:41] [pazar-sc] 0x01C2 paket: +1455 listing (toplam 2789, merchants 500/250, seller-yenile=0)
+[01:21:43] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=12 self=2 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:21:43] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=43 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:21:43] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=6 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:21:48] [pazar-sc] 0x01C2 paket: +1729 listing (toplam 4518, merchants 750/250, seller-yenile=0)
+[01:21:52] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=32 self=2 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:21:52] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:21:52] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=18 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:21:57] [pazar-sc] 0x01C2 paket: +1092 listing (toplam 5610, merchants 928/178, seller-yenile=0)
+[01:22:01] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=69 self=2 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:22:01] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=80 self=4 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:22:01] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=20 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:22:06] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:22:06] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:22:06] [ks·tarama] Trina's Piece (0x29B92ED0): 6 satır, 6 rakip — en ucuz toplam: 33.000.000 (rakip birim ≈ 33.000.000)
+[01:22:06] [ks] Trina's Piece (0x29B92ED0) — zaten en ucuz (biz=31.094.999 ≤ rakip=33.000.000), işlem yok
+[01:22:06] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1334 listing)
+[01:22:09] [pazar-sc] 0x01C2 paket: +1334 listing (toplam 1334, merchants 250/250, seller-yenile=0)
+[01:22:10] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:22:10] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=9 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:22:10] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1334 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:22:13] [pazar-sc] 0x01C2 paket: +1446 listing (toplam 2780, merchants 500/250, seller-yenile=0)
+[01:22:16] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=12 self=2 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:22:16] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=46 self=4 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:22:16] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=6 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:22:18] [pazar-sc] 0x01C2 paket: +1730 listing (toplam 4510, merchants 750/250, seller-yenile=0)
+[01:22:22] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=32 self=2 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:22:22] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=83 self=4 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:22:22] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=18 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:22:27] [pazar-sc] 0x01C2 paket: +1104 listing (toplam 5614, merchants 929/179, seller-yenile=0)
+[01:22:31] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=69 self=2 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:22:31] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=83 self=4 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:22:31] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=20 self=3 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:22:37] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:22:37] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:22:37] [ks·tarama] Trina's Piece (0x29B92ED0): 9 satır, 9 rakip — en ucuz toplam: 30.999.999 (rakip birim ≈ 30.999.999)
+[01:22:37] [ks] KS tetik: Trina's Piece (0x29B92ED0) — biz=31.094.999 > rakip=30.999.999, delta=1 → yeni fiyat≈30.999.998 → boz+kur başlıyor
+[01:22:37] [ks] ön-temizlik: 0x006F sub=0xD ×1 slot
+[01:22:37] [6F·state] sub=0xC satır=11
+[01:22:37] [6F·offer] slot=0 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:22:37] [6F·offer] slot=1 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=2
+[01:22:37] [6F·offer] slot=2 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=3
+[01:22:37] [6F·offer] slot=3 serial=0x169B0490 adet=1 mid=1 sent=0 fiyat=25611109 SATILDI×1/24.330.552g 'Tears of Karivdis' → MerchantServerRows.Count=4
+[01:22:37] [6F·offer] slot=4 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=5
+[01:22:37] [6F·offer] slot=5 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=6
+[01:22:37] [6F·offer] slot=6 serial=0x169B0490 adet=1 mid=1 sent=1 fiyat=25611109 'Tears of Karivdis' → MerchantServerRows.Count=7
+[01:22:37] [6F·offer] slot=7 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=8
+[01:22:37] [6F·offer] slot=8 serial=0x29B94A28 adet=1 mid=1 sent=0 fiyat=31989998 SATILDI×1/30.390.498g 'Lucky Triad' → MerchantServerRows.Count=9
+[01:22:37] [6F·offer] slot=10 serial=0x29B92ED0 adet=1 mid=1 sent=1 fiyat=31094999 'Trina's Piece' → MerchantServerRows.Count=10
+[01:22:37] [6F·offer] slot=11 serial=0x29B94A28 adet=1 mid=1 sent=1 fiyat=31989998 'Lucky Triad' → MerchantServerRows.Count=11
+[01:22:37] [ks] ön-temizlik: 0x006F sub=1 (para tahsil · bekleyen ~24.330.552g)
+[01:22:38] [event] Merchant Items Received — boz onaylandi
+[01:22:38] [6F·state] sub=0xC satır=2
+[01:22:38] [6F·offer] slot=3 serial=0x169B0490 adet=1 mid=1 sent=0 fiyat=25611109 SATILDI×1/24.330.552g 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:22:38] [6F·offer] slot=8 serial=0x29B94A28 adet=1 mid=1 sent=0 fiyat=31989998 SATILDI×1/30.390.498g 'Lucky Triad' → MerchantServerRows.Count=2
+[01:22:38] [event] Slave Expire: 04s 51dk
+[01:22:38] [ks·uyarı] Boz onayı ('Merchant Items Received') 8s içinde gelmedi — sub=0xC ile sunucu-gerçeği doğrulanıyor (ACK metnine bağımlı kalmadan).
+[01:22:38] [6F·state] sub=0xC satır=2
+[01:22:38] [6F·offer] slot=3 serial=0x169B0490 adet=1 mid=1 sent=0 fiyat=25611109 SATILDI×1/24.330.552g 'Tears of Karivdis' → MerchantServerRows.Count=1
+[01:22:38] [6F·offer] slot=8 serial=0x29B94A28 adet=1 mid=1 sent=0 fiyat=31989998 SATILDI×1/30.390.498g 'Lucky Triad' → MerchantServerRows.Count=2
+[01:22:38] [event] Slave Expire: 04s 51dk
+[01:22:38] [ks·hata] Boz DOĞRULANAMADI — sunucuda 12 satır duruyor. Relist yapılmıyor (çift-liste / sub=2 RED riski); bir sonraki tick'te yeniden denenecek.
+[01:22:38] [ks·skip] item=0x29B94A28 bu tick icinde zaten bir relist tetiklendi → bir sonraki tick
+[01:22:54] [ks] tek-sefer mod aktif — KS undercut YİNE DE çalışıyor (pazar güncel tutuluyor; rota yürüme tekrarı yok).
+[01:22:56] [pazar-sc] 0x01C2 paket: +1346 listing (toplam 1346, merchants 250/250, seller-yenile=0)
+[01:22:57] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:22:57] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=9 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:22:57] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1346 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:22:59] [pazar-sc] 0x01C2 paket: +1439 listing (toplam 2785, merchants 500/250, seller-yenile=0)
+[01:23:02] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=10 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:23:02] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=42 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:23:02] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:23:06] [pazar-sc] 0x01C2 paket: +1720 listing (toplam 4505, merchants 750/250, seller-yenile=0)
+[01:23:10] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=30 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:23:10] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:23:10] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=15 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:23:15] [pazar-sc] 0x01C2 paket: +1103 listing (toplam 5608, merchants 928/178, seller-yenile=0)
+[01:23:19] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=67 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:23:19] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:23:19] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=17 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:23:24] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:23:24] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:23:24] [ks·tarama] Trina's Piece (0x29B92ED0): 9 satır, 9 rakip — en ucuz toplam: 30.999.999 (rakip birim ≈ 30.999.999)
+[01:23:24] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1346 listing)
+[01:23:24] [missing-ratio] 3/3 hedef booth'ta yok (~%100) → restart trigger (NavigationManager IdleBoothMonitor okuyacak)
+[01:23:28] [pazar-sc] 0x01C2 paket: +1349 listing (toplam 1349, merchants 250/250, seller-yenile=0)
+[01:23:29] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:23:29] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=9 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:23:29] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1349 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:23:31] [pazar-sc] 0x01C2 paket: +1435 listing (toplam 2784, merchants 500/250, seller-yenile=0)
+[01:23:34] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=10 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:23:34] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=42 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:23:34] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=2 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:23:38] [pazar-sc] 0x01C2 paket: +1730 listing (toplam 4514, merchants 750/250, seller-yenile=0)
+[01:23:41] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=30 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:23:41] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:23:41] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=14 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:23:47] [pazar-sc] 0x01C2 paket: +1106 listing (toplam 5620, merchants 930/180, seller-yenile=0)
+[01:23:50] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=67 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:23:51] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:23:51] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=16 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:23:56] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:23:56] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:23:56] [ks·tarama] Trina's Piece (0x29B92ED0): 9 satır, 9 rakip — en ucuz toplam: 30.999.999 (rakip birim ≈ 30.999.999)
+[01:23:56] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1349 listing)
+[01:23:59] [pazar-sc] 0x01C2 paket: +1349 listing (toplam 1349, merchants 250/250, seller-yenile=0)
+[01:24:01] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:24:01] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=9 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:24:01] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1349 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:24:03] [pazar-sc] 0x01C2 paket: +1443 listing (toplam 2792, merchants 500/250, seller-yenile=0)
+[01:24:05] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=7 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:24:05] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=42 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:24:05] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=2 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:24:10] [pazar-sc] 0x01C2 paket: +1727 listing (toplam 4519, merchants 750/250, seller-yenile=0)
+[01:24:14] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=27 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:24:14] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:24:14] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=14 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:24:15] [pazar-sc] 0x01C2 paket: +1108 listing (toplam 5627, merchants 931/181, seller-yenile=0)
+[01:24:20] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=64 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:24:20] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:24:20] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=16 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:24:25] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:24:25] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:24:25] [ks·tarama] Trina's Piece (0x29B92ED0): 9 satır, 9 rakip — en ucuz toplam: 30.999.999 (rakip birim ≈ 30.999.999)
+[01:24:25] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1349 listing)
+[01:24:31] [pazar-sc] 0x01C2 paket: +1354 listing (toplam 1354, merchants 250/250, seller-yenile=0)
+[01:24:32] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:24:32] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=9 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:24:32] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1354 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:24:35] [pazar-sc] 0x01C2 paket: +1440 listing (toplam 2794, merchants 500/250, seller-yenile=0)
+[01:24:37] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=7 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:24:38] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=42 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:24:38] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=2 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:24:42] [pazar-sc] 0x01C2 paket: +1725 listing (toplam 4519, merchants 750/250, seller-yenile=0)
+[01:24:46] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=27 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:24:46] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:24:46] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=14 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:24:47] [pazar-sc] 0x01C2 paket: +1115 listing (toplam 5634, merchants 932/182, seller-yenile=0)
+[01:24:51] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=64 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:24:51] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:24:51] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=16 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:24:56] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:24:56] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:24:56] [ks·tarama] Trina's Piece (0x29B92ED0): 9 satır, 9 rakip — en ucuz toplam: 30.999.999 (rakip birim ≈ 30.999.999)
+[01:24:56] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1354 listing)
+[01:25:04] [ks] tek-sefer mod aktif — KS undercut YİNE DE çalışıyor (pazar güncel tutuluyor; rota yürüme tekrarı yok).
+[01:25:06] [pazar-sc] 0x01C2 paket: +1347 listing (toplam 1347, merchants 250/250, seller-yenile=0)
+[01:25:07] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:25:07] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=9 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:25:07] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1347 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:25:09] [pazar-sc] 0x01C2 paket: +1445 listing (toplam 2792, merchants 500/250, seller-yenile=0)
+[01:25:11] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=7 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:25:11] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=42 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:25:11] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=2 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:25:16] [pazar-sc] 0x01C2 paket: +1719 listing (toplam 4511, merchants 750/250, seller-yenile=0)
+[01:25:19] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=27 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:25:19] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:25:19] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=14 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:25:21] [pazar-sc] 0x01C2 paket: +1122 listing (toplam 5633, merchants 933/183, seller-yenile=0)
+[01:25:24] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=64 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:25:24] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:25:25] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=16 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:25:29] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:25:29] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:25:29] [ks·tarama] Trina's Piece (0x29B92ED0): 9 satır, 9 rakip — en ucuz toplam: 30.999.999 (rakip birim ≈ 30.999.999)
+[01:25:29] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1347 listing)
+[01:25:36] [pazar-sc] 0x01C2 paket: +1344 listing (toplam 1344, merchants 250/250, seller-yenile=0)
+[01:25:37] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:25:37] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=9 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:25:37] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1344 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:25:40] [pazar-sc] 0x01C2 paket: +1443 listing (toplam 2787, merchants 500/250, seller-yenile=0)
+[01:25:42] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=7 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:25:42] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=42 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:25:42] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=2 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:25:46] [pazar-sc] 0x01C2 paket: +1719 listing (toplam 4506, merchants 750/250, seller-yenile=0)
+[01:25:50] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=27 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:25:50] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:25:50] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=14 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:25:54] [pazar-sc] 0x01C2 paket: +1091 listing (toplam 5597, merchants 929/179, seller-yenile=0)
+[01:25:58] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=64 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:25:58] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=79 self=0 wl=0 stackMM=0 → en ucuz unit=30.999.999 (rakip stack=1, total=30.999.999)
+[01:25:58] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=16 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:26:03] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:26:03] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:26:03] [ks·tarama] Trina's Piece (0x29B92ED0): 9 satır, 9 rakip — en ucuz toplam: 30.999.999 (rakip birim ≈ 30.999.999)
+[01:26:03] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1344 listing)
+[01:26:10] [pazar-sc] 0x01C2 paket: +1350 listing (toplam 1350, merchants 250/250, seller-yenile=0)
+[01:26:11] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:26:11] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:26:11] [rakip-ui] burst=tamam item=0x29B94A28 pazarSatır=1350 aynıItem=0 → rakip yok (sütun temizlendi)
+[01:26:15] [pazar-sc] 0x01C2 paket: +1444 listing (toplam 2794, merchants 500/250, seller-yenile=0)
+[01:26:17] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=7 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:26:18] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=39 self=0 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:26:18] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=2 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:26:22] [pazar-sc] 0x01C2 paket: +1711 listing (toplam 4505, merchants 750/250, seller-yenile=0)
+[01:26:26] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=27 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:26:26] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=76 self=0 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:26:26] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=14 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:26:32] [pazar-sc] 0x01C2 paket: +1089 listing (toplam 5594, merchants 928/178, seller-yenile=0)
+[01:26:34] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=64 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:26:34] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=76 self=0 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:26:34] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=16 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:26:35] [ks·tarama] Tears of Karivdis (0x169B0490): 3 satır, 3 rakip — en ucuz toplam: 27.000.000 (rakip birim ≈ 27.000.000)
+[01:26:35] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=27.000.000), işlem yok
+[01:26:35] [ks·tarama] Trina's Piece (0x29B92ED0): 6 satır, 6 rakip — en ucuz toplam: 33.000.000 (rakip birim ≈ 33.000.000)
+[01:26:35] [ks·diag] Shadow Piece (0x29B94A28) — rakip YOK: bu item pazarda hiç yok (toplam 1350 listing)
+[01:26:41] [pazar-sc] 0x01C2 paket: +1349 listing (toplam 1349, merchants 250/250, seller-yenile=0)
+[01:26:41] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=3 self=0 wl=0 stackMM=0 → en ucuz unit=27.000.000 (rakip stack=1, total=27.000.000)
+[01:26:41] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=6 self=0 wl=0 stackMM=0 → en ucuz unit=33.000.000 (rakip stack=1, total=33.000.000)
+[01:26:41] [rakip-ui] burst=devam item=0x29B94A28 pazarSatır=1349 aynıItem=0 → önceki rakip korunuyor
+[01:26:42] [pazar-sc] 0x01C2 paket: +1453 listing (toplam 2802, merchants 500/250, seller-yenile=0)
+[01:26:42] [ks·compare] item=0x29B94A28 mySt=1 perUnit=False sameItem=2 self=0 wl=0 stackMM=0 → en ucuz unit=31.989.999 (rakip stack=1, total=31.989.999)
+[01:26:43] [pazar-sc] 0x01C2 paket: +1709 listing (toplam 4511, merchants 750/250, seller-yenile=0)
+[01:26:45] [pazar-sc] 0x01C2 paket: +1065 listing (toplam 5576, merchants 924/174, seller-yenile=0)
+[01:26:45] [ks·compare] item=0x169B0490 mySt=1 perUnit=False sameItem=63 self=0 wl=0 stackMM=0 → en ucuz unit=25.611.110 (rakip stack=1, total=25.611.110)
+[01:26:45] [ks·compare] item=0x29B92ED0 mySt=1 perUnit=False sameItem=75 self=0 wl=0 stackMM=0 → en ucuz unit=31.095.000 (rakip stack=1, total=31.095.000)
+[01:26:46] [ks·tarama] Tears of Karivdis (0x169B0490): 7 satır, 7 rakip — en ucuz toplam: 25.611.110 (rakip birim ≈ 25.611.110)
+[01:26:46] [ks] Tears of Karivdis (0x169B0490) — zaten en ucuz (biz=25.611.109 ≤ rakip=25.611.110), işlem yok
+[01:26:46] [ks·tarama] Trina's Piece (0x29B92ED0): 38 satır, 38 rakip — en ucuz toplam: 31.095.000 (rakip birim ≈ 31.095.000)
+[01:26:46] [ks·tarama] Shadow Piece (0x29B94A28): 2 satır, 2 rakip — en ucuz toplam: 31.989.999 (rakip birim ≈ 31.989.999)
+[01:26:46] [ks] Shadow Piece (0x29B94A28) — zaten en ucuz (biz=31.989.998 ≤ rakip=31.989.999), işlem yok

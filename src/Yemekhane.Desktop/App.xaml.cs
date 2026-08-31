@@ -27,8 +27,38 @@ public partial class App : System.Windows.Application, IDisposable
     private GlobalSearchViewModel? globalSearch;
     private NotificationCenterViewModel? notifications;
 
+    /// <summary>
+    /// Cokme kaydi. Dispatcher disinda olusan bir hata (arka plan gorevi, async void isleyici)
+    /// pencere gostermeden sureci sonlandirir; ekranda hicbir sey gorunmedigi icin tek kanit
+    /// budur. Kullanici "program aciliyor sonra kayboluyor" dediginde ilk bakilacak yer.
+    /// </summary>
+    private static void LogFatal(string source, Exception? exception)
+    {
+        try
+        {
+            var directory = Yemekhane.Infrastructure.Persistence.ApplicationDataPath.Resolve();
+            File.AppendAllText(Path.Combine(directory, "cokme.log"),
+                $"[{DateTimeOffset.Now:O}] {source}{Environment.NewLine}{exception}{Environment.NewLine}{Environment.NewLine}");
+        }
+        catch (Exception logFailure) when (logFailure is IOException or UnauthorizedAccessException) { }
+    }
+
     public App()
     {
+        // Dispatcher disindaki hatalar da kayda gecer; aksi halde sessiz kapanmanin izi kalmaz.
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            LogFatal("AppDomain.UnhandledException", args.ExceptionObject as Exception);
+            System.Windows.MessageBox.Show(
+                $"Uygulama beklenmedik biçimde kapanıyor:{Environment.NewLine}{Environment.NewLine}" +
+                $"{(args.ExceptionObject as Exception)?.Message}",
+                "YemekhanePro", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        };
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            LogFatal("UnobservedTaskException", args.Exception);
+            args.SetObserved();
+        };
         var culture = CultureInfo.GetCultureInfo("tr-TR");
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
@@ -46,6 +76,7 @@ public partial class App : System.Windows.Application, IDisposable
         }
         catch (Exception exception)
         {
+            LogFatal("StartAsync", exception);
             System.Windows.MessageBox.Show(
                 $"Uygulama başlatılamadı:{Environment.NewLine}{Environment.NewLine}{exception.Message}",
                 "YemekhanePro", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
@@ -57,6 +88,7 @@ public partial class App : System.Windows.Application, IDisposable
     private void OnDispatcherUnhandledException(object sender,
         System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
+        LogFatal("DispatcherUnhandledException", e.Exception);
         System.Windows.MessageBox.Show(
             $"Beklenmeyen bir hata oluştu:{Environment.NewLine}{Environment.NewLine}{e.Exception.Message}",
             "YemekhanePro", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
@@ -96,6 +128,9 @@ public partial class App : System.Windows.Application, IDisposable
 
         var session = new MutableJwtSession();
         var httpClient = new HttpClient { BaseAddress = baseUri, Timeout = TimeSpan.FromSeconds(15) };
+        // ShutdownMode=OnExplicitShutdown olmasaydi bu diyalog kapandigi anda uygulama biterdi:
+        // o an tek pencere budur, ana pencere henuz Show() edilmemistir. Giris BASARILI olsa
+        // bile uygulama kaybolurdu -- sahadaki "giris tusuna basinca kapaniyor" sikayeti buydu.
         var login = new LoginWindow(new AuthenticationClient(httpClient, session),
             localApi.ConsumeInitialAdminCredentials(), localApi.HasExistingDatabase);
         if (login.ShowDialog() != true) return false;
@@ -142,10 +177,33 @@ public partial class App : System.Windows.Application, IDisposable
         navigation.NavigationRequested += (_, args) => window.Navigate(args.Route);
         tracking.StudentDetailNavigationRequested += (_, route) => navigation.Navigate(route);
         MainWindow = window;
+        // Artik kapanma acik: ana pencere kapandiginda uygulama da kapanmalidir.
+        window.Closed += (_, _) => Shutdown();
         window.Show();
-        await Task.WhenAll(viewModel.InitializeAsync(), tracking.InitializeAsync(), students.InitializeAsync(), entitlements.InitializeAsync(),
-             calendar.InitializeAsync(), devices.InitializeAsync(), sms.InitializeAsync(), cash.InitializeAsync(), reports.InitializeAsync(), settings.InitializeAsync(), entitlementBulk.InitializeAsync(), calendarBulk.InitializeAsync(), notifications?.InitializeAsync() ?? Task.CompletedTask,
-             deviceCards?.InitializeAsync() ?? Task.CompletedTask);
+        // Ekranlar paralel baslatilir ama sonuclari tek tek toplanir. Task.WhenAll kullanilsaydi
+        // yalnizca ILK hata firlar, kalanlar yutulur ve bu hata baslangic try blogunda
+        // yakalandiginda uygulama PENCERE ZATEN ACIKKEN kapanirdi: kullanici giris yapar
+        // ve hicbir form gormez. Bir ekranin yuklenememesi tum uygulamayi goturmemeli.
+        var failures = await AppStartup.LoadScreensAsync(
+        [
+            ("Dashboard", viewModel.InitializeAsync()),
+            ("Günlük Takip", tracking.InitializeAsync()),
+            ("Öğrenciler", students.InitializeAsync()),
+            ("Hakedişler", entitlements.InitializeAsync()),
+            ("Takvim", calendar.InitializeAsync()),
+            ("Cihazlar", devices.InitializeAsync()),
+            ("SMS", sms.InitializeAsync()),
+            ("Kasa", cash.InitializeAsync()),
+            ("Raporlar", reports.InitializeAsync()),
+            ("Ayarlar", settings.InitializeAsync()),
+            ("Toplu işlem", entitlementBulk.InitializeAsync()),
+            ("Takvim toplu işlem", calendarBulk.InitializeAsync()),
+            ("Bildirimler", notifications?.InitializeAsync() ?? Task.CompletedTask),
+            ("Kart durumları", deviceCards?.InitializeAsync() ?? Task.CompletedTask),
+        ]);
+        if (failures.Count > 0)
+            System.Windows.MessageBox.Show(AppStartup.DescribeFailures(failures), "YemekhanePro",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         return true;
     }
 
