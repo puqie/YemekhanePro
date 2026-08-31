@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Yemekhane.Application\Yemekhane.Application.csproj" />
+    <ProjectReference Include="..\Yemekhane.Infrastructure\Yemekhane.Infrastructure.csproj" />
+    <ProjectReference Include="..\Yemekhane.Devices\Yemekhane.Devices.csproj" />
+    <ProjectReference Include="..\Yemekhane.Reports\Yemekhane.Reports.csproj" />
+    <ProjectReference Include="..\Yemekhane.Sync\Yemekhane.Sync.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Resource Include="Assets\logo-256.png" />
+    <Resource Include="Assets\logo-64.png" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- Gomulmezse Windows genel bir pencere simgesi gosterir ve kullanici
+         gorev cubugunda uygulamayi ayirt edemez. -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Yemekhane.Application\Yemekhane.Application.csproj" />
+    <ProjectReference Include="..\Yemekhane.Infrastructure\Yemekhane.Infrastructure.csproj" />
+    <ProjectReference Include="..\Yemekhane.Devices\Yemekhane.Devices.csproj" />
+    <ProjectReference Include="..\Yemekhane.Reports\Yemekhane.Reports.csproj" />
+    <ProjectReference Include="..\Yemekhane.Sync\Yemekhane.Sync.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+
+</Project>

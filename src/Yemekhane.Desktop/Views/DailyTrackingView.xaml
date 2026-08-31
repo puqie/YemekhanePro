@@ -1,0 +1,98 @@
+<UserControl x:Class="Yemekhane.Desktop.Views.DailyTrackingView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="#F4F5F7" FontFamily="Segoe UI" FontSize="12">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <SolidColorBrush x:Key="Ink" Color="#17202A"/>
+        <SolidColorBrush x:Key="Muted" Color="#65717E"/>
+        <Style x:Key="Field" TargetType="Control">
+            <Setter Property="Margin" Value="0,0,8,0"/><Setter Property="Height" Value="32"/>
+        </Style>
+        <Style x:Key="Action" TargetType="Button">
+            <Setter Property="Padding" Value="12,6"/><Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#D7DDE2"/>
+            <Setter Property="Cursor" Value="Hand"/><Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+    </UserControl.Resources>
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Günlük Takip" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                <TextBlock Text="Bugünün geçiş akışı • Europe/Istanbul" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Background="White" BorderBrush="#D7DDE2" BorderThickness="1" CornerRadius="12" Padding="9,4" Margin="0,0,10,0">
+                    <TextBlock Text="{Binding ConnectionText}" Foreground="{StaticResource Muted}" AutomationProperties.Name="Canlı bağlantı durumu"/>
+                </Border>
+                <CheckBox Content="Ses" IsChecked="{Binding SoundEnabled}" VerticalAlignment="Center" Margin="0,0,14,0" ToolTip="Geçiş sesleri; varsayılan kapalıdır"/>
+                <Button Style="{StaticResource Action}" Command="{Binding ToggleLiveCommand}" Content="{Binding LiveText}" AutomationProperties.Name="Canlı akışı duraklat veya sürdür"/>
+                <Button Style="{StaticResource Action}" Command="{Binding RefreshCommand}" Content="Yenile" AutomationProperties.Name="Günlük takip verisini yenile"/>
+            </StackPanel>
+        </Grid>
+
+        <UniformGrid Grid.Row="1" Columns="3" Margin="0,14,0,12">
+            <Border Background="White" BorderBrush="#E1E5E9" BorderThickness="1" Padding="14,10" Margin="0,0,6,0"><StackPanel><TextBlock Text="TOPLAM" Foreground="{StaticResource Muted}"/><TextBlock Text="{Binding Summary.Total}" FontSize="23" FontWeight="SemiBold"/></StackPanel></Border>
+            <Border Background="#F0F8F4" BorderBrush="#B9DCCB" BorderThickness="1" Padding="14,10" Margin="6,0"><StackPanel><TextBlock Text="ONAY • ALLOW" Foreground="#176B4D"/><TextBlock Text="{Binding Summary.Allowed}" FontSize="23" FontWeight="SemiBold" Foreground="#176B4D"/></StackPanel></Border>
+            <Border Background="#FFF3F2" BorderBrush="#E7C1BD" BorderThickness="1" Padding="14,10" Margin="6,0,0,0"><StackPanel><TextBlock Text="RED • DENY" Foreground="#9C342F"/><TextBlock Text="{Binding Summary.Denied}" FontSize="23" FontWeight="SemiBold" Foreground="#9C342F"/></StackPanel></Border>
+        </UniformGrid>
+
+        <WrapPanel Grid.Row="2" Margin="0,0,0,10">
+            <TextBox Style="{StaticResource Field}" Width="230" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara"/>
+            <ComboBox Style="{StaticResource Field}" Width="105" ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" IsEditable="False" AutomationProperties.Name="Karar filtresi"/>
+            <ComboBox Style="{StaticResource Field}" Width="145" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedMealTypeId}" AutomationProperties.Name="Öğün filtresi"/>
+            <ComboBox Style="{StaticResource Field}" Width="145" ItemsSource="{Binding Devices}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedDeviceId}" AutomationProperties.Name="Cihaz filtresi"/>
+            <ComboBox Style="{StaticResource Field}" Width="130" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedClassId}" AutomationProperties.Name="Sınıf filtresi"/>
+            <Button Style="{StaticResource Action}" Command="{Binding ApplyFiltersCommand}" Content="Filtrele" IsDefault="True"/>
+        </WrapPanel>
+
+        <Border Grid.Row="3" Background="White" BorderBrush="#E1E5E9" BorderThickness="1" CornerRadius="6">
+            <Grid>
+                <DataGrid x:Name="AccessGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                    HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="31" GridLinesVisibility="Horizontal"
+                    HorizontalGridLinesBrush="#EDF0F2" AlternatingRowBackground="#FAFBFC"
+                    EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True"
+                    VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True"
+                    AutomationProperties.Name="Bugünün erişim kayıtları">
+                    <DataGrid.InputBindings>
+                        <KeyBinding Key="Enter" Command="{Binding OpenStudentCommand}" CommandParameter="{Binding SelectedItem, ElementName=AccessGrid}"/>
+                        <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding OpenStudentCommand}" CommandParameter="{Binding SelectedItem, ElementName=AccessGrid}"/>
+                    </DataGrid.InputBindings>
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="ToolTip" Value="Öğrenci ayrıntı rotası için Enter veya çift tıklama"/>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss.fff}}" Width="105"/>
+                        <DataGridTextColumn Header="Kart No" Binding="{Binding CardNumber}" Width="115"/>
+                        <DataGridTextColumn Header="Öğrenci No" Binding="{Binding StudentNo}" Width="95"/>
+                        <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="*" MinWidth="150"/>
+                        <DataGridTextColumn Header="Sınıf" Binding="{Binding ClassName}" Width="90"/>
+                        <DataGridTextColumn Header="Öğün" Binding="{Binding MealType}" Width="95"/>
+                        <DataGridTemplateColumn Header="Durum" Width="105"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                            <Border CornerRadius="9" Padding="7,2" HorizontalAlignment="Left">
+                                <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="#FFF0EF"/><Style.Triggers><DataTrigger Binding="{Binding Decision}" Value="ALLOW"><Setter Property="Background" Value="#E9F6EF"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                                <TextBlock FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="✕ DENY"/><Setter Property="Foreground" Value="#9C342F"/><Style.Triggers><DataTrigger Binding="{Binding Decision}" Value="ALLOW"><Setter Property="Text" Value="✓ ALLOW"/><Setter Property="Foreground" Value="#176B4D"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                            </Border>
+                        </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Neden" Binding="{Binding Reason}" Width="180"/>
+                        <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="130"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Kayıtlar yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource Muted}"/></StackPanel>
+                <TextBlock Text="Bugün bu filtrelerle eşleşen geçiş kaydı yok." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource Muted}" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                <TextBlock Text="Günlük takip için geçerli bir oturum ve access.read izni gerekiyor." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#9C342F" Visibility="{Binding LoginRequired, Converter={StaticResource BoolToVisibility}}"/>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="4" Margin="0,9,0,0">
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#9C342F" VerticalAlignment="Center" Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"/>
+            <Button Command="{Binding LoadMoreCommand}" Content="Daha eski kayıtları yükle" HorizontalAlignment="Right" Style="{StaticResource Action}" Visibility="{Binding HasMore, Converter={StaticResource BoolToVisibility}}"/>
+        </Grid>
+    </Grid>
+</UserControl>

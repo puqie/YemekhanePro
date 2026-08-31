@@ -1,0 +1,72 @@
+<UserControl x:Class="Yemekhane.Desktop.Views.CalendarView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:views="clr-namespace:Yemekhane.Desktop.Views"
+    Background="#F4F5F7" FontFamily="Segoe UI" FontSize="12" Focusable="True" PreviewKeyDown="OnPreviewKeyDown">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <Style x:Key="Action" TargetType="Button"><Setter Property="Padding" Value="11,6"/><Setter Property="Margin" Value="0,0,7,0"/><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#D7DDE2"/><Setter Property="Cursor" Value="Hand"/></Style>
+        <Style x:Key="Chip" TargetType="Border"><Setter Property="CornerRadius" Value="3"/><Setter Property="Padding" Value="5,2"/><Setter Property="Margin" Value="0,2,0,0"/><Setter Property="Background" Value="#EEF1F3"/></Style>
+    </UserControl.Resources>
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="24"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid>
+            <StackPanel><TextBlock Text="Operasyon Takvimi" FontSize="22" FontWeight="SemiBold" Foreground="#17202A"/><TextBlock Text="Hakediş, tatil, gezi, izin ve aktarım görünümü" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Border Background="#FFF3E5" CornerRadius="12" Padding="9,4" Margin="0,0,9,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="#7C6225"/></Border>
+                <Button Style="{StaticResource Action}" Content="Bugün" Command="{Binding TodayCommand}"/>
+                <Button Style="{StaticResource Action}" Content="Yenile" Command="{Binding RefreshCommand}"/>
+            </StackPanel>
+        </Grid>
+        <Border Grid.Row="1" Background="White" BorderBrush="#E1E5E9" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,14,0,10">
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Button Content="‹" Command="{Binding PreviousMonthCommand}" Style="{StaticResource Action}" AutomationProperties.Name="Önceki ay"/>
+                <TextBlock Grid.Column="1" Text="{Binding MonthTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="Kapsam" Foreground="#65717E" VerticalAlignment="Center" Margin="0,0,7,0"/><ComboBox Width="190" ItemsSource="{Binding Scopes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedScope}"/><Button Content="Uygula" Command="{Binding ApplyScopeCommand}" Style="{StaticResource Action}" Margin="7,0,0,0"/></StackPanel>
+                <Button Grid.Column="3" Content="›" Command="{Binding NextMonthCommand}" Style="{StaticResource Action}" Margin="12,0,0,0" AutomationProperties.Name="Sonraki ay"/>
+            </Grid>
+        </Border>
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding DayNames}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" Columns="7"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="#65717E" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        <Border Grid.Row="3" Background="White" BorderBrush="#DDE2E6" BorderThickness="1,1,0,0">
+            <Grid>
+                <ItemsControl ItemsSource="{Binding Days}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="6" Columns="7"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate><DataTemplate>
+                        <Button Command="{Binding DataContext.SelectDayCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Padding="0" BorderThickness="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" AutomationProperties.Name="{Binding Date}">
+                            <Button.Style><Style TargetType="Button"><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#DDE2E6"/><Setter Property="BorderThickness" Value="0,0,1,1"/><Style.Triggers><DataTrigger Binding="{Binding IsCurrentMonth}" Value="False"><Setter Property="Background" Value="#F7F8F9"/><Setter Property="Opacity" Value="0.62"/></DataTrigger><DataTrigger Binding="{Binding IsToday}" Value="True"><Setter Property="Background" Value="#F0F7F6"/></DataTrigger><DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Background" Value="#E4F0EE"/><Setter Property="BorderBrush" Value="#156B63"/><Setter Property="BorderThickness" Value="2"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                            <Grid Margin="8,6" MinHeight="72"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                <TextBlock Text="{Binding DayNumber}" FontWeight="SemiBold" Foreground="#26313B"/>
+                                <StackPanel Grid.Row="1" Margin="0,2,0,0">
+                                    <Border Style="{StaticResource Chip}" Visibility="{Binding HasMeals, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="{Binding MealText}" Foreground="#315F59" FontSize="10" TextTrimming="CharacterEllipsis"/></Border>
+                                    <Border Style="{StaticResource Chip}" Background="#F2EEE6" Visibility="{Binding HasHoliday, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="{Binding HolidayText, StringFormat=Tatil · {0}}" Foreground="#685C42" FontSize="10" TextTrimming="CharacterEllipsis"/></Border>
+                                    <Border Style="{StaticResource Chip}" Background="#EDF1F5" Visibility="{Binding HasTrip, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Gezi" Foreground="#4C6074" FontSize="10"/></Border>
+                                    <Border Style="{StaticResource Chip}" Background="#F3F0F5" Visibility="{Binding HasSpecial, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Özel" Foreground="#65566D" FontSize="10"/></Border>
+                                    <Border Style="{StaticResource Chip}" Background="#F4F1EA" Visibility="{Binding HasLeave, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="{Binding Value.LeaveCount, StringFormat=İzin · {0}}" Foreground="#70613F" FontSize="10"/></Border>
+                                    <TextBlock Text="{Binding TransferText}" Foreground="#65717E" FontSize="9" Margin="2,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                    </DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Takvim yükleniyor..." Foreground="#65717E" Margin="0,12,0,0" HorizontalAlignment="Center"/></StackPanel>
+                <Border Background="#F8FAFA" Padding="16" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Bu ay için operasyon kaydı yok." Foreground="#65717E"/></Border>
+            </Grid>
+        </Border>
+        <TextBlock Grid.Row="4" Text="{Binding ErrorMessage}" Foreground="#9C342F" Margin="0,8,0,0"/>
+
+        <Border Grid.RowSpan="5" Width="430" HorizontalAlignment="Right" Background="#FCFFFFFF" BorderBrush="#CBD2D8" BorderThickness="1,0,0,0" Padding="22" Visibility="{Binding IsDrawerOpen, Converter={StaticResource BoolToVisibility}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+                <Button Content="Kapat" Command="{Binding CloseDrawerCommand}" HorizontalAlignment="Right" Style="{StaticResource Action}"/>
+                <TextBlock Text="Gün Operasyonları" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="{Binding SelectedDateTitle}" Foreground="#65717E" Margin="0,4,0,14"/>
+                <UniformGrid Columns="3"><Border Style="{StaticResource Chip}" Margin="0,0,5,0"><StackPanel><TextBlock Text="Hakediş" Foreground="#65717E"/><TextBlock Text="{Binding SelectedDetails.Entitlements.Quantity}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border><Border Style="{StaticResource Chip}" Margin="5,0"><StackPanel><TextBlock Text="Kullanılan" Foreground="#65717E"/><TextBlock Text="{Binding SelectedDetails.Entitlements.Used}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border><Border Style="{StaticResource Chip}" Margin="5,0,0,0"><StackPanel><TextBlock Text="İzinli" Foreground="#65717E"/><TextBlock Text="{Binding SelectedDetails.LeaveCount}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border></UniformGrid>
+                <TextBlock Text="Öğün Dağılımı" FontWeight="SemiBold" Margin="0,18,0,6"/><ItemsControl ItemsSource="{Binding SelectedDetails.Meals}"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,3"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding MealName}"/><TextBlock Grid.Column="1" Text="{Binding Quantity, StringFormat={}{0} hak}" Foreground="#65717E"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                <TextBlock Text="Olaylar ve İşlemler" FontWeight="SemiBold" Margin="0,18,0,6"/><ItemsControl ItemsSource="{Binding SelectedDetails.Operations}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="#E1E5E9" BorderThickness="0,0,0,1" Padding="0,7"><StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold"/><TextBlock Text="{Binding Detail}" Foreground="#65717E" TextWrapping="Wrap"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                <Separator Margin="0,18,0,12"/><StackPanel Orientation="Horizontal"><Button Content="Tatil oluştur" Command="{Binding OpenHolidayFormCommand}" Style="{StaticResource Action}"/><Button Content="Özel istisna" Command="{Binding OpenExceptionFormCommand}" Style="{StaticResource Action}"/></StackPanel>
+                <Button Content="Hakediş etkilerini toplu uygula" Command="{Binding OpenBulkCommand}" Style="{StaticResource Action}" Margin="0,10,0,0" HorizontalAlignment="Left"/>
+                <Border Background="#F8F9FA" BorderBrush="#DDE2E6" BorderThickness="1" Padding="12" Margin="0,14,0,0" Visibility="{Binding IsHolidayFormOpen, Converter={StaticResource BoolToVisibility}}"><StackPanel><TextBlock Text="Yeni Tatil" FontWeight="SemiBold" FontSize="16"/><TextBlock Text="Ad" Margin="0,9,0,3"/><TextBox Text="{Binding HolidayName, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Text="Tür" Margin="0,7,0,3"/><ComboBox ItemsSource="{Binding HolidayTypes}" SelectedItem="{Binding HolidayType}"/><TextBlock Text="Kapsam" Margin="0,7,0,3"/><ComboBox ItemsSource="{Binding Scopes}" DisplayMemberPath="Name" SelectedItem="{Binding HolidayScope}"/><TextBlock Text="Aktarım davranışı" Margin="0,7,0,3"/><ComboBox ItemsSource="{Binding TransferBehaviors}" SelectedItem="{Binding TransferBehavior}"/><StackPanel Orientation="Horizontal" Margin="0,12,0,0"><Button Content="Oluştur" Command="{Binding CreateHolidayCommand}" Style="{StaticResource Action}"/><Button Content="Vazgeç" Command="{Binding CloseHolidayFormCommand}" Style="{StaticResource Action}"/></StackPanel></StackPanel></Border>
+                <Border Background="#F8F9FA" BorderBrush="#DDE2E6" BorderThickness="1" Padding="12" Margin="0,14,0,0" Visibility="{Binding IsExceptionFormOpen, Converter={StaticResource BoolToVisibility}}"><StackPanel><TextBlock Text="Özel İstisna" FontWeight="SemiBold" FontSize="16"/><TextBlock Text="Tür" Margin="0,9,0,3"/><ComboBox ItemsSource="{Binding ExceptionTypes}" SelectedItem="{Binding ExceptionType}"/><TextBlock Text="Kapsam" Margin="0,7,0,3"/><ComboBox ItemsSource="{Binding Scopes}" DisplayMemberPath="Name" SelectedItem="{Binding ExceptionScope}"/><TextBlock Text="Hakediş davranışı" Margin="0,7,0,3"/><ComboBox ItemsSource="{Binding ExceptionBehaviors}" SelectedItem="{Binding ExceptionBehavior}"/><TextBlock Text="Açıklama" Margin="0,7,0,3"/><TextBox Text="{Binding ExceptionDescription}"/><StackPanel Orientation="Horizontal" Margin="0,12,0,0"><Button Content="Oluştur" Command="{Binding CreateExceptionCommand}" Style="{StaticResource Action}"/><Button Content="Vazgeç" Command="{Binding CloseExceptionFormCommand}" Style="{StaticResource Action}"/></StackPanel></StackPanel></Border>
+                <TextBlock Text="{Binding FormMessage}" Foreground="#9C342F" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            </StackPanel></ScrollViewer>
+        </Border>
+        <views:BulkOperationWizardView Grid.RowSpan="5" Panel.ZIndex="20" DataContext="{Binding BulkWizard}"/>
+    </Grid>
+</UserControl>

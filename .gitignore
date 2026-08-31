@@ -1,0 +1,24 @@
+# Derleme ciktilari
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+.vs/
+
+# Test ciktilari
+TestResults/
+*.trx
+*.dmp
+*.coverage
+
+# Yerel veri ve gunlukler
+*.db
+*.db-shm
+*.db-wal
+*.lock
+logs/
+
+# Ortam / gizli bilgiler
+appsettings.*.local.json
+secrets.json

@@ -1,0 +1,21 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <OutputName>YemekhanePro-$(ProductVersion)-win-x64</OutputName>
+    <Deterministic>true</Deterministic>
+    <SuppressValidation>false</SuppressValidation>
+    <!-- ICE61: AllowSameVersionUpgrades ile birlikte beklenen uyaridir; ayni surumun uzerine
+         kurulumu kasten etkinlestirdigimiz icin dogrulayicinin "yalnizca eski surumleri kaldir"
+         kurali gecerli degildir. WiX bu ikisinin birlikte kullanilmasini belgeler. -->
+    <SuppressIces>ICE60;ICE61</SuppressIces>
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\artifacts\publish\desktop</PublishDir>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0</ProductVersion>
+    <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WixUI_InstallDir: hos geldiniz / lisans / klasor secimi / kurulum ekranlari.
+         Arayuzsuz MSI cift tiklandiginda yalnizca ilerleme cubugu gosterir. -->
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+  </ItemGroup>
+</Project>

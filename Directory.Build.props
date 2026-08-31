@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!-- Surum ve urun bilgisi tum projelere damgalanir; boylece exe ozelliklerinde, Programlar
+         listesinde ve uygulama arayuzunde ayni deger gorunur. Yayin sirasinda
+         -p:Version=x.y.z ile gecersiz kilinir. -->
+    <Version>1.1.0</Version>
+    <Product>YemekhanePro</Product>
+    <Company>YemekhanePro</Company>
+    <Authors>YemekhanePro</Authors>
+    <Copyright>© 2026 YemekhanePro</Copyright>
+  </PropertyGroup>
+</Project>

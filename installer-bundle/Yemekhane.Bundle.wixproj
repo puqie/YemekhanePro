@@ -1,0 +1,14 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputType>Bundle</OutputType>
+    <OutputName>YemekhanePro-Setup-$(ProductVersion)</OutputName>
+    <Deterministic>true</Deterministic>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0</ProductVersion>
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\artifacts\publish\desktop</PublishDir>
+    <MsiPath Condition="'$(MsiPath)' == ''">$(MSBuildThisFileDirectory)..\artifacts\installer\YemekhanePro-$(ProductVersion)-win-x64.msi</MsiPath>
+    <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir);MsiPath=$(MsiPath)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="WixToolset.BootstrapperApplications.wixext" Version="5.0.2" />
+  </ItemGroup>
+</Project>

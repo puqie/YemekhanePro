@@ -1,0 +1,87 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <!-- ProductCode="*": her derlemede yeni kod uretilir. Surume gore sabitlenseydi ayni surumu
+       yeniden kurmak "yeniden yapilandirma" sayilir ve PackageCode degistigi icin 1638 ile
+       reddedilirdi; MajorUpgrade/AllowSameVersionUpgrades mantigi hic calismazdi. -->
+  <Package Name="YemekhanePro"
+           Manufacturer="YemekhanePro"
+           Version="$(var.ProductVersion)"
+           ProductCode="*"
+           UpgradeCode="7A41E9B2-3C8D-4F16-9E52-D0B7A6C41F83"
+           Language="1055"
+           Codepage="1254"
+           Scope="perMachine"
+           InstallerVersion="500"
+           Compressed="yes">
+    <SummaryInformation Description="YemekhanePro masaüstü istemcisi ve yerel API" />
+    <!-- AllowSameVersionUpgrades: ayni surumun uzerine kurulum (onarim, basarisiz dagitimi yenileme)
+         aksi halde Windows Installer tarafindan 1638 ile reddedilir ve kullanici once elle kaldirmak
+         zorunda kalir. Schedule=afterInstallInitialize eski surumu yeni dosyalar yazilmadan kaldirir. -->
+    <MajorUpgrade DowngradeErrorMessage="Daha yeni bir YemekhanePro sürümü zaten yüklü."
+                  AllowSameVersionUpgrades="yes"
+                  Schedule="afterInstallInitialize" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+    <!-- ARPCOMMENTS: Programlar listesinde surum ve amac gorunur. -->
+    <Property Id="ARPCOMMENTS" Value="YemekhanePro yemekhane yönetim sistemi - sürüm $(var.ProductVersion)" />
+    <Property Id="ARPCONTACT" Value="YemekhanePro" />
+    <!-- Olmazsa Programlar listesinde genel bir MSI kutusu simgesi cikar. -->
+    <Icon Id="ProductIcon" SourceFile="$(var.PublishDir)\Yemekhane.Desktop.exe" />
+    <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/YemekhanePro" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/YemekhanePro" />
+
+    <!-- Kurulum sihirbazi: hos geldiniz -> klasor secimi -> kurulum -> bitti.
+         Bu olmadan MSI "basic UI" moduna duser ve kullanici yalnizca bir ilerleme cubugu gorur. -->
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <Feature Id="ProductFeature" Title="YemekhanePro" Level="1">
+      <ComponentGroupRef Id="PublishedFiles" />
+    </Feature>
+    <Feature Id="Shortcuts" Title="Kısayollar" Level="1" AllowAbsent="yes">
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="YemekhanePro" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuDir" Name="YemekhanePro" />
+    </StandardDirectory>
+    <!-- Kullanici kurulumdan sonra uygulamayi masaustunde arar; yalnizca Baslat menusu
+         kisayoluyla program kurulmus ama "hicbir sey olmamis" gibi gorunur. -->
+    <StandardDirectory Id="DesktopFolder" />
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="PublishedFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+    <Component Id="StartMenuShortcut" Directory="ProgramMenuDir" Guid="1CE03250-4B3E-4945-9936-34D088D59E69">
+      <Shortcut Id="ApplicationStartMenuShortcut"
+                Name="YemekhanePro"
+                Description="YemekhanePro yönetim uygulaması"
+                Target="[INSTALLFOLDER]Yemekhane.Desktop.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="ProductIcon" />
+      <RemoveFolder Id="RemoveProgramMenuDir" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\YemekhanePro" Name="StartMenuShortcut"
+                     Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+    <!-- Kaldirmada kisayol da silinir: masaustunde calismayan bir kisayol birakmak
+         kullaniciyi yaniltir. KeyPath olan RegistryValue bunu Windows Installer'a birakir. -->
+    <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="3F92C7A4-8E15-4B63-A0D7-52E9C8B14A76">
+      <Shortcut Id="ApplicationDesktopShortcut"
+                Name="YemekhanePro"
+                Description="YemekhanePro yönetim uygulaması"
+                Target="[INSTALLFOLDER]Yemekhane.Desktop.exe"
+                WorkingDirectory="INSTALLFOLDER"
+                Icon="ProductIcon" />
+      <RegistryValue Root="HKCU" Key="Software\YemekhanePro" Name="DesktopShortcut"
+                     Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Fragment>
+</Wix>

@@ -1,0 +1,103 @@
+<UserControl x:Class="Yemekhane.Desktop.Views.StudentsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="#F4F5F7" FontFamily="Segoe UI" FontSize="12">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <Style x:Key="Field" TargetType="Control"><Setter Property="Height" Value="30"/><Setter Property="Margin" Value="0,0,7,7"/></Style>
+        <Style x:Key="Action" TargetType="Button"><Setter Property="Padding" Value="11,6"/><Setter Property="Margin" Value="0,0,7,0"/><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#D7DDE2"/><Setter Property="Cursor" Value="Hand"/></Style>
+        <Style x:Key="Label" TargetType="TextBlock"><Setter Property="Foreground" Value="#65717E"/><Setter Property="Margin" Value="0,7,0,3"/></Style>
+    </UserControl.Resources>
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Öğrenciler" FontSize="22" FontWeight="SemiBold" Foreground="#17202A"/><TextBlock Text="Öğrenci, kart ve günlük kullanım yönetimi" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Background="#FFF3E5" CornerRadius="12" Padding="9,4" Margin="0,0,10,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="#8A681D"/></Border>
+                <Button Style="{StaticResource Action}" Content="Yeni Öğrenci" Command="{Binding NewStudentCommand}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Yeni öğrenci oluştur"/>
+                <Button Style="{StaticResource Action}" Content="Yenile" Command="{Binding SearchCommand}"/>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1" Background="White" BorderBrush="#E1E5E9" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,14,0,10">
+            <StackPanel>
+                <WrapPanel>
+                    <TextBox x:Name="StudentSearchBox" Style="{StaticResource Field}" Width="220" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Genel arama, en az 2 karakter" AutomationProperties.Name="Genel öğrenci arama"/>
+                    <TextBox Style="{StaticResource Field}" Width="105" Text="{Binding StudentNo, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam öğrenci numarası" AutomationProperties.Name="Öğrenci numarası"/>
+                    <TextBox Style="{StaticResource Field}" Width="115" Text="{Binding CardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam kart numarası" AutomationProperties.Name="Kart numarası"/>
+                    <TextBox Style="{StaticResource Field}" Width="120" Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Ad"/>
+                    <TextBox Style="{StaticResource Field}" Width="120" Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Soyad"/>
+                    <ComboBox Style="{StaticResource Field}" Width="105" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding IsActive}" AutomationProperties.Name="Durum filtresi"/>
+                    <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" IsDefault="True"/>
+                </WrapPanel>
+                <WrapPanel>
+                    <TextBox Style="{StaticResource Field}" Width="180" Text="{Binding ClassId}" ToolTip="Sınıf adı" AutomationProperties.Name="Sınıf filtresi"/>
+                    <TextBox Style="{StaticResource Field}" Width="180" Text="{Binding SectionId}" ToolTip="Şube adı" AutomationProperties.Name="Şube filtresi"/>
+                    <TextBox Style="{StaticResource Field}" Width="180" Text="{Binding DepartmentId}" ToolTip="Bölüm adı" AutomationProperties.Name="Bölüm filtresi"/>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Background="White" BorderBrush="#E1E5E9" BorderThickness="1" CornerRadius="6">
+            <Grid>
+                <DataGrid x:Name="StudentsGrid" ItemsSource="{Binding Students}" SelectedItem="{Binding SelectedStudent}" AutoGenerateColumns="False" IsReadOnly="True"
+                    CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="30" ColumnHeaderHeight="32"
+                    GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EDF0F2" AlternatingRowBackground="#FAFBFC"
+                    EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True"
+                    VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Öğrenci listesi">
+                    <DataGrid.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding OpenQuickDetailCommand}" CommandParameter="{Binding SelectedItem, ElementName=StudentsGrid}"/>
+                        <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding OpenFullDetailCommand}" CommandParameter="{Binding SelectedItem, ElementName=StudentsGrid}"/>
+                        <KeyBinding Key="Enter" Command="{Binding OpenFullDetailCommand}" CommandParameter="{Binding SelectedItem, ElementName=StudentsGrid}"/>
+                    </DataGrid.InputBindings>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="82"/>
+                        <DataGridTextColumn Header="KART NO" Binding="{Binding CardNumber}" Width="105"/>
+                        <DataGridTextColumn Header="AD" Binding="{Binding FirstName}" Width="*" MinWidth="105"/>
+                        <DataGridTextColumn Header="SOYAD" Binding="{Binding LastName}" Width="*" MinWidth="105"/>
+                        <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="82"/>
+                        <DataGridTextColumn Header="ŞUBE" Binding="{Binding SectionName}" Width="68"/>
+                        <DataGridTextColumn Header="BÖLÜM" Binding="{Binding DepartmentName}" Width="95"/>
+                        <DataGridTextColumn Header="VELİ TEL" Binding="{Binding ParentPhone}" Width="110"/>
+                        <DataGridTextColumn Header="DURUM" Binding="{Binding IsActive}" Width="62"/>
+                        <DataGridTextColumn Header="BUGÜNKÜ HAK" Binding="{Binding TodayEntitlement}" Width="92"/>
+                        <DataGridCheckBoxColumn Header="BUGÜN GİRİŞ" Binding="{Binding HasEnteredToday}" Width="88"/>
+                        <DataGridTextColumn Header="SON GİRİŞ" Binding="{Binding LastEntryAt, StringFormat={}{0:dd.MM HH:mm}}" Width="105"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Öğrenciler yükleniyor..." Margin="0,12,0,0" Foreground="#65717E"/></StackPanel>
+                <TextBlock Text="Filtrelerle eşleşen öğrenci bulunamadı." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#65717E" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="3" Margin="0,9,0,0"><TextBlock Text="{Binding ErrorMessage}" Foreground="#9C342F" VerticalAlignment="Center"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PageText}" Foreground="#65717E" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel></Grid>
+
+        <Border Grid.RowSpan="4" Background="#F9FFFFFF" BorderBrush="#CBD2D8" BorderThickness="1,0,0,0" Width="390" HorizontalAlignment="Right" Padding="20" Visibility="{Binding IsQuickDetailOpen, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel><Button Content="Kapat" Command="{Binding CloseDrawersCommand}" HorizontalAlignment="Right" Style="{StaticResource Action}"/><TextBlock Text="Hızlı Öğrenci" FontSize="19" FontWeight="SemiBold"/><TextBlock Text="{Binding SelectedStudent.FirstName}" FontSize="25" Margin="0,18,0,0"/><TextBlock Text="{Binding SelectedStudent.LastName}" FontSize="25"/><TextBlock Text="{Binding SelectedStudent.StudentNo, StringFormat=No: {0}}" Margin="0,8,0,0"/><TextBlock Text="{Binding SelectedStudent.ClassName, StringFormat=Sınıf: {0}}"/><TextBlock Text="{Binding SelectedStudent.ParentPhone, StringFormat=Veli: {0}}"/>
+                <Separator Margin="0,18"/><Button Style="{StaticResource Action}" Content="Öğrenci Detayı" Command="{Binding OpenStudentDetailCommand}"/><Button Style="{StaticResource Action}" Content="SMS Gönder" Command="{Binding OpenSmsCommand}" Visibility="{Binding CanSendSms, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0"/><Button Style="{StaticResource Action}" Content="Hakediş Ver" Command="{Binding GrantEntitlementCommand}" Visibility="{Binding CanGrantEntitlement, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0"/></StackPanel>
+        </Border>
+
+        <Border Grid.RowSpan="4" Background="White" BorderBrush="#CBD2D8" BorderThickness="1,0,0,0" Width="650" HorizontalAlignment="Right" Padding="20" Visibility="{Binding IsDetailOpen, Converter={StaticResource BoolToVisibility}}">
+            <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Grid><TextBlock Text="{Binding Details.FirstName, StringFormat=Öğrenci Detayı • {0}}" FontSize="20" FontWeight="SemiBold"/><Button Content="Kapat" Command="{Binding CloseDrawersCommand}" HorizontalAlignment="Right" Style="{StaticResource Action}"/></Grid>
+                <WrapPanel Grid.Row="1" Margin="0,14,0,12"><Button Style="{StaticResource Action}" Content="Düzenle" Command="{Binding EditStudentCommand}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="Pasifleştir" Command="{Binding DeactivateCommand}" Visibility="{Binding CanDeactivate, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="İzin Ver" Command="{Binding GiveLeaveCommand}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="SMS Gönder" Command="{Binding OpenSmsCommand}" Visibility="{Binding CanSendSms, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="Hakediş Ver" Command="{Binding GrantEntitlementCommand}" Visibility="{Binding CanGrantEntitlement, Converter={StaticResource BoolToVisibility}}"/><TextBox Width="105" Text="{Binding NewCardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Yeni kart numarası" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="Okuyucudan Al" Command="{Binding ReadCardCommand}" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}" ToolTip="Bağlı aktif okuyucu yoksa F3 kart akışı ayrıntılı durum gösterir" ToolTipService.ShowOnDisabled="True"/><Button Style="{StaticResource Action}" Content="Kart Değiştir" Command="{Binding ReplaceCardCommand}" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}"/></WrapPanel>
+                <Grid Grid.Row="2">
+                    <TabControl ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"><TabControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}"/></DataTemplate></TabControl.ItemTemplate><TabControl.ContentTemplate><DataTemplate><Grid><ListBox ItemsSource="{Binding Items}" BorderThickness="0"><ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="4"/></DataTemplate></ListBox.ItemTemplate></ListBox><TextBlock Text="Yükleniyor..." Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/><TextBlock Text="{Binding Error}" Foreground="#9C342F"/></Grid></DataTemplate></TabControl.ContentTemplate></TabControl>
+                    <Border Background="White" Visibility="{Binding IsFormOpen, Converter={StaticResource BoolToVisibility}}"><ScrollViewer><StackPanel Margin="8"><TextBlock Text="Öğrenci Formu" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="Öğrenci NO" Style="{StaticResource Label}"/><TextBox Text="{Binding FormStudentNo, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Text="Ad" Style="{StaticResource Label}"/><TextBox Text="{Binding FormFirstName, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Text="Soyad" Style="{StaticResource Label}"/><TextBox Text="{Binding FormLastName, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Text="TC Kimlik No" Style="{StaticResource Label}" Visibility="{Binding CanReadSensitive, Converter={StaticResource BoolToVisibility}}"/><TextBox Text="{Binding FormNationalId, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding CanReadSensitive, Converter={StaticResource BoolToVisibility}}"/><TextBlock Text="Adres" Style="{StaticResource Label}" Visibility="{Binding CanReadSensitive, Converter={StaticResource BoolToVisibility}}"/><TextBox Text="{Binding FormAddress}" AcceptsReturn="True" Height="55" Visibility="{Binding CanReadSensitive, Converter={StaticResource BoolToVisibility}}"/><TextBlock Text="Not" Style="{StaticResource Label}"/><TextBox Text="{Binding FormNotes}" AcceptsReturn="True" Height="55"/><Button Content="Kaydet" Command="{Binding SaveStudentCommand}" Style="{StaticResource Action}" HorizontalAlignment="Left" Margin="0,14,0,0"/></StackPanel></ScrollViewer></Border>
+                </Grid>
+            </Grid>
+        </Border>
+        <Border x:Name="CardWorkflowHost" Grid.RowSpan="4" Background="#77000000" Visibility="{Binding IsCardWorkflowOpen, Converter={StaticResource BoolToVisibility}}" Panel.ZIndex="40">
+            <Border Width="510" Padding="22" Background="White" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <Grid><TextBlock Text="Kart Oku" FontSize="20" FontWeight="SemiBold"/><Button Content="Kapat" Command="{Binding CloseCardWorkflowCommand}" Style="{StaticResource Action}" HorizontalAlignment="Right"/></Grid>
+                    <TextBlock Text="Aktif cihazdan gerçek kart olayı beklenir; kart numarası uydurulmaz." Foreground="#65717E" TextWrapping="Wrap" Margin="0,12,0,10"/>
+                    <TextBox Text="{Binding CardNumber, UpdateSourceTrigger=PropertyChanged}" Height="32" AutomationProperties.Name="Okunan veya aranacak kart numarası"/>
+                    <TextBlock Text="{Binding CardWorkflowMessage}" Foreground="#7C6225" TextWrapping="Wrap" Margin="0,9,0,12"/>
+                    <WrapPanel><Button Content="Okuyucuyu Bekle" Command="{Binding OpenCardWorkflowCommand}" Style="{StaticResource Action}"/><Button Content="Kartla Ara" Command="{Binding SearchByReadCardCommand}" Style="{StaticResource Action}"/></WrapPanel>
+                    <TextBlock Text="Eşleşme yoksa pencereyi kapatıp öğrenci detayından bu kartı atayabilirsiniz." Foreground="#65717E" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,29 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  <!--
+    YemekhanePro-Setup.exe: MSI'yi saran bootstrapper.
+
+    MSI cift tiklandiginda UAC yukseltmesi isteyemez; perMachine paket oldugu icin kurulum
+    Error 1925 ile sessizce iptal olur ve kullanici yalnizca dolan bir ilerleme cubugu gorur.
+    Bootstrapper yukseltmeyi kendisi ister ve lisans/ilerleme ekranlarini gosterir.
+  -->
+  <!-- Name surum icerir: kurulum penceresi basliginda ve Programlar listesinde gorunur. -->
+  <Bundle Name="YemekhanePro $(var.ProductVersion)"
+          Manufacturer="YemekhanePro"
+          Version="$(var.ProductVersion)"
+          UpgradeCode="B7E4A1C2-9D35-4E88-8F1A-3C6D0B5E7A44"
+          Compressed="yes">
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="rtfLicense"
+          LicenseFile="License.rtf"
+          SuppressOptionsUI="yes" />
+    </BootstrapperApplication>
+
+    <Chain>
+      <MsiPackage SourceFile="$(var.MsiPath)"
+                  Vital="yes"
+                  Compressed="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

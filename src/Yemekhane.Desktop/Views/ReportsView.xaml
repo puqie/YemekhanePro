@@ -1,0 +1,85 @@
+<UserControl x:Class="Yemekhane.Desktop.Views.ReportsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Language="tr-TR" Background="#F4F5F7" FontFamily="Segoe UI" FontSize="12">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <Style x:Key="Panel" TargetType="Border"><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#E1E5E9"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="7"/></Style>
+        <Style x:Key="Action" TargetType="Button"><Setter Property="Padding" Value="11,6"/><Setter Property="Margin" Value="0,0,7,0"/><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#D7DDE2"/><Setter Property="Cursor" Value="Hand"/></Style>
+        <Style x:Key="Field" TargetType="Control"><Setter Property="Height" Value="29"/><Setter Property="Margin" Value="0,0,7,7"/></Style>
+        <Style x:Key="FilterGroup" TargetType="StackPanel"><Setter Property="Margin" Value="0,0,8,0"/></Style>
+        <Style x:Key="FilterLabel" TargetType="TextBlock"><Setter Property="Foreground" Value="#65717E"/><Setter Property="FontSize" Value="10"/><Setter Property="Margin" Value="0,0,0,3"/></Style>
+    </UserControl.Resources>
+    <Grid Margin="22,18">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="178"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+        <Border Style="{StaticResource Panel}" Padding="8">
+            <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <StackPanel Margin="7,6,7,13"><TextBlock Text="RAPOR TÜRLERİ" Foreground="#65717E" FontWeight="SemiBold" FontSize="10"/><TextBlock Text="11 canlı rapor" Foreground="#9AA3AB" Margin="0,4,0,0"/></StackPanel>
+                <ListBox Grid.Row="1" ItemsSource="{Binding ReportTypes}" SelectedItem="{Binding SelectedReport}" BorderThickness="0" Background="Transparent" DisplayMemberPath="Name" AutomationProperties.Name="Rapor türleri">
+                    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="9,8"/><Setter Property="Margin" Value="0,1"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="Rapor Merkezi" FontSize="22" FontWeight="SemiBold" Foreground="#17202A"/><TextBlock Text="{Binding SelectedReport.Name, StringFormat={}{0} • sunucu filtreli görünüm • Europe/Istanbul}" Foreground="#65717E" Margin="0,4,0,0"/></StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#FFF3E5" CornerRadius="12" Padding="9,4" Margin="0,0,9,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="#8A681D"/></Border>
+                    <Button Style="{StaticResource Action}" Content="PDF" Command="{Binding ExportPdfCommand}" ToolTip="Geçerli filtrelerin tamamını PDF aktar (Ctrl+P komutu hazır)"/>
+                    <Button Style="{StaticResource Action}" Content="Excel" Command="{Binding ExportExcelCommand}" ToolTip="Geçerli filtrelerin tamamını Excel aktar (Ctrl+E komutu hazır)"/>
+                    <Button Style="{StaticResource Action}" Content="CSV" Command="{Binding ExportCsvCommand}"/>
+                </StackPanel>
+            </Grid>
+
+            <Border Grid.Row="1" Style="{StaticResource Panel}" Margin="0,14,0,10" Padding="12,10">
+                <StackPanel>
+                    <WrapPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}"><TextBlock Style="{StaticResource FilterLabel}" Text="BAŞLANGIÇ"/><DatePicker Style="{StaticResource Field}" Width="125" SelectedDate="{Binding StartDate}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}"><TextBlock Style="{StaticResource FilterLabel}" Text="BİTİŞ"/><DatePicker Style="{StaticResource Field}" Width="125" SelectedDate="{Binding EndDate}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowStudentFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="ÖĞRENCİ NO"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding StudentNo, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowCardFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="KART NO"/><TextBox Style="{StaticResource Field}" Width="115" Text="{Binding CardNo, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowNameFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="AD"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowNameFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="SOYAD"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowOrganizationFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="SINIF"/><TextBox Style="{StaticResource Field}" Width="80" Text="{Binding ClassName, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowOrganizationFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="ŞUBE"/><TextBox Style="{StaticResource Field}" Width="80" Text="{Binding Section, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowOrganizationFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="BÖLÜM"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding Department, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowOrganizationFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="GÖREV"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding Job, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowMealFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="ÖĞÜN"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding MealType, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDeviceFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="CİHAZ"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding Device, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDecisionFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="KARAR"/><TextBox Style="{StaticResource Field}" Width="90" Text="{Binding Decision, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowStatusFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="DURUM"/><TextBox Style="{StaticResource Field}" Width="105" Text="{Binding Status, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                    </WrapPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Style="{StaticResource Action}" Content="Sıfırla" Command="{Binding ResetCommand}"/><Button Padding="16,6" Background="#156B63" Foreground="White" BorderThickness="0" Content="Uygula" Command="{Binding ApplyCommand}" IsDefault="True"/></StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource Panel}" Padding="13,9" Margin="0,0,0,10">
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding SummaryText}" Foreground="#17202A" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Style="{StaticResource Action}" Content="Seçilenleri Kopyala" Command="{Binding CopySelectedCommand}"/>
+                        <Menu Background="White"><MenuItem Header="Kolonlar" ItemsSource="{Binding Columns}"><MenuItem.ItemContainerStyle><Style TargetType="MenuItem"><Setter Property="HeaderTemplate"><Setter.Value><DataTemplate><CheckBox Content="{Binding Header}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Click="ColumnVisibility_Click"/></DataTemplate></Setter.Value></Setter></Style></MenuItem.ItemContainerStyle></MenuItem></Menu>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="3" Style="{StaticResource Panel}">
+                <Grid>
+                    <DataGrid x:Name="ReportGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" SelectionMode="Extended" SelectionUnit="FullRow" HeadersVisibility="Column" RowHeaderWidth="0" RowHeight="30" ColumnHeaderHeight="33" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#EDF0F2" AlternatingRowBackground="#FAFBFC" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" Sorting="ReportGrid_Sorting" SelectionChanged="ReportGrid_SelectionChanged" ColumnReordered="ReportGrid_ColumnReordered" AutomationProperties.Name="Dinamik rapor tablosu">
+                        <DataGrid.InputBindings><KeyBinding Modifiers="Control" Key="C" Command="{Binding CopySelectedCommand}"/><KeyBinding Modifiers="Control" Key="P" Command="{Binding ExportPdfCommand}"/><KeyBinding Modifiers="Control" Key="E" Command="{Binding ExportExcelCommand}"/></DataGrid.InputBindings>
+                    </DataGrid>
+                    <TextBlock Text="Bu filtrelerle kayıt bulunamadı. Tarih aralığını veya filtreleri değiştirin." Foreground="#65717E" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                    <Border Background="#F7FFFFFF" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Rapor yükleniyor..." Margin="0,12,0,0" Foreground="#65717E"/></StackPanel></Border>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="4" Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <StackPanel><TextBlock Text="{Binding ErrorMessage}" Foreground="#9C342F"/><TextBlock Text="{Binding StatusMessage}" Foreground="#156B63"/></StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal"><ComboBox Width="66" Height="29" ItemsSource="{Binding PageSizes}" SelectedItem="{Binding PageSize}" ToolTip="Sayfa boyutu"/><TextBlock Text="{Binding PageText}" Foreground="#65717E" VerticalAlignment="Center" Margin="12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

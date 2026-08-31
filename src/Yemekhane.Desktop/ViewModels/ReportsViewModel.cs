@@ -1,0 +1,338 @@
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.IO;
+using System.Net.Http;
+using System.Text;
+using System.Windows.Input;
+using Yemekhane.Application.Reports;
+using Yemekhane.Desktop.Services;
+
+namespace Yemekhane.Desktop.ViewModels;
+
+[Flags]
+public enum ReportFilters
+{
+    None = 0, Student = 1, Card = 2, Name = 4, Organization = 8, Meal = 16, Device = 32,
+    Decision = 64, Status = 128
+}
+
+public sealed record ReportTypeOption(ReportType Type, string Name, ReportFilters Filters);
+
+public sealed class ReportColumnViewModel : ObservableObject
+{
+    private bool isVisible = true;
+    private int displayIndex;
+    private double width;
+
+    public ReportColumnViewModel(string key, string header, string? sortKey, double width)
+    { Key = key; Header = header; SortKey = sortKey; this.width = width; }
+    public string Key { get; }
+    public string Header { get; }
+    public string? SortKey { get; }
+    public bool IsVisible { get => isVisible; set => Set(ref isVisible, value); }
+    public int DisplayIndex { get => displayIndex; set => Set(ref displayIndex, value); }
+    public double Width { get => width; set => Set(ref width, value); }
+}
+
+public sealed class ReportGridRow
+{
+    private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
+    private static readonly TimeZoneInfo Istanbul = FindIstanbulZone();
+    private readonly ReportRow source;
+    public ReportGridRow(ReportRow source) { this.source = source; Source = source; }
+    public ReportRow Source { get; }
+    public string Date => source.Timestamp.HasValue
+        ? TimeZoneInfo.ConvertTime(source.Timestamp.Value, Istanbul).ToString("dd.MM.yyyy HH:mm:ss.fff", Turkish)
+        : source.ReportDate?.ToString("dd.MM.yyyy", Turkish) ?? "";
+    public string StudentNo => source.StudentNo ?? "";
+    public string CardNo => source.CardNo ?? "";
+    public string Name => $"{source.FirstName} {source.LastName}".Trim();
+    public string Class => source.Class ?? "";
+    public string Section => source.Section ?? "";
+    public string Department => source.Department ?? "";
+    public string Job => source.Job ?? "";
+    public string MealType => source.MealType ?? "";
+    public string Device => source.Device ?? "";
+    public string Decision => source.Decision ?? "";
+    public string Status => source.Status ?? "";
+    public string Description => source.Description ?? "";
+    public string MealCount => source.MealCount.ToString("N0", Turkish);
+    public string Amount => source.Amount.ToString("C2", Turkish);
+
+    public string Value(string key) => GetType().GetProperty(key)?.GetValue(this)?.ToString() ?? "";
+    private static TimeZoneInfo FindIstanbulZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time"); }
+    }
+}
+
+public sealed class ReportsViewModel : ObservableObject, IDisposable
+{
+    private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
+    private readonly IReportApiClient api;
+    private readonly IReportLayoutStore layouts;
+    private readonly IReportDialogService dialogs;
+    private readonly bool canRead;
+    private CancellationTokenSource? operation;
+    private ReportTypeOption selectedReport;
+    private ReportSummary summary = new(0, 0, 0, 0, 0);
+    private ReportQuery appliedQuery = new();
+    private bool isLoading, isOffline, hasApplied;
+    private string? errorMessage, statusMessage;
+    private int page = 1, pageSize = 50;
+    private int sortVersion;
+    private DateTime? startDate, endDate;
+    private string? studentNo, cardNo, firstName, lastName, className, section, department, job, mealType, device, decision, status;
+
+    public ReportsViewModel(IReportApiClient api, IEnumerable<string> permissions, IReportLayoutStore? layouts = null,
+        IReportDialogService? dialogs = null, TimeProvider? clock = null)
+    {
+        this.api = api; this.layouts = layouts ?? new FileReportLayoutStore(); this.dialogs = dialogs ?? new ReportDialogService();
+        var permissionSet = permissions.ToHashSet(StringComparer.Ordinal);
+        canRead = permissionSet.Contains("reports.read"); CanExport = permissionSet.Contains("reports.export");
+        ReportTypes =
+        [
+            new(ReportType.DailyAccess, "Günlük Geçiş", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Device | ReportFilters.Decision | ReportFilters.Status),
+            new(ReportType.MealEntitlement, "Yemek Hakediş", ReportFilters.Student | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Status),
+            new(ReportType.StudentMealUsage, "Öğrenci Kullanımı", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Status),
+            new(ReportType.ClassMeal, "Sınıf Yemek", ReportFilters.Student | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal),
+            new(ReportType.DailyCash, "Günlük Kasa", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
+            new(ReportType.Income, "Gelir", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
+            new(ReportType.Sms, "SMS", ReportFilters.Student | ReportFilters.Name | ReportFilters.Status),
+            new(ReportType.Turnstile, "Turnike", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Device | ReportFilters.Decision | ReportFilters.Status),
+            new(ReportType.DeniedAccess, "Reddedilen Geçiş", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Device | ReportFilters.Status),
+            new(ReportType.CardMovements, "Kart Hareketleri", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
+            new(ReportType.HolidayTransfer, "Tatil / Aktarım", ReportFilters.Student | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Status)
+        ];
+        selectedReport = ReportTypes[0];
+        var today = (clock ?? TimeProvider.System).GetLocalNow().Date;
+        startDate = endDate = today;
+        ApplyCommand = new AsyncCommand(() => ApplyAsync());
+        ResetCommand = new AsyncCommand(ResetAsync);
+        PreviousPageCommand = new AsyncCommand(() => LoadPageAsync(Page - 1), () => Page > 1 && !IsLoading);
+        NextPageCommand = new AsyncCommand(() => LoadPageAsync(Page + 1), () => Page * PageSize < Summary.TotalRecords && !IsLoading);
+        ExportPdfCommand = new AsyncCommand(() => ExportAsync(ReportExportFormat.Pdf), () => CanExport && !IsLoading);
+        ExportExcelCommand = new AsyncCommand(() => ExportAsync(ReportExportFormat.Excel), () => CanExport && !IsLoading);
+        ExportCsvCommand = new AsyncCommand(() => ExportAsync(ReportExportFormat.Csv), () => CanExport && !IsLoading);
+        CopySelectedCommand = new RelayCommand(CopySelected, () => SelectedRows.Count > 0);
+        BuildColumns();
+    }
+
+    public IReadOnlyList<ReportTypeOption> ReportTypes { get; }
+    public ObservableCollection<ReportColumnViewModel> Columns { get; } = [];
+    public ObservableCollection<ReportGridRow> Rows { get; } = [];
+    public ObservableCollection<ReportGridRow> SelectedRows { get; } = [];
+    public IReadOnlyList<int> PageSizes { get; } = [25, 50, 100, 200];
+    public ReportTypeOption SelectedReport { get => selectedReport; set { if (selectedReport == value) return; selectedReport = value; Page = 1; BuildColumns(); Raise(); Raise(nameof(SummaryText)); RaiseFilterProperties(); _ = ApplyAsync(); } }
+    public ReportSummary Summary { get => summary; private set { if (Set(ref summary, value)) { Raise(nameof(SummaryText)); Raise(nameof(PageText)); Raise(nameof(IsEmpty)); RefreshCommands(); } } }
+    public string SummaryText => SelectedReport.Type switch
+    {
+        ReportType.DailyCash or ReportType.Income => $"Toplam {Summary.TotalRecords:N0}   •   Tutar {Summary.Amount.ToString("C2", Turkish)}",
+        ReportType.MealEntitlement or ReportType.StudentMealUsage or ReportType.ClassMeal or ReportType.HolidayTransfer => $"Toplam {Summary.TotalRecords:N0}   •   Yemek {Summary.TotalMeals:N0}",
+        ReportType.DailyAccess or ReportType.Turnstile or ReportType.DeniedAccess => $"Toplam {Summary.TotalRecords:N0}   •   Geçen {Summary.Passed:N0}   •   Reddedilen {Summary.Denied:N0}   •   Yemek {Summary.TotalMeals:N0}",
+        _ => $"Toplam {Summary.TotalRecords:N0}"
+    };
+    public string PageText => $"Sayfa {Page} / {Math.Max(1, (int)Math.Ceiling(Summary.TotalRecords / (double)PageSize))}";
+    public int Page { get => page; private set { if (Set(ref page, value)) Raise(nameof(PageText)); } }
+    public int PageSize { get => pageSize; set { if (Set(ref pageSize, value) && hasApplied) _ = LoadPageAsync(1); } }
+    public bool CanExport { get; }
+    public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) { Raise(nameof(IsEmpty)); RefreshCommands(); } } }
+    public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
+    public bool IsEmpty => !IsLoading && !HasError && Summary.TotalRecords == 0;
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+    public string? ErrorMessage { get => errorMessage; private set { if (Set(ref errorMessage, value)) { Raise(nameof(HasError)); Raise(nameof(IsEmpty)); } } }
+    public string? StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
+    public bool ShowStudentFilters => HasFilter(ReportFilters.Student);
+    public bool ShowCardFilter => HasFilter(ReportFilters.Card);
+    public bool ShowNameFilters => HasFilter(ReportFilters.Name);
+    public bool ShowOrganizationFilters => HasFilter(ReportFilters.Organization);
+    public bool ShowMealFilter => HasFilter(ReportFilters.Meal);
+    public bool ShowDeviceFilter => HasFilter(ReportFilters.Device);
+    public bool ShowDecisionFilter => HasFilter(ReportFilters.Decision);
+    public bool ShowStatusFilter => HasFilter(ReportFilters.Status);
+    public DateTime? StartDate { get => startDate; set => Set(ref startDate, value); }
+    public DateTime? EndDate { get => endDate; set => Set(ref endDate, value); }
+    public string? StudentNo { get => studentNo; set => Set(ref studentNo, value); }
+    public string? CardNo { get => cardNo; set => Set(ref cardNo, value); }
+    public string? FirstName { get => firstName; set => Set(ref firstName, value); }
+    public string? LastName { get => lastName; set => Set(ref lastName, value); }
+    public string? ClassName { get => className; set => Set(ref className, value); }
+    public string? Section { get => section; set => Set(ref section, value); }
+    public string? Department { get => department; set => Set(ref department, value); }
+    public string? Job { get => job; set => Set(ref job, value); }
+    public string? MealType { get => mealType; set => Set(ref mealType, value); }
+    public string? Device { get => device; set => Set(ref device, value); }
+    public string? Decision { get => decision; set => Set(ref decision, value); }
+    public string? Status { get => status; set => Set(ref status, value); }
+    public ICommand ApplyCommand { get; }
+    public ICommand ResetCommand { get; }
+    public ICommand PreviousPageCommand { get; }
+    public ICommand NextPageCommand { get; }
+    public ICommand ExportPdfCommand { get; }
+    public ICommand ExportExcelCommand { get; }
+    public ICommand ExportCsvCommand { get; }
+    public ICommand CopySelectedCommand { get; }
+
+    public Task InitializeAsync() => ApplyAsync();
+
+    public async Task ApplyAsync()
+    {
+        ErrorMessage = null; StatusMessage = null;
+        if (!canRead) { ErrorMessage = "Raporlar için reports.read izni gerekiyor."; return; }
+        if (StartDate > EndDate) { ErrorMessage = "Başlangıç tarihi bitiş tarihinden sonra olamaz."; return; }
+        appliedQuery = BuildQuery(1);
+        hasApplied = true;
+        await LoadPageAsync(1);
+    }
+
+    public async Task SortAsync(string sortKey)
+    {
+        var version = ++sortVersion;
+        var descending = string.Equals(appliedQuery.SortBy, sortKey, StringComparison.OrdinalIgnoreCase)
+            ? !appliedQuery.Descending : false;
+        appliedQuery = appliedQuery with { SortBy = sortKey, Descending = descending, Page = 1 };
+        await Task.Delay(180);
+        if (version != sortVersion) return;
+        await LoadPageAsync(1);
+    }
+
+    public void SaveLayout(IReadOnlyList<ReportColumnLayout> value)
+    {
+        foreach (var layout in value)
+        {
+            var column = Columns.FirstOrDefault(x => x.Key == layout.Key);
+            if (column is null) continue;
+            column.DisplayIndex = layout.DisplayIndex; column.Width = layout.Width; column.IsVisible = layout.IsVisible;
+        }
+        layouts.Save(SelectedReport.Type, value);
+    }
+
+    public void ReplaceSelection(IEnumerable<ReportGridRow> values)
+    {
+        SelectedRows.Clear(); foreach (var value in values) SelectedRows.Add(value);
+        (CopySelectedCommand as RelayCommand)?.Refresh();
+    }
+
+    private async Task LoadPageAsync(int targetPage)
+    {
+        operation?.Cancel(); operation?.Dispose(); operation = new CancellationTokenSource();
+        var token = operation.Token;
+        IsLoading = true; ErrorMessage = null; IsOffline = false; StatusMessage = null;
+        try
+        {
+            var query = appliedQuery with { Page = Math.Max(1, targetPage), PageSize = PageSize };
+            var result = await api.QueryAsync(SelectedReport.Type, query, token);
+            if (token.IsCancellationRequested) return;
+            Rows.Clear(); foreach (var item in result.Items) Rows.Add(new ReportGridRow(item));
+            Page = result.Page; Summary = result.Summary; appliedQuery = query;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (LoginRequiredException) { ErrorMessage = "Raporlar için yetkili oturum gerekiyor."; }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or TaskCanceledException)
+        { IsOffline = true; ErrorMessage = "Rapor verisi alınamadı. API bağlantısını kontrol edin."; }
+        finally { if (!token.IsCancellationRequested) IsLoading = false; }
+    }
+
+    private async Task ResetAsync()
+    {
+        StartDate = EndDate = DateTime.Today;
+        StudentNo = CardNo = FirstName = LastName = ClassName = Section = Department = Job = MealType = Device = Decision = Status = null;
+        await ApplyAsync();
+    }
+
+    private async Task ExportAsync(ReportExportFormat format)
+    {
+        var path = dialogs.ChoosePath(SelectedReport.Type, format);
+        if (path is null) return;
+        IsLoading = true; ErrorMessage = null; StatusMessage = null;
+        try
+        {
+            await api.ExportAsync(SelectedReport.Type, appliedQuery, format, path);
+            StatusMessage = $"Rapor kaydedildi: {path}";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or LoginRequiredException)
+        { ErrorMessage = "Rapor dosyası kaydedilemedi. Hedef yolu ve API bağlantısını kontrol edin."; }
+        finally { IsLoading = false; }
+    }
+
+    private void CopySelected()
+    {
+        var visible = Columns.Where(x => x.IsVisible).OrderBy(x => x.DisplayIndex).ToArray();
+        var text = new StringBuilder().AppendLine(string.Join('\t', visible.Select(x => x.Header)));
+        foreach (var row in SelectedRows)
+            text.AppendLine(string.Join('\t', visible.Select(x => row.Value(x.Key).Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' '))));
+        dialogs.CopyText(text.ToString());
+        StatusMessage = $"{SelectedRows.Count:N0} satır panoya kopyalandı.";
+    }
+
+    private ReportQuery BuildQuery(int targetPage) => new(
+        StartDate.HasValue ? ToIstanbulOffset(StartDate.Value.Date) : null,
+        EndDate.HasValue ? ToIstanbulOffset(EndDate.Value.Date.AddDays(1)).AddTicks(-1) : null,
+        HasFilter(ReportFilters.Student) ? Clean(StudentNo) : null,
+        HasFilter(ReportFilters.Card) ? Clean(CardNo) : null,
+        HasFilter(ReportFilters.Name) ? Clean(FirstName) : null,
+        HasFilter(ReportFilters.Name) ? Clean(LastName) : null,
+        HasFilter(ReportFilters.Organization) ? Clean(ClassName) : null,
+        HasFilter(ReportFilters.Organization) ? Clean(Department) : null,
+        HasFilter(ReportFilters.Organization) ? Clean(Section) : null,
+        HasFilter(ReportFilters.Organization) ? Clean(Job) : null,
+        HasFilter(ReportFilters.Meal) ? Clean(MealType) : null,
+        HasFilter(ReportFilters.Device) ? Clean(Device) : null,
+        HasFilter(ReportFilters.Decision) ? Clean(Decision) : null,
+        HasFilter(ReportFilters.Status) ? Clean(Status) : null,
+        appliedQuery.SortBy, appliedQuery.Descending, targetPage, PageSize);
+
+    private void BuildColumns()
+    {
+        Columns.Clear();
+        var definitions = Definitions[SelectedReport.Type];
+        var saved = layouts.Load(SelectedReport.Type).ToDictionary(x => x.Key, StringComparer.Ordinal);
+        for (var index = 0; index < definitions.Length; index++)
+        {
+            var definition = definitions[index]; var column = new ReportColumnViewModel(definition.Key, definition.Header, definition.Sort, definition.Width) { DisplayIndex = index };
+            if (saved.TryGetValue(column.Key, out var layout))
+            { column.DisplayIndex = layout.DisplayIndex; column.Width = layout.Width; column.IsVisible = layout.IsVisible; }
+            Columns.Add(column);
+        }
+    }
+
+    private bool HasFilter(ReportFilters value) => SelectedReport.Filters.HasFlag(value);
+    private void RaiseFilterProperties()
+    {
+        Raise(nameof(ShowStudentFilters)); Raise(nameof(ShowCardFilter)); Raise(nameof(ShowNameFilters));
+        Raise(nameof(ShowOrganizationFilters)); Raise(nameof(ShowMealFilter)); Raise(nameof(ShowDeviceFilter));
+        Raise(nameof(ShowDecisionFilter)); Raise(nameof(ShowStatusFilter));
+    }
+    private void RefreshCommands()
+    {
+        (PreviousPageCommand as AsyncCommand)?.Refresh(); (NextPageCommand as AsyncCommand)?.Refresh();
+        (ExportPdfCommand as AsyncCommand)?.Refresh(); (ExportExcelCommand as AsyncCommand)?.Refresh(); (ExportCsvCommand as AsyncCommand)?.Refresh();
+    }
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static DateTimeOffset ToIstanbulOffset(DateTime value)
+    {
+        TimeZoneInfo zone;
+        try { zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul"); }
+        catch (TimeZoneNotFoundException) { zone = TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time"); }
+        return new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Unspecified), zone.GetUtcOffset(value));
+    }
+    public void Dispose() { operation?.Cancel(); operation?.Dispose(); }
+
+    private sealed record Definition(string Key, string Header, string? Sort, double Width);
+    private static Definition C(string key, string title, string? sort = null, double width = 110) => new(key, title, sort, width);
+    private static readonly Dictionary<ReportType, Definition[]> Definitions = new()
+    {
+        [ReportType.DailyAccess] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("Class", "SINIF", "class", 80), C("CardNo", "KART", "cardNo"), C("MealType", "ÖĞÜN", "mealType"), C("Device", "CİHAZ", "device", 130), C("Decision", "KARAR", "decision", 85), C("Status", "DURUM", "status", 130)],
+        [ReportType.MealEntitlement] = [C("Date", "TARİH", "timestamp"), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 80), C("MealType", "ÖĞÜN", "mealType"), C("MealCount", "ADET", "mealCount", 70), C("Status", "DURUM", "status")],
+        [ReportType.StudentMealUsage] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 80), C("MealType", "ÖĞÜN", "mealType"), C("CardNo", "KART", "cardNo"), C("Status", "DURUM", "status")],
+        [ReportType.ClassMeal] = [C("Date", "TARİH", "timestamp", 145), C("Class", "SINIF", "class", 80), C("Section", "ŞUBE", "section", 80), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("MealType", "ÖĞÜN", "mealType"), C("MealCount", "ADET", "mealCount", 70)],
+        [ReportType.DailyCash] = MoneyColumns(), [ReportType.Income] = MoneyColumns(),
+        [ReportType.Sms] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Description", "AÇIKLAMA", null, 260), C("Status", "DURUM", "status")],
+        [ReportType.Turnstile] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("CardNo", "KART", "cardNo"), C("Device", "CİHAZ", "device", 130), C("Decision", "KARAR", "decision", 85), C("Status", "SONUÇ", "status"), C("Description", "AÇIKLAMA", null, 180)],
+        [ReportType.DeniedAccess] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("CardNo", "KART", "cardNo"), C("MealType", "ÖĞÜN", "mealType"), C("Device", "CİHAZ", "device", 130), C("Status", "NEDEN", "status", 170)],
+        [ReportType.CardMovements] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 80), C("CardNo", "KART", "cardNo"), C("Status", "DURUM", "status"), C("Description", "AÇIKLAMA", null, 190)],
+        [ReportType.HolidayTransfer] = [C("Date", "TARİH", "timestamp"), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("MealType", "ÖĞÜN", "mealType"), C("MealCount", "ADET", "mealCount", 70), C("Status", "DURUM", "status"), C("Description", "AÇIKLAMA", null, 220)]
+    };
+    private static Definition[] MoneyColumns() => [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("CardNo", "KART", "cardNo"), C("Description", "AÇIKLAMA", null, 220), C("Status", "DURUM", "status"), C("Amount", "TUTAR", "amount", 100)];
+}
