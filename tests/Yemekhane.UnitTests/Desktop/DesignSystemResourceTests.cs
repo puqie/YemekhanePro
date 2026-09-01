@@ -22,6 +22,7 @@ public sealed class DesignSystemResourceTests
     [InlineData("SidebarBrush")]
     [InlineData("SidebarHoverBrush")]
     [InlineData("ScrimBrush")]
+    [InlineData("ScrimStrongBrush")]
     [InlineData("FieldCompact")]
     [InlineData("FieldCompactCombo")]
     [InlineData("FieldCompactDate")]

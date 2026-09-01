@@ -11,7 +11,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid Visibility="{Binding IsOpen, Converter={StaticResource Bool}}">
-        <Border Background="{StaticResource ScrimBrush}"/>
+        <Border Background="{StaticResource ScrimStrongBrush}"/>
         <Border Width="620" MaxHeight="720" Background="White" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="8" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid><StackPanel><TextBlock Text="Toplu Takvim İşlemi" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="{Binding StepTitle}" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/></StackPanel><Button Content="Kapat" Command="{Binding CloseCommand}" HorizontalAlignment="Right"/></Grid>
