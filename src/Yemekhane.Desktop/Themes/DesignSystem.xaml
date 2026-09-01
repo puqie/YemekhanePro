@@ -580,7 +580,15 @@
     </Style>
 
     <!-- Secili oge sol kenarinda turuncu serit tasir: koyu zeminde
-         yalnizca arka plan rengi zayif bir sinyaldir. -->
+         yalnizca arka plan rengi zayif bir sinyaldir.
+
+         Secim, Tag DEGIL, local:NavigationSelection.IsSelected eklenti
+         ozelligiyle isaretlenir: Tag zaten rota kimligini tasir (orn.
+         "dashboard"), o yuzden secim icin ayri bir kanal gerekir. Kod
+         tarafinda da bu ozellik local deger olarak degil SetValue ile
+         yazilir; Background/FontWeight'a dokunulmaz ki bu tetikleyici ve
+         IsMouseOver tetikleyicisi gecerliligini korusun (bir local deger
+         her stil setter'indan ve tetikleyiciden once gelir). -->
     <Style x:Key="NavItem" TargetType="Button">
         <Setter Property="Foreground" Value="{StaticResource SidebarTextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
@@ -610,7 +618,7 @@
                                     Value="{StaticResource SidebarHoverBrush}"/>
                             <Setter Property="Foreground" Value="White"/>
                         </Trigger>
-                        <Trigger Property="Tag" Value="secili">
+                        <Trigger Property="local:NavigationSelection.IsSelected" Value="True">
                             <Setter TargetName="stripe" Property="Background"
                                     Value="{StaticResource AccentBrush}"/>
                             <Setter TargetName="bd" Property="Background"

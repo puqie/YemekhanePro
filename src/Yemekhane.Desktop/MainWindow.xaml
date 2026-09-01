@@ -13,10 +13,15 @@
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <Style TargetType="DataGrid">
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="GridLinesVisibility" Value="Horizontal" />
-            <Setter Property="HorizontalGridLinesBrush" Value="{StaticResource BorderBrush}" />
+        <!-- DesignSystem.xaml'in implicit DataGrid stilini GENISLETIR (BasedOn),
+             yerine gecmez: implicit stiller birbirini genisletmez, degistirir.
+             Once bu stil temayi tumden degistiriyordu ve dashboard'daki
+             DataGrid'ler EnableRowVirtualization/EnableColumnVirtualization/
+             VirtualizingPanel.*/ScrollViewer.CanContentScroll/FontSize gibi
+             ozellikleri sessizce kaybediyordu (Task 3'un baska yerde duzelttigi
+             sanal listeleme kaybi). Burada yalnizca dashboard'a ozgu, temada
+             OLMAYAN veya kasitli olarak FARKLI degerler kalir. -->
+        <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
             <Setter Property="HeadersVisibility" Value="Column" />
             <Setter Property="RowHeaderWidth" Value="0" />
             <Setter Property="CanUserAddRows" Value="False" />
@@ -26,8 +31,6 @@
             <Setter Property="AutoGenerateColumns" Value="False" />
             <Setter Property="RowHeight" Value="34" />
             <Setter Property="ColumnHeaderHeight" Value="34" />
-            <Setter Property="Background" Value="White" />
-            <Setter Property="AlternatingRowBackground" Value="{StaticResource CanvasBrush}" />
         </Style>
         </ResourceDictionary>
     </Window.Resources>
@@ -55,7 +58,6 @@
                         <TextBlock Text="Yemekhane yönetimi" Foreground="{StaticResource FaintBrush}" Margin="0,5,0,0" />
                     </StackPanel>
                 </StackPanel>
-                <TextBlock Grid.Row="1" Text="OPERASYON" Foreground="{StaticResource FaintBrush}" FontWeight="SemiBold" FontSize="10" Margin="5,0,0,9" />
                 <StackPanel x:Name="NavigationButtons" Grid.Row="2">
                     <TextBlock Text="GÜNLÜK İŞ" Style="{StaticResource NavGroupTitle}"/>
                     <Button Tag="dashboard" Style="{StaticResource NavItem}" Content="Dashboard"
@@ -110,7 +112,7 @@
                     <StackPanel>
                         <Button Content="Kısayollar  F1" Click="OpenShortcutHelp" Foreground="{StaticResource SidebarTextBrush}" Background="Transparent" BorderBrush="{StaticResource NavyLiftBrush}" Padding="8,5" Margin="0,0,0,12" Cursor="Hand" AutomationProperties.Name="Klavye kısayollarını göster"/>
                         <TextBlock Text="API OTURUMU" Foreground="{StaticResource FaintBrush}" FontSize="10" FontWeight="SemiBold" />
-                        <TextBlock Text="JWT ile güvenli bağlantı" Foreground="{StaticResource FaintBrush}" Margin="0,5,0,0" />
+                        <TextBlock Text="JWT ile güvenli bağlantı" Foreground="{StaticResource SidebarTextBrush}" Margin="0,5,0,0" />
                     </StackPanel>
                 </Border>
             </Grid>

@@ -3,7 +3,6 @@ using System.Windows.Input;
 using System.Windows.Data;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Media;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
 
@@ -157,8 +156,13 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         {
             var isSelected = string.Equals(button.Tag as string, selected, StringComparison.Ordinal)
                 || selected == ShellRoutes.StudentDetail && string.Equals(button.Tag as string, ShellRoutes.Students, StringComparison.Ordinal);
-            button.Background = isSelected ? new SolidColorBrush(Color.FromRgb(37, 67, 63)) : Brushes.Transparent;
-            button.FontWeight = isSelected ? FontWeights.SemiBold : FontWeights.Normal;
+            // Tag rota kimligini tasir (orn. "dashboard"); secim onun uzerine
+            // yazilmaz. Background/FontWeight de dogrudan atanmaz -- bir local
+            // deger NavItem stilindeki her Setter'i ve tetikleyiciyi (IsMouseOver
+            // dahil) kalici olarak gecersiz kilar. Bunun yerine NavItem'in kendi
+            // Tag=="secili" -- artik NavigationSelection.IsSelected -- tetikleyicisi
+            // tek gercek kaynak olsun diye eklenti ozelligi kullanilir.
+            NavigationSelection.SetIsSelected(button, isSelected);
         }
     }
 
