@@ -1,8 +1,9 @@
-using System.Runtime.ExceptionServices;
+﻿using System.Runtime.ExceptionServices;
 using Yemekhane.Desktop;
 
 namespace Yemekhane.UnitTests.Dashboard;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class DashboardUiSmokeTests
 {
     [Fact]

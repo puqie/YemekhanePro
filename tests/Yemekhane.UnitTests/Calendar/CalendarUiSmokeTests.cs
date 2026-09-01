@@ -1,9 +1,10 @@
-using System.Runtime.ExceptionServices;
+﻿using System.Runtime.ExceptionServices;
 using Yemekhane.Desktop;
 using Yemekhane.Desktop.Views;
 
 namespace Yemekhane.UnitTests.Calendar;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class CalendarUiSmokeTests
 {
     [Fact]

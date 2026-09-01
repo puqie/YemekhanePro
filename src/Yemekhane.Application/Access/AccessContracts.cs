@@ -1,11 +1,11 @@
-namespace Yemekhane.Application.Access;
+﻿namespace Yemekhane.Application.Access;
 
 public sealed record AccessCheckRequest(string CardNumber, Guid DeviceId, Guid MealTypeId, DateTimeOffset Timestamp,
     string Direction = "Entry", string ReaderSource = "CardReader", Guid? OperatorId = null,
     Guid? OperationId = null);
 public sealed record AccessSnapshot(bool CardExists, bool CardActive, Guid? StudentId, string? StudentName,
     Guid? ClassId, bool StudentActive, bool DeviceActive, Guid? EntitlementId, int Quantity, int ConsumedQuantity,
-    string? EntitlementStatus, bool IsOnLeave);
+    string? EntitlementStatus, bool IsOnLeave, bool GroupHoliday = false);
 public sealed record AccessDecision(string Decision, string Reason, Guid? StudentId, string? StudentName,
     Guid DeviceId, Guid MealTypeId, DateTimeOffset Timestamp, Guid OperationId);
 

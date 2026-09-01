@@ -1,4 +1,4 @@
-using Yemekhane.Devices.Abstractions;
+﻿using Yemekhane.Devices.Abstractions;
 using Yemekhane.Devices.CardReaders;
 using Yemekhane.Devices.Sf300;
 using Yemekhane.Devices.Simulators;
@@ -45,8 +45,11 @@ public sealed class DeviceAdapterFactory : IDeviceAdapterFactory
 
         return configuration.DeviceType switch
         {
+            // Gecici hatalar (mesgul, zaman asimi) icin yeniden deneme acik olmalidir; varsayilan 0
+            // birakilirsa Sf300ProtocolException.IsTransient siniflandirmasi uretimde hic kullanilmaz
+            // ve anlik bir mesguliyet kart yuklemesini kalici basarisiz gosterir.
             "SF300" => new SF300Adapter(configuration.Id, configuration.Name, endpoint,
-                sf300ProtocolFactory(configuration)),
+                sf300ProtocolFactory(configuration), maxRetryCount: 2),
             "ComReader" => new ComCardReader(configuration.Id, configuration.Name, endpoint),
             "EthernetReader" => new EthernetCardReader(configuration.Id, configuration.Name, endpoint),
             "Simulator" when !isDevelopment => throw new InvalidOperationException(

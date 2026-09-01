@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
@@ -13,6 +13,7 @@ using Yemekhane.Desktop.Views;
 
 namespace Yemekhane.UnitTests.Cash;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class CashViewModelTests
 {
     [Fact]

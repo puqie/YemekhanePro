@@ -1,4 +1,4 @@
-namespace Yemekhane.Desktop.Services;
+﻿namespace Yemekhane.Desktop.Services;
 
 public static class ShellRoutes
 {
@@ -17,6 +17,7 @@ public static class ShellRoutes
     public const string Sms = "sms";
     public const string Cash = "cash";
     public const string Settings = "settings";
+    public const string StudentImport = "student-import";
     public const string UsersRoles = "users-roles";
 }
 

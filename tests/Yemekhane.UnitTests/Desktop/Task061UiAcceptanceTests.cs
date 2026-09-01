@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
@@ -12,6 +12,7 @@ using Yemekhane.Desktop.Views;
 
 namespace Yemekhane.UnitTests.Desktop;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class Task061UiAcceptanceTests
 {
     [Fact]

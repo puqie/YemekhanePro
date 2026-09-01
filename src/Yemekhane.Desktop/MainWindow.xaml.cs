@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Data;
 using System.Windows.Controls;
@@ -107,6 +107,12 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         set => SettingsHost.DataContext = value;
     }
 
+    public object? StudentImportDataContext
+    {
+        get => StudentImportHost.DataContext;
+        set => StudentImportHost.DataContext = value;
+    }
+
     public void Navigate(string route)
     {
         currentRoute = route;
@@ -123,7 +129,8 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         var cash = route == Services.ShellRoutes.Cash;
         var reports = route == Services.ShellRoutes.Reports;
         var settings = route == Services.ShellRoutes.Settings;
-        DashboardHost.Visibility = tracking || students || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings ? Visibility.Collapsed : Visibility.Visible;
+        var studentImport = route == Services.ShellRoutes.StudentImport;
+        DashboardHost.Visibility = tracking || students || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings || studentImport ? Visibility.Collapsed : Visibility.Visible;
         DailyTrackingHost.Visibility = tracking ? Visibility.Visible : Visibility.Collapsed;
         StudentsHost.Visibility = students ? Visibility.Visible : Visibility.Collapsed;
         MealEntitlementsHost.Visibility = entitlements ? Visibility.Visible : Visibility.Collapsed;
@@ -134,6 +141,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         CashHost.Visibility = cash ? Visibility.Visible : Visibility.Collapsed;
         ReportsHost.Visibility = reports ? Visibility.Visible : Visibility.Collapsed;
         SettingsHost.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
+        StudentImportHost.Visibility = studentImport ? Visibility.Visible : Visibility.Collapsed;
         if (students && StudentsDataContext is StudentsViewModel viewModel) viewModel.HandleRoute(route);
         if (entitlements && MealEntitlementsDataContext is MealEntitlementsViewModel entitlementViewModel) entitlementViewModel.HandleRoute(route);
         if (sms && SmsDataContext is SmsViewModel smsViewModel && route.StartsWith(Services.ShellRoutes.Sms + "/", StringComparison.Ordinal)

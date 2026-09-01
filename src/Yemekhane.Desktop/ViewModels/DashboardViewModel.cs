@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Net.Http;
@@ -60,12 +60,15 @@ public sealed class DashboardViewModel : ObservableObject
             () => navigation.IsAvailable(ShellRoutes.Reports));
         NavigateSettingsCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Settings),
             () => navigation.IsAvailable(ShellRoutes.Settings));
+        NavigateStudentImportCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.StudentImport),
+            () => navigation.IsAvailable(ShellRoutes.StudentImport));
         CanNavigateEntitlements = navigation.IsAvailable(ShellRoutes.Entitlements);
         CanNavigateCalendar = navigation.IsAvailable(ShellRoutes.HolidayTransfer);
         CanNavigateSms = navigation.IsAvailable(ShellRoutes.Sms);
         CanNavigateCash = navigation.IsAvailable(ShellRoutes.Cash);
         CanNavigateReports = navigation.IsAvailable(ShellRoutes.Reports);
         CanNavigateSettings = navigation.IsAvailable(ShellRoutes.Settings);
+        CanNavigateStudentImport = navigation.IsAvailable(ShellRoutes.StudentImport);
         realtimeClient.AccessReceived += OnAccessReceived;
         realtimeClient.DeviceStatusChanged += OnDeviceStatusChanged;
         realtimeClient.StateChanged += (_, state) => RunOnUi(() => RealtimeState = state);
@@ -105,12 +108,14 @@ public sealed class DashboardViewModel : ObservableObject
     public ICommand NavigateCashCommand { get; }
     public ICommand NavigateReportsCommand { get; }
     public ICommand NavigateSettingsCommand { get; }
+    public ICommand NavigateStudentImportCommand { get; }
     public bool CanNavigateEntitlements { get; }
     public bool CanNavigateCalendar { get; }
     public bool CanNavigateSms { get; }
     public bool CanNavigateCash { get; }
     public bool CanNavigateReports { get; }
     public bool CanNavigateSettings { get; }
+    public bool CanNavigateStudentImport { get; }
 
     public async Task InitializeAsync()
     {

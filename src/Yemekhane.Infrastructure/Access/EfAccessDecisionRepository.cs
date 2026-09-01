@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Access;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
@@ -49,9 +49,17 @@ public sealed class EfAccessDecisionRepository(
                 dbContext.Devices.Any(x => x.Id == deviceId && x.IsActive), right == null ? null : right.Id,
                 right == null ? 0 : right.Quantity, right == null ? 0 : right.ConsumedQuantity,
                 right == null ? null : right.Status,
-                dbContext.Set<StudentLeave>().Any(x => x.StudentId == card.StudentId && x.StartsOn <= calendarDate && x.EndsOn >= calendarDate)))
+                dbContext.Set<StudentLeave>().Any(x => x.StudentId == card.StudentId && x.StartsOn <= calendarDate && x.EndsOn >= calendarDate),
+                // Grup kapsamli tatil: ogrencinin uye oldugu HERHANGI bir grup icin o gune
+                // tatil tanimliysa gun kapalidir. Bu kontrol anlik goruntunun icinde yapilir ki
+                // her kart okutmasinda ek sorgu acilmasin ve mevcut onbellek/gecersizlestirme gecerli kalsin.
+                dbContext.Set<Holiday>().Any(holiday => holiday.Date == calendarDate &&
+                    dbContext.Set<HolidayScope>().Any(scope => scope.HolidayId == holiday.Id &&
+                        scope.ScopeType == "Group" &&
+                        dbContext.Set<StudentGroupMember>().Any(member =>
+                            member.GroupId == scope.ScopeId && member.StudentId == card.StudentId)))))
             .SingleOrDefaultAsync(cancellationToken)
-            ?? new AccessSnapshot(false, false, null, null, null, false, false, null, 0, 0, null, false);
+            ?? new AccessSnapshot(false, false, null, null, null, false, false, null, 0, 0, null, false, false);
         cache.Set(cardNumber, deviceId, mealTypeId, calendarDate, snapshot);
         metrics.RecordLookup(System.Diagnostics.Stopwatch.GetElapsedTime(started), false);
         return snapshot;

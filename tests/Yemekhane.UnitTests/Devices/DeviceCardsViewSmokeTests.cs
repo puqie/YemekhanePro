@@ -1,4 +1,4 @@
-using System.Runtime.ExceptionServices;
+﻿using System.Runtime.ExceptionServices;
 using Yemekhane.Application.Devices;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
@@ -11,6 +11,7 @@ namespace Yemekhane.UnitTests.Devices;
 /// Yalnizca ViewModel testi, hatali bir binding yolunu veya gecersiz XAML'i yakalamaz;
 /// bu ekranda hata calisma zamaninda ortaya cikardi.
 /// </summary>
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class DeviceCardsViewSmokeTests
 {
     [Fact]

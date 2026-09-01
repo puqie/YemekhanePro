@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Yemekhane.Devices.Abstractions;
 using Yemekhane.Devices.Sf300;
 
@@ -101,6 +101,25 @@ public sealed class Sf300ProtocolTests
 
         await Assert.ThrowsAsync<Sf300ProtocolException>(
             () => protocol.GrantAccessAsync(TurnstileDirection.Entry, default));
+    }
+
+    [Fact]
+    public async Task MismatchedResponseCodeIsNotReportedAsSuccess()
+    {
+        // Kanal senkronizasyonu bozuldugunda (gec gelen onceki yanit, kendiliginden gonderilen
+        // cerceve) cihaz komutu hic islememis olabilir. "Yanit geldi" ile "komut onaylandi"
+        // ayni sey degildir: aksi halde karti hic yazmamis bir turnike "yuklendi" isaretlenir.
+        var transport = new FakeTransport();
+        transport.Reply(Sf300Command.Handshake, "SF300|SN-1|1.0");
+        transport.ReplyRaw(Sf300Frame.Encode(Sf300Command.Status, "READY"u8.ToArray()));
+        await using var protocol = new Sf300Protocol(transport);
+        await protocol.ConnectAsync(Endpoint, default);
+
+        var exception = await Assert.ThrowsAsync<Sf300ProtocolException>(
+            () => protocol.SendCardAsync("0012345678", "student-7", default));
+
+        Assert.Equal("SF300_UNEXPECTED_RESPONSE", exception.ErrorCode);
+        Assert.True(exception.IsTransient);
     }
 
     [Fact]

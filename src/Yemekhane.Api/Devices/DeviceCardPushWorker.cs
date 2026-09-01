@@ -1,4 +1,4 @@
-using Yemekhane.Application.Devices;
+﻿using Yemekhane.Application.Devices;
 using Yemekhane.Devices.Abstractions;
 using Yemekhane.Devices.Management;
 using Yemekhane.Devices.Sf300;
@@ -98,8 +98,9 @@ public sealed class DeviceCardPushWorker(
             {
                 if (card.IsRemoval)
                 {
-                    await controller.SendCardAsync(card.CardNumber, string.Empty, cancellationToken)
-                        .ConfigureAwait(false);
+                    // Iptal edilen kart cihazdan GERCEKTEN silinmelidir; yalnizca veritabaninda
+                    // isaretlemek, kartin turnikeden gecmeye devam etmesi anlamina gelir.
+                    await controller.DeleteCardAsync(card.CardNumber, cancellationToken).ConfigureAwait(false);
                     await sync.MarkRemovedAsync(controller.Id, card.CardId, cancellationToken).ConfigureAwait(false);
                 }
                 else
@@ -119,6 +120,18 @@ public sealed class DeviceCardPushWorker(
 
                 // Baglanti koptuysa bu turda kalan kartlari denemek anlamsizdir.
                 if (IsDisconnected(exception.ErrorCode)) break;
+            }
+            catch (DeviceCapabilityException exception)
+            {
+                // Cihaz bu komutu desteklemiyorsa tekrar denemek durumu degistirmez.
+                await sync.MarkFailedAsync(controller.Id, card.CardId, exception.Message, true, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (ArgumentException exception)
+            {
+                // Bozuk kart verisi yalnizca o karti dusurmelidir; cihazin tum kuyrugunu degil.
+                await sync.MarkFailedAsync(controller.Id, card.CardId, exception.Message, true, cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
 

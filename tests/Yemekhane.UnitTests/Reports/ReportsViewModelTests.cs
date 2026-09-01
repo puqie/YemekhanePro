@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Windows.Controls;
@@ -9,6 +9,7 @@ using Yemekhane.Desktop.Views;
 
 namespace Yemekhane.UnitTests.Reports;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class ReportsViewModelTests
 {
     [Fact]

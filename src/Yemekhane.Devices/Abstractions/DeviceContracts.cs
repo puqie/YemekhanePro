@@ -1,8 +1,8 @@
-namespace Yemekhane.Devices.Abstractions;
+﻿namespace Yemekhane.Devices.Abstractions;
 
 public enum DeviceConnectionState { Disconnected, Connecting, Connected, Reconnecting, Faulted }
 public enum TurnstileDirection { Entry, Exit }
-public enum DeviceCapability { ReadCard, ReadUser, SendCard, SendUser, SyncCard, SyncUser, GrantAccess, DenyAccess, DeviceInfo, Status }
+public enum DeviceCapability { ReadCard, ReadUser, SendCard, SendUser, SyncCard, SyncUser, DeleteCard, GrantAccess, DenyAccess, DeviceInfo, Status }
 
 public sealed record DeviceEndpoint(string ConnectionType, string? ComPort = null, int? BaudRate = null,
     string? IpAddress = null, int? IpPort = null);
@@ -45,6 +45,8 @@ public interface IAccessController : ICardReader, ITurnstile, IDeviceCapabilityP
     Task<DeviceCommandResult> SendCardAsync(string cardNumber, string externalUserId, CancellationToken cancellationToken);
     Task<DeviceCommandResult> SyncUserAsync(DeviceUser user, CancellationToken cancellationToken);
     Task<DeviceCommandResult> SyncCardAsync(string cardNumber, string externalUserId, CancellationToken cancellationToken);
+    /// <summary>Karti cihazdan siler. Iptal edilen kart cihazda kalirsa turnikeden gecmeye devam eder.</summary>
+    Task<DeviceCommandResult> DeleteCardAsync(string cardNumber, CancellationToken cancellationToken);
     Task<DeviceUser?> ReadUserAsync(string externalUserId, CancellationToken cancellationToken);
     Task<string?> ReadCardAsync(string cardNumber, CancellationToken cancellationToken);
 }

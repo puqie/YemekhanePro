@@ -1,9 +1,10 @@
-using System.Runtime.ExceptionServices;
+﻿using System.Runtime.ExceptionServices;
 using System.Windows.Controls;
 using Yemekhane.Desktop;
 
 namespace Yemekhane.UnitTests.Search;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class GlobalSearchUiSmokeTests
 {
     [Fact]

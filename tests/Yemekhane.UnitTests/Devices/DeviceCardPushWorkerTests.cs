@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,6 +32,26 @@ public sealed class DeviceCardPushWorkerTests
         Assert.Contains(device.Sent, x => x.CardNumber == card.CardNumber);
         var status = await harness.Sync.GetCardStatusAsync(card.Id, default);
         Assert.Equal(DeviceCardSyncStatus.Loaded, status.Single().Status);
+    }
+
+    [Fact]
+    public async Task RemovedCardIsDeletedOnTheDeviceBeforeBeingMarkedRemoved()
+    {
+        // Kart iptalinin cihaza gercekten islenmesi gerekir: yalnizca veritabaninda
+        // "kaldirildi" isaretlemek, iptal edilmis bir kartin turnikeden gecmeye devam
+        // etmesi demektir. Ayrica bir kartin hatasi tum cihaz kuyrugunu dusurmemelidir.
+        await using var harness = await Harness.CreateAsync();
+        var device = harness.AddDevice("Ana Giriş");
+        var card = await harness.AddCardAsync();
+        await harness.Sync.QueueCardAsync(card.Id, default);
+        await harness.RunOnceAsync();
+        await harness.Sync.QueueRemovalAsync(card.Id, default);
+
+        await harness.RunOnceAsync();
+
+        Assert.Contains(device.Deleted, x => x == card.CardNumber);
+        var status = await harness.Sync.GetCardStatusAsync(card.Id, default);
+        Assert.Equal(DeviceCardSyncStatus.Removed, status.Single().Status);
     }
 
     [Fact]
@@ -188,6 +208,7 @@ public sealed class DeviceCardPushWorkerTests
     private sealed class FakeController(Guid id, string name) : IAccessController
     {
         private readonly List<(string CardNumber, string ExternalId)> sent = [];
+        private readonly List<string> deleted = [];
 
         public Guid Id { get; } = id;
         public string Name { get; } = name;
@@ -196,6 +217,7 @@ public sealed class DeviceCardPushWorkerTests
         public DeviceConnectionState ConnectionState => State;
         public DeviceConnectionException? FailWith { get; set; }
         public IReadOnlyList<(string CardNumber, string ExternalId)> Sent => sent;
+        public IReadOnlyList<string> Deleted => deleted;
         public IReadOnlySet<DeviceCapability> Capabilities { get; } =
             new HashSet<DeviceCapability>(Enum.GetValues<DeviceCapability>());
 
@@ -209,7 +231,19 @@ public sealed class DeviceCardPushWorkerTests
             CancellationToken cancellationToken)
         {
             if (FailWith is not null) throw FailWith;
+            // Gercek adaptor bos degerleri reddeder; sahte cihaz da reddetmelidir,
+            // aksi halde cagiranin hatali cagrisi testte gorunmez kalir.
+            ArgumentException.ThrowIfNullOrWhiteSpace(cardNumber);
+            ArgumentException.ThrowIfNullOrWhiteSpace(externalUserId);
             sent.Add((cardNumber, externalUserId));
+            return Task.FromResult(new DeviceCommandResult(true, "OK"));
+        }
+
+        public Task<DeviceCommandResult> DeleteCardAsync(string cardNumber, CancellationToken cancellationToken)
+        {
+            if (FailWith is not null) throw FailWith;
+            ArgumentException.ThrowIfNullOrWhiteSpace(cardNumber);
+            deleted.Add(cardNumber);
             return Task.FromResult(new DeviceCommandResult(true, "OK"));
         }
 

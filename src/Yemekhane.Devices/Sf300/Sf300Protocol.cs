@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Threading.Channels;
 using Yemekhane.Devices.Abstractions;
 
@@ -18,8 +18,8 @@ public sealed class Sf300Protocol : ISf300Protocol
     {
         DeviceCapability.DeviceInfo, DeviceCapability.Status, DeviceCapability.ReadCard,
         DeviceCapability.ReadUser, DeviceCapability.SendCard, DeviceCapability.SendUser,
-        DeviceCapability.SyncCard, DeviceCapability.SyncUser, DeviceCapability.GrantAccess,
-        DeviceCapability.DenyAccess
+        DeviceCapability.SyncCard, DeviceCapability.SyncUser, DeviceCapability.DeleteCard,
+        DeviceCapability.GrantAccess, DeviceCapability.DenyAccess
     };
 
     private readonly ISf300Transport _transport;
@@ -101,6 +101,9 @@ public sealed class Sf300Protocol : ISf300Protocol
         CancellationToken cancellationToken) =>
         SendCardAsync(cardNumber, externalUserId, cancellationToken);
 
+    public Task<DeviceCommandResult?> DeleteCardAsync(string cardNumber, CancellationToken cancellationToken) =>
+        CommandAsync(Sf300Command.DeleteCard, cardNumber, cancellationToken);
+
     public async Task<DeviceUser?> ReadUserAsync(string externalUserId, CancellationToken cancellationToken)
     {
         var text = await SendAsync(Sf300Command.ReadUser, externalUserId, cancellationToken).ConfigureAwait(false);
@@ -179,6 +182,16 @@ public sealed class Sf300Protocol : ISf300Protocol
                 throw new Sf300ProtocolException(error, isTransient: true, "SF300_FRAME_ERROR");
             if (response.Frame!.Command == Sf300Command.Nak)
                 throw NakToException(Text(response.Frame));
+            // Cihazin yanit vermesi komutu onayladigi anlamina gelmez: beklenen yanit kodu
+            // gelmediyse kanal senkronizasyonu bozulmustur (gec gelen bir onceki yanit, kendiliginden
+            // gonderilen bir cerceve...). Boyle bir cerceveyi basari saymak, karti hic yazmamis bir
+            // turnikeyi "yuklendi" olarak isaretler. Gecici sayilir ki mevcut yeniden deneme calissin.
+            if (response.Frame.Command != ExpectedResponse(command))
+            {
+                throw new Sf300ProtocolException(
+                    $"SF300 {command} komutuna beklenmeyen yanit dondurdu: {response.Frame.Command}.",
+                    isTransient: true, "SF300_UNEXPECTED_RESPONSE");
+            }
 
             return Text(response.Frame);
         }
@@ -187,6 +200,19 @@ public sealed class Sf300Protocol : ISf300Protocol
             _commandLock.Release();
         }
     }
+
+    /// <summary>
+    /// Bir komutun gecerli sayilan yanit kodu. Sorgu komutlari kendi kodlariyla yanitlanir
+    /// (veriyi tasirlar), digerleri ACK ile onaylanir.
+    /// </summary>
+    private static Sf300Command ExpectedResponse(Sf300Command command) => command switch
+    {
+        Sf300Command.Handshake => Sf300Command.Handshake,
+        Sf300Command.Status => Sf300Command.Status,
+        Sf300Command.ReadCard => Sf300Command.ReadCard,
+        Sf300Command.ReadUser => Sf300Command.ReadUser,
+        _ => Sf300Command.Ack
+    };
 
     /// <summary>
     /// NAK kodunu gecici/kalici olarak siniflandirir. Yanlis siniflandirma pahalidir:

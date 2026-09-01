@@ -1,9 +1,10 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Access;
 using Yemekhane.Application.Calendar;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Access;
+using Yemekhane.Infrastructure.Calendar;
 using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.UnitTests.Realtime;
 
@@ -46,6 +47,49 @@ public sealed class AccessDecisionServiceTests
                 Assert.Equal(second.OperationId, realtimeEvent.OperationId);
                 Assert.Equal("DENY", realtimeEvent.Decision);
             });
+    }
+
+    [Fact]
+    public async Task GroupScopedHolidayClosesTheDayForItsMembersOnly()
+    {
+        // Tatil yalnizca "Gezi Grubu" icin tanimlanmistir. Grup uyesi ogrenci
+        // turnikeden GECEMEMELI, uye olmayan ayni siniftaki ogrenci GECEBILMELIDIR.
+        // Kapsam yalnizca sinifa bakilarak degerlendirilirse grup tatili sessizce yok sayilir.
+        await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
+        await using var context = CreateContext(connection); await context.Database.MigrateAsync();
+
+        var schoolClass = new SchoolClass { Name = "5A" };
+        var traveller = new Student { StudentNo = "6811", FirstName = "Gezici", LastName = "Ogrenci", ClassId = schoolClass.Id };
+        var stayer = new Student { StudentNo = "6812", FirstName = "Kalan", LastName = "Ogrenci", ClassId = schoolClass.Id };
+        var travellerCard = new StudentCard { StudentId = traveller.Id, CardNumber = "8222704", ValidFrom = DateTimeOffset.UtcNow };
+        var stayerCard = new StudentCard { StudentId = stayer.Id, CardNumber = "8222705", ValidFrom = DateTimeOffset.UtcNow };
+        var group = new StudentGroup { Name = "Gezi Grubu", GroupType = "Manual" };
+        var meal = new MealType { Name = "Ogle" };
+        var device = new Device { Name = "SF300-1", DeviceType = "SF300", ConnectionType = "Ethernet", Direction = "Entry", ConnectionStatus = "Connected" };
+        var date = new DateOnly(2026, 9, 3);
+        var timestamp = new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.FromHours(3));
+        context.AddRange(schoolClass, traveller, stayer, travellerCard, stayerCard, group, meal, device);
+        context.Add(new StudentGroupMember { GroupId = group.Id, StudentId = traveller.Id });
+        context.AddRange(
+            new MealEntitlement { StudentId = traveller.Id, MealTypeId = meal.Id, EntitlementDate = date, Quantity = 1, Status = "Active" },
+            new MealEntitlement { StudentId = stayer.Id, MealTypeId = meal.Id, EntitlementDate = date, Quantity = 1, Status = "Active" });
+        await context.SaveChangesAsync();
+
+        await new HolidayService(new EfHolidayRepository(context)).CreateAsync(
+            new(date, "5A gezi", "School", null, "Delete", [new("Group", group.Id)]));
+
+        var service = new AccessDecisionService(new EfAccessDecisionRepository(context),
+            new BusinessDayService(new EfHolidayRepository(context), new WeekendPolicy()),
+            new RecordingRealtimeEventPublisher());
+
+        var travellerDecision = await service.CheckAccessAsync(
+            new AccessCheckRequest(travellerCard.CardNumber, device.Id, meal.Id, timestamp));
+        var stayerDecision = await service.CheckAccessAsync(
+            new AccessCheckRequest(stayerCard.CardNumber, device.Id, meal.Id, timestamp));
+
+        Assert.Equal("DENY", travellerDecision.Decision);
+        Assert.Equal("Bugün tatil", travellerDecision.Reason);
+        Assert.Equal("ALLOW", stayerDecision.Decision);
     }
 
     [Fact]

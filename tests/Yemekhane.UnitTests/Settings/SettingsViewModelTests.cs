@@ -1,4 +1,4 @@
-using System.Runtime.ExceptionServices;
+﻿using System.Runtime.ExceptionServices;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Settings;
 using Yemekhane.Desktop.Services;
@@ -9,6 +9,7 @@ using Yemekhane.Sync;
 
 namespace Yemekhane.UnitTests.Settings;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class SettingsViewModelTests
 {
     [Fact]

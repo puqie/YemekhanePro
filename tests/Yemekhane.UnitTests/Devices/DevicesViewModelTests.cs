@@ -1,4 +1,4 @@
-using System.Runtime.ExceptionServices;
+﻿using System.Runtime.ExceptionServices;
 using Yemekhane.Application.Realtime;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
@@ -6,6 +6,7 @@ using Yemekhane.Desktop.Views;
 
 namespace Yemekhane.UnitTests.Devices;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class DevicesViewModelTests
 {
     private static readonly Guid DeviceId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");

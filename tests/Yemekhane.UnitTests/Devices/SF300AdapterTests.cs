@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using Yemekhane.Devices.Abstractions;
 using Yemekhane.Devices.Sf300;
 
@@ -355,6 +355,9 @@ public sealed class SF300AdapterTests
 
         public Task<DeviceCommandResult?> SyncCardAsync(string cardNumber, string externalUserId,
             CancellationToken cancellationToken) => Result(cancellationToken);
+
+        public Task<DeviceCommandResult?> DeleteCardAsync(string cardNumber, CancellationToken cancellationToken) =>
+            Result(cancellationToken);
 
         public Task<DeviceUser?> ReadUserAsync(string externalUserId, CancellationToken cancellationToken)
         {

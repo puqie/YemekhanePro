@@ -1,4 +1,4 @@
-using Yemekhane.Devices.Abstractions;
+﻿using Yemekhane.Devices.Abstractions;
 
 namespace Yemekhane.Devices.Sf300;
 
@@ -20,6 +20,7 @@ public interface ISf300Protocol : IAsyncDisposable
     Task<DeviceCommandResult?> SendCardAsync(string cardNumber, string externalUserId, CancellationToken cancellationToken);
     Task<DeviceCommandResult?> SyncUserAsync(DeviceUser user, CancellationToken cancellationToken);
     Task<DeviceCommandResult?> SyncCardAsync(string cardNumber, string externalUserId, CancellationToken cancellationToken);
+    Task<DeviceCommandResult?> DeleteCardAsync(string cardNumber, CancellationToken cancellationToken);
     Task<DeviceUser?> ReadUserAsync(string externalUserId, CancellationToken cancellationToken);
     Task<string?> ReadCardAsync(string cardNumber, CancellationToken cancellationToken);
 }

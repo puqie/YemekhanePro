@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Microsoft.Extensions.Configuration;
 using System.Globalization;
 using System.Net.Http;
@@ -24,6 +24,7 @@ public partial class App : System.Windows.Application, IDisposable
     private CashViewModel? cash;
     private ReportsViewModel? reports;
     private SettingsViewModel? settings;
+    private StudentImportViewModel? studentImport;
     private GlobalSearchViewModel? globalSearch;
     private NotificationCenterViewModel? notifications;
 
@@ -138,7 +139,7 @@ public partial class App : System.Windows.Application, IDisposable
         realtimeClient = new DashboardRealtimeClient(baseUri, session);
         var permissions = JwtPermissions.Read(session.AccessToken);
         var routes = new List<string> { ShellRoutes.Dashboard, ShellRoutes.DailyTracking, ShellRoutes.Students, ShellRoutes.StudentDetail };
-        if (permissions.Contains("students.write")) routes.Add(ShellRoutes.StudentsCreate);
+        if (permissions.Contains("students.write")) { routes.Add(ShellRoutes.StudentsCreate); routes.Add(ShellRoutes.StudentImport); }
         if (permissions.Contains("cards.manage")) { routes.Add(ShellRoutes.Cards); routes.Add(ShellRoutes.CardReader); }
         if (permissions.Contains("entitlements.manage") || permissions.Contains("entitlements.bulk")) routes.Add(ShellRoutes.Entitlements);
         if (permissions.Contains("calendar.manage")) routes.Add(ShellRoutes.HolidayTransfer);
@@ -169,10 +170,14 @@ public partial class App : System.Windows.Application, IDisposable
         cash = new CashViewModel(new CashApiClient(httpClient, session), permissions, navigation: navigation);
         reports = new ReportsViewModel(new ReportApiClient(httpClient, session), permissions);
         settings = new SettingsViewModel(new SettingsApiClient(httpClient, session), navigation, permissions);
+        studentImport = permissions.Contains("students.write")
+            ? new StudentImportViewModel(new StudentImportApiClient(httpClient, session), new FileDialogService(), permissions)
+            : null;
         var window = new MainWindow { DataContext = viewModel, DailyTrackingDataContext = tracking,
             StudentsDataContext = students, MealEntitlementsDataContext = entitlements, CalendarDataContext = calendar,
             DevicesDataContext = devices, DeviceCardsDataContext = deviceCards, SmsDataContext = sms, CashDataContext = cash, ReportsDataContext = reports,
-             SettingsDataContext = settings, GlobalSearchDataContext = globalSearch, NotificationDataContext = notifications };
+             SettingsDataContext = settings, StudentImportDataContext = studentImport,
+             GlobalSearchDataContext = globalSearch, NotificationDataContext = notifications };
         window.ConfigureShortcuts(permissions);
         navigation.NavigationRequested += (_, args) => window.Navigate(args.Route);
         tracking.StudentDetailNavigationRequested += (_, route) => navigation.Navigate(route);

@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Runtime.CompilerServices;
 using Yemekhane.Devices.Abstractions;
 
@@ -224,6 +224,13 @@ public sealed class SF300Adapter : IAccessController
         ValidateCardArguments(cardNumber, externalUserId);
         return ExecuteResultAsync(DeviceCapability.SyncCard,
             token => RequireProtocol().SyncCardAsync(cardNumber, externalUserId, token), "kart eşitleme", cancellationToken);
+    }
+
+    public Task<DeviceCommandResult> DeleteCardAsync(string cardNumber, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardNumber);
+        return ExecuteResultAsync(DeviceCapability.DeleteCard,
+            token => RequireProtocol().DeleteCardAsync(cardNumber, token), "kart silme", cancellationToken);
     }
 
     public async Task<DeviceUser?> ReadUserAsync(string externalUserId, CancellationToken cancellationToken)

@@ -1,9 +1,10 @@
-using System.Runtime.ExceptionServices;
+﻿using System.Runtime.ExceptionServices;
 using System.Windows.Controls;
 using Yemekhane.Desktop.Views;
 
 namespace Yemekhane.UnitTests.Students;
 
+[Collection(Yemekhane.UnitTests.Desktop.UiCollection.Name)]
 public sealed class StudentsUiSmokeTests
 {
     [Fact]

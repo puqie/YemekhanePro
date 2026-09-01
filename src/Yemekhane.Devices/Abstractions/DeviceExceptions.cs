@@ -1,4 +1,4 @@
-namespace Yemekhane.Devices.Abstractions;
+﻿namespace Yemekhane.Devices.Abstractions;
 
 public sealed class DeviceConnectionException(string deviceName, string message, string? errorCode = null, Exception? innerException = null)
     : Exception(message, innerException)
@@ -8,4 +8,8 @@ public sealed class DeviceConnectionException(string deviceName, string message,
 }
 
 public sealed class DeviceCapabilityException(string deviceName, DeviceCapability capability)
-    : Exception($"{deviceName} cihazı {capability} özelliğini desteklemiyor.");
+    : Exception($"{deviceName} cihazı {capability} özelliğini desteklemiyor.")
+{
+    public string DeviceName { get; } = deviceName;
+    public DeviceCapability Capability { get; } = capability;
+}

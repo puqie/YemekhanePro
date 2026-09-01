@@ -1,4 +1,4 @@
-using Yemekhane.Application.Calendar;
+﻿using Yemekhane.Application.Calendar;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Realtime;
 
@@ -41,6 +41,7 @@ public sealed class AccessDecisionService(
         if (!snapshot.CardActive) return await DenyAndLog("Kart pasif");
         if (!snapshot.StudentActive) return await DenyAndLog("Öğrenci pasif");
         if (!snapshot.DeviceActive) return await DenyAndLog("Cihaz pasif");
+        if (snapshot.GroupHoliday) return await DenyAndLog("Bugün tatil");
         if (!await businessDayService.IsBusinessDayAsync(localDate, new CalendarScope("Class", snapshot.ClassId), cancellationToken)) return await DenyAndLog("Bugün tatil");
         if (snapshot.IsOnLeave) return await DenyAndLog("Öğrenci bugün izinli");
         if (!snapshot.EntitlementId.HasValue || snapshot.EntitlementStatus != "Active") return await DenyAndLog("Bugün yemek hakkı bulunmuyor");

@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using System.Windows.Input;
@@ -74,13 +74,20 @@ public sealed class NotificationCenterViewModel : ObservableObject, IDisposable
         // Sunucu cagrisi ucustayken yeni bildirim gelebilir. Yalnizca cagriyi baslattigimiz anda
         // var olan kayitlar okundu sayilir; sayaci kosulsuz sifirlamak, arada gelen okunmamis
         // bildirimi rozette gorunmez yapar ve kullanici onu hic fark etmez.
-        var markedIds = Items.Where(item => item.ReadAt is null).Select(item => item.Id).ToHashSet();
+        // Items yalnizca RunOnUi uzerinden okunur/yazilir. await sonrasi devam eden kod,
+        // dispatcher yoksa havuz is parcaciginda calisir; ayni anda gelen bir bildirim
+        // koleksiyonu degistirirse buradaki numaralandirma "Collection was modified" ile duser.
+        HashSet<Guid> markedIds = [];
+        RunOnUi(() => markedIds = Items.Where(item => item.ReadAt is null).Select(item => item.Id).ToHashSet());
         await api.MarkAllReadAsync();
-        var readAt = DateTimeOffset.UtcNow;
-        for (var i = 0; i < Items.Count; i++)
-            if (markedIds.Contains(Items[i].Id) && Items[i].ReadAt is null)
-                Items[i] = Items[i] with { ReadAt = readAt };
-        UnreadCount = Items.Count(item => item.ReadAt is null);
+        RunOnUi(() =>
+        {
+            var readAt = DateTimeOffset.UtcNow;
+            for (var i = 0; i < Items.Count; i++)
+                if (markedIds.Contains(Items[i].Id) && Items[i].ReadAt is null)
+                    Items[i] = Items[i] with { ReadAt = readAt };
+            UnreadCount = Items.Count(item => item.ReadAt is null);
+        });
     }
 
     private async Task OpenAsync(NotificationItem item)
