@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using UglyToad.PdfPig;
 using DocumentFormat.OpenXml.Packaging;
@@ -255,6 +256,28 @@ public sealed class YemekhaneApiFactory : WebApplicationFactory<Program>
         return client;
     }
 
+    /// <summary>
+    /// SINIRLI yetkili JWT. Arayuzun pasiflestirdigi bir butonun API tarafinda da
+    /// gercekten reddedildigini kanitlamak icin gerekir: UI kontrolu kolaylik,
+    /// API kontrolu GUVENLIKTIR.
+    /// </summary>
+    public static string CreateTokenWith(params string[] permissions)
+    {
+        var credentials = new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)), SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityToken(
+            issuer: "yemekhane-test",
+            audience: "yemekhane-test",
+            claims: new Claim[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, OperatorId.ToString()), new Claim(ClaimTypes.Name, "operator"),
+                new Claim(ClaimTypes.Role, BuiltInRoles.Operator), new Claim("security_stamp", OperatorSecurityStamp)
+            }.Concat(permissions.Select(permission => new Claim(Permissions.ClaimType, permission))),
+            expires: DateTime.UtcNow.AddMinutes(10),
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
     public static string CreateOperatorToken(DateTime? expires = null)
     {
         var credentials = new SigningCredentials(
@@ -333,12 +356,43 @@ public sealed class YemekhaneApiFactory : WebApplicationFactory<Program>
             .AnyAsync(user => user.NormalizedUsername == normalizedUsername));
     }
 
+    // Paylasimli-onbellekli bellek-ici SQLite veritabani, yalnizca ACIK bir baglanti
+    // kaldigi surece yasar. Baska bir testin SqliteConnection.ClearAllPools() cagrisi
+    // (havuz temizligi process genelindedir) havuzdaki son baglantiyi kapatirsa veritabani
+    // silinir ve bu fabrikayi kullanan test, yazdigi kaydi bulamayarak rastgele kirilir.
+    // Bu baglanti fabrika yasadigi surece acik tutularak veritabani garanti altina alinir.
+    private readonly SqliteConnection keepAlive;
+
+    public YemekhaneApiFactory()
+    {
+        connectionString = $"Data Source=file:yemekhane-{Guid.NewGuid():N}?mode=memory&cache=shared";
+        keepAlive = new SqliteConnection(connectionString);
+        keepAlive.Open();
+    }
+
+    private readonly string connectionString;
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing) keepAlive.Dispose();
+    }
+
+    // WebApplicationFactory.DisposeAsync() senkron Dispose(bool) yolunu CAGIRMAZ.
+    // Testlerin cogu DisposeAsync kullandigindan, baglanti burada da kapatilmazsa
+    // her fabrika bir baglantiyi ve bellek-ici veritabanini surec sonuna kadar sizdirir.
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        await keepAlive.DisposeAsync();
+    }
+
     protected override IHost CreateHost(IHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.ConfigureHostConfiguration(config => config.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["ConnectionStrings:Database"] = $"Data Source=file:auth-{Guid.NewGuid():N}?mode=memory&cache=shared",
+            ["ConnectionStrings:Database"] = connectionString,
             ["Authentication:Jwt:SigningKey"] = SigningKey,
             ["Authentication:Jwt:Issuer"] = "yemekhane-test",
             ["Authentication:Jwt:Audience"] = "yemekhane-test",
