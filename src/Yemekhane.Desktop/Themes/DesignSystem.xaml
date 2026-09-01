@@ -548,6 +548,10 @@
     <SolidColorBrush x:Key="SidebarHoverBrush" Color="#2F3B49"/>
     <SolidColorBrush x:Key="SidebarTextBrush"  Color="#D6DBE0"/>
 
+    <!-- Cekmece ve modal arkasindaki karartma. Yari saydamdir; bu yuzden
+         palet renklerinden turetilemez, kendi anahtarini tasir. -->
+    <SolidColorBrush x:Key="ScrimBrush"         Color="#66101820"/>
+
     <Style x:Key="NavGroupTitle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{StaticResource FontXs}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>

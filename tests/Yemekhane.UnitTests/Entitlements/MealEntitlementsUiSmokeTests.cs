@@ -19,7 +19,9 @@ public sealed class MealEntitlementsUiSmokeTests
                 var grid = Assert.IsType<DataGrid>(view.FindName("EntitlementsGrid"));
                 Assert.True(grid.EnableRowVirtualization); Assert.True(grid.EnableColumnVirtualization);
                 Assert.Equal(DataGridSelectionMode.Extended, grid.SelectionMode);
-                Assert.Equal(29, grid.RowHeight); Assert.Equal(11, grid.Columns.Count);
+                // Gorev 3: view'in kendi RowHeight="29" gecersiz kilmasi silindi;
+                // artik DesignSystem.xaml'in DataGrid stili (34) gecerli.
+                Assert.Equal(34, grid.RowHeight); Assert.Equal(11, grid.Columns.Count);
             }
             catch (Exception ex) { failure = ex; }
         });

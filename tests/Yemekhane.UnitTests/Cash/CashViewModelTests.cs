@@ -115,7 +115,9 @@ public sealed class CashViewModelTests
                 var grid = Assert.IsType<DataGrid>(view.FindName("TransactionsGrid"));
                 Assert.True(grid.EnableRowVirtualization);
                 Assert.True(grid.EnableColumnVirtualization);
-                Assert.Equal(30, grid.RowHeight);
+                // Gorev 3: view'in kendi RowHeight="30" gecersiz kilmasi silindi;
+                // artik DesignSystem.xaml'in DataGrid stili (34) gecerli.
+                Assert.Equal(34, grid.RowHeight);
                 Assert.Equal(8, grid.Columns.Count);
                 var xaml = File.ReadAllText(Path.Combine(FindRoot(), "src", "Yemekhane.Desktop", "Views", "CashView.xaml"));
                 Assert.Contains("Command=\"{Binding OpenReportsCommand}\"", xaml);
