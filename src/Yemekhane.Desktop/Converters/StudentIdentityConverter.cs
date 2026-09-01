@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Windows;
 using System.Windows.Data;
 
 namespace Yemekhane.Desktop.Converters;
@@ -14,8 +16,15 @@ public sealed class StudentIdentityConverter : IMultiValueConverter
 {
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
-        static string? Clean(object? value) =>
-            value?.ToString() is { } text && !string.IsNullOrWhiteSpace(text) ? text.Trim() : null;
+        static string? Clean(object? value)
+        {
+            if (value is null)
+                return null;
+            if (ReferenceEquals(value, DependencyProperty.UnsetValue))
+                return null;
+            var text = value.ToString();
+            return !string.IsNullOrWhiteSpace(text) ? text.Trim() : null;
+        }
 
         var first = values.Length > 0 ? Clean(values[0]) : null;
         var last = values.Length > 1 ? Clean(values[1]) : null;
@@ -37,7 +46,20 @@ public sealed class StudentIdentityConverter : IMultiValueConverter
         if (className is not null) Append(className);
         if (card is not null) Append($"Kart {card}");
 
-        return builder.ToString();
+        var result = builder.ToString();
+
+        // Bulmus kontrol: Baglama hatasi veya yanlislikla 5'ten az alan gecirilirse,
+        // yalnizca ad soyad gosterilir -- bu converter'in var olus sebebi yok.
+        // Uretim kodunda throw etmeyin (kart-yoksun ogrenciler olasi), ancak
+        // hata ayiklama yapiyorsaniz sorunu gormen gerekir.
+        if (result.Length > 0 && !result.Contains('·'))
+        {
+            Debug.WriteLine(
+                "StudentIdentityConverter: Kimlikte ayirt edici alan yok. " +
+                "XAML'de MultiBinding'in tum 5 kaynagi ayarlandigindan emin olun.");
+        }
+
+        return result;
     }
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) =>

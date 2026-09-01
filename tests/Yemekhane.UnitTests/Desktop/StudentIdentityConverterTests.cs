@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows;
 using Yemekhane.Desktop.Converters;
 
 namespace Yemekhane.UnitTests.Desktop;
@@ -43,4 +44,14 @@ public sealed class StudentIdentityConverterTests
     public void NumarasizOgrenciDeAyirtEdiciBilgiTasir() =>
         Assert.Equal("FATİH SİDAL · Kart 8352094",
             Convert("FATİH", "SİDAL", null, null, "8352094"));
+
+    /// <summary>
+    /// WPF, bir baglama kaynagi cozulemediginde UnsetValue gecirir.
+    /// Bu deger metne sizarsa kasiyer "No {DependencyProperty.UnsetValue}"
+    /// gibi bozuk bir kimlik gorur -- hicbir sey gostermemekten daha kotudur.
+    /// </summary>
+    [Fact]
+    public void CozulemeyenBaglamaMetneSizmaz() =>
+        Assert.Equal("FATİH SİDAL · Kart 8352094",
+            Convert("FATİH", "SİDAL", DependencyProperty.UnsetValue, null, "8352094"));
 }
