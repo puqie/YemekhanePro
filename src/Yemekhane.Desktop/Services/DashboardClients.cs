@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.IO;
 using Microsoft.AspNetCore.SignalR.Client;
 using Yemekhane.Application.Dashboard;
@@ -22,6 +23,57 @@ public sealed class EnvironmentJwtSession : IJwtSession
 }
 
 public sealed class LoginRequiredException : Exception;
+
+/// <summary>
+/// Sunucunun reddettigi bir istek. Mesaj API'nin ProblemDetails govdesinden gelir
+/// ("Bu ogrenci numarasi zaten kullaniliyor." gibi) ve DOGRUDAN kullaniciya gosterilir.
+///
+/// EnsureSuccessStatusCode bu metni atar; kullanici yalnizca "bir hata olustu" gorur
+/// ve hangi alani duzeltecegini bilemez. Bu tip metni tasir.
+/// </summary>
+public sealed class ApiRequestException(string message, System.Net.HttpStatusCode statusCode)
+    : Exception(message)
+{
+    public System.Net.HttpStatusCode StatusCode { get; } = statusCode;
+}
+
+/// <summary>Sunucu hatalarini kullaniciya gosterilebilir mesaja cevirir.</summary>
+public static class ApiErrors
+{
+    /// <summary>
+    /// Basarisiz yanittan ProblemDetails basligini okur. Govde okunamazsa
+    /// duruma gore anlasilir bir yedek mesaj uretilir.
+    /// </summary>
+    public static async Task<ApiRequestException> ReadAsync(
+        HttpResponseMessage response, CancellationToken cancellationToken = default)
+    {
+        string? title = null;
+        try
+        {
+            var problem = await response.Content
+                .ReadFromJsonAsync<ProblemBody>(cancellationToken: cancellationToken);
+            title = problem?.Title;
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or HttpRequestException)
+        {
+            // Govde ProblemDetails degil; yedek mesaja dusulur.
+        }
+
+        return new ApiRequestException(
+            string.IsNullOrWhiteSpace(title) ? Fallback(response.StatusCode) : title!,
+            response.StatusCode);
+    }
+
+    private static string Fallback(System.Net.HttpStatusCode status) => status switch
+    {
+        System.Net.HttpStatusCode.Conflict => "Bu kayıt zaten mevcut.",
+        System.Net.HttpStatusCode.BadRequest => "Girilen bilgiler geçersiz.",
+        System.Net.HttpStatusCode.NotFound => "Kayıt bulunamadı.",
+        _ => "İstek işlenemedi. Lütfen tekrar deneyin."
+    };
+
+    private sealed record ProblemBody(string? Title, string? Detail);
+}
 
 public interface IDashboardApiClient
 {

@@ -105,13 +105,21 @@ public sealed class Task056OfflineIntegrationTests
                 .SingleAsync(x => x.OperationId == ids.StudentOperationId);
             Assert.Equal(SyncOperationStatuses.Conflict, conflict.SyncStatus);
             Assert.Contains("remoteVersion", conflict.LastError, StringComparison.Ordinal);
-            // Motor SQLite julianday() ile siralar: bu bir kayan noktali gun degeridir ve
-            // milisaniye altinda hassasiyet kaybeder. .NET tarafinda tam hassasiyetle
-            // dogrulamak, ayni milisaniyeye dusen islemlerde rastgele basarisiz olur.
-            // Motorun esitlik bozucusu (OperationId) ile ayni anahtar kullanilmalidir.
-            Assert.Equal(
-                remote.Sent.OrderBy(x => Math.Round(x.Timestamp.UtcDateTime.ToOADate(), 8)).ThenBy(x => x.OperationId),
-                remote.Sent);
+            // Motor SQLite julianday() ile siralar. Ayni siralamayi .NET tarafinda
+            // ToOADate() ile yeniden uretmek YANLISTIR: iki fonksiyonun epoch'u ve
+            // yuvarlamasi farklidir, bu yuzden ayni milisaniyeye dusen islemlerde
+            // karsilastirma rastgele ters doner (kirilgan test).
+            //
+            // Dogrusu, motorun kullandigi siralamayi VERITABANINA sordurup gonderim
+            // sirasiyla karsilastirmaktir.
+            var engineOrder = await db.SyncOperations.AsNoTracking()
+                .OrderBy(x => YemekhaneDbContext.JulianDay(x.Timestamp))
+                .ThenBy(x => x.OperationId)
+                .Select(x => x.OperationId)
+                .ToListAsync();
+            var sentOrder = remote.Sent.Select(x => x.OperationId).ToList();
+
+            Assert.Equal(engineOrder.Where(sentOrder.Contains), sentOrder);
 
             await db.SyncOperations.Where(x => x.OperationId == ids.StudentOperationId)
                 .ExecuteUpdateAsync(x => x.SetProperty(y => y.SyncStatus, SyncOperationStatuses.RetryPending));

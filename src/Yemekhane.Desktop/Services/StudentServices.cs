@@ -44,7 +44,7 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
     {
         using var message = Authorized(HttpMethod.Delete, $"api/students/{id:D}");
         using var response = await client.SendAsync(message, cancellationToken);
-        Ensure(response);
+        await EnsureAsync(response, cancellationToken);
     }
 
     public async Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default)
@@ -75,14 +75,16 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
     {
         using var message = Authorized(HttpMethod.Post, "api/leaves");
         message.Content = JsonContent.Create(request);
-        using var response = await client.SendAsync(message, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(message, cancellationToken);
+        await EnsureAsync(response, cancellationToken);
     }
 
     public async Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
     {
         using var message = Authorized(HttpMethod.Post, $"api/students/{studentId:D}/cards/replace");
         message.Content = JsonContent.Create(request);
-        using var response = await client.SendAsync(message, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(message, cancellationToken);
+        await EnsureAsync(response, cancellationToken);
     }
 
     private async Task<T> GetAsync<T>(string url, CancellationToken cancellationToken)
@@ -93,9 +95,22 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
 
     private async Task<T> SendAsync<T>(HttpRequestMessage message, CancellationToken cancellationToken)
     {
-        using var response = await client.SendAsync(message, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(message, cancellationToken);
+        await EnsureAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Öğrenci API yanıtı boş döndü.");
+    }
+
+    /// <summary>
+    /// Yazma isteklerinde sunucunun mesajini korur: "Bu ogrenci numarasi zaten
+    /// kullaniliyor." gibi bir metin kullaniciya dogrudan gosterilebilmelidir.
+    /// </summary>
+    private static async Task EnsureAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            throw new LoginRequiredException();
+        if (!response.IsSuccessStatusCode)
+            throw await ApiErrors.ReadAsync(response, cancellationToken);
     }
 
     private HttpRequestMessage Authorized(HttpMethod method, string url)
@@ -104,12 +119,6 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         var message = new HttpRequestMessage(method, url);
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
         return message;
-    }
-
-    private static void Ensure(HttpResponseMessage response)
-    {
-        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        response.EnsureSuccessStatusCode();
     }
 
     private static string Query(StudentQuery q)

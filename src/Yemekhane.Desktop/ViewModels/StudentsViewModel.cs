@@ -209,23 +209,58 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private async Task SaveAsync()
     {
         ErrorMessage = ValidateForm(); if (ErrorMessage is not null) return;
-        var saved = await api.SaveAsync(Details?.Id, new SaveStudentRequest(FormStudentNo, FormFirstName, FormLastName,
-            Empty(FormNationalId), Address: Empty(FormAddress), Notes: Empty(FormNotes), IsActive: Details?.IsActive ?? true));
-        IsFormOpen = false; await LoadAsync(Page); await OpenDetailByIdAsync(saved.Id);
+        try
+        {
+            var saved = await api.SaveAsync(Details?.Id, new SaveStudentRequest(FormStudentNo, FormFirstName, FormLastName,
+                Empty(FormNationalId), Address: Empty(FormAddress), Notes: Empty(FormNotes), IsActive: Details?.IsActive ?? true));
+            IsFormOpen = false; await LoadAsync(Page); await OpenDetailByIdAsync(saved.Id);
+        }
+        // Form ACIK BIRAKILIR: kullanici numarayi duzeltip yeniden deneyebilmelidir.
+        catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci kaydedilemedi."); }
     }
-    private async Task DeactivateAsync() { if (Details is null) return; await api.DeactivateAsync(Details.Id); CloseDrawers(); await LoadAsync(Page); }
+    private async Task DeactivateAsync()
+    {
+        if (Details is null) return;
+        try { await api.DeactivateAsync(Details.Id); CloseDrawers(); await LoadAsync(Page); }
+        catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci pasife alınamadı."); }
+    }
     private async Task GiveLeaveAsync()
     {
         if (Details is null) return;
-        await api.GiveLeaveAsync(new CreateLeaveRequest(Details.Id, DateOnly.FromDateTime(LeaveStartsOn), DateOnly.FromDateTime(LeaveEndsOn),
-            LeaveType, null, LeaveBehavior, Guid.Empty));
-        var tab = Tabs.FirstOrDefault(x => x.Title == "Leaves"); if (tab is not null && !tab.IsLoaded) SelectedTab = tab;
+        try
+        {
+            await api.GiveLeaveAsync(new CreateLeaveRequest(Details.Id, DateOnly.FromDateTime(LeaveStartsOn), DateOnly.FromDateTime(LeaveEndsOn),
+                LeaveType, null, LeaveBehavior, Guid.Empty));
+            var tab = Tabs.FirstOrDefault(x => x.Title == "Leaves"); if (tab is not null && !tab.IsLoaded) SelectedTab = tab;
+        }
+        catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "İzin kaydedilemedi."); }
     }
     private async Task ReplaceCardAsync()
     {
         if (Details is null || string.IsNullOrWhiteSpace(NewCardNumber)) { ErrorMessage = "Yeni kart numarası zorunludur."; return; }
-        await api.ReplaceCardAsync(Details.Id, new ReplaceCardRequest(NewCardNumber.Trim(), CardReplacementReason.Trim())); NewCardNumber = "";
+        try
+        {
+            await api.ReplaceCardAsync(Details.Id, new ReplaceCardRequest(NewCardNumber.Trim(), CardReplacementReason.Trim()));
+            NewCardNumber = "";
+        }
+        catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Kart değiştirilemedi."); }
     }
+
+    /// <summary>Kullaniciya gosterilebilir yazma hatalari; digerleri yukari birakilir.</summary>
+    private static bool IsWriteFailure(Exception exception) =>
+        exception is ApiRequestException or HttpRequestException or TaskCanceledException
+            or InvalidDataException or LoginRequiredException;
+
+    /// <summary>
+    /// Sunucunun mesaji varsa AYNEN gosterilir ("Bu ogrenci numarasi zaten
+    /// kullaniliyor."); yoksa islem icin yazilmis yedek metin kullanilir.
+    /// </summary>
+    private static string Describe(Exception exception, string fallback) => exception switch
+    {
+        ApiRequestException api => api.Message,
+        LoginRequiredException => "Bu işlem için yetkiniz yok veya oturumunuz sona erdi.",
+        _ => fallback + " Sunucuya ulaşılamadı."
+    };
     private async Task ReadCardAsync()
     {
         var value = await cardReadSource.ReadNextAsync();
