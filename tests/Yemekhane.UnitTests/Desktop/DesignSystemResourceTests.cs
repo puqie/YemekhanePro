@@ -26,6 +26,8 @@ public sealed class DesignSystemResourceTests
     [InlineData("FieldCompact")]
     [InlineData("FieldCompactCombo")]
     [InlineData("FieldCompactDate")]
+    [InlineData("RequiredLabel")]
+    [InlineData("FieldError")]
     public void ResourceKeyIsDefined(string key) =>
         UiThread.Run(() =>
         {

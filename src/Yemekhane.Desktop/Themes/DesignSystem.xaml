@@ -656,4 +656,19 @@
         <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
+
+    <!-- Zorunlu alan: yildiz isareti etiketin parcasi degil, stilin parcasidir. -->
+    <Style x:Key="RequiredLabel" TargetType="TextBlock" BasedOn="{StaticResource Label}">
+        <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <!-- Hata metni ALANIN ALTINDA gorunur, formun dibinde degil:
+         kullanici hangi alanin sorunlu oldugunu gormeli. -->
+    <Style x:Key="FieldError" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource FontXs}"/>
+        <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,3,0,6"/>
+    </Style>
 </ResourceDictionary>
