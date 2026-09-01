@@ -32,6 +32,29 @@ public sealed class Drawer : ContentControl
 
     private IInputElement? previousFocus;
 
+    /// <summary>
+    /// Her acilista bir artar. Acilistaki MoveFocus cagrisi Dispatcher.BeginInvoke
+    /// ile ERTELENDIGI icin, kuyrukta beklerken cekmece kapanip TEKRAR acilabilir
+    /// (orn. bir liste secimi degisince cekmece kapanip farkli icerikle yeniden
+    /// aciliyor). Boyle bir durumda ilk acilistan kalan gecikmis cagri, sirf
+    /// IsOpen tekrar true oldugu icin, artik gecerli olmayan bir "First" hedefine
+    /// atlayip cagiran tarafin ikinci acilista BILEREK verdigi odagi ezebilir.
+    /// Bare "if (!IsOpen) return" bunu onlemez -- IsOpen ikinci acilista zaten
+    /// true'dur. Bu yuzden her acilisin kendi "nesli" damgalanir; gecikmis
+    /// cagri yalnizca KENDI neslinin hala guncel oldugunu görürse calisir.
+    /// </summary>
+    private int openGeneration;
+
+    /// <summary>
+    /// Test gozlemi icin: gecikmis MoveFocus(First) cagrisi FIILEN calistiginda
+    /// (nesil kontrolunu gectiginde) bir artar. Kara-kutu (public API) testler
+    /// bunu goremez cunku iki MoveFocus cagrisi ayni nihai elemani hedeflerse
+    /// WPF ikincisinde GotFocus raise etmez -- "kac kez calisti" sorusu son
+    /// odak durumundan cikarilamaz. internal oldugu icin uretim kodunun genel
+    /// yuzeyini kirletmez.
+    /// </summary>
+    internal int MoveFocusInvocationCountForTests { get; private set; }
+
     static Drawer() =>
         DefaultStyleKeyProperty.OverrideMetadata(typeof(Drawer),
             new FrameworkPropertyMetadata(typeof(Drawer)));
@@ -71,16 +94,40 @@ public sealed class Drawer : ContentControl
         set => SetValue(CloseCommandProperty, value);
     }
 
+    private ButtonBase? closeButtonPart;
+    private UIElement? scrimPart;
+
+    /// <summary>
+    /// Template yeniden uygulanabilir (orn. Style/Template degisimi); WPF bu
+    /// durumda OnApplyTemplate'i tekrar cagirir. Onceki parcalara anonim lambda
+    /// ile abone olunsaydi bu abonelikler asla kaldirilamaz ve her yeniden
+    /// template uygulamasinda BIRIKIRDI -- Close() kendisi IsOpen uzerinde
+    /// idempotent oldugu icin bu sessizce gizli kalirdi, ama CloseCommand
+    /// birikmis abonelik sayisi kadar (N kere) calisirdi. Bu yuzden parcalar
+    /// alanda tutulur ve yeniden baglamadan once ONCEKI abonelikler kaldirilir;
+    /// adli metotlar kullanilir cunku anonim lambdalardan abonelik kaldirilamaz.
+    /// </summary>
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
 
-        if (GetTemplateChild("PART_Close") is ButtonBase close)
-            close.Click += (_, _) => Close();
+        if (closeButtonPart is not null)
+            closeButtonPart.Click -= OnCloseButtonClick;
+        if (scrimPart is not null)
+            scrimPart.MouseLeftButtonDown -= OnScrimMouseLeftButtonDown;
 
-        if (GetTemplateChild("PART_Scrim") is UIElement scrim)
-            scrim.MouseLeftButtonDown += (_, _) => Close();
+        closeButtonPart = GetTemplateChild("PART_Close") as ButtonBase;
+        scrimPart = GetTemplateChild("PART_Scrim") as UIElement;
+
+        if (closeButtonPart is not null)
+            closeButtonPart.Click += OnCloseButtonClick;
+        if (scrimPart is not null)
+            scrimPart.MouseLeftButtonDown += OnScrimMouseLeftButtonDown;
     }
+
+    private void OnCloseButtonClick(object sender, RoutedEventArgs args) => Close();
+
+    private void OnScrimMouseLeftButtonDown(object sender, MouseButtonEventArgs args) => Close();
 
     /// <summary>Cekmeceyi kapatir ve odagi geldigi yere dondurur.</summary>
     public void Close()
@@ -100,8 +147,17 @@ public sealed class Drawer : ContentControl
         if (opened)
         {
             drawer.previousFocus = Keyboard.FocusedElement;
-            drawer.Dispatcher.BeginInvoke(() => drawer.MoveFocus(
-                new TraversalRequest(FocusNavigationDirection.First)));
+            var generation = ++drawer.openGeneration;
+            drawer.Dispatcher.BeginInvoke(() =>
+            {
+                // Kuyrukta beklerken cekmece kapanip tekrar acilmis olabilir:
+                // bu durumda openGeneration ilerlemistir ve bu cagri artik
+                // gecersizdir -- calismasi, ikinci acilista cagiran tarafin
+                // BILEREK verdigi odagi ezer.
+                if (drawer.openGeneration != generation) return;
+                drawer.MoveFocusInvocationCountForTests++;
+                drawer.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            });
         }
         else if (drawer.previousFocus is not null)
         {

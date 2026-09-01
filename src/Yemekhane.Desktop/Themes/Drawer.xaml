@@ -2,6 +2,18 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls">
 
+    <!-- StaticResource'un bu dosyadaki ControlTemplate icinde cozulebilmesi icin
+         DesignSystem.xaml BURADA da birlestirilir: bir Source= ile yuklenen
+         ResourceDictionary'nin ic StaticResource aramalari, kendi dosyasinda
+         bildirdigi sozlukleri gorur; onu sonradan birlestiren App.xaml'in
+         SIBLING sozlukleri gorulmez. Bu, App.xaml'in Drawer.xaml'i
+         DesignSystem.xaml'den SONRA merge etmesine ragmen ScrimBrush/
+         SurfaceBrush/SectionTitle/Action gibi anahtarlarin "bulunamiyor"
+         hatasi vermesine yol aciyordu. -->
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="DesignSystem.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
     <!-- Cekmece: sagdan acilan panel. Karartma (scrim) katmani cekmeceyi engelleyici
          olmayan bir bindirme olarak isaretler: ScrimBrush (~%40) kullanilir,
          ScrimStrongBrush (~%80) yalnizca engelleyici diyaloglar icindir. -->
