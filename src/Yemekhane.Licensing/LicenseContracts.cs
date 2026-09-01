@@ -73,7 +73,41 @@ public sealed record StoredLicense(
     DateTimeOffset IssuedAt,
     DateTimeOffset? ExpiresAt,
     DateTimeOffset LastValidatedAt,
-    string Signature);
+    string Signature)
+{
+    /// <summary>
+    /// Kayit esitligi ICERIGE gore hesaplanir.
+    ///
+    /// Varsayilan record esitligi <see cref="FingerprintHashes"/> icin REFERANS
+    /// karsilastirmasi yapar: diskten okunan lisans, ayni degerleri tasisa bile
+    /// kaydedilenle esit sayilmaz (biri dizi, digeri List olur). Bu sessiz tuzak,
+    /// "lisans degisti mi?" turu her karsilastirmayi hep "evet" yapardi.
+    /// </summary>
+    public bool Equals(StoredLicense? other) =>
+        other is not null
+        && LicenseKey == other.LicenseKey
+        && CustomerName == other.CustomerName
+        && Edition == other.Edition
+        && IssuedAt == other.IssuedAt
+        && ExpiresAt == other.ExpiresAt
+        && LastValidatedAt == other.LastValidatedAt
+        && Signature == other.Signature
+        && FingerprintHashes.SequenceEqual(other.FingerprintHashes);
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(LicenseKey);
+        hash.Add(CustomerName);
+        hash.Add(Edition);
+        hash.Add(IssuedAt);
+        hash.Add(ExpiresAt);
+        hash.Add(LastValidatedAt);
+        hash.Add(Signature);
+        foreach (var fingerprint in FingerprintHashes) hash.Add(fingerprint);
+        return hash.ToHashCode();
+    }
+}
 
 /// <summary>
 /// Makinenin donanim parmak izi: uc bagimsiz bilesenin hash'i.

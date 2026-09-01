@@ -7,6 +7,7 @@ using System.Windows.Markup;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
 using Yemekhane.Desktop.Views;
+using Yemekhane.Licensing;
 
 namespace Yemekhane.Desktop;
 
@@ -124,6 +125,10 @@ public partial class App : System.Windows.Application, IDisposable
         if (!Uri.TryCreate(baseUriValue, UriKind.Absolute, out var baseUri))
             throw new InvalidOperationException("Api:BaseUri mutlak bir URI olmalıdır.");
 
+        // LISANS KONTROLU YEREL API BASLAMADAN ONCE YAPILIR: lisanssiz bir kurulumda
+        // veritabani, turnike baglantilari ve zamanlayici servisler hic ayaga kalkmamalidir.
+        if (!await EnsureLicensedAsync(configuration)) return false;
+
         localApi = new LocalApiProcessManager(baseUri);
         await localApi.EnsureReadyAsync();
 
@@ -210,6 +215,33 @@ public partial class App : System.Windows.Application, IDisposable
             System.Windows.MessageBox.Show(AppStartup.DescribeFailures(failures), "YemekhanePro",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         return true;
+    }
+
+    /// <summary>
+    /// Lisansi denetler; gecersizse aktivasyon ekranini acar.
+    /// </summary>
+    /// <returns>Uygulamanin acilmaya devam edip etmeyecegi.</returns>
+    private static async Task<bool> EnsureLicensedAsync(IConfiguration configuration)
+    {
+        var dataDirectory = Yemekhane.Infrastructure.Persistence.ApplicationDataPath.Resolve();
+        var licenseService = LicenseGate.CreateService(configuration, dataDirectory);
+
+        var decision = await LicenseGate.EvaluateAsync(licenseService);
+        if (decision.Allowed)
+        {
+            // Uyari varsa kullanici SORUN CIKMADAN ONCE haberdar edilir: bir sabah
+            // uygulamanin acilmamasi yemek dagitiminin durmasi demektir.
+            if (decision.Check.Warning is { } warning)
+                System.Windows.MessageBox.Show(warning, "YemekhanePro • Lisans",
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            return true;
+        }
+
+        // ShutdownMode=OnExplicitShutdown oldugu icin bu diyalog kapandiginda uygulama
+        // kendiliginden bitmez; karari burada veririz.
+        var machineId = new WindowsHardwareFingerprintReader().Read().MachineId;
+        var activation = new ActivationWindow(licenseService, decision.Check, machineId);
+        return activation.ShowDialog() == true;
     }
 
     protected override async void OnExit(System.Windows.ExitEventArgs e)

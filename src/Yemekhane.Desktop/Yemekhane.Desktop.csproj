@@ -6,6 +6,7 @@
     <ProjectReference Include="..\Yemekhane.Devices\Yemekhane.Devices.csproj" />
     <ProjectReference Include="..\Yemekhane.Reports\Yemekhane.Reports.csproj" />
     <ProjectReference Include="..\Yemekhane.Sync\Yemekhane.Sync.csproj" />
+    <ProjectReference Include="..\Yemekhane.Licensing\Yemekhane.Licensing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

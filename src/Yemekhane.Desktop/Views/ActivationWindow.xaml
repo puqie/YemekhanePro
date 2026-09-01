@@ -1,0 +1,67 @@
+<Window x:Class="Yemekhane.Desktop.Views.ActivationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="YemekhanePro • Lisans" Icon="pack://application:,,,/Yemekhane.Desktop;component/Assets/logo-256.png" Width="920" Height="570" MinWidth="760" MinHeight="500"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize" Language="tr-TR"
+        Background="#F5F6F7" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        UseLayoutRounding="True" SnapsToDevicePixels="True" AutomationProperties.Name="YemekhanePro lisans ekranı">
+    <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="0.9*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+        <Border Background="#0B131C" Padding="46">
+            <StackPanel VerticalAlignment="Center">
+                <Image Source="pack://application:,,,/Yemekhane.Desktop;component/Assets/logo-256.png" Width="76" Height="76" HorizontalAlignment="Left"
+                       Margin="0,0,0,20" RenderOptions.BitmapScalingMode="HighQuality"
+                       AutomationProperties.Name="YemekhanePro logosu"/>
+                <TextBlock Text="YEMEKHANEPRO" Foreground="White" FontSize="26" FontWeight="SemiBold"/>
+                <TextBlock Text="Uygulamayı kullanmaya başlamak için lisansınızı etkinleştirin." Foreground="#C9D2D8" FontSize="16" TextWrapping="Wrap" LineHeight="24" Margin="0,16,20,0"/>
+
+                <!-- Makine kimligi destek icin gereklidir: kullanici telefonda okur.
+                     IsReadOnly ama secilebilir olmasi kopyalamaya izin verir. -->
+                <TextBlock Text="Bilgisayar kimliği" Foreground="#8FA0AB" Margin="0,30,0,5"/>
+                <TextBox Text="{Binding MachineId, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
+                         Background="Transparent" Foreground="#C9D2D8" FontFamily="Consolas, Courier New" FontSize="15"
+                         AutomationProperties.Name="Bilgisayar kimliği"
+                         AutomationProperties.HelpText="Destek ile görüşürken bu kimliği bildirin"/>
+                <TextBlock Text="Destek ile görüşürken bu kimliği bildirin." Foreground="#8FA0AB" FontSize="11" Margin="0,6,20,0" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+        <Grid Grid.Column="1" Margin="64,42">
+            <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <StackPanel VerticalAlignment="Center" MaxWidth="360">
+                <TextBlock Text="Lisans etkinleştirme" FontSize="27" FontWeight="SemiBold" Foreground="#18212A"/>
+
+                <!-- Kullaniciya uygulamanin NEDEN kilitli oldugu somut olarak soylenir. -->
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#5D6975" Margin="0,7,0,24" TextWrapping="Wrap"/>
+
+                <TextBlock Text="Lisans anahtarı" Foreground="#3E4A55" Margin="0,0,0,5"/>
+                <TextBox x:Name="LicenseKeyBox" Height="38" MaxLength="128"
+                         Text="{Binding LicenseKey, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding IsEditable}"
+                         FontFamily="Consolas, Courier New" FontSize="14"
+                         AutomationProperties.Name="Lisans anahtarı"
+                         AutomationProperties.HelpText="Satıcıdan aldığınız lisans anahtarını girin"/>
+
+                <Border Background="#FFF2E1" BorderBrush="#E6C48F" BorderThickness="1" Padding="10" Margin="0,14,0,0"
+                        Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#713F0A" TextWrapping="Wrap" AutomationProperties.LiveSetting="Assertive"/>
+                </Border>
+
+                <ProgressBar IsIndeterminate="True" Height="3" Margin="0,16,0,0"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                <TextBlock Text="{Binding VersionText, Mode=OneTime}" Foreground="#8A96A0" FontSize="11"
+                           HorizontalAlignment="Right" Margin="0,10,0,0"
+                           AutomationProperties.Name="Uygulama sürümü"/>
+
+                <Button x:Name="ActivateButton" Content="Etkinleştir" Height="40" Margin="0,18,0,0" IsDefault="True" Click="ActivateClick"
+                        IsEnabled="{Binding IsEditable}"
+                        Background="#C33A02" Foreground="White" BorderBrush="#A33002" FontWeight="SemiBold"
+                        AutomationProperties.Name="Lisansı etkinleştir"/>
+
+                <TextBlock Text="Etkinleştirme için internet bağlantısı gerekir. Bağlantı kurulamazsa hiçbir bilginiz gönderilmez; yeniden deneyebilirsiniz."
+                           Foreground="#687681" TextWrapping="Wrap" Margin="0,14,0,0"/>
+            </StackPanel>
+            <TextBlock Grid.Row="1" Text="Esc: çıkış" Foreground="#7B8791" HorizontalAlignment="Right"/>
+        </Grid>
+    </Grid>
+</Window>
