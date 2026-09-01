@@ -21,6 +21,10 @@ public sealed class DesignSystemResourceTests
     [InlineData("IdentityText")]
     [InlineData("SidebarBrush")]
     [InlineData("SidebarHoverBrush")]
+    [InlineData("ScrimBrush")]
+    [InlineData("FieldCompact")]
+    [InlineData("FieldCompactCombo")]
+    [InlineData("FieldCompactDate")]
     public void ResourceKeyIsDefined(string key) =>
         UiThread.Run(() =>
         {

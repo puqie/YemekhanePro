@@ -40,11 +40,11 @@
         </UniformGrid>
 
         <WrapPanel Grid.Row="2" Margin="0,0,0,10">
-            <StackPanel Width="230" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/><TextBox Margin="0,0,8,0" Height="32" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara"/></StackPanel>
-            <StackPanel Width="105" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Karar" Margin="0,0,0,4"/><ComboBox Margin="0,0,8,0" Height="32" ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" IsEditable="False" AutomationProperties.Name="Karar filtresi"/></StackPanel>
-            <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Margin="0,0,8,0" Height="32" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedMealTypeId}" AutomationProperties.Name="Öğün filtresi"/></StackPanel>
-            <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Cihaz" Margin="0,0,0,4"/><ComboBox Margin="0,0,8,0" Height="32" ItemsSource="{Binding Devices}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedDeviceId}" AutomationProperties.Name="Cihaz filtresi"/></StackPanel>
-            <StackPanel Width="130" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><ComboBox Margin="0,0,8,0" Height="32" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedClassId}" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
+            <StackPanel Width="230" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara"/></StackPanel>
+            <StackPanel Width="105" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Karar" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" IsEditable="False" AutomationProperties.Name="Karar filtresi"/></StackPanel>
+            <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedMealTypeId}" AutomationProperties.Name="Öğün filtresi"/></StackPanel>
+            <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Cihaz" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Devices}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedDeviceId}" AutomationProperties.Name="Cihaz filtresi"/></StackPanel>
+            <StackPanel Width="130" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedClassId}" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
             <Button Style="{StaticResource Action}" Command="{Binding ApplyFiltersCommand}" Content="Filtrele" IsDefault="True" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
         </WrapPanel>
 
@@ -52,7 +52,6 @@
             <Grid>
                 <DataGrid x:Name="AccessGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                     HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal"
-                    
                     EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True"
                     VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True"
                     AutomationProperties.Name="Bugünün erişim kayıtları">

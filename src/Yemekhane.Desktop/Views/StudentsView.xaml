@@ -27,18 +27,18 @@
         <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,14,0,10">
             <StackPanel>
                 <WrapPanel>
-                    <StackPanel Width="200" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Genel arama" Margin="0,0,0,4"/><TextBox x:Name="StudentSearchBox" Height="30" Margin="0,0,7,7" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Genel arama, en az 2 karakter" AutomationProperties.Name="Genel öğrenci arama"/></StackPanel>
-                    <StackPanel Width="104" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Height="30" Margin="0,0,7,7" Text="{Binding StudentNo, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam öğrenci numarası" AutomationProperties.Name="Öğrenci numarası"/></StackPanel>
-                    <StackPanel Width="112" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Height="30" Margin="0,0,7,7" Text="{Binding CardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam kart numarası" AutomationProperties.Name="Kart numarası"/></StackPanel>
-                    <StackPanel Width="112" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Ad" Margin="0,0,0,4"/><TextBox Height="30" Margin="0,0,7,7" Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Ad"/></StackPanel>
-                    <StackPanel Width="112" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Soyad" Margin="0,0,0,4"/><TextBox Height="30" Margin="0,0,7,7" Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Soyad"/></StackPanel>
-                    <StackPanel Width="104" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Durum" Margin="0,0,0,4"/><ComboBox Height="30" Margin="0,0,7,7" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding IsActive}" AutomationProperties.Name="Durum filtresi"/></StackPanel>
+                    <StackPanel Width="200" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Genel arama" Margin="0,0,0,4"/><TextBox x:Name="StudentSearchBox" Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Genel arama, en az 2 karakter" AutomationProperties.Name="Genel öğrenci arama"/></StackPanel>
+                    <StackPanel Width="104" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding StudentNo, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam öğrenci numarası" AutomationProperties.Name="Öğrenci numarası"/></StackPanel>
+                    <StackPanel Width="112" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding CardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam kart numarası" AutomationProperties.Name="Kart numarası"/></StackPanel>
+                    <StackPanel Width="112" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Ad" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Ad"/></StackPanel>
+                    <StackPanel Width="112" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Soyad" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Soyad"/></StackPanel>
+                    <StackPanel Width="104" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Durum" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding IsActive}" AutomationProperties.Name="Durum filtresi"/></StackPanel>
                     <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" IsDefault="True" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
                 </WrapPanel>
                 <WrapPanel>
-                    <StackPanel Width="190" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><TextBox Height="30" Margin="0,0,7,7" Text="{Binding ClassId}" ToolTip="Sınıf adı" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
-                    <StackPanel Width="190" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Şube" Margin="0,0,0,4"/><TextBox Height="30" Margin="0,0,7,7" Text="{Binding SectionId}" ToolTip="Şube adı" AutomationProperties.Name="Şube filtresi"/></StackPanel>
-                    <StackPanel Width="190" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Bölüm" Margin="0,0,0,4"/><TextBox Height="30" Margin="0,0,7,7" Text="{Binding DepartmentId}" ToolTip="Bölüm adı" AutomationProperties.Name="Bölüm filtresi"/></StackPanel>
+                    <StackPanel Width="190" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding ClassId}" ToolTip="Sınıf adı" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
+                    <StackPanel Width="190" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Şube" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding SectionId}" ToolTip="Şube adı" AutomationProperties.Name="Şube filtresi"/></StackPanel>
+                    <StackPanel Width="190" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Bölüm" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding DepartmentId}" ToolTip="Bölüm adı" AutomationProperties.Name="Bölüm filtresi"/></StackPanel>
                 </WrapPanel>
             </StackPanel>
         </Border>
@@ -93,7 +93,7 @@
         </Border>
         <Border x:Name="CardWorkflowHost" Grid.RowSpan="4" Visibility="{Binding IsCardWorkflowOpen, Converter={StaticResource BoolToVisibility}}" Panel.ZIndex="40">
           <Grid>
-            <Border Background="{StaticResource InkBrush}" Opacity="0.47"/>
+            <Border Background="{StaticResource ScrimBrush}"/>
             <Border Width="510" Padding="22" Background="White" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel>
                     <Grid><TextBlock Text="Kart Oku" FontSize="20" FontWeight="SemiBold"/><Button Content="Kapat" Command="{Binding CloseCardWorkflowCommand}" Style="{StaticResource Action}" HorizontalAlignment="Right"/></Grid>

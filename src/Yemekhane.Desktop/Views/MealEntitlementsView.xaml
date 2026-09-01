@@ -27,15 +27,15 @@
 
         <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,14,0,10">
             <WrapPanel>
-                <DatePicker Height="30" Margin="0,0,7,7" Width="125" SelectedDate="{Binding StartsOn}" ToolTip="Başlangıç tarihi"/>
-                <DatePicker Height="30" Margin="0,0,7,7" Width="125" SelectedDate="{Binding EndsOn}" ToolTip="Bitiş tarihi"/>
-                <TextBox Height="30" Margin="0,0,7,7" Width="95" Text="{Binding StudentNo}" ToolTip="Öğrenci NO"/>
-                <TextBox Height="30" Margin="0,0,7,7" Width="105" Text="{Binding CardNumber}" ToolTip="Kart no"/>
-                <TextBox Height="30" Margin="0,0,7,7" Width="150" Text="{Binding StudentName}" ToolTip="Ad soyad"/>
-                <TextBox Height="30" Margin="0,0,7,7" Width="105" Text="{Binding ClassName}" ToolTip="Sınıf"/>
-                <ComboBox Height="30" Margin="0,0,7,7" Width="120" ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroup}" ToolTip="Grup"/>
-                <ComboBox Height="30" Margin="0,0,7,7" Width="110" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMeal}" ToolTip="Öğün"/>
-                <ComboBox Height="30" Margin="0,0,7,7" Width="95" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding Status}" ToolTip="Durum"/>
+                <DatePicker Style="{StaticResource FieldCompactDate}" Width="125" SelectedDate="{Binding StartsOn}" ToolTip="Başlangıç tarihi"/>
+                <DatePicker Style="{StaticResource FieldCompactDate}" Width="125" SelectedDate="{Binding EndsOn}" ToolTip="Bitiş tarihi"/>
+                <TextBox Style="{StaticResource FieldCompact}" Width="95" Text="{Binding StudentNo}" ToolTip="Öğrenci NO"/>
+                <TextBox Style="{StaticResource FieldCompact}" Width="105" Text="{Binding CardNumber}" ToolTip="Kart no"/>
+                <TextBox Style="{StaticResource FieldCompact}" Width="150" Text="{Binding StudentName}" ToolTip="Ad soyad"/>
+                <TextBox Style="{StaticResource FieldCompact}" Width="105" Text="{Binding ClassName}" ToolTip="Sınıf"/>
+                <ComboBox Style="{StaticResource FieldCompactCombo}" Width="120" ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroup}" ToolTip="Grup"/>
+                <ComboBox Style="{StaticResource FieldCompactCombo}" Width="110" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMeal}" ToolTip="Öğün"/>
+                <ComboBox Style="{StaticResource FieldCompactCombo}" Width="95" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding Status}" ToolTip="Durum"/>
                 <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" IsDefault="True"/>
             </WrapPanel>
         </Border>
@@ -92,7 +92,7 @@
         </Border>
 
         <Grid Grid.RowSpan="5" Visibility="{Binding IsCancelConfirmationOpen, Converter={StaticResource BoolToVisibility}}">
-            <Border Background="{StaticResource InkBrush}" Opacity="0.80"/>
+            <Border Background="{StaticResource ScrimBrush}"/>
             <Border Width="410" Background="White" Padding="24" CornerRadius="7" HorizontalAlignment="Center" VerticalAlignment="Center"><StackPanel><TextBlock Text="Hakları iptal et" FontSize="19" FontWeight="SemiBold"/><TextBlock Text="{Binding CancelConfirmationText}" TextWrapping="Wrap" Margin="0,12,0,18"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Content="Vazgeç" Command="{Binding CloseCancelCommand}" Style="{StaticResource Action}"/><Button Content="İptali Onayla" Command="{Binding ConfirmCancelCommand}" Style="{StaticResource Destructive}"/></StackPanel></StackPanel></Border>
         </Grid>
         <views:BulkOperationWizardView Grid.RowSpan="5" Panel.ZIndex="20" DataContext="{Binding BulkWizard}"/>

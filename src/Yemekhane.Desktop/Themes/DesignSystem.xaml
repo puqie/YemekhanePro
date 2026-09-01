@@ -325,6 +325,22 @@
         <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
 
+    <!-- Dar filtre satirlari icin: Field/FieldCombo'nun MinWidth=260'i
+         sik filtre cubuklarinda kutuyu tasirir. DatePicker'in hic form
+         genisliginde bir varyanti yoktu; bu ucu tamamliyor. -->
+    <Style x:Key="FieldCompact" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="Margin" Value="0,0,7,7"/>
+    </Style>
+    <Style x:Key="FieldCompactCombo" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="Margin" Value="0,0,7,7"/>
+    </Style>
+    <Style x:Key="FieldCompactDate" TargetType="DatePicker" BasedOn="{StaticResource {x:Type DatePicker}}">
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="Margin" Value="0,0,7,7"/>
+    </Style>
+
     <Style TargetType="CheckBox">
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="FontSize" Value="{StaticResource FontMd}"/>

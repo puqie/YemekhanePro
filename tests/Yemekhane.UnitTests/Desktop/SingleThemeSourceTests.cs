@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace Yemekhane.UnitTests.Desktop;
@@ -41,15 +42,41 @@ public sealed class SingleThemeSourceTests
         Assert.DoesNotContain("<SolidColorBrush", text);
     }
 
+    /// <summary>
+    /// Renk tasiyabilecek ozellik adlari: hem duz XML ozniteligi olarak
+    /// (Background="#..."), hem de Setter/Style icinde (Property="Fill"
+    /// Value="#...") gorulebilirler.
+    /// </summary>
+    private const string ColourProperties =
+        "Background|Foreground|BorderBrush|Fill|Stroke|SelectionBrush|" +
+        "HorizontalGridLinesBrush|VerticalGridLinesBrush|AlternatingRowBackground";
+
     [Theory]
     [MemberData(nameof(XamlFiles))]
     public void ViewUsesNoRawHexColour(string relativePath)
     {
         var text = File.ReadAllText(Path.Combine(ViewRoot, relativePath));
-        var matches = Regex.Matches(text, @"(Background|Foreground|BorderBrush)=""#[0-9A-Fa-f]{6,8}""");
 
-        Assert.True(matches.Count == 0,
-            $"{relativePath}: ham renk kullanimi -- {string.Join(", ", matches.Select(m => m.Value))}");
+        // Duz XML ozniteligi: Background="#RGB".."#AARRGGBB" (3-8 hex hane).
+        var attributeMatches = Regex.Matches(text,
+            $@"({ColourProperties})=""#[0-9A-Fa-f]{{3,8}}""");
+
+        // Setter/Style icindeki deger: <Setter Property="Fill" Value="#..."/>.
+        // Property ve Value herhangi bir sirada, aralarinda baska Setter
+        // ozniteligi (orn. TargetName) olabilir; bu yuzden iki yonu de dener.
+        var setterMatches = Regex.Matches(text,
+            $@"<Setter[^>]*Property=""({ColourProperties})""[^>]*Value=""#[0-9A-Fa-f]{{3,8}}""|" +
+            $@"<Setter[^>]*Value=""#[0-9A-Fa-f]{{3,8}}""[^>]*Property=""({ColourProperties})""");
+
+        var allMatches = attributeMatches.Cast<Match>().Concat(setterMatches.Cast<Match>()).ToList();
+
+        Assert.True(allMatches.Count == 0,
+            $"{relativePath}: ham renk kullanimi -- {string.Join(", ", allMatches.Select(m => m.Value))}");
+
+        // Bilinen ve kasitli kapsam disi: adlandirilmis renkler (White, Black, Transparent...).
+        // Bu turdeki 37 "Background=\"White\"" kullanimi ayri bir konudur;
+        // bu regex'e eklemek bu turun diffini gereksiz buyutur. Sonraki
+        // okuyucu icin not: bu bilinen bir bosluk, gozden kacan bir sey degil.
     }
 
     private static string RepositoryRoot()
