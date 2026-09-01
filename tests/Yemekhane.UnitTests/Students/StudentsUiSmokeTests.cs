@@ -14,7 +14,7 @@ public sealed class StudentsUiSmokeTests
         {
             try
             {
-                var view = new StudentsView();
+                var view = new StudentsView(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(view);
                 var grid = Assert.IsType<DataGrid>(view.FindName("StudentsGrid"));
                 Assert.True(grid.EnableRowVirtualization);
                 Assert.True(grid.EnableColumnVirtualization);

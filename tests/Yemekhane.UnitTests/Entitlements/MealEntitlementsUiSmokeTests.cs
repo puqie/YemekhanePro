@@ -14,7 +14,7 @@ public sealed class MealEntitlementsUiSmokeTests
         {
             try
             {
-                var view = new MealEntitlementsView();
+                var view = new MealEntitlementsView(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(view);
                 var grid = Assert.IsType<DataGrid>(view.FindName("EntitlementsGrid"));
                 Assert.True(grid.EnableRowVirtualization); Assert.True(grid.EnableColumnVirtualization);
                 Assert.Equal(DataGridSelectionMode.Extended, grid.SelectionMode);

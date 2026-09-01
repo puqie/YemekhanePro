@@ -14,7 +14,7 @@ public sealed class GlobalSearchUiSmokeTests
         {
             try
             {
-                var window = new MainWindow();
+                var window = new MainWindow(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(window);
                 Assert.IsType<Grid>(window.FindName("GlobalSearchHost"));
                 Assert.IsType<TextBox>(window.FindName("GlobalSearchBox"));
                 Assert.IsType<ListBox>(window.FindName("SearchResults"));

@@ -19,7 +19,7 @@ public sealed class Task061UiAcceptanceTests
     {
         RunSta(() =>
         {
-            var window = new MainWindow();
+            var window = new MainWindow(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(window);
             Assert.Equal(1280, window.MinWidth);
             Assert.Equal(720, window.MinHeight);
             foreach (var size in new[] { new Size(1280, 720), new Size(1920, 1080) })

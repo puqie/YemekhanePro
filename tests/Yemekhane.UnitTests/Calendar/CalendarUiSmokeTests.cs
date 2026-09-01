@@ -11,7 +11,7 @@ public sealed class CalendarUiSmokeTests
     {
         Exception? failure = null; var thread = new Thread(() =>
         {
-            try { var view = new CalendarView(); Assert.True(view.Focusable); }
+            try { var view = new CalendarView(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(view); Assert.True(view.Focusable); }
             catch (Exception ex) { failure = ex; }
         });
         thread.SetApartmentState(ApartmentState.STA); thread.Start(); thread.Join();

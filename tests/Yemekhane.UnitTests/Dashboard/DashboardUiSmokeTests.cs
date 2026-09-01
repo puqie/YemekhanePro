@@ -13,7 +13,7 @@ public sealed class DashboardUiSmokeTests
         {
             try
             {
-                var window = new MainWindow();
+                var window = new MainWindow(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(window);
                 Assert.Equal(1280, window.MinWidth);
                 Assert.Equal(720, window.MinHeight);
                 window.Close();

@@ -75,7 +75,7 @@
                 <TextBlock Grid.Row="1" Text="OPERASYON" Foreground="#73808D" FontWeight="SemiBold" FontSize="10" Margin="5,0,0,9" />
                 <StackPanel x:Name="NavigationButtons" Grid.Row="2">
                     <Button Tag="dashboard" Command="{Binding NavigateDashboardCommand}" Background="#2F3B49" BorderThickness="0" Padding="11,10" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Dashboard sayfasını aç">
-                        <TextBlock Text="▦   Dashboard" Foreground="#E7FFFA" FontWeight="SemiBold" />
+                        <TextBlock Text="▦   Dashboard" Foreground="#FBE3D4" FontWeight="SemiBold" />
                     </Button>
                     <Button Tag="daily-tracking" Command="{Binding NavigateDailyTrackingCommand}" Content="Günlük Takip" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Günlük Takip sayfasını aç" />
                     <Button Tag="students" Command="{Binding NavigateStudentsCommand}" Content="Öğrenciler" Foreground="#D6DBE0" Background="Transparent" BorderThickness="0" Padding="11,10" Margin="0,7,0,0" HorizontalContentAlignment="Left" Cursor="Hand" AutomationProperties.Name="Öğrenciler sayfasını aç" />

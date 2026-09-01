@@ -105,7 +105,7 @@ public sealed class ReportsViewModelTests
         {
             try
             {
-                var view = new ReportsView(); var grid = Assert.IsType<DataGrid>(view.FindName("ReportGrid"));
+                var view = new ReportsView(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(view); var grid = Assert.IsType<DataGrid>(view.FindName("ReportGrid"));
                 Assert.True(grid.EnableRowVirtualization); Assert.True(grid.EnableColumnVirtualization);
                 Assert.Equal(DataGridSelectionMode.Extended, grid.SelectionMode); Assert.Empty(grid.Columns);
             }

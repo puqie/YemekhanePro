@@ -110,7 +110,7 @@ public sealed class CashViewModelTests
         {
             try
             {
-                var view = new CashView();
+                var view = new CashView(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(view);
                 var grid = Assert.IsType<DataGrid>(view.FindName("TransactionsGrid"));
                 Assert.True(grid.EnableRowVirtualization);
                 Assert.True(grid.EnableColumnVirtualization);
