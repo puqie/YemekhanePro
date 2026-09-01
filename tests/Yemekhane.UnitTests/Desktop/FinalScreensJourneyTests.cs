@@ -188,7 +188,7 @@ public sealed class FinalScreensJourneyTests : IAsyncLifetime
 
         await Execute(screen.RefreshCommand);
 
-        Assert.Null(screen.ErrorMessage);
+        Assert.Null(screen.Error);
         Assert.Contains(screen.Devices, d => d.DeviceName == "Kart Yukleme Cihazi");
     }
 
@@ -224,9 +224,9 @@ public sealed class FinalScreensJourneyTests : IAsyncLifetime
         await Execute(screen.RefreshCommand);
 
         Assert.Null(screen.ErrorMessage);
-        Assert.NotNull(screen.Summary);
-        Assert.True(screen.Summary!.TodayAllowed >= 1,
-            $"Turnikeden geçiş oldu ama panoda {screen.Summary.TodayAllowed} görünüyor.");
+        Assert.NotNull(screen.Snapshot);
+        Assert.True(screen.Snapshot!.Kpis.Used >= 1,
+            $"Turnikeden geçiş oldu ama panoda kullanılan hak {screen.Snapshot.Kpis.Used} görünüyor.");
     }
 
     [Fact]
@@ -309,7 +309,7 @@ public sealed class FinalScreensJourneyTests : IAsyncLifetime
         // Yuzlerce ogrenciyi etkileyen islem adim adim ilerlemeli;
         // adimlar atlanirsa kullanici ne yaptigini gormeden uygular.
         var wizard = NewWizard();
-        wizard.Open();
+        wizard.OpenCommand.Execute(null);
 
         Assert.True(wizard.IsStep1, "Sihirbaz 1. adımda başlamadı.");
         Assert.False(wizard.IsStep2);
@@ -322,7 +322,7 @@ public sealed class FinalScreensJourneyTests : IAsyncLifetime
     public void ClosingTheWizardHidesIt()
     {
         var wizard = NewWizard();
-        wizard.Open();
+        wizard.OpenCommand.Execute(null);
         Assert.True(wizard.IsOpen);
 
         wizard.CloseCommand.Execute(null);

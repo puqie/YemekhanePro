@@ -323,6 +323,7 @@ public sealed class YemekhaneApiFactory : WebApplicationFactory<Program>
                 Permissions.StudentsRead, Permissions.StudentsWrite, Permissions.StudentsDeactivate,
                 Permissions.CardsManage, Permissions.EntitlementsManage, Permissions.EntitlementsBulk,
                 Permissions.CalendarManage, Permissions.DevicesRead, Permissions.DevicesManage,
+                Permissions.DashboardRead, Permissions.NotificationsRead,
                 Permissions.ReportsRead, Permissions.ReportsExport,
                 Permissions.CashRead, Permissions.CashWrite, Permissions.CashManage, Permissions.SmsRead, Permissions.SmsSend, Permissions.SmsManage,
                 Permissions.AccessRead
