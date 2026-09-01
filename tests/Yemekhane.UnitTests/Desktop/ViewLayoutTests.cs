@@ -22,6 +22,21 @@ public sealed class ViewLayoutTests
         "devicecards", "sms", "cash", "reports", "settings", "bulk"
     ];
 
+    /// <summary>
+    /// Views() eksi "devicecards": o ekranda hic TextBox/ComboBox/DatePicker/
+    /// PasswordBox YOK (yalnizca DataGrid ve Button var). IsVisible filtresi
+    /// kaldirildiktan sonra (bkz. inceleme geri bildirimi) bu ekran "hiçbir
+    /// giriş alanı ölçülemedi" ile KIRMIZI cikiyordu -- bu bir GENISLIK
+    /// regresyonu degil, teorinin bu ekran icin zaten anlamsiz olmasi.
+    /// DeviceCardsView.xaml'e DOKUNULMAZ (gorev kapsami disi); bunun yerine
+    /// yalnizca bu teori o ekrani atlar.
+    /// </summary>
+    public static TheoryData<string> ViewsWithInputFields() =>
+    [
+        "students", "daily", "entitlements", "calendar", "devices",
+        "sms", "cash", "reports", "settings", "bulk"
+    ];
+
     private static FrameworkElement Create(string name) => name switch
     {
         "students" => new StudentsView(),
@@ -65,15 +80,32 @@ public sealed class ViewLayoutTests
         });
 
     [Theory]
-    [MemberData(nameof(Views))]
+    [MemberData(nameof(ViewsWithInputFields))]
     public void NoInputFieldCollapsesToAnUnusableWidth(string name) =>
         OnUiThread(() =>
         {
             var (element, _, _) = Arrange(name, 1600, 900);
-            var narrow = Descendants(element)
+            // IsVisible KONTROL EDILMEZ: bu barindirma (UiThread.Host -> Border,
+            // PresentationSource'suz) altinda IsVisible HER ZAMAN false donuyor --
+            // ekrandaki HICBIR kontrol icin true olmuyor (bkz. inceleme geri
+            // bildirimi: StudentsView'da 19 girdiden 15'i ActualWidth > 0 ama
+            // 0'i IsVisible). Bu filtre varken test 11 ekranin TAMAMINDA bos
+            // kume uzerinde calisip sessizce yesil donuyordu. ActualWidth > 0,
+            // FieldWidthTests.cs'in de kullandigi dogru vekildir: yalnizca
+            // GERCEKTEN yerlestirilmis (gorunmeyen sekmede degil) kontroller
+            // sifirdan buyuk genislik alir.
+            var measured = Descendants(element)
                 .OfType<Control>()
                 .Where(control => control is TextBox or ComboBox or DatePicker or PasswordBox)
-                .Where(control => control.IsVisible && control.ActualWidth > 0 && control.ActualWidth < 80)
+                .Where(control => control.ActualWidth > 0)
+                .ToArray();
+
+            // Hicbir kontrol olculmediyse test KANITLAMAZ; FieldWidthTests'teki
+            // ayni kural burada da gecerli.
+            Assert.True(measured.Length > 0, $"{name}: hiçbir giriş alanı ölçülemedi; test anlamsız.");
+
+            var narrow = measured
+                .Where(control => control.ActualWidth < 80)
                 .Select(control => $"{control.GetType().Name}({control.ActualWidth:F0}px)")
                 .ToArray();
 
@@ -88,10 +120,17 @@ public sealed class ViewLayoutTests
         {
             // Sarmalayan panelden tasan bir filtre alani ekranda GORUNMEZ:
             // kullanici "Filtrele" dugmesini bulamaz.
+            // IsVisible KONTROL EDILMEZ: bkz. NoInputFieldCollapsesToAnUnusableWidth
+            // ustundeki not -- bu barindirma altinda her zaman false donuyor.
             var (element, width, _) = Arrange(name, 1600, 900);
-            var escaped = Descendants(element).OfType<FrameworkElement>()
+            var measured = Descendants(element).OfType<FrameworkElement>()
                 .Where(child => child is TextBox or ComboBox or Button)
-                .Where(child => child.IsVisible && child.ActualWidth > 0)
+                .Where(child => child.ActualWidth > 0)
+                .ToArray();
+
+            Assert.True(measured.Length > 0, $"{name}: hiçbir kontrol ölçülemedi; test anlamsız.");
+
+            var escaped = measured
                 .Select(child => new
                 {
                     child,
@@ -110,9 +149,17 @@ public sealed class ViewLayoutTests
     public void EveryButtonIsBigEnoughToClick(string name) =>
         OnUiThread(() =>
         {
+            // IsVisible KONTROL EDILMEZ: bkz. NoInputFieldCollapsesToAnUnusableWidth
+            // ustundeki not.
             var (element, _, _) = Arrange(name, 1600, 900);
-            var tiny = Descendants(element).OfType<Button>()
-                .Where(button => button.IsVisible && button.ActualHeight > 0 && button.ActualHeight < 26)
+            var measured = Descendants(element).OfType<Button>()
+                .Where(button => button.ActualHeight > 0)
+                .ToArray();
+
+            Assert.True(measured.Length > 0, $"{name}: hiçbir düğme ölçülemedi; test anlamsız.");
+
+            var tiny = measured
+                .Where(button => button.ActualHeight < 26)
                 .Select(button => $"{button.Content}({button.ActualHeight:F0}px)")
                 .ToArray();
 

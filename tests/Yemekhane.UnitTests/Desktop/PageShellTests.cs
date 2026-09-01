@@ -134,6 +134,21 @@ public sealed class PageShellTests
     /// 11a yalnizca DailyTrackingView'i bu boyutta dogruladi; kalan bes ekran
     /// (Calendar, Sms, Reports, Settings, StudentImport) BulkOperationWizardView
     /// disinda burada tamamlanir.
+    ///
+    /// KANITLANMIS BOSLUK: yalnizca genislik/yukseklik tasma kontrolu, PageShell
+    /// stili hic bulunamayip Content'in gorsel agaca HIC girmedigi durumda da
+    /// yesil doner (0<=width, 0<=height her zaman dogru) -- bu yuzden asagida
+    /// PageShell dugumunun KENDI alt agacinda bir dugum sayisi tabani eklendi.
+    ///
+    /// TUM VIEW'un degil, SADECE PageShell dugumunun alt agacinin sayilmasi
+    /// bilincli bir secim: CalendarView'da PageShell'in yaninda (kardes olarak)
+    /// bir cekmece + BulkOperationWizardView var (583 dugum), ReportsView'da
+    /// sol nav paneli PageShell'in disinda (21 dugum) -- ilk denemede TUM
+    /// view sayilinca bu kardes icerik PageShell'in stili hic BULUNAMASA bile
+    /// tabani asip testi SESSIZCE yanlis-yesil dondurdugu mutasyon testiyle
+    /// GOSTERILDI (bkz. inceleme geri bildirimi). PageShell'in KENDI alt agaci
+    /// sayilinca stil bulunamadiginda bu deger SIFIRA yakin kalir, kardes
+    /// icerikten etkilenmez.
     /// </summary>
     [Theory]
     [InlineData("calendar")]
@@ -160,6 +175,13 @@ public sealed class PageShellTests
             host.Measure(new Size(width, height));
             host.Arrange(new Rect(0, 0, width, height));
             host.UpdateLayout();
+
+            var shell = Descendants(view).OfType<PageShell>().FirstOrDefault();
+            Assert.NotNull(shell);
+            var shellNodeCount = Descendants(shell!).Count();
+            Assert.True(shellNodeCount > 20,
+                $"{name}: PageShell'in kendi alt agaci neredeyse bos ({shellNodeCount} dugum) -- " +
+                "stil bulunamamis olabilir, test anlamsiz.");
 
             Assert.True(view.ActualWidth <= width + 0.5,
                 $"{name}: {view.ActualWidth:F0}px genişlik, pencere {width}px.");
