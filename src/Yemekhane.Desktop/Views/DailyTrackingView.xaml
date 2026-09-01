@@ -49,12 +49,12 @@
         </UniformGrid>
 
         <WrapPanel Grid.Row="2" Margin="0,0,0,10">
-            <TextBox Style="{StaticResource Field}" Width="230" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara"/>
-            <ComboBox Style="{StaticResource Field}" Width="105" ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" IsEditable="False" AutomationProperties.Name="Karar filtresi"/>
-            <ComboBox Style="{StaticResource Field}" Width="145" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedMealTypeId}" AutomationProperties.Name="Öğün filtresi"/>
-            <ComboBox Style="{StaticResource Field}" Width="145" ItemsSource="{Binding Devices}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedDeviceId}" AutomationProperties.Name="Cihaz filtresi"/>
-            <ComboBox Style="{StaticResource Field}" Width="130" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedClassId}" AutomationProperties.Name="Sınıf filtresi"/>
-            <Button Style="{StaticResource Action}" Command="{Binding ApplyFiltersCommand}" Content="Filtrele" IsDefault="True"/>
+            <StackPanel Width="230" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/><TextBox Style="{StaticResource Field}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara"/></StackPanel>
+            <StackPanel Width="105" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Karar" Margin="0,0,0,4"/><ComboBox Style="{StaticResource Field}" ItemsSource="{Binding Decisions}" SelectedItem="{Binding SelectedDecision}" IsEditable="False" AutomationProperties.Name="Karar filtresi"/></StackPanel>
+            <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource Field}" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedMealTypeId}" AutomationProperties.Name="Öğün filtresi"/></StackPanel>
+            <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Cihaz" Margin="0,0,0,4"/><ComboBox Style="{StaticResource Field}" ItemsSource="{Binding Devices}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedDeviceId}" AutomationProperties.Name="Cihaz filtresi"/></StackPanel>
+            <StackPanel Width="130" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><ComboBox Style="{StaticResource Field}" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedClassId}" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
+            <Button Style="{StaticResource Action}" Command="{Binding ApplyFiltersCommand}" Content="Filtrele" IsDefault="True" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
         </WrapPanel>
 
         <Border Grid.Row="3" Background="White" BorderBrush="#E1E5E9" BorderThickness="1" CornerRadius="6">

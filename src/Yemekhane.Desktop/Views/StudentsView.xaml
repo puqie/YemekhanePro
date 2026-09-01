@@ -67,7 +67,7 @@
                         <DataGridTextColumn Header="BÖLÜM" Binding="{Binding DepartmentName}" Width="95"/>
                         <DataGridTextColumn Header="VELİ TEL" Binding="{Binding ParentPhone}" Width="110"/>
                         <DataGridTextColumn Header="DURUM" Binding="{Binding IsActive}" Width="62"/>
-                        <DataGridTextColumn Header="BUGÜNKÜ HAK" Binding="{Binding TodayEntitlement}" Width="92"/>
+                        <DataGridTextColumn Header="BUGÜNKÜ HAK" Binding="{Binding TodayEntitlement}" Width="100"/>
                         <DataGridCheckBoxColumn Header="BUGÜN GİRİŞ" Binding="{Binding HasEnteredToday}" Width="88"/>
                         <DataGridTextColumn Header="SON GİRİŞ" Binding="{Binding LastEntryAt, StringFormat={}{0:dd.MM HH:mm}}" Width="105"/>
                     </DataGrid.Columns>
