@@ -26,7 +26,7 @@
                     <Button.IsEnabled>
                         <MultiBinding Converter="{StaticResource AllInverseBool}">
                             <Binding Path="IsGrantOpen"/>
-                            <Binding Path="BulkWizard.IsOpen"/>
+                            <Binding Path="BulkWizard.IsOpen" FallbackValue="False"/>
                         </MultiBinding>
                     </Button.IsEnabled>
                 </Button>
@@ -34,7 +34,7 @@
                     <Button.IsEnabled>
                         <MultiBinding Converter="{StaticResource AllInverseBool}">
                             <Binding Path="IsCancelConfirmationOpen"/>
-                            <Binding Path="BulkWizard.IsOpen"/>
+                            <Binding Path="BulkWizard.IsOpen" FallbackValue="False"/>
                         </MultiBinding>
                     </Button.IsEnabled>
                 </Button>

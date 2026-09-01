@@ -5,6 +5,7 @@ using Yemekhane.Application.Calendar;
 using Yemekhane.Application.Entitlements;
 using Yemekhane.Application.Meals;
 using Yemekhane.Application.Organization;
+using Yemekhane.Desktop;
 using Yemekhane.Desktop.Controls;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
@@ -150,7 +151,14 @@ public sealed class EntitlementSelectionTests
 
             var drawer = FindByType<Drawer>(view, _ => true);
             Assert.NotNull(drawer);
-            Assert.Equal(400d, drawer!.DrawerWidth);
+            // Duzeltme turu 1, Minor 3: DrawerWidth DP'sinin varsayilani zaten
+            // 400d. XAML'de DrawerWidth="400" hic YAZILMASA bile bu deger
+            // gorulur -- bu yuzden deger karsilastirmasi TEK BASINA hicbir sey
+            // kanitlamaz. Gercek kosul, YEREL bir deger GERCEKTEN atanmis mi
+            // sorusudur.
+            Assert.NotEqual(DependencyProperty.UnsetValue,
+                drawer!.ReadLocalValue(Drawer.DrawerWidthProperty));
+            Assert.Equal(400d, drawer.DrawerWidth);
         });
 
     /// <summary>
@@ -229,6 +237,67 @@ public sealed class EntitlementSelectionTests
             Assert.NotNull(requestCancel);
             Assert.False(openGrant!.IsEnabled, "Toplu işlem sihirbazı açıkken Hızlı Hakediş açılabilmemeli.");
             Assert.False(requestCancel!.IsEnabled, "Toplu işlem sihirbazı açıkken iptal onayı açılabilmemeli.");
+        });
+
+    /// <summary>
+    /// Duzeltme turu 1, Onemli 1: rota yolu (Ogrenciler ekranindan Ctrl+K ile
+    /// "Hakediş Ver" secmek) OpenGrant()'i DOGRUDAN ViewModel uzerinde cagirir --
+    /// hicbir dugmeye dokunmaz, dolayisiyla hicbir IsEnabled MultiBinding'i
+    /// devreye giremez. Iptal onay modali (ScrimStrongBrush, yikici) acikken
+    /// bu rota tetiklenirse, Hakedis cekmecesi onun USTUNE acilirdi ve Escape
+    /// (MainWindow.xaml.cs:321) yalnizca alttaki modali kapatip cekmeceyi
+    /// ekranda birakirdi. Duzeltme MainWindow.xaml.cs'de (code-behind, dondurulmus
+    /// degil): rota isleyici HandleRoute'tan ONCE CloseCancelCommand'i calistirir.
+    /// </summary>
+    [Fact]
+    public void RotaYoluAcikIptalOnayininUstuneCekmeceAcamaz() =>
+        UiThread.Run(() =>
+        {
+            var vm = CreateViewModel();
+            var item = Item("100", "Ayşe Yılmaz", "5A", "1111");
+            vm.Items.Add(item);
+            vm.SetSelection([item]);
+            vm.RequestCancelCommand.Execute(null);
+            Assert.True(vm.IsCancelConfirmationOpen);
+
+            var window = new MainWindow();
+            UiThread.ApplyResources(window);
+            window.MealEntitlementsDataContext = vm;
+            window.ConfigureShortcuts(new HashSet<string> { "entitlements.manage", "entitlements.bulk" });
+
+            window.Navigate($"{ShellRoutes.Entitlements}/{item.StudentId:D}");
+
+            Assert.False(vm.IsGrantOpen && vm.IsCancelConfirmationOpen,
+                "Hakediş çekmecesi ve iptal onayı aynı anda açık olamaz.");
+            window.Close();
+        });
+
+    /// <summary>
+    /// Duzeltme turu 1, Onemli 2: SelectedCountText'in gorunur METNI olcum
+    /// yoluyla dogrulanir. Yol yanlis yazilsa (orn. SelectedItem.Count) WPF
+    /// bunu sessizce yoksayip "Seçili: " metnini sonsuza kadar gosterirdi --
+    /// yalnizca trace seviyesinde bir binding hatasi cikar, kullaniciya hicbir
+    /// sey gorunmez.
+    /// </summary>
+    [Fact]
+    public void SeciliSayisiMetniSecimeGoreGuncellenir() =>
+        UiThread.Run(() =>
+        {
+            var vm = CreateViewModel();
+            var a = Item("100", "Ayşe Yılmaz", "5A", "1111");
+            var b = Item("101", "Mehmet Demir", "5B", "2222");
+            vm.Items.Add(a); vm.Items.Add(b);
+
+            var view = new MealEntitlementsView { DataContext = vm };
+            Layout(view);
+
+            var countText = (TextBlock)FindByName(view, "SelectedCountText")!;
+            Assert.Equal("Seçili: 0", countText.Text);
+
+            vm.SetSelection([a, b]);
+            view.UpdateLayout();
+
+            Assert.Equal("Seçili: 2", countText.Text);
         });
 
     private static Border Layout(FrameworkElement view)

@@ -142,7 +142,19 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         SettingsHost.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
         StudentImportHost.Visibility = studentImport ? Visibility.Visible : Visibility.Collapsed;
         if (students && StudentsDataContext is StudentsViewModel viewModel) viewModel.HandleRoute(route);
-        if (entitlements && MealEntitlementsDataContext is MealEntitlementsViewModel entitlementViewModel) entitlementViewModel.HandleRoute(route);
+        if (entitlements && MealEntitlementsDataContext is MealEntitlementsViewModel entitlementViewModel)
+        {
+            // HandleRoute (orn. Ogrenciler ekranindan "Hakediş Ver" derin baglantisi)
+            // OpenGrant()'i DOGRUDAN ViewModel uzerinde cagirir; hicbir dugmeye
+            // dokunmaz, dolayisiyla View'deki IsEnabled MultiBinding korumalari
+            // devreye giremez. Yikici Iptal onay modali (ScrimStrongBrush) acikken
+            // bu rota tetiklenirse cekmece onun USTUNE acilir ve Escape yalnizca
+            // alttaki modali kapatip cekmeceyi ekranda birakir. CloseCancelCommand
+            // her zaman calistirilabilir ve modal zaten kapaliysa hicbir sey yapmaz
+            // (Set esitlik kontrolu sayesinde no-op).
+            entitlementViewModel.CloseCancelCommand.Execute(null);
+            entitlementViewModel.HandleRoute(route);
+        }
         if (sms && SmsDataContext is SmsViewModel smsViewModel && route.StartsWith(Services.ShellRoutes.Sms + "/", StringComparison.Ordinal)
             && Guid.TryParse(route[(route.LastIndexOf('/') + 1)..], out var studentId)) smsViewModel.SelectStudent(studentId);
         if (calendar && CalendarDataContext is CalendarViewModel calendarViewModel
