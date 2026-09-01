@@ -33,4 +33,26 @@
     <PublishSingleFile>false</PublishSingleFile>
   </PropertyGroup>
 
+  <!-- Lisans imza sirri KAYNAKTA bos kalir: depoya gercek bir sir girerse onu goren
+       herkes sahte lisans uretebilir ve koruma anlamini yitirir.
+
+       Sir yayin sirasinda enjekte edilir:
+           dotnet publish -p:LicensingSigningSecret=<sir>
+
+       Enjekte EDILMEZSE yayinlanan uygulama acilista durur (LicenseGate acik hata
+       verir). Bu yuzden hedef, sir verilmediginde uyari uretir: hatanin musteride
+       degil yayin sirasinda fark edilmesi gerekir. -->
+  <Target Name="InjectLicensingSigningSecret" AfterTargets="Publish">
+    <Warning Condition="'$(LicensingSigningSecret)' == ''"
+             Text="LicensingSigningSecret verilmedi. Yayinlanan uygulama acilista duracaktir. Kullanim: dotnet publish -p:LicensingSigningSecret=&lt;sir&gt;" />
+
+    <!-- Yayin ciktisindaki appsettings.json icinde yalnizca bos sir alani degistirilir;
+         kaynak dosyaya DOKUNULMAZ. -->
+    <WriteLinesToFile Condition="'$(LicensingSigningSecret)' != ''"
+                      File="$(PublishDir)appsettings.json"
+                      Lines="$([System.IO.File]::ReadAllText('$(PublishDir)appsettings.json').Replace('&quot;SigningSecret&quot;: &quot;&quot;', '&quot;SigningSecret&quot;: &quot;$(LicensingSigningSecret)&quot;'))"
+                      Overwrite="true"
+                      Encoding="UTF-8" />
+  </Target>
+
 </Project>
