@@ -14,6 +14,7 @@
         <local:InverseBooleanConverter x:Key="InverseBool"/>
         <converters:StatusBadgeConverter x:Key="StatusBadge"/>
         <converters:StatusBrushConverter x:Key="StatusBrush"/>
+        <converters:SameStudentConverter x:Key="SameStudent"/>
             </ResourceDictionary>
 </UserControl.Resources>
     <Border Background="{StaticResource CanvasBrush}">
@@ -59,7 +60,11 @@
                         EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True"
                         VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Öğrenci listesi">
                         <DataGrid.InputBindings>
-                            <MouseBinding MouseAction="LeftClick" Command="{Binding OpenQuickDetailCommand}" CommandParameter="{Binding SelectedItem, ElementName=StudentsGrid}"/>
+                            <!-- Tek tiklama da TAM detayi yukler (OpenFullDetailCommand): form artik
+                                 kalici oldugundan yarim dolu bir form (Details bos, SelectedStudent dolu)
+                                 hicbir zaman ekranda gorunmemeli. OpenQuickDetailCommand bu ekranda
+                                 artik kullanilmiyor; ViewModel'e dokunulmadi, komut hala mevcut. -->
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding OpenFullDetailCommand}" CommandParameter="{Binding SelectedItem, ElementName=StudentsGrid}"/>
                             <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding OpenFullDetailCommand}" CommandParameter="{Binding SelectedItem, ElementName=StudentsGrid}"/>
                             <KeyBinding Key="Enter" Command="{Binding OpenFullDetailCommand}" CommandParameter="{Binding SelectedItem, ElementName=StudentsGrid}"/>
                         </DataGrid.InputBindings>
@@ -95,8 +100,15 @@
 
             <Border x:Name="StudentFormPanel" Grid.Column="2" Style="{StaticResource Card}">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <!-- Form alanlari + aksiyon butonlari KAYAN bir "*" satirda; sekmeler
+                         MinHeight'li sabit bir alt satirda (Onemli/Kucuk 6, Gorev 7 duzeltme
+                         turu). Once ikisi de Auto/Auto/* idi: form icerigi 1440x900'de ~620px'e
+                         cikiyor, kalan ~568px'lik "*" satiri SIFIRA cokuyor ve dokuz sekme hic
+                         gorunmuyordu. Simdi form tasarsa bile ScrollViewer icinde kayar, sekmeler
+                         her zaman en az MinHeight kadar yer bulur. -->
+                    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto" MinHeight="220"/></Grid.RowDefinitions>
 
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -113,35 +125,52 @@
                         <TextBlock Text="Soyad" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Field}" Text="{Binding FormLastName, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsFormOpen, Converter={StaticResource InverseBool}}"/>
 
-                        <TextBlock Text="Sınıf" Style="{StaticResource Label}"/>
-                        <TextBox Style="{StaticResource Field}" Text="{Binding SelectedStudent.ClassName, Mode=OneWay}" IsReadOnly="True"/>
+                        <!-- Bu blok SADECE Details ve SelectedStudent AYNI ogrenciye ait olunca gorunur
+                             (Kritik 2 duzeltmesi). Iki kaynak farkli anlarda farkli ogrencileri
+                             gosterebilir: (1) OpenCreate() Details'i null yapip SelectedStudent'a
+                             dokunmaz; "Yeni Ogrenci" tiklaninca onceki secimin Kart No/Durum'u
+                             ekranda KALIRDI. (2) satir A'ya tiklanip api yaniti gelmeden satir B'ye
+                             tiklanirsa SelectedStudent aninda B olur, ama Details bir sure A'yi tasir;
+                             iki farkli ogrenci ayni panelde bir arada gorunurdu. SameStudent, Id'leri
+                             karsilastirip eslesmedigi HER an (null dahil) blogu gizler. -->
+                        <StackPanel>
+                            <StackPanel.Visibility>
+                                <MultiBinding Converter="{StaticResource SameStudent}" FallbackValue="Collapsed">
+                                    <Binding Path="Details.Id"/>
+                                    <Binding Path="SelectedStudent.Id"/>
+                                </MultiBinding>
+                            </StackPanel.Visibility>
+                            <TextBlock Text="Sınıf" Style="{StaticResource Label}"/>
+                            <TextBox Style="{StaticResource Field}" Text="{Binding SelectedStudent.ClassName, Mode=OneWay}" IsReadOnly="True"/>
 
-                        <TextBlock Text="Şube" Style="{StaticResource Label}"/>
-                        <TextBox Style="{StaticResource Field}" Text="{Binding SelectedStudent.SectionName, Mode=OneWay}" IsReadOnly="True"/>
+                            <TextBlock Text="Şube" Style="{StaticResource Label}"/>
+                            <TextBox Style="{StaticResource Field}" Text="{Binding SelectedStudent.SectionName, Mode=OneWay}" IsReadOnly="True"/>
 
-                        <TextBlock Text="Kart No" Style="{StaticResource Label}"/>
-                        <TextBox Style="{StaticResource Field}" Text="{Binding SelectedStudent.CardNumber, Mode=OneWay}" IsReadOnly="True"/>
+                            <TextBlock Text="Kart No" Style="{StaticResource Label}"/>
+                            <TextBox Style="{StaticResource Field}" Text="{Binding SelectedStudent.CardNumber, Mode=OneWay}" IsReadOnly="True"/>
 
-                        <TextBlock Text="Veli Tel" Style="{StaticResource Label}"/>
-                        <TextBox Style="{StaticResource Field}" Text="{Binding SelectedStudent.ParentPhone, Mode=OneWay}" IsReadOnly="True"/>
+                            <TextBlock Text="Veli Tel" Style="{StaticResource Label}"/>
+                            <TextBox Style="{StaticResource Field}" Text="{Binding SelectedStudent.ParentPhone, Mode=OneWay}" IsReadOnly="True"/>
+
+                            <TextBlock Text="Durum" Style="{StaticResource Label}"/>
+                            <Border Background="{Binding SelectedStudent.IsActive, Converter={StaticResource StatusBrush}}" Style="{StaticResource BadgeNeutral}" HorizontalAlignment="Left">
+                                <TextBlock Text="{Binding SelectedStudent.IsActive, Converter={StaticResource StatusBadge}}" FontSize="{StaticResource FontXs}"/>
+                            </Border>
+                        </StackPanel>
 
                         <TextBlock Text="Not" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Field}" Text="{Binding FormNotes}" AcceptsReturn="True" Height="60" TextWrapping="Wrap" IsReadOnly="{Binding IsFormOpen, Converter={StaticResource InverseBool}}"/>
 
-                        <TextBlock Text="Durum" Style="{StaticResource Label}"/>
-                        <Border Background="{Binding SelectedStudent.IsActive, Converter={StaticResource StatusBrush}}" Style="{StaticResource BadgeNeutral}" HorizontalAlignment="Left">
-                            <TextBlock Text="{Binding SelectedStudent.IsActive, Converter={StaticResource StatusBadge}}" FontSize="{StaticResource FontXs}"/>
-                        </Border>
-
                         <Button Content="Kaydet" Command="{Binding SaveStudentCommand}" Style="{StaticResource Action}" HorizontalAlignment="Left" Margin="0,16,0,0"/>
                         <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource FieldError}" Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"/>
-                    </StackPanel>
 
-                    <Grid Grid.Row="1" Margin="0,14,0,0">
-                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                        <WrapPanel><Button Style="{StaticResource Action}" Content="Pasifleştir" Command="{Binding DeactivateCommand}" Visibility="{Binding CanDeactivate, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="İzin Ver" Command="{Binding GiveLeaveCommand}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="SMS Gönder" Command="{Binding OpenSmsCommand}" Visibility="{Binding CanSendSms, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="Hakediş Ver" Command="{Binding GrantEntitlementCommand}" Visibility="{Binding CanGrantEntitlement, Converter={StaticResource BoolToVisibility}}"/></WrapPanel>
-                        <WrapPanel Grid.Row="1" Margin="0,8,0,0"><TextBox Width="105" Text="{Binding NewCardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Yeni kart numarası" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="Okuyucudan Al" Command="{Binding ReadCardCommand}" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}" ToolTip="Bağlı aktif okuyucu yoksa F3 kart akışı ayrıntılı durum gösterir" ToolTipService.ShowOnDisabled="True"/><Button Style="{StaticResource Action}" Content="Kart Değiştir" Command="{Binding ReplaceCardCommand}" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}"/></WrapPanel>
-                    </Grid>
+                        <Grid Margin="0,14,0,0">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <WrapPanel><Button Style="{StaticResource Action}" Content="Pasifleştir" Command="{Binding DeactivateCommand}" Visibility="{Binding CanDeactivate, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="İzin Ver" Command="{Binding GiveLeaveCommand}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="SMS Gönder" Command="{Binding OpenSmsCommand}" Visibility="{Binding CanSendSms, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="Hakediş Ver" Command="{Binding GrantEntitlementCommand}" Visibility="{Binding CanGrantEntitlement, Converter={StaticResource BoolToVisibility}}"/></WrapPanel>
+                            <WrapPanel Grid.Row="1" Margin="0,8,0,0"><TextBox Width="105" Text="{Binding NewCardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Yeni kart numarası" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}"/><Button Style="{StaticResource Action}" Content="Okuyucudan Al" Command="{Binding ReadCardCommand}" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}" ToolTip="Bağlı aktif okuyucu yoksa F3 kart akışı ayrıntılı durum gösterir" ToolTipService.ShowOnDisabled="True"/><Button Style="{StaticResource Action}" Content="Kart Değiştir" Command="{Binding ReplaceCardCommand}" Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}"/></WrapPanel>
+                        </Grid>
+                    </StackPanel>
+                    </ScrollViewer>
 
                     <!-- Detay sekmeleri (Kartlar, Veliler, Hakedisler, Giris Gecmisi, Izinler vb.):
                          eskiden detay cekmecesinde yasiyordu. Form artik kalici oldugu icin
@@ -149,7 +178,7 @@
                          verisini gostermek uzere tasindi. "Liste altinda bolum" alternatifi
                          listenin dikey alanini bogardigi icin secilmedi; formla ayni sutunda
                          kalmasi secili ogrenciyle olan iliskiyi daha net kurar. -->
-                    <Border Grid.Row="2" Margin="0,14,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
+                    <Border Grid.Row="1" Margin="0,14,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
                         <TabControl ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}">
                             <TabControl.ItemTemplate>
                                 <DataTemplate><TextBlock Text="{Binding Title}"/></DataTemplate>

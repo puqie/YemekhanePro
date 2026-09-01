@@ -272,7 +272,12 @@ public partial class MainWindow : Window, IShortcutCommandTarget
     {
         return BaseRoute(currentRoute) switch
         {
-            ShellRoutes.Students or ShellRoutes.StudentDetail => StudentsDataContext is StudentsViewModel students && (students.IsCardWorkflowOpen || students.IsQuickDetailOpen || students.IsDetailOpen),
+            // Ogrenciler ekraninda IsQuickDetailOpen/IsDetailOpen artik hicbir sey CIZMIYOR
+            // (Gorev 7: form kalici panel oldu, cekmeceler kaldirildi). Onlari kapatilabilir
+            // katman saymak Escape'in surmekte olan bir duzenlemeyi (IsFormOpen'i kapatarak)
+            // GORUNMEYEN bir nedenle sessizce iptal etmesine yol aciyordu. Gercekten goruntude
+            // olan tek katman kart okuma modalidir.
+            ShellRoutes.Students or ShellRoutes.StudentDetail => StudentsDataContext is StudentsViewModel students && students.IsCardWorkflowOpen,
             ShellRoutes.Devices => DevicesDataContext is DevicesViewModel devices && (devices.IsLogsOpen || devices.IsEditorOpen),
             ShellRoutes.HolidayTransfer => CalendarDataContext is CalendarViewModel calendar &&
                 (calendar.IsDrawerOpen || calendar.BulkWizard is { IsOpen: true } or { IsHistoryOpen: true }),

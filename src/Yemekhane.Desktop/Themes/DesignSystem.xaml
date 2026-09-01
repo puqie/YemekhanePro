@@ -280,6 +280,16 @@
                             <Setter TargetName="bd" Property="Background" Value="{StaticResource SunkenBrush}"/>
                             <Setter Property="Foreground" Value="{StaticResource FaintBrush}"/>
                         </Trigger>
+                        <!-- IsEnabled=True iken IsReadOnly=True olan kutular yaziliyor gorunur ama
+                             yazmaya izin vermezdi (Onemli 4, Gorev 7 duzeltme turu): beyaz zemin,
+                             odaklanabilir, imlec goruntuluyordu; kullanici yazip hicbir sey
+                             olmadigini goruyordu. IsEnabled=False ile ayni SunkenBrush zeminini
+                             kullanir ama metni FaintBrush'a solmadan birakir: bu alan devre disi
+                             degil, yalnizca su an duzenlenemez (ornegin secili ogrencinin salt
+                             okunur bilgisi ya da form henuz "Duzenle"ye basilmadan once). -->
+                        <Trigger Property="IsReadOnly" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{StaticResource SunkenBrush}"/>
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
