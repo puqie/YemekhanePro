@@ -31,31 +31,51 @@ namespace Yemekhane.UnitTests.Desktop;
 [Collection(UiCollection.Name)]
 public sealed class CashIdentityTests
 {
+    /// <summary>
+    /// Duzeltme turu son, Onemli 2: OpenVoidCommand XAML'de IKI kez gecer --
+    /// arac cubugundaki dugme (satir 52) VE izgaranin Enter/Delete
+    /// KeyBinding'leri (satir 55). Eski test IndexOf/LastIndexOf ile ham
+    /// XAML metnini dilimliyordu; XAML sirasi degisirse veya KeyBinding
+    /// dugmeden ONCE gelirse LastIndexOf("&lt;Button", ...) ALAKASIZ bir
+    /// dugmeye geri yururdu ve Destructive iddiasi SESSIZCE yanlis elemani
+    /// test ederdi. Bunun yerine gorsel agacta GERCEK dugme,
+    /// ReferenceEquals(b.Command, vm.OpenVoidCommand) ile bulunur --
+    /// EklemeAcikkenIptalYollariDevreDisi... testinin kullandigi ayni desen.
+    /// </summary>
     [Fact]
-    public void IptalDugmesiYikiciStilTasir()
-    {
-        var xaml = CashXaml();
-        var index = xaml.IndexOf("OpenVoidCommand", StringComparison.Ordinal);
+    public void IptalDugmesiYikiciStilTasir() =>
+        UiThread.Run(() =>
+        {
+            var api = new FakeCashApi();
+            var vm = new CashViewModel(api, ["cash.read", "cash.write"]);
+            vm.InitializeAsync().GetAwaiter().GetResult();
 
-        Assert.True(index >= 0, "Iptal komutu bulunamadi.");
+            var view = new CashView { DataContext = vm };
+            Host(view);
 
-        var start = xaml.LastIndexOf("<Button", index, StringComparison.Ordinal);
-        var end = xaml.IndexOf("/>", index, StringComparison.Ordinal);
-        var button = xaml[start..end];
+            var toolbarVoidButton = Descendants(view).OfType<Button>()
+                .First(b => ReferenceEquals(b.Command, vm.OpenVoidCommand));
 
-        Assert.Contains("Destructive", button);
-    }
+            var destructiveStyle = (Style)view.TryFindResource("Destructive")!;
+            Assert.Same(destructiveStyle, toolbarVoidButton.Style);
+        });
 
     [Fact]
-    public void IptalDugmesiSayfaOrtasindaDegil()
-    {
-        var xaml = CashXaml();
-        var index = xaml.IndexOf("OpenVoidCommand", StringComparison.Ordinal);
-        var start = xaml.LastIndexOf("<StackPanel", index, StringComparison.Ordinal);
-        var block = xaml[start..index];
+    public void IptalDugmesiSayfaOrtasindaDegil() =>
+        UiThread.Run(() =>
+        {
+            var api = new FakeCashApi();
+            var vm = new CashViewModel(api, ["cash.read", "cash.write"]);
+            vm.InitializeAsync().GetAwaiter().GetResult();
 
-        Assert.DoesNotContain("HorizontalAlignment=\"Center\"", block);
-    }
+            var view = new CashView { DataContext = vm };
+            Host(view);
+
+            var toolbarVoidButton = Descendants(view).OfType<Button>()
+                .First(b => ReferenceEquals(b.Command, vm.OpenVoidCommand));
+
+            Assert.NotEqual(HorizontalAlignment.Center, toolbarVoidButton.HorizontalAlignment);
+        });
 
     /// <summary>
     /// Asil guvenlik dogrulamasi: iptal onay panelinin KENDISINDE (izgara

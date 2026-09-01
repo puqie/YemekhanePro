@@ -22,7 +22,7 @@
             <StackPanel><TextBlock Text="Yemek Hakedişleri" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="Öğrenci bazlı hak, kullanım ve kalan miktar yönetimi" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/></StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="12" Padding="9,4" Margin="0,0,10,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="{StaticResource WarningBrush}"/></Border>
-                <Button Style="{StaticResource Action}" Content="Seçileni İptal Et" Command="{Binding RequestCancelCommand}" Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Seçili hakları iptal et">
+                <Button Style="{StaticResource Destructive}" Content="Seçileni İptal Et" Command="{Binding RequestCancelCommand}" Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Seçili hakları iptal et">
                     <Button.IsEnabled>
                         <MultiBinding Converter="{StaticResource AllInverseBool}">
                             <Binding Path="IsGrantOpen"/>
