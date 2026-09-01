@@ -69,7 +69,7 @@
                            RenderOptions.BitmapScalingMode="HighQuality"
                            AutomationProperties.Name="YemekhanePro logosu"/>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="YEMEKHANEPRO" Foreground="White" FontWeight="Bold" FontSize="17" />
+                        <TextBlock Text="YEMEKHANEPRO" Foreground="White" FontWeight="Bold" FontSize="16" />
                         <TextBlock Text="Yemekhane yönetimi" Foreground="#93A0AD" Margin="0,5,0,0" />
                     </StackPanel>
                 </StackPanel>
