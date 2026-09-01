@@ -13,7 +13,8 @@ public sealed class LayerDependencyTests
         "Yemekhane.Reports",
         "Yemekhane.Sync",
         "Yemekhane.Api",
-        "Yemekhane.Desktop"
+        "Yemekhane.Desktop",
+        "Yemekhane.Licensing"
     ];
 
     public static TheoryData<string, string[]> LayerRules => new()
@@ -23,7 +24,10 @@ public sealed class LayerDependencyTests
         { "Yemekhane.Infrastructure", ["Yemekhane.Application", "Yemekhane.Domain"] },
         { "Yemekhane.Devices", ["Yemekhane.Application", "Yemekhane.Domain"] },
         { "Yemekhane.Reports", ["Yemekhane.Application", "Yemekhane.Domain"] },
-        { "Yemekhane.Sync", ["Yemekhane.Application", "Yemekhane.Domain"] }
+        { "Yemekhane.Sync", ["Yemekhane.Application", "Yemekhane.Domain"] },
+        // Lisans projesi HICBIR projeye referans veremez. Infrastructure'a baglanmak
+        // bagimlilik yonunu ters cevirir ve lisans kontrolunu atlamayi kolaylastirir.
+        { "Yemekhane.Licensing", [] }
     };
 
     [Theory]

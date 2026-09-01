@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yemekhane.ArchitectureTests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yemekhane.PerformanceTests", "tests\Yemekhane.PerformanceTests\Yemekhane.PerformanceTests.csproj", "{F7B4872A-78C7-49CF-A96F-6947C0BE389F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yemekhane.Licensing", "src\Yemekhane.Licensing\Yemekhane.Licensing.csproj", "{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -171,6 +173,18 @@ Global
 		{F7B4872A-78C7-49CF-A96F-6947C0BE389F}.Release|x64.Build.0 = Release|Any CPU
 		{F7B4872A-78C7-49CF-A96F-6947C0BE389F}.Release|x86.ActiveCfg = Release|Any CPU
 		{F7B4872A-78C7-49CF-A96F-6947C0BE389F}.Release|x86.Build.0 = Release|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Debug|x64.Build.0 = Debug|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Debug|x86.Build.0 = Debug|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Release|x64.ActiveCfg = Release|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Release|x64.Build.0 = Release|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Release|x86.ActiveCfg = Release|Any CPU
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -187,5 +201,6 @@ Global
 		{A2257AE8-C290-474D-840F-36ADE9B68FE4} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{9D7EFB43-7BA9-4364-8B33-7F22ACED4C88} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{F7B4872A-78C7-49CF-A96F-6947C0BE389F} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{7FEC18F0-D7BB-4FDC-B657-0E6385525CEE} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

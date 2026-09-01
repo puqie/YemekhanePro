@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- BU PROJE HICBIR PROJEYE REFERANS VERMEZ.
+       Lisans, kaliciliktan daha alt seviye bir konudur; Infrastructure'a baglanmak
+       bagimlilik yonunu ters cevirir, EF Core'u buraya suruklerdi ve lisans
+       kontrolunu atlamayi kolaylastirirdi. Kural LayerDependencyTests ile kilitlidir. -->
+
+  <PropertyGroup>
+    <!-- WMI (System.Management) ve DPAPI (ProtectedData) yalnizca Windows'ta calisir. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>false</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>
