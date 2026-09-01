@@ -46,6 +46,20 @@ public sealed class SettingsViewModelTests
     {
         public int SaveCalls { get; private set; }
         private SettingsDocument value = Document();
+        /// <summary>Cakisma listesi; testler ihtiyac duyduklarinda doldurur.</summary>
+        public List<SyncConflictItem> ConflictQueue { get; } = [];
+        public List<Guid> RequeuedOperations { get; } = [];
+
+        public Task<IReadOnlyList<SyncConflictItem>> SyncConflictsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SyncConflictItem>>(ConflictQueue.ToArray());
+
+        public Task RequeueConflictAsync(Guid operationId, CancellationToken cancellationToken = default)
+        {
+            RequeuedOperations.Add(operationId);
+            ConflictQueue.RemoveAll(x => x.OperationId == operationId);
+            return Task.CompletedTask;
+        }
+
         public Task<SettingsDocument> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult(value);
         public Task<SaveSettingsResult> SaveAsync(SaveSettingsRequest request, CancellationToken cancellationToken = default)
         { SaveCalls++; value = value with { School = new(request.School.Name, request.School.Address, request.School.Contact, request.School.LogoPath) }; return Task.FromResult(new SaveSettingsResult(value, ["School"], false)); }

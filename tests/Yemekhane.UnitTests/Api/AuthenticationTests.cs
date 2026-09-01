@@ -278,6 +278,35 @@ public sealed class YemekhaneApiFactory : WebApplicationFactory<Program>
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// <summary>
+    /// TUM yetkileri tasiyan istemci. Operator jetonu bilerek kisitlidir (RBAC testleri ona dayanir);
+    /// cihaz/ayar gibi yonetim ekranlarini surmek icin ayri bir yonetici jetonu gerekir.
+    /// </summary>
+    public HttpClient CreateAdminClient()
+    {
+        EnsureOperatorAsync().GetAwaiter().GetResult();
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", CreateAdminToken());
+        return client;
+    }
+
+    public static string CreateAdminToken(DateTime? expires = null)
+    {
+        var credentials = new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)), SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityToken(
+            issuer: "yemekhane-test",
+            audience: "yemekhane-test",
+            claims: new Claim[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, OperatorId.ToString()), new Claim(ClaimTypes.Name, "operator"),
+                new Claim(ClaimTypes.Role, BuiltInRoles.Admin), new Claim("security_stamp", OperatorSecurityStamp)
+            }.Concat(Permissions.All.Select(permission => new Claim(Permissions.ClaimType, permission))),
+            expires: expires ?? DateTime.UtcNow.AddMinutes(10),
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
     public static string CreateOperatorToken(DateTime? expires = null)
     {
         var credentials = new SigningCredentials(
@@ -293,7 +322,8 @@ public sealed class YemekhaneApiFactory : WebApplicationFactory<Program>
             {
                 Permissions.StudentsRead, Permissions.StudentsWrite, Permissions.StudentsDeactivate,
                 Permissions.CardsManage, Permissions.EntitlementsManage, Permissions.EntitlementsBulk,
-                Permissions.CalendarManage, Permissions.ReportsRead, Permissions.ReportsExport,
+                Permissions.CalendarManage, Permissions.DevicesRead, Permissions.DevicesManage,
+                Permissions.ReportsRead, Permissions.ReportsExport,
                 Permissions.CashRead, Permissions.CashWrite, Permissions.CashManage, Permissions.SmsRead, Permissions.SmsSend, Permissions.SmsManage,
                 Permissions.AccessRead
             }.Select(permission => new Claim(Permissions.ClaimType, permission))),
