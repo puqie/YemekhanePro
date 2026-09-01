@@ -539,4 +539,89 @@
         <Setter Property="Background" Value="{StaticResource BorderBrush}"/>
         <Setter Property="Margin" Value="0,10"/>
     </Style>
+
+    <!-- ============================================================
+         KENAR CUBUGU  Menu ogeleri tek stilden uretilir; 12 kez
+         tekrarlanan elle yazim boylece biter.
+         ============================================================ -->
+    <SolidColorBrush x:Key="SidebarBrush"      Color="#18222D"/>
+    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#2F3B49"/>
+    <SolidColorBrush x:Key="SidebarTextBrush"  Color="#D6DBE0"/>
+
+    <Style x:Key="NavGroupTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource FontXs}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#8A96A0"/>
+        <Setter Property="Margin" Value="12,16,0,6"/>
+    </Style>
+
+    <!-- Secili oge sol kenarinda turuncu serit tasir: koyu zeminde
+         yalnizca arka plan rengi zayif bir sinyaldir. -->
+    <Style x:Key="NavItem" TargetType="Button">
+        <Setter Property="Foreground" Value="{StaticResource SidebarTextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="12,9"/>
+        <Setter Property="Margin" Value="0,1,0,0"/>
+        <Setter Property="FontSize" Value="{StaticResource FontMd}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid>
+                        <Border x:Name="stripe" Width="3" HorizontalAlignment="Left"
+                                Background="Transparent" CornerRadius="0,2,2,0"/>
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}" Margin="3,0,0,0"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background"
+                                    Value="{StaticResource SidebarHoverBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                        <Trigger Property="Tag" Value="secili">
+                            <Setter TargetName="stripe" Property="Background"
+                                    Value="{StaticResource AccentBrush}"/>
+                            <Setter TargetName="bd" Property="Background"
+                                    Value="{StaticResource SidebarHoverBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ============================================================
+         ROZETLER  Ham bool degeri ekranda "True"/"False" olarak
+         gorunuyordu; durum artik renkli bir rozettir.
+         ============================================================ -->
+    <Style x:Key="BadgeNeutral" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource SunkenBrush}"/>
+        <Setter Property="CornerRadius" Value="9"/>
+        <Setter Property="Padding" Value="8,2"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="BadgeSuccess" TargetType="Border" BasedOn="{StaticResource BadgeNeutral}">
+        <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+    </Style>
+    <Style x:Key="BadgeDanger" TargetType="Border" BasedOn="{StaticResource BadgeNeutral}">
+        <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
+    </Style>
+
+    <!-- Ogrenci kimligi: ad soyad tek basina ayirt edici degildir. -->
+    <Style x:Key="IdentityText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource FontMd}"/>
+        <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
 </ResourceDictionary>
