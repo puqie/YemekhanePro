@@ -16,7 +16,7 @@ namespace Yemekhane.UnitTests.Integration;
 /// Bu testler her yazma isleminden sonra VERITABANINA bakar ve yazilan degeri
 /// girilen degerle karsilastirir.
 /// </summary>
-public sealed class DataIntegrityEndToEndTests : IAsyncLifetime
+public sealed class DataIntegrityEndToEndTests : IAsyncLifetime, IDisposable
 {
     private readonly YemekhaneApiFactory factory = new();
     private HttpClient client = null!;
@@ -26,6 +26,12 @@ public sealed class DataIntegrityEndToEndTests : IAsyncLifetime
         client = factory.CreateOperatorClient();
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// xUnit bazi hata senaryolarinda DisposeAsync'i atlayabilir; fabrika
+    /// atilmazsa web sunucusu ve SQLite havuzu sizar ve test host'u kilitlenir.
+    /// </summary>
+    public void Dispose() => factory.Dispose();
 
     public async Task DisposeAsync() => await factory.DisposeAsync();
 

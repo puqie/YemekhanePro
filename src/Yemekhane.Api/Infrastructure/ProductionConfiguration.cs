@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Options;
 using Serilog;
+using Serilog.Events;
 using Serilog.Formatting.Json;
 using Yemekhane.Application.Notifications;
 using Yemekhane.Infrastructure.Persistence;
@@ -118,6 +119,15 @@ public static class ProductionConfiguration
         builder.Host.UseSerilog((context, services, logger) => logger
             .ReadFrom.Configuration(context.Configuration)
             .ReadFrom.Services(services)
+            // Serilog KENDI "Serilog:MinimumLevel" bolumunu okur; ASP.NET Core'un
+            // "Logging:LogLevel" bolumu Serilog devredeyken YOK SAYILIR. Bu yuzden
+            // gurultulu kaynaklar burada, kodda kisitlanir.
+            //
+            // EF Core her SQL komutunu Information seviyesinde yazar: olcumde
+            // 60 istek 500 KB log uretmisti (istek basina ~8 KB). Kisitlanmazsa
+            // okul bilgisayarinin diski dolar ve SQLite YAZAMAZ hale gelir.
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
             .Enrich.FromLogContext()
             .Enrich.WithProperty("Application", "YemekhanePro.Api")
             .WriteTo.File(new JsonFormatter(), Path.Combine(directory, "api-.json"), rollingInterval: RollingInterval.Day,
@@ -141,6 +151,39 @@ public static class ProductionConfiguration
             foreach (var value in options.KnownProxies)
                 if (IPAddress.TryParse(value, out var address)) forwarded.KnownProxies.Add(address);
         });
+    }
+
+    /// <summary>Goc yedeklerinden en yenilerini tutar, eskileri siler.</summary>
+    public const int RetainedMigrationBackups = 3;
+
+    /// <summary>
+    /// Eski goc yedeklerini siler. Her surum yukseltmesi bir kopya birakir;
+    /// hicbiri silinmezse veritabani buyudukce disk dolar ve SQLite YAZAMAZ
+    /// hale gelir -- yani sistem tamamen durur.
+    ///
+    /// En yeni <see cref="RetainedMigrationBackups"/> kopya KORUNUR: goc
+    /// bozulursa geri donebilmek gerekir. Yalnizca "pre-migration-*.db"
+    /// desenine uyan dosyalara dokunulur; canli veritabani ve WAL dosyalari
+    /// bu desene uymaz.
+    /// </summary>
+    public static void PruneMigrationBackups(string directory)
+    {
+        if (!Directory.Exists(directory)) return;
+        try
+        {
+            var stale = Directory.GetFiles(directory, "pre-migration-*.db")
+                .OrderByDescending(path => path, StringComparer.Ordinal)   // ad = zaman damgasi
+                .Skip(RetainedMigrationBackups);
+            foreach (var path in stale)
+            {
+                // Silme hatasi gocu DURDURMAMALIDIR: yedek temizligi
+                // yardimci bir istir, kritik yol degildir.
+                try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 }
 
@@ -173,6 +216,7 @@ public sealed partial class StartupDatabaseGuard(string connectionString, ILogge
             var backup = Path.Combine(directory, $"pre-migration-{DateTime.UtcNow:yyyyMMddHHmmss}.db");
             File.Copy(dataSource, backup, overwrite: false);
             LogMigrationBackup(logger, Path.GetFileName(backup));
+            ProductionConfiguration.PruneMigrationBackups(directory);
         }
         await Task.CompletedTask;
         return new AsyncFileLock(migrationLock);

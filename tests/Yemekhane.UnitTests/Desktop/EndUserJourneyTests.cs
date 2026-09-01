@@ -24,7 +24,7 @@ namespace Yemekhane.UnitTests.Desktop;
 /// yanlis" hatalari yakalanir.
 /// </summary>
 [Collection("UI")]
-public sealed class EndUserJourneyTests : IAsyncLifetime
+public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
 {
     private readonly YemekhaneApiFactory factory = new();
     private HttpClient client = null!;
@@ -34,6 +34,12 @@ public sealed class EndUserJourneyTests : IAsyncLifetime
         client = factory.CreateOperatorClient();
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// xUnit bazi hata senaryolarinda DisposeAsync'i atlayabilir; fabrika
+    /// atilmazsa web sunucusu ve SQLite havuzu sizar ve test host'u kilitlenir.
+    /// </summary>
+    public void Dispose() => factory.Dispose();
 
     public async Task DisposeAsync()
     {

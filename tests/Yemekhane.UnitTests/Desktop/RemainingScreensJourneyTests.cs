@@ -9,6 +9,9 @@ using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.UnitTests.Api;
 
+// Sahte istemcilerde bazi olaylar arabirim geregi vardir ama tetiklenmez.
+#pragma warning disable CS0067
+
 namespace Yemekhane.UnitTests.Desktop;
 
 /// <summary>
@@ -20,7 +23,7 @@ namespace Yemekhane.UnitTests.Desktop;
 /// sahtelenir; API -> denetleyici -> veritabani zinciri gercektir.
 /// </summary>
 [Collection("UI")]
-public sealed class RemainingScreensJourneyTests : IAsyncLifetime
+public sealed class RemainingScreensJourneyTests : IAsyncLifetime, IDisposable
 {
     private readonly YemekhaneApiFactory factory = new();
     private HttpClient client = null!;
@@ -30,6 +33,12 @@ public sealed class RemainingScreensJourneyTests : IAsyncLifetime
         client = factory.CreateAdminClient();
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// xUnit bazi hata senaryolarinda DisposeAsync'i atlayabilir; fabrika
+    /// atilmazsa web sunucusu ve SQLite havuzu sizar ve test host'u kilitlenir.
+    /// </summary>
+    public void Dispose() => factory.Dispose();
 
     public async Task DisposeAsync()
     {
