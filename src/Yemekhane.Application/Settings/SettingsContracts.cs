@@ -1,4 +1,4 @@
-using Yemekhane.Application.Common;
+﻿using Yemekhane.Application.Common;
 
 namespace Yemekhane.Application.Settings;
 
@@ -9,7 +9,12 @@ public sealed record BackupSettings(bool Enabled, string Frequency, DayOfWeek We
     int RetentionCount, string? Path);
 public sealed record SyncSettings(string? Endpoint, string? DeviceId, int IntervalMinutes, bool Enabled,
     bool SecretConfigured, SyncStatus Status);
-public sealed record SyncStatus(string State, int Pending, int Failed, DateTimeOffset? LastRunAt, string? Message);
+public sealed record SyncStatus(string State, int Pending, int Failed, DateTimeOffset? LastRunAt, string? Message,
+    int Conflicts = 0);
+
+/// <summary>Cakisma nedeniyle duran bir islem; operator karar verebilsin diye nedeni tasir.</summary>
+public sealed record SyncConflictItem(Guid OperationId, string EntityName, string? EntityId,
+    string OperationType, DateTimeOffset Timestamp, int AttemptCount, string? LastError);
 public sealed record LogSettings(string Level, int RetentionDays, string? Path);
 public sealed record SettingsLinks(int Devices, IReadOnlyList<string> DeviceSummaries, int ActiveMealTypes,
     IReadOnlyList<string> MealTypes);
@@ -115,4 +120,6 @@ public interface ISettingsService
     Task<string?> GetSecretAsync(string key, CancellationToken cancellationToken = default);
     Task<PagedResult<ApplicationLogItem>> LogsAsync(ApplicationLogQuery query, CancellationToken cancellationToken = default);
     Task<SyncStatus> SyncStatusAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SyncConflictItem>> SyncConflictsAsync(CancellationToken cancellationToken = default);
+    Task SyncRequeueAsync(Guid operationId, CancellationToken cancellationToken = default);
 }

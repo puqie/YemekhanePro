@@ -26,6 +26,11 @@ public sealed class Task060SecurityTests : IClassFixture<YemekhaneApiFactory>
     [InlineData("/api/settings")]
     [InlineData("/api/admin/users")]
     [InlineData("/api/audit-logs")]
+    // Yonetim denetleyicilerinde sinif duzeyinde politika YOKTUR: her uc noktaya ayri ayri
+    // yetki eklenmelidir. Unutulan tek bir metot butun sinirin acilmasi demektir.
+    [InlineData("/api/settings/sync/status")]
+    [InlineData("/api/settings/sync/conflicts")]
+    [InlineData("/api/settings/logs")]
     public async Task OperatorCannotCrossAdministrativeRoleBoundary(string path)
     {
         using var response = await factory.CreateOperatorClient().GetAsync(path);

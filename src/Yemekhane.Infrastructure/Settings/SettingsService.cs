@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -7,6 +7,7 @@ using Yemekhane.Application.Common;
 using Yemekhane.Application.Settings;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
+using Yemekhane.Infrastructure.Sync;
 
 namespace Yemekhane.Infrastructure.Settings;
 
@@ -102,9 +103,18 @@ public sealed partial class SettingsService(YemekhaneDbContext db, ISecretProtec
         var values = await db.Set<SystemSetting>().AsNoTracking().ToDictionaryAsync(x => x.Key, x => x, cancellationToken);
         var pending = await db.SyncOperations.CountAsync(x => x.SyncStatus == "Pending" || x.SyncStatus == "RetryPending", cancellationToken);
         var failed = await db.SyncOperations.CountAsync(x => x.SyncStatus == "PermanentFailure" || x.SyncStatus == "Conflict", cancellationToken);
+        var conflicts = await db.SyncOperations.CountAsync(x => x.SyncStatus == "Conflict", cancellationToken);
         var last = await db.SyncOperations.OrderByDescending(x => YemekhaneDbContext.JulianDay(x.CreatedAt)).Select(x => (DateTimeOffset?)x.UpdatedAt ?? x.CreatedAt).FirstOrDefaultAsync(cancellationToken);
-        return await BuildSyncStatusAsync(values, pending, failed, last, cancellationToken);
+        return await BuildSyncStatusAsync(values, pending, failed, last, cancellationToken) with { Conflicts = conflicts };
     }
+
+    public async Task<IReadOnlyList<SyncConflictItem>> SyncConflictsAsync(CancellationToken cancellationToken = default) =>
+        (await new EfSyncOperationStore(db).GetConflictsAsync(200, cancellationToken))
+        .Select(x => new SyncConflictItem(x.OperationId, x.EntityName, x.EntityId, x.OperationType,
+            x.Timestamp, x.AttemptCount, x.LastError)).ToArray();
+
+    public Task SyncRequeueAsync(Guid operationId, CancellationToken cancellationToken = default) =>
+        new EfSyncOperationStore(db).RequeueAsync(operationId, cancellationToken);
 
     private async Task<SyncStatus> BuildSyncStatusAsync(Dictionary<string, SystemSetting> values,
         int pending, int failed, DateTimeOffset? last, CancellationToken cancellationToken)

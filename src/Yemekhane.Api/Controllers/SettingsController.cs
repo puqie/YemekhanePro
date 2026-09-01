@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Yemekhane.Api.Authorization;
 using Yemekhane.Application.Audit;
 using Yemekhane.Application.Settings;
@@ -31,6 +31,23 @@ public sealed class SettingsController(ISettingsService settings, BackupService 
     [HttpGet("sync/status")]
     [PermissionAuthorize(Permissions.SettingsRead)]
     public Task<SyncStatus> SyncStatus(CancellationToken cancellationToken) => settings.SyncStatusAsync(cancellationToken);
+
+    [HttpGet("sync/conflicts")]
+    [PermissionAuthorize(Permissions.SettingsRead)]
+    public Task<IReadOnlyList<SyncConflictItem>> SyncConflicts(CancellationToken cancellationToken) =>
+        settings.SyncConflictsAsync(cancellationToken);
+
+    /// <summary>Cakisan islemi yeniden kuyruga alir; karar operatorundur, motor kendiliginden cozmez.</summary>
+    [HttpPost("sync/conflicts/{operationId:guid}/requeue")]
+    [PermissionAuthorize(Permissions.SettingsManage)]
+    public async Task<ActionResult> RequeueConflict(Guid operationId, CancellationToken cancellationToken)
+    {
+        await settings.SyncRequeueAsync(operationId, cancellationToken);
+        audit.Record(new AuditEntry("SyncConflictRequeued", "SyncOperation", operationId.ToString(),
+            "Çakışan senkronizasyon işlemi yeniden kuyruğa alındı."));
+        await db.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
 
     [HttpPost("sync/run")]
     [PermissionAuthorize(Permissions.SettingsManage)]

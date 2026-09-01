@@ -1,4 +1,5 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Yemekhane.Application.Common;
 using Yemekhane.Application.Sync;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
@@ -37,6 +38,28 @@ public sealed class EfSyncOperationStore(YemekhaneDbContext dbContext) : ISyncOp
         .ThenBy(x => x.OperationId)
         .Take(batchSize)
         .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<SyncOperation>> GetConflictsAsync(int batchSize,
+        CancellationToken cancellationToken) => await dbContext.SyncOperations.AsNoTracking()
+        .Where(x => x.SyncStatus == SyncOperationStatuses.Conflict)
+        .OrderBy(x => YemekhaneDbContext.JulianDay(x.Timestamp))
+        .ThenBy(x => x.OperationId)
+        .Take(batchSize)
+        .ToListAsync(cancellationToken);
+
+    public async Task RequeueAsync(Guid operationId, CancellationToken cancellationToken)
+    {
+        // Kosul SQL tarafinda kalir: iki operator ayni anda "yeniden dene" derse
+        // yalnizca biri kayidi Conflict durumundan cikarir, digeri hicbir sey degistirmez.
+        var changed = await SqliteBusyRetry.ExecuteAsync(() => dbContext.SyncOperations
+            .Where(x => x.OperationId == operationId && x.SyncStatus == SyncOperationStatuses.Conflict)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(x => x.SyncStatus, SyncOperationStatuses.RetryPending)
+                .SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken),
+            dbContext.ChangeTracker.Clear, cancellationToken);
+        if (changed != 1)
+            throw new EntityNotFoundException("Yeniden kuyruğa alınacak çakışan işlem bulunamadı.");
+    }
 
     public async Task<IReadOnlyList<SyncOperation>> ClaimPendingAsync(int batchSize,
         CancellationToken cancellationToken)

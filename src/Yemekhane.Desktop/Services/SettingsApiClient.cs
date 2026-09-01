@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -18,6 +18,8 @@ public interface ISettingsApiClient
     Task<BackupValidationResult> ValidateBackupAsync(string path, CancellationToken cancellationToken = default);
     Task<RestoreResult> RestoreAsync(string path, string confirmation, CancellationToken cancellationToken = default);
     Task<SyncRunResult> RunSyncAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SyncConflictItem>> SyncConflictsAsync(CancellationToken cancellationToken = default);
+    Task RequeueConflictAsync(Guid operationId, CancellationToken cancellationToken = default);
     Task<PagedResult<ApplicationLogItem>> LogsAsync(int page, int pageSize, CancellationToken cancellationToken = default);
 }
 
@@ -31,6 +33,17 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
         SendAsync<BackupCommandResult>(HttpMethod.Post, "api/settings/backup", null, cancellationToken);
     public Task<SyncRunResult> RunSyncAsync(CancellationToken cancellationToken = default) =>
         SendAsync<SyncRunResult>(HttpMethod.Post, "api/settings/sync/run", null, cancellationToken);
+
+    public Task<IReadOnlyList<SyncConflictItem>> SyncConflictsAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<IReadOnlyList<SyncConflictItem>>(HttpMethod.Get, "api/settings/sync/conflicts", null, cancellationToken);
+
+    public async Task RequeueConflictAsync(Guid operationId, CancellationToken cancellationToken = default)
+    {
+        // 204 NoContent doner; govde okumaya calisan genel SendAsync<T> burada kullanilamaz.
+        using var request = Authorized(HttpMethod.Post, $"api/settings/sync/conflicts/{operationId:D}/requeue");
+        using var response = await client.SendAsync(request, cancellationToken);
+        Ensure(response);
+    }
     public Task<PagedResult<ApplicationLogItem>> LogsAsync(int page, int pageSize, CancellationToken cancellationToken = default) =>
         SendAsync<PagedResult<ApplicationLogItem>>(HttpMethod.Get, $"api/settings/logs?page={page}&pageSize={pageSize}", null, cancellationToken);
     public Task<BackupValidationResult> ValidateBackupAsync(string path, CancellationToken cancellationToken = default) =>

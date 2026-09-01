@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net;
 using Yemekhane.Application.Sync;
 using Yemekhane.Domain.Entities;
@@ -203,6 +203,19 @@ public sealed class SyncEngineTests
 
     private sealed class MemoryStore : ISyncOperationStore
     {
+        public Task<IReadOnlyList<SyncOperation>> GetConflictsAsync(int batchSize, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<SyncOperation>>(_operations.Values
+                .Where(x => x.SyncStatus == SyncOperationStatuses.Conflict).Take(batchSize).ToList());
+
+        public Task RequeueAsync(Guid operationId, CancellationToken cancellationToken)
+        {
+            if (!_operations.TryGetValue(operationId, out var operation) ||
+                operation.SyncStatus != SyncOperationStatuses.Conflict)
+                throw new Yemekhane.Application.Common.EntityNotFoundException("Çakışan işlem bulunamadı.");
+            operation.SyncStatus = SyncOperationStatuses.RetryPending;
+            return Task.CompletedTask;
+        }
+
         private readonly ConcurrentDictionary<Guid, SyncOperation> _operations = new();
         public IReadOnlyCollection<SyncOperation> Operations => _operations.Values.ToArray();
 
