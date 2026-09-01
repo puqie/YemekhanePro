@@ -94,7 +94,13 @@ public sealed class CashIdentityTests
 
     /// <summary>
     /// Ogrencisiz islem (StudentId/StudentName null) durumunda cokme veya
-    /// bos metin degil, aciklayici bir metin gosterilmeli.
+    /// bos metin degil, aciklayici bir metin gosterilmeli -- hem ogrenci
+    /// adi hem kart numarasi icin (CardNumber de bu durumda null; XAML'deki
+    /// TargetNullValue=Kart: - yanlislikla bozulursa bunu yakalayacak tek
+    /// test budur). Kardesi olan IptalPaneliKartNumarasiniGosterir gibi
+    /// panel x:Name="VoidPanel" ile izole edilir -- Descendants(view)
+    /// kullanmak, izgara veya baska bir yerde ayni metin gecerse sessizce
+    /// yanlis-yesil verebilir.
     /// </summary>
     [Fact]
     public void IptalPaneliOgrencisizIslemiGosterir() =>
@@ -105,18 +111,21 @@ public sealed class CashIdentityTests
             vm.InitializeAsync().GetAwaiter().GetResult();
             var transaction = vm.Transactions[0];
             Assert.Null(transaction.StudentName);
+            Assert.Null(transaction.CardNumber);
             vm.SelectedTransaction = transaction;
             vm.OpenVoidCommand.Execute(null);
 
             var view = new CashView { DataContext = vm };
             Host(view);
 
-            var texts = Descendants(view).OfType<TextBlock>()
+            var panel = (FrameworkElement)view.FindName("VoidPanel")!;
+            var texts = Descendants(panel).OfType<TextBlock>()
                 .Select(t => t.Text)
                 .Where(t => !string.IsNullOrEmpty(t))
                 .ToList();
 
             Assert.Contains(texts, t => t!.Contains("Öğrencisiz işlem", StringComparison.Ordinal));
+            Assert.Contains(texts, t => t!.Contains("Kart: -", StringComparison.Ordinal));
         });
 
     /// <summary>
@@ -175,15 +184,20 @@ public sealed class CashIdentityTests
     }
 
     /// <summary>
-    /// Bu yuzden erisilebilirlik View'de kesilir: ekleme cekmecesi acikken
-    /// izgara (ve dolayisiyla Enter/Delete ile OpenVoidCommand) devre disi;
-    /// iptal cekmecesi acikken "Gelir Ekle" dugmesi devre disidir. Boylece
-    /// VIEWMODEL DEGISTIRILMEDEN iki cekmecenin AYNI ANDA EKRANDA GORUNMESI
-    /// engellenir -- IsAddOpen/IsVoidOpen teorik olarak ikisi de true olsa
-    /// bile kullanici ikinciyi tetikleyecek yola erisemez.
+    /// Bu yuzden erisilebilirlik View'de kesilir. OpenVoidCommand'a giden IKI
+    /// ayri kontrol var -- izgaranin Enter/Delete KeyBinding'leri VE arac
+    /// cubugundaki "Secili Islemi Iptal Et" dugmesi (ikincisi izgaranin
+    /// KARDESI, alt agaci degil; izgarayi devre disi birakmak onu ETKILEMEZ).
+    /// Uc kontrolun ucu de ayri ayri kapatilmali:
+    /// - izgara (ve Enter/Delete): ekleme cekmecesi acikken devre disi
+    /// - arac cubugundaki iptal dugmesi: ekleme cekmecesi acikken devre disi
+    /// - "Gelir Ekle" dugmesi: iptal cekmecesi acikken devre disi
+    /// Boylece VIEWMODEL DEGISTIRILMEDEN iki cekmecenin AYNI ANDA EKRANDA
+    /// GORUNMESI engellenir -- IsAddOpen/IsVoidOpen teorik olarak ikisi de
+    /// true olsa bile kullanici ikinciyi tetikleyecek hicbir yola erisemez.
     /// </summary>
     [Fact]
-    public void EklemeAcikkenIzgaraDevreDisiIptalAcikkenEklemeDugmesiDevreDisi() =>
+    public void EklemeAcikkenIptalYollariDevreDisiIptalAcikkenEklemeDugmesiDevreDisi() =>
         UiThread.Run(() =>
         {
             var api = new FakeCashApi();
@@ -196,12 +210,15 @@ public sealed class CashIdentityTests
             var grid = (DataGrid)view.FindName("TransactionsGrid")!;
             var addButton = Descendants(view).OfType<Button>()
                 .First(b => ReferenceEquals(b.Command, vm.OpenAddCommand));
+            var toolbarVoidButton = Descendants(view).OfType<Button>()
+                .First(b => ReferenceEquals(b.Command, vm.OpenVoidCommand));
 
+            vm.SelectedTransaction = vm.Transactions[0];
             vm.OpenAddCommand.Execute(null);
             Assert.False(grid.IsEnabled, "Ekleme cekmecesi acikken izgara hala etkin -- Enter/Delete ile ikinci cekmece acilabilir.");
+            Assert.False(toolbarVoidButton.IsEnabled, "Ekleme cekmecesi acikken arac cubugundaki Iptal Et dugmesi hala etkin -- izgaranin KARDESI oldugu icin izgarayi kapatmak onu etkilemez.");
 
             vm.CloseAddCommand.Execute(null);
-            vm.SelectedTransaction = vm.Transactions[0];
             vm.OpenVoidCommand.Execute(null);
             Assert.False(addButton.IsEnabled, "Iptal cekmecesi acikken Gelir Ekle dugmesi hala etkin.");
         });
