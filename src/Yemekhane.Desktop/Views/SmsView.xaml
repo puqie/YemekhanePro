@@ -1,6 +1,7 @@
 <UserControl x:Class="Yemekhane.Desktop.Views.SmsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
     FontFamily="Segoe UI" FontSize="12">
 
     <UserControl.Resources>
@@ -11,11 +12,12 @@
         <BooleanToVisibilityConverter x:Key="Bool"/>
             </ResourceDictionary>
 </UserControl.Resources>
-    <Border Background="{StaticResource CanvasBrush}">
-    <Grid Margin="22,18">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <Grid><StackPanel><TextBlock Text="SMS Merkezi" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="Veli bildirimlerini önizleyin, kuyruğa alın ve teslimatı izleyin" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,12"/></StackPanel><Border Background="{StaticResource WarningSoftBrush}" CornerRadius="12" Padding="9,4" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="{Binding IsOffline, Converter={StaticResource Bool}}"><TextBlock Text="Çevrimdışı" Foreground="{StaticResource WarningBrush}"/></Border></Grid>
-        <TabControl Grid.Row="1">
+    <controls:PageShell Title="SMS Merkezi" Subtitle="Veli bildirimlerini önizleyin, kuyruğa alın ve teslimatı izleyin">
+        <controls:PageShell.Actions>
+            <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="12" Padding="9,4" Visibility="{Binding IsOffline, Converter={StaticResource Bool}}"><TextBlock Text="Çevrimdışı" Foreground="{StaticResource WarningBrush}"/></Border>
+        </controls:PageShell.Actions>
+
+        <TabControl>
             <TabItem Header="Gönder" Visibility="{Binding CanSend, Converter={StaticResource Bool}}">
                 <Grid Margin="14"><Grid.ColumnDefinitions><ColumnDefinition Width="1.05*"/><ColumnDefinition Width="0.95*"/></Grid.ColumnDefinitions>
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,14,0">
@@ -59,6 +61,5 @@
                 </Grid>
             </TabItem>
         </TabControl>
-    </Grid>
-    </Border>
+    </controls:PageShell>
 </UserControl>

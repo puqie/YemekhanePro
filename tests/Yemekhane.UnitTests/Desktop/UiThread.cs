@@ -1,6 +1,7 @@
 using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Controls;
+using Yemekhane.Desktop.Controls;
 
 namespace Yemekhane.UnitTests.Desktop;
 
@@ -35,6 +36,14 @@ public static class UiThread
     /// </remarks>
     public static void ApplyResources(FrameworkElement element)
     {
+        // Bazi kok elemanlar (orn. MainWindow, ya da DesignSystem.xaml'i kendi
+        // UserControl.Resources'ina merge eden View'lar) temayi artik KENDI
+        // sozluklerinde tasir. Boyle bir elemana ayni sozlugu TEKRAR merge etmek
+        // ayni anahtarin IKI FARKLI Style ORNEGINI dogurur (StaticResource icerik
+        // olarak esit ama referans olarak farkli): testler Assert.Same ile
+        // kiyaslarsa yanlislikla patlar. Bu yuzden tema zaten cozulebiliyorsa
+        // (elemanin kendi sozlugunde NavItem gibi bilinen bir anahtar bulunuyorsa)
+        // ikinci merge atlanir.
         if (!element.Resources.Contains("NavItem"))
         {
             element.Resources.MergedDictionaries.Add(new ResourceDictionary
@@ -42,6 +51,35 @@ public static class UiThread
                 Source = new Uri("pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml")
             });
         }
+
+        // PageShell (Gorev 11) kendi stilini App.xaml uzerinden bulur; App
+        // burada hic olusturulmaz (bkz. sinif yorumu), o yuzden PageShell
+        // kullanan bir View bu stil merge edilmeden test edilirse
+        // ContentControl'un stilsiz varsayilan sablonu hicbir icerik
+        // GORSELLEsTIRMEZ -- PageShell.Content tamamen bos kalir ve o
+        // ekrani tarayan testler (orn. FieldWidthTests, ViewLayoutTests)
+        // SIFIR denetim bulup SESSIZCE yesil doner; hicbir sey kanitlamazlar.
+        //
+        // PageShell.xaml'in TAMAMI merge EDILMEZ: o dosya kendi icinde
+        // DesignSystem.xaml'i AYRICA merge eder (StaticResource cozumleme
+        // tuzagi icin, bkz. PageShell.xaml basi), bu da NavItem gibi
+        // anahtarlarin View zaten kendi DesignSystem.xaml'ini tasirken bile
+        // IKINCI bir kopyasini yaratir (Assert.Same testlerini kirar). Bunun
+        // yerine YALNIZCA PageShell stili, PageShell.xaml'in KENDI
+        // MergedDictionaries'inden BAGIMSIZ tek bir sozluge tasinarak eklenir.
+        if (!element.Resources.Contains(typeof(PageShell)))
+        {
+            var pageShellDictionary = new ResourceDictionary
+            {
+                Source = new Uri("pack://application:,,,/Yemekhane.Desktop;component/Themes/PageShell.xaml")
+            };
+            var pageShellStyle = pageShellDictionary[typeof(PageShell)];
+            element.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                { typeof(PageShell), pageShellStyle }
+            });
+        }
+
         element.Resources["BooleanToVisibilityConverter"] = new BooleanToVisibilityConverter();
         element.Resources["Bool"] = new BooleanToVisibilityConverter();
         element.Resources["BoolToVisibility"] = new BooleanToVisibilityConverter();

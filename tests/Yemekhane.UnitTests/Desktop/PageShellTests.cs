@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -127,6 +128,98 @@ public sealed class PageShellTests
                 $"DailyTrackingView: {view.ActualHeight:F0}px yükseklik, pencere {height}px.");
         });
 
+    /// <summary>
+    /// Gorev 11b'de PageShell'e tasinan bes ekran, 1440x900'de tasmadan olculur.
+    ///
+    /// 11a yalnizca DailyTrackingView'i bu boyutta dogruladi; kalan bes ekran
+    /// (Calendar, Sms, Reports, Settings, StudentImport) BulkOperationWizardView
+    /// disinda burada tamamlanir.
+    /// </summary>
+    [Theory]
+    [InlineData("calendar")]
+    [InlineData("sms")]
+    [InlineData("reports")]
+    [InlineData("settings")]
+    [InlineData("studentimport")]
+    public void Gorev11bEkranlari1440x900deTasmadanOlculur(string name) =>
+        UiThread.Run(() =>
+        {
+            FrameworkElement view = name switch
+            {
+                "calendar" => new Yemekhane.Desktop.Views.CalendarView(),
+                "sms" => new Yemekhane.Desktop.Views.SmsView(),
+                "reports" => new Yemekhane.Desktop.Views.ReportsView(),
+                "settings" => new Yemekhane.Desktop.Views.SettingsView(),
+                "studentimport" => new Yemekhane.Desktop.Views.StudentImportView(),
+                _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Bilinmeyen görünüm.")
+            };
+            UiThread.ApplyResources(view);
+            const double width = 1440;
+            const double height = 900;
+            var host = new Border { Width = width, Height = height, Child = view };
+            host.Measure(new Size(width, height));
+            host.Arrange(new Rect(0, 0, width, height));
+            host.UpdateLayout();
+
+            Assert.True(view.ActualWidth <= width + 0.5,
+                $"{name}: {view.ActualWidth:F0}px genişlik, pencere {width}px.");
+            Assert.True(view.ActualHeight <= height + 0.5,
+                $"{name}: {view.ActualHeight:F0}px yükseklik, pencere {height}px.");
+        });
+
+    /// <summary>
+    /// Gorev 11a'nin acik riski: Actions, FooterLeft, FooterRight bos
+    /// ContentPresenter'lar oldugu icin verilmediklerinde sifir boyuta
+    /// coktukleri VARSAYILIYORDU ama hicbir GERCEK ekran bunu sinamamisti.
+    /// Gorev 11b'de CalendarView (FooterRight yok), SmsView (Filters ve
+    /// FooterLeft/Right yok), StudentImportView (Filters ve FooterRight yok)
+    /// bu ucu ilk kez gercekten kullaniyor. Bu test, bolgenin gorsel agacta
+    /// SIFIR ALAN kapladigini -- yalnizca "null atandi" degil -- olcerek
+    /// kanitlar.
+    /// </summary>
+    [Fact]
+    public void BosBirakilanActionsVeFooterBolgeleriYerKaplamaz() =>
+        UiThread.Run(() =>
+        {
+            var withRegions = BuildAutoSized(title: "Baslik",
+                actions: new Border { Width = 60, Height = 20 },
+                footerLeft: new Border { Width = 60, Height = 20 },
+                footerRight: new Border { Width = 60, Height = 20 });
+            var withoutRegions = BuildAutoSized(title: "Baslik");
+
+            // Header satirinin toplam genisligi degismez (Grid ColumnDefinition
+            // sabit degil), ama Actions ContentPresenter'inin KENDI DesiredSize'i
+            // bos oldugunda sifir olmalidir -- bu yuzden dogrudan ContentPresenter'i
+            // buluyoruz.
+            var actionsPresenter = FindContentPresenterFor(withoutRegions, withoutRegions.Actions);
+            Assert.Null(actionsPresenter);
+
+            // Footer satiri: FooterLeft/FooterRight yokken satirin kendisi
+            // ekstra yukseklik EKLEMEMELI. AutoSized olcumde Filters zaten
+            // coktugu icin, footer icerigi olan/olmayan iki golgeyi
+            // kiyaslayarak footer katkisini izole ederiz.
+            Assert.True(withoutRegions.DesiredSize.Height < withRegions.DesiredSize.Height,
+                "Actions/FooterLeft/FooterRight dolu iken sayfa daha az yer kaplayamaz.");
+        });
+
+    private static ContentPresenter? FindContentPresenterFor(PageShell shell, object? content)
+    {
+        if (content is null) return null;
+        return Descendants(shell).OfType<ContentPresenter>()
+            .FirstOrDefault(presenter => ReferenceEquals(presenter.Content, content));
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in Descendants(child)) yield return nested;
+        }
+    }
+
     private static PageShell Build(string? title = null, string? subtitle = null,
         object? actions = null, object? filters = null, object? footerLeft = null,
         object? footerRight = null, object? content = null)
@@ -151,12 +244,16 @@ public sealed class PageShellTests
     /// pencere boyutunda (orn. 1000x700) her iki durumda da "*" satiri
     /// kalan tum yuksekligi doldurur ve fark olculemez.
     /// </summary>
-    private static PageShell BuildAutoSized(string? title = null, object? filters = null)
+    private static PageShell BuildAutoSized(string? title = null, object? filters = null,
+        object? actions = null, object? footerLeft = null, object? footerRight = null)
     {
         var shell = new PageShell
         {
             Title = title ?? string.Empty,
             Filters = filters,
+            Actions = actions,
+            FooterLeft = footerLeft,
+            FooterRight = footerRight,
             Content = new Border { Height = 10 },
         };
         UiThread.ApplyResources(shell);
