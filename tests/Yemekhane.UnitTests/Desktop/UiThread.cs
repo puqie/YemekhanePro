@@ -23,12 +23,25 @@ public static class UiThread
     }
 
     /// <summary>Uygulama sozlugunu ve XAML'de beklenen takma adlari elemana yukler.</summary>
+    ///
+    /// <remarks>
+    /// Bazi kok elemanlar (orn. MainWindow) DesignSystem.xaml'i artik KENDI
+    /// Resources'ina merge eder -- diger View dosyalariyla ayni desen. Boyle bir
+    /// elemana temayi TEKRAR merge etmek ayni anahtarin IKI FARKLI Style ORNEGINI
+    /// dogurur (StaticResource icerik olarak esit ama referans olarak farkli):
+    /// testler Assert.Same ile kiyaslarsa yanlislikla patlar. Bu yuzden tema
+    /// zaten cozulebiliyorsa (elemanin kendi sozlugunde NavItem gibi bilinen bir
+    /// anahtar bulunuyorsa) ikinci merge atlanir.
+    /// </remarks>
     public static void ApplyResources(FrameworkElement element)
     {
-        element.Resources.MergedDictionaries.Add(new ResourceDictionary
+        if (!element.Resources.Contains("NavItem"))
         {
-            Source = new Uri("pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml")
-        });
+            element.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri("pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml")
+            });
+        }
         element.Resources["BooleanToVisibilityConverter"] = new BooleanToVisibilityConverter();
         element.Resources["Bool"] = new BooleanToVisibilityConverter();
         element.Resources["BoolToVisibility"] = new BooleanToVisibilityConverter();

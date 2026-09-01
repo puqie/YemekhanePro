@@ -11,15 +11,17 @@ namespace Yemekhane.UnitTests.Desktop;
 /// temayi merge edip UZERINE yaziyordu, yani merge etkisizdi. Sonuc: tek
 /// tasarim sistemi, 13 ayri gerceklik.
 ///
-/// Kapsam notu: MainWindow.xaml kasitli olarak disaridadir. Navigasyon menusu
-/// Gorev 4'te bastan yazilacak ve renk temizligi o gecişte yapilacak; bu
-/// dosyayi burada temizlemek Gorev 4 ile cakisir. Bu yuzden yalnizca
-/// Views/ klasoru taranir.
+/// Kapsam notu: MainWindow.xaml artik dahildir. Gorev 4 menu grubunu yeniden
+/// yazarken renk temizligini de ustlendi; bu yuzden Views/ disina cikilip
+/// Yemekhane.Desktop kok klasoru taranir (MainWindow.xaml burada yasar).
 /// </summary>
 public sealed class SingleThemeSourceTests
 {
     private static readonly string ViewRoot = Path.Combine(
         RepositoryRoot(), "src", "Yemekhane.Desktop", "Views");
+
+    private static readonly string DesktopRoot = Path.Combine(
+        RepositoryRoot(), "src", "Yemekhane.Desktop");
 
     public static TheoryData<string> XamlFiles()
     {
@@ -28,8 +30,9 @@ public sealed class SingleThemeSourceTests
         {
             if (path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")) continue;
             if (path.Contains($"{Path.DirectorySeparatorChar}Themes{Path.DirectorySeparatorChar}")) continue;
-            data.Add(Path.GetRelativePath(ViewRoot, path));
+            data.Add(Path.GetRelativePath(DesktopRoot, path));
         }
+        data.Add("MainWindow.xaml");
         return data;
     }
 
@@ -37,7 +40,7 @@ public sealed class SingleThemeSourceTests
     [MemberData(nameof(XamlFiles))]
     public void ViewDefinesNoLocalBrush(string relativePath)
     {
-        var text = File.ReadAllText(Path.Combine(ViewRoot, relativePath));
+        var text = File.ReadAllText(Path.Combine(DesktopRoot, relativePath));
 
         Assert.DoesNotContain("<SolidColorBrush", text);
     }
@@ -55,7 +58,7 @@ public sealed class SingleThemeSourceTests
     [MemberData(nameof(XamlFiles))]
     public void ViewUsesNoRawHexColour(string relativePath)
     {
-        var text = File.ReadAllText(Path.Combine(ViewRoot, relativePath));
+        var text = File.ReadAllText(Path.Combine(DesktopRoot, relativePath));
 
         // Duz XML ozniteligi: Background="#RGB".."#AARRGGBB" (3-8 hex hane).
         var attributeMatches = Regex.Matches(text,
