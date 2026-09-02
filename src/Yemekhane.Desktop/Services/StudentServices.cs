@@ -9,6 +9,7 @@ using Yemekhane.Application.Cards;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Organization;
+using Yemekhane.Application.Parents;
 using Yemekhane.Application.Students;
 using Yemekhane.Devices.Abstractions;
 
@@ -39,6 +40,18 @@ public interface IStudentApiClient
     /// </summary>
     Task<IReadOnlyList<LookupRecord>> GetLookupsAsync(LookupKind kind, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<LookupRecord>>([]);
+
+    /// <summary>
+    /// Veli ekle / duzenle / kaldir. Sunucuda uclar bastan beri vardi ama masaustu yalnizca
+    /// LISTELIYORDU: veli tek yoldan, CSV ice aktarimindan ("Veli" sabit adiyla) girebiliyordu.
+    /// Otomatik SMS veli telefonuna dayandigi icin elle acilan ogrenciye hicbir zaman SMS gidemiyordu.
+    /// </summary>
+    Task<IReadOnlyList<ParentDetails>> GetParentsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ParentDetails>>([]);
+    Task SaveParentAsync(Guid studentId, Guid? parentId, SaveParentRequest request, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci veli kaydetmeyi desteklemiyor.");
+    Task RemoveParentAsync(Guid parentId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci veli kaldırmayı desteklemiyor.");
     Task<LookupRecord> CreateLookupAsync(LookupKind kind, string name, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Bu istemci tanım eklemeyi desteklemiyor.");
     Task<StudentDetails> UploadPhotoAsync(Guid studentId, string fileName, byte[] content, CancellationToken cancellationToken = default) =>
@@ -140,6 +153,28 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
     {
         using var message = Authorized(HttpMethod.Post, $"api/students/{studentId:D}/cards");
         message.Content = JsonContent.Create(request);
+        using var response = await client.SendAsync(message, cancellationToken);
+        await EnsureAsync(response, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<ParentDetails>> GetParentsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        GetAsync<IReadOnlyList<ParentDetails>>($"api/students/{studentId:D}/parents", cancellationToken);
+
+    /// <summary>parentId null ise yeni veli eklenir (POST), doluysa mevcut veli guncellenir (PUT).</summary>
+    public async Task SaveParentAsync(Guid studentId, Guid? parentId, SaveParentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        using var message = parentId is { } id
+            ? Authorized(HttpMethod.Put, $"api/parents/{id:D}")
+            : Authorized(HttpMethod.Post, $"api/students/{studentId:D}/parents");
+        message.Content = JsonContent.Create(request);
+        using var response = await client.SendAsync(message, cancellationToken);
+        await EnsureAsync(response, cancellationToken);
+    }
+
+    public async Task RemoveParentAsync(Guid parentId, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Delete, $"api/parents/{parentId:D}");
         using var response = await client.SendAsync(message, cancellationToken);
         await EnsureAsync(response, cancellationToken);
     }

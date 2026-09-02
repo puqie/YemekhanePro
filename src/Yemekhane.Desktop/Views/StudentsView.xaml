@@ -466,6 +466,16 @@
                     <ContentControl Grid.Row="1" Grid.Column="2" Content="{Binding FormJob}" ContentTemplate="{StaticResource LookupPicker}"/>
                 </Grid>
 
+                <!-- Veli: otomatik SMS bu telefona gider; onceden yalnizca CSV ice aktarimindan girilebiliyordu. -->
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <TextBlock Text="Veli adı" Style="{StaticResource Label}" Margin="0,6,0,3"/>
+                    <TextBox Grid.Row="1" Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormParentName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Veli adı"/>
+                    <TextBlock Grid.Column="2" Text="Veli telefonu" Style="{StaticResource Label}" Margin="0,6,0,3"/>
+                    <TextBox Grid.Row="1" Grid.Column="2" Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormParentPhone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Veli telefonu" ToolTip="Örn. 5321234567 — otomatik SMS bu numaraya gider"/>
+                </Grid>
+
                 <TextBlock Text="Adres" Style="{StaticResource Label}" Margin="0,8,0,3"/>
                 <TextBox Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="56" TextWrapping="Wrap" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Adres"/>
                 <Grid>

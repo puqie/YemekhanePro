@@ -66,9 +66,9 @@
                 </StackPanel>
                 <StackPanel x:Name="NavigationButtons" Grid.Row="2">
                     <TextBlock Text="GÜNLÜK İŞ" Style="{StaticResource NavGroupTitle}"/>
-                    <Button Tag="dashboard" Style="{StaticResource NavItem}" Content="Dashboard"
+                    <Button Tag="dashboard" Style="{StaticResource NavItem}" Content="Genel Bakış"
                             Command="{Binding NavigateDashboardCommand}"
-                            AutomationProperties.Name="Dashboard sayfasını aç" />
+                            AutomationProperties.Name="Genel Bakış sayfasını aç" />
                     <Button Tag="daily-tracking" Style="{StaticResource NavItem}" Content="Günlük Takip"
                             Command="{Binding NavigateDailyTrackingCommand}"
                             AutomationProperties.Name="Günlük Takip sayfasını aç" />
@@ -139,7 +139,7 @@
             <Grid Margin="22,18,22,14">
                 <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Operasyon Dashboard" Style="{StaticResource PageTitle}" />
+                    <TextBlock Text="Operasyon Genel Bakış" Style="{StaticResource PageTitle}" />
                     <TextBlock Text="Bugünün yemekhane görünümü • Europe/Istanbul" Style="{StaticResource PageSubtitle}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

@@ -3,6 +3,7 @@ using Yemekhane.Application.Cards;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Organization;
+using Yemekhane.Application.Parents;
 using Yemekhane.Application.Students;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
@@ -338,6 +339,119 @@ public sealed class StudentCardViewModelTests
 
     // ---------------------------------------------------------------- yardimcilar
 
+    /// <summary>
+    /// Veli sunucuda bastan beri yazilabiliyordu ama masaustu yalnizca LISTELIYORDU: veli tek
+    /// yoldan, CSV ice aktarimindan girebiliyordu. Otomatik SMS veli telefonuna dayandigi icin
+    /// elle acilan ogrenciye hicbir zaman SMS gidemiyordu.
+    /// </summary>
+    [Fact]
+    public async Task YeniOgrenciyeVeliGirilebilir()
+    {
+        var api = new FakeApi();
+        using var vm = Create(api, "students.write");
+        vm.NewStudentCommand.Execute(null);
+        await Until(() => vm.FormClass.IsLoaded);
+
+        vm.FormStudentNo = "7001"; vm.FormFirstName = "Ada"; vm.FormLastName = "Yılmaz";
+        vm.FormParentName = "Zeynep Yılmaz"; vm.FormParentPhone = "5321234567";
+        vm.SaveStudentCommand.Execute(null);
+        await Until(() => api.ParentSaveCount == 1);
+
+        Assert.Null(vm.ErrorMessage);
+        var (studentId, parentId, request) = api.LastParentSave!.Value;
+        Assert.Equal(api.Details.Id, studentId);
+        Assert.Null(parentId);
+        Assert.Equal("Zeynep Yılmaz", request.Name);
+        Assert.Equal("5321234567", request.Phone);
+    }
+
+    /// <summary>Mevcut veli forma yuklenir ve degistirilince PUT ile ayni kayda yazilir.</summary>
+    [Fact]
+    public async Task MevcutVeliYuklenirVeGuncellenir()
+    {
+        var api = new FakeApi();
+        var row = Row();
+        var existing = new ParentDetails(Guid.NewGuid(), row.Id, "Zeynep Yılmaz", "5321234567", null, true, true);
+        api.Parents.Add(existing);
+        using var vm = Create(api, "students.write", "students.read");
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.Details is not null);
+        vm.EditStudentCommand.Execute(null);
+        await Until(() => vm.FormParentName == "Zeynep Yılmaz");
+
+        Assert.Equal("5321234567", vm.FormParentPhone);
+        vm.FormParentPhone = "5339876543";
+        vm.SaveStudentCommand.Execute(null);
+        await Until(() => api.ParentSaveCount == 1);
+
+        Assert.Equal(existing.Id, api.LastParentSave!.Value.ParentId);
+        Assert.Equal("5339876543", api.LastParentSave!.Value.Request.Phone);
+    }
+
+    /// <summary>Veli degismediyse bosuna istek gonderilmez.</summary>
+    [Fact]
+    public async Task VeliDegismediyseIstekGonderilmez()
+    {
+        var api = new FakeApi();
+        var row = Row();
+        api.Parents.Add(new ParentDetails(Guid.NewGuid(), row.Id, "Zeynep Yılmaz", "5321234567", null, true, true));
+        using var vm = Create(api, "students.write", "students.read");
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.Details is not null);
+        vm.EditStudentCommand.Execute(null);
+        await Until(() => vm.FormParentName == "Zeynep Yılmaz");
+
+        vm.FormFirstName = "Adalet";
+        vm.SaveStudentCommand.Execute(null);
+        await Until(() => api.SaveCount == 1);
+
+        Assert.Equal(0, api.ParentSaveCount);
+        Assert.Equal(0, api.ParentRemoveCount);
+    }
+
+    /// <summary>Veli alanlari bosaltilirsa mevcut veli pasiflestirilir.</summary>
+    [Fact]
+    public async Task VeliBosaltilirsaKaldirilir()
+    {
+        var api = new FakeApi();
+        var row = Row();
+        var existing = new ParentDetails(Guid.NewGuid(), row.Id, "Zeynep Yılmaz", "5321234567", null, true, true);
+        api.Parents.Add(existing);
+        using var vm = Create(api, "students.write", "students.read");
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.Details is not null);
+        vm.EditStudentCommand.Execute(null);
+        await Until(() => vm.FormParentName == "Zeynep Yılmaz");
+
+        vm.FormParentName = ""; vm.FormParentPhone = "";
+        vm.SaveStudentCommand.Execute(null);
+        await Until(() => api.ParentRemoveCount == 1);
+
+        Assert.Equal(0, api.ParentSaveCount);
+        Assert.Empty(api.Parents);
+    }
+
+    /// <summary>Yalnizca ad ya da yalnizca telefon girilirse kaydetmeden once uyarilir.</summary>
+    [Theory]
+    [InlineData("Zeynep Yılmaz", "", "Veli telefonu zorunludur (örn. 5321234567).")]
+    [InlineData("Z", "5321234567", "Veli adı 2-200 karakter olmalıdır.")]
+    public async Task EksikVeliBilgisiKaydetmeyiDurdurur(string name, string phone, string expected)
+    {
+        var api = new FakeApi();
+        using var vm = Create(api, "students.write");
+        vm.NewStudentCommand.Execute(null);
+        await Until(() => vm.FormClass.IsLoaded);
+
+        vm.FormStudentNo = "7002"; vm.FormFirstName = "Ada"; vm.FormLastName = "Yılmaz";
+        vm.FormParentName = name; vm.FormParentPhone = phone;
+        vm.SaveStudentCommand.Execute(null);
+        await Until(() => vm.ErrorMessage is not null);
+
+        Assert.Equal(expected, vm.ErrorMessage);
+        Assert.Equal(0, api.SaveCount);
+        Assert.Equal(0, api.ParentSaveCount);
+    }
+
     private static StudentsViewModel Create(FakeApi api, params string[] permissions) =>
         new(api, new ShellNavigationService([ShellRoutes.Students, ShellRoutes.StudentDetail]), permissions, fileDialog: new FakeDialog(null));
     private static StudentListItem Row() => new(Guid.NewGuid(), "42", "CARD42", "Ada", "Yılmaz", "5", "A", "Sayısal", "+905551234567", true, 1, true, DateTimeOffset.UtcNow);
@@ -362,6 +476,9 @@ public sealed class StudentCardViewModelTests
         public readonly LookupRecord DeptSayisal = new(Guid.NewGuid(), "Sayısal", 3);
         public readonly LookupRecord JobOgrenci = new(Guid.NewGuid(), "Öğrenci", 3);
         public int SaveCount, UploadCount, DownloadCount, DeletePhotoCount;
+        public int ParentSaveCount, ParentRemoveCount;
+        public readonly List<ParentDetails> Parents = [];
+        public (Guid StudentId, Guid? ParentId, SaveParentRequest Request)? LastParentSave;
         public SaveStudentRequest? LastSaveRequest;
         public (LookupKind Kind, string Name)? LastCreatedLookup;
         public Exception? CreateLookupFailure;
@@ -407,6 +524,19 @@ public sealed class StudentCardViewModelTests
             UploadCount++; LastUploadId = studentId; LastUploadBytes = content; PhotoBytes = content;
             Details = Details with { PhotoPath = "photos/" + studentId.ToString("D") + ".png" };
             return Task.FromResult(Details);
+        }
+        public Task<IReadOnlyList<ParentDetails>> GetParentsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ParentDetails>>(Parents.Where(x => x.StudentId == studentId).ToArray());
+        public Task SaveParentAsync(Guid studentId, Guid? parentId, SaveParentRequest request, CancellationToken cancellationToken = default)
+        {
+            ParentSaveCount++; LastParentSave = (studentId, parentId, request);
+            Parents.RemoveAll(x => x.Id == parentId);
+            Parents.Add(new ParentDetails(parentId ?? Guid.NewGuid(), studentId, request.Name, request.Phone, request.Relationship, request.IsPrimary, true));
+            return Task.CompletedTask;
+        }
+        public Task RemoveParentAsync(Guid parentId, CancellationToken cancellationToken = default)
+        {
+            ParentRemoveCount++; Parents.RemoveAll(x => x.Id == parentId); return Task.CompletedTask;
         }
         public Task<byte[]?> DownloadPhotoAsync(Guid studentId, CancellationToken cancellationToken = default) { DownloadCount++; return Task.FromResult(PhotoBytes); }
         public Task DeletePhotoAsync(Guid studentId, CancellationToken cancellationToken = default)

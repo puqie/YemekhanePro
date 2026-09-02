@@ -8,6 +8,7 @@ using System.Windows.Media.Imaging;
 using Yemekhane.Application.Cards;
 using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Organization;
+using Yemekhane.Application.Parents;
 using Yemekhane.Application.Students;
 using Yemekhane.Desktop.Services;
 
@@ -105,6 +106,10 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private DateTime? formBirthDate;
     private string formStudentNo = "", formFirstName = "", formLastName = "";
     private string? formNationalId, formAddress, formNotes, formFingerprintId, formPid;
+    // Veli: sicil kartindan girilir. Ogrenciyle birlikte kaydedilir (bkz. CommitParentAsync).
+    private string? formParentName, formParentPhone;
+    private Guid? parentId;
+    private string? savedParentName, savedParentPhone;
     private readonly IFileDialogService fileDialog;
 
     public StudentsViewModel(IStudentApiClient api, IShellNavigationService navigation, IEnumerable<string> permissions,
@@ -304,6 +309,13 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public DateTime? FormBirthDate { get => formBirthDate; set { if (Set(ref formBirthDate, value)) ClearValidationError(); } }
     public string? FormFingerprintId { get => formFingerprintId; set => Set(ref formFingerprintId, value); }
     public string? FormPid { get => formPid; set => Set(ref formPid, value); }
+    /// <summary>
+    /// Veli adi ve telefonu. Eski programin Sicil Karti'nda vardi; bizde veli YALNIZCA CSV ice
+    /// aktarimindan ("Veli" sabit adiyla) girebiliyordu. Otomatik SMS veli telefonuna dayandigi
+    /// icin elle acilan ogrenciye hicbir zaman SMS gonderilemiyordu.
+    /// </summary>
+    public string? FormParentName { get => formParentName; set { if (Set(ref formParentName, value)) ClearValidationError(); } }
+    public string? FormParentPhone { get => formParentPhone; set { if (Set(ref formParentPhone, value)) ClearValidationError(); } }
     public LookupPickerViewModel FormClass { get; }
     public LookupPickerViewModel FormSection { get; }
     public LookupPickerViewModel FormDepartment { get; }
@@ -532,6 +544,55 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         await EnsureLookupsAsync(refresh: true);
         FormClass.Select(source?.ClassId); FormSection.Select(source?.SectionId);
         FormDepartment.Select(source?.DepartmentId); FormJob.Select(source?.JobId);
+        await LoadParentAsync(source?.Id);
+    }
+
+    /// <summary>
+    /// Formu ogrencinin BIRINCIL velisiyle doldurur. Veli yoksa alanlar bos kalir ve kaydetmede
+    /// yeni veli acilir. Veli okunamazsa form yine acilir: yalnizca veli alanlari bos kalir,
+    /// ogrenci duzenlemesi engellenmez.
+    /// </summary>
+    private async Task LoadParentAsync(Guid? studentId)
+    {
+        parentId = null; savedParentName = savedParentPhone = null;
+        FormParentName = FormParentPhone = null;
+        if (studentId is not { } id) { RaiseParentForm(); return; }
+        try
+        {
+            var parents = await api.GetParentsAsync(id);
+            var primary = parents.FirstOrDefault(x => x.IsActive && x.IsPrimary)
+                ?? parents.FirstOrDefault(x => x.IsActive);
+            if (primary is not null)
+            {
+                parentId = primary.Id;
+                savedParentName = FormParentName = primary.Name;
+                savedParentPhone = FormParentPhone = primary.Phone;
+            }
+        }
+        catch (Exception ex) when (IsWriteFailure(ex)) { }
+        RaiseParentForm();
+    }
+
+    private void RaiseParentForm() { Raise(nameof(FormParentName)); Raise(nameof(FormParentPhone)); }
+
+    /// <summary>
+    /// Veliyi ogrenciden SONRA kaydeder (yeni ogrencide kimlik ancak simdi vardir). Alanlar
+    /// bosaltildiysa mevcut veli pasiflestirilir; degismediyse hic istek gonderilmez.
+    /// </summary>
+    private async Task CommitParentAsync(Guid id)
+    {
+        var name = FormParentName?.Trim() ?? "";
+        var phone = FormParentPhone?.Trim() ?? "";
+        if (name.Length == 0 && phone.Length == 0)
+        {
+            if (parentId is { } existing) { await api.RemoveParentAsync(existing); parentId = null; }
+            savedParentName = savedParentPhone = null;
+            return;
+        }
+        if (string.Equals(name, savedParentName, StringComparison.Ordinal) &&
+            string.Equals(phone, savedParentPhone, StringComparison.Ordinal)) return;
+        await api.SaveParentAsync(id, parentId, new SaveParentRequest(name, phone));
+        savedParentName = name; savedParentPhone = phone;
     }
 
     private async Task EnsureLookupsAsync(bool refresh = false)
@@ -648,8 +709,16 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             // duserse ogrenci yine kaydedilmistir: form kapanir, hata ayrica soylenir.
             try { await CommitPhotoAsync(saved.Id); }
             catch (Exception ex) when (IsWriteFailure(ex)) { photoFailure = Describe(ex, "Fotoğraf yüklenemedi."); }
+            // Veli de kayittan SONRA gider (yeni ogrencide kimlik ancak simdi var). Duserse
+            // ogrenci yine kaydedilmistir; hata ayrica soylenir ki kullanici SMS'in neden
+            // gitmeyecegini bilsin.
+            string? parentFailure = null;
+            try { await CommitParentAsync(saved.Id); }
+            catch (Exception ex) when (IsWriteFailure(ex)) { parentFailure = Describe(ex, "Veli kaydedilemedi."); }
             await RefreshAfterWriteAsync(saved.Id);
             if (photoFailure is not null) ErrorMessage = "Öğrenci kaydedildi ancak fotoğraf işlenemedi: " + photoFailure;
+            if (parentFailure is not null)
+                ErrorMessage = (ErrorMessage is null ? "" : ErrorMessage + " ") + "Öğrenci kaydedildi ancak veli işlenemedi: " + parentFailure;
         }
         // Form ACIK BIRAKILIR: kullanici numarayi duzeltip yeniden deneyebilmelidir.
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci kaydedilemedi."); }
@@ -838,11 +907,21 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         if (FormFingerprintId?.Trim().Length > 64) return "Parmak izi ID en fazla 64 karakter olabilir.";
         if (FormPid?.Trim().Length > 64) return "PI ID en fazla 64 karakter olabilir.";
         if (FormAddress?.Trim().Length > 500) return "Adres en fazla 500 karakter olabilir.";
+        // Veli: ad ve telefon birlikte anlamlidir. Yalnizca biri girilirse sunucu zaten reddeder,
+        // ama hatayi burada soylemek kullaniciyi bir gidis-donusten kurtarir.
+        var parentName = FormParentName?.Trim() ?? "";
+        var parentPhone = FormParentPhone?.Trim() ?? "";
+        if (parentName.Length > 0 || parentPhone.Length > 0)
+        {
+            if (parentName.Length is < 2 or > 200) return "Veli adı 2-200 karakter olmalıdır.";
+            if (parentPhone.Length == 0) return "Veli telefonu zorunludur (örn. 5321234567).";
+        }
         return null;
     }
     private void ClearForm()
     {
         FormStudentNo = FormFirstName = FormLastName = ""; FormNationalId = FormAddress = FormNotes = FormFingerprintId = FormPid = null;
+        FormParentName = FormParentPhone = null; parentId = null; savedParentName = savedParentPhone = null;
         FormBirthDate = null; FormClass.Select(null); FormSection.Select(null); FormDepartment.Select(null); FormJob.Select(null);
         RaiseForm();
     }
@@ -850,6 +929,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     {
         Raise(nameof(FormStudentNo)); Raise(nameof(FormFirstName)); Raise(nameof(FormLastName)); Raise(nameof(FormNationalId)); Raise(nameof(FormAddress)); Raise(nameof(FormNotes));
         Raise(nameof(FormFingerprintId)); Raise(nameof(FormPid)); Raise(nameof(FormBirthDate)); Raise(nameof(FormSubtitle));
+        RaiseParentForm();
     }
     private void CloseDrawers() { IsQuickDetailOpen = IsDetailOpen = IsFormOpen = false; }
     private static string? Empty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
