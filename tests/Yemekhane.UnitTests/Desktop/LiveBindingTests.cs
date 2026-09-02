@@ -34,7 +34,7 @@ public sealed class LiveBindingTests
     public static TheoryData<string> Views() =>
     [
         "students", "cash", "entitlements", "calendar", "devices",
-        "devicecards", "sms", "reports", "settings", "daily", "bulk",
+        "devicecards", "sms", "reports", "settings", "daily", "bulk", "definitions",
     ];
 
     /// <summary>
@@ -89,6 +89,9 @@ public sealed class LiveBindingTests
 
             "bulk" => (new BulkOperationWizardView(), new BulkOperationWizardViewModel(
                 new BulkOperationApiClient(http, session), ["entitlements.bulk", "calendar.manage"])),
+
+            "definitions" => (new DefinitionsView(), new DefinitionsViewModel(
+                new DefinitionsApiClient(http, session), ["entitlements.manage", "students.read", "students.write"])),
 
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Bilinmeyen görünüm."),
         };

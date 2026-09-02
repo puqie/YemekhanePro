@@ -15,7 +15,7 @@ public class LiveSmokeJourney
         Assert.True(ui.Students.Students.Count > 0, "ogrenci listesi bos geldi");
 
         foreach (var route in new[] { "dashboard", "daily-tracking", "students", "cash", "entitlements",
-                     "holiday-transfer", "reports", "sms", "devices", "device-cards", "student-import", "settings" })
+                     "holiday-transfer", "reports", "sms", "devices", "device-cards", "student-import", "settings", "definitions" })
         {
             ui.Navigate(route);
             ui.Shot("smoke-" + route);

@@ -31,6 +31,7 @@ public sealed class BindingIntegrityTests
         { "DailyTrackingView.xaml", nameof(DailyTrackingViewModel) },
         { "StudentImportView.xaml", nameof(StudentImportViewModel) },
         { "BulkOperationWizardView.xaml", nameof(BulkOperationWizardViewModel) },
+        { "DefinitionsView.xaml", nameof(DefinitionsViewModel) },
     };
 
     /// <summary>

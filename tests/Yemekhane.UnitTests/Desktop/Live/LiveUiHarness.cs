@@ -51,6 +51,7 @@ public sealed class LiveUiHarness
     public ReportsViewModel Reports { get; }
     public SettingsViewModel Settings { get; }
     public StudentImportViewModel StudentImport { get; }
+    public DefinitionsViewModel Definitions { get; }
 
     private readonly List<string> log = [];
     public IReadOnlyList<string> Log => log;
@@ -78,6 +79,7 @@ public sealed class LiveUiHarness
         if (Permissions.Contains("cash.read")) routes.Add(ShellRoutes.Cash);
         if (Permissions.Contains("reports.read")) routes.Add(ShellRoutes.Reports);
         if (Permissions.Contains("settings.read") || Permissions.Contains("settings.manage")) routes.Add(ShellRoutes.Settings);
+        if (Permissions.Contains("students.write") || Permissions.Contains("entitlements.manage")) routes.Add(ShellRoutes.Definitions);
         Navigation = new ShellNavigationService(routes);
 
         var realtime = new DashboardRealtimeClient(baseUri, Session);
@@ -107,13 +109,14 @@ public sealed class LiveUiHarness
         Reports = new ReportsViewModel(new ReportApiClient(Http, Session), Permissions);
         Settings = new SettingsViewModel(new SettingsApiClient(Http, Session), Navigation, Permissions);
         StudentImport = new StudentImportViewModel(new StudentImportApiClient(Http, Session), new FileDialogService(), Permissions);
+        Definitions = new DefinitionsViewModel(new DefinitionsApiClient(Http, Session), Permissions);
 
         Window = new MainWindow
         {
             DataContext = Dashboard, DailyTrackingDataContext = Tracking, StudentsDataContext = Students,
             MealEntitlementsDataContext = Entitlements, CalendarDataContext = Calendar, DevicesDataContext = Devices,
             DeviceCardsDataContext = DeviceCards, SmsDataContext = Sms, CashDataContext = Cash, ReportsDataContext = Reports,
-            SettingsDataContext = Settings, StudentImportDataContext = StudentImport,
+            SettingsDataContext = Settings, StudentImportDataContext = StudentImport, DefinitionsDataContext = Definitions,
             Width = 1440, Height = 900, WindowStartupLocation = WindowStartupLocation.Manual,
             Left = -4000, Top = -4000, ShowInTaskbar = false,
         };
@@ -138,6 +141,7 @@ public sealed class LiveUiHarness
             ("SMS", Sms.InitializeAsync()), ("Kasa", Cash.InitializeAsync()),
             ("Raporlar", Reports.InitializeAsync()), ("Ayarlar", Settings.InitializeAsync()),
             ("Toplu işlem", EntitlementBulk.InitializeAsync()), ("Kart durumları", DeviceCards.InitializeAsync()),
+            ("Tanımlar", Definitions.InitializeAsync()),
         };
         foreach (var (name, task) in loads)
         {
