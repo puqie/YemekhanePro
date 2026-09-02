@@ -55,7 +55,7 @@ public sealed class SmsApiClient(HttpClient client, IJwtSession session) : ISmsA
     {
         using var request = Authorized(HttpMethod.Get, url);
         using var response = await client.SendAsync(request, cancellationToken);
-        Ensure(response);
+        await EnsureAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("SMS API yanıtı boş döndü.");
     }
@@ -63,7 +63,7 @@ public sealed class SmsApiClient(HttpClient client, IJwtSession session) : ISmsA
     private async Task<T> SendAsync<T>(HttpMethod method, string url, object body, CancellationToken cancellationToken)
     {
         using var request = Authorized(method, url); request.Content = JsonContent.Create(body);
-        using var response = await client.SendAsync(request, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(request, cancellationToken); await EnsureAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("SMS API yanıtı boş döndü.");
     }
@@ -71,7 +71,7 @@ public sealed class SmsApiClient(HttpClient client, IJwtSession session) : ISmsA
     private async Task SendNoContentAsync(HttpMethod method, string url, object? body, CancellationToken cancellationToken)
     {
         using var request = Authorized(method, url); if (body is not null) request.Content = JsonContent.Create(body);
-        using var response = await client.SendAsync(request, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(request, cancellationToken); await EnsureAsync(response, cancellationToken);
     }
 
     private HttpRequestMessage Authorized(HttpMethod method, string url)
@@ -81,9 +81,16 @@ public sealed class SmsApiClient(HttpClient client, IJwtSession session) : ISmsA
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
         return request;
     }
-    private static void Ensure(HttpResponseMessage response)
+    /// <summary>
+    /// Basarisiz yanitta sunucunun ProblemDetails mesajini tasiyan ApiRequestException firlatir.
+    /// Onceki EnsureSuccessStatusCode, "Mesaj veya şablondan yalnız biri seçilmelidir." gibi
+    /// dogrulama mesajlarini HttpRequestException'a cevirip atiyordu; ViewModel bunu
+    /// "SMS servisine ulaşılamadı" + Cevrimdisi rozeti olarak gosteriyordu -- kullanici
+    /// ne yanlis yaptigini ogrenemiyordu.
+    /// </summary>
+    private static async Task EnsureAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode) throw await ApiErrors.ReadAsync(response, cancellationToken);
     }
 }

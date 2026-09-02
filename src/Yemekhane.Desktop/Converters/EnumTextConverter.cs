@@ -94,6 +94,26 @@ public sealed class EnumTextConverter : IValueConverter
         ["Attention"] = "İnceleme gerekiyor",
     };
 
+    // SMS kuyruk durumlari (SmsLogStatuses). "Status" sozlugunde Pending/Failed/Sent
+    // zaten var ama Sending/RetryScheduled yoktu; SMS gecmisi rozetinde ham
+    // "RetryScheduled" gorunuyordu. Ayri sozluk: baska ekranlarin sozlugune dokunmadan.
+    private static readonly Dictionary<string, string> SmsStatus = new(Codes)
+    {
+        ["Pending"] = "Bekliyor",
+        ["Sending"] = "Gönderiliyor",
+        ["Sent"] = "Gönderildi",
+        ["Failed"] = "Başarısız",
+        ["RetryScheduled"] = "Yeniden denenecek",
+    };
+
+    // Sicil Aktar onizleme satir durumu (StudentImportService: New/Update/Error).
+    private static readonly Dictionary<string, string> ImportStatus = new(Codes)
+    {
+        ["New"] = "Yeni",
+        ["Update"] = "Güncellenecek",
+        ["Error"] = "Hatalı",
+    };
+
     private static readonly Dictionary<string, Dictionary<string, string>> Maps = new(Codes)
     {
         ["Decision"] = Decision,
@@ -102,6 +122,8 @@ public sealed class EnumTextConverter : IValueConverter
         ["LogLevel"] = LogLevel,
         ["DeviceStatus"] = DeviceStatus,
         ["SyncState"] = SyncState,
+        ["SmsStatus"] = SmsStatus,
+        ["ImportStatus"] = ImportStatus,
     };
 
     /// <summary>Kod icinden de kullanilabilsin diye ayri: ViewModel'ler XAML'siz cevirir.</summary>
