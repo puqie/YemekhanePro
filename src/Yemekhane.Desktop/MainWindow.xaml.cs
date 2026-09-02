@@ -137,7 +137,8 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         var deviceCards = route == Services.ShellRoutes.DeviceCards;
         var sms = route == Services.ShellRoutes.Sms || route.StartsWith(Services.ShellRoutes.Sms + "/", StringComparison.Ordinal);
         var cash = route == Services.ShellRoutes.Cash;
-        var reports = route == Services.ShellRoutes.Reports;
+        // "reports/StudentList": Ogrenciler ekranindaki "Dışa Aktar" Sicil Listesi secili acar.
+        var reports = route == Services.ShellRoutes.Reports || route.StartsWith(Services.ShellRoutes.Reports + "/", StringComparison.Ordinal);
         var settings = route == Services.ShellRoutes.Settings;
         var studentImport = route == Services.ShellRoutes.StudentImport;
         DashboardHost.Visibility = tracking || students || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings || studentImport ? Visibility.Collapsed : Visibility.Visible;
@@ -153,6 +154,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         SettingsHost.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
         StudentImportHost.Visibility = studentImport ? Visibility.Visible : Visibility.Collapsed;
         if (students && StudentsDataContext is StudentsViewModel viewModel) viewModel.HandleRoute(route);
+        if (reports && ReportsDataContext is ReportsViewModel reportsViewModel && route.StartsWith(Services.ShellRoutes.Reports + "/", StringComparison.Ordinal)) reportsViewModel.HandleRoute(route);
         if (entitlements && MealEntitlementsDataContext is MealEntitlementsViewModel entitlementViewModel)
         {
             // HandleRoute (orn. Ogrenciler ekranindan "Hakediş Ver" derin baglantisi)
@@ -360,7 +362,8 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         : route is ShellRoutes.Cards or ShellRoutes.CardReader ? ShellRoutes.Students
         : route.StartsWith(ShellRoutes.Entitlements + "/", StringComparison.Ordinal) ? ShellRoutes.Entitlements
         : route.StartsWith(ShellRoutes.HolidayTransfer + "/", StringComparison.Ordinal) ? ShellRoutes.HolidayTransfer
-        : route.StartsWith(ShellRoutes.Devices + "/", StringComparison.Ordinal) ? ShellRoutes.Devices : route;
+        : route.StartsWith(ShellRoutes.Devices + "/", StringComparison.Ordinal) ? ShellRoutes.Devices
+        : route.StartsWith(ShellRoutes.Reports + "/", StringComparison.Ordinal) ? ShellRoutes.Reports : route;
 
     /// <summary>Kullanici "Yeniden giriş yap" dedi; App giris penceresini acar.</summary>
     public event EventHandler? ReloginRequested;

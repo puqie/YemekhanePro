@@ -52,7 +52,7 @@ public sealed class ReportExcelService : IExcelService
     private async Task GeneratePackageAsync(ReportType type, ReportQuery query, Stream output,
         CancellationToken cancellationToken)
     {
-        var definition = Definitions[type];
+        var definition = DefinitionFor(type, query);
         var generatedAt = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), Istanbul);
         using var document = SpreadsheetDocument.Create(output, SpreadsheetDocumentType.Workbook, true);
         var workbookPart = document.AddWorkbookPart();
@@ -116,7 +116,18 @@ public sealed class ReportExcelService : IExcelService
             [TextCell("A3", $"Oluşturulma: {generatedAt:dd.MM.yyyy HH:mm} Europe/Istanbul", 2)]);
         WriteRow(writer, HeaderRow, definition.Columns.Select((column, index) =>
             TextCell(Reference(index, HeaderRow), column.Title, 3)));
-        return new SheetWriter(part, writer, definition.Columns);
+        return new SheetWriter(part, writer, definition.Columns, definition.Title == StudentListTitle);
+    }
+
+    private const string StudentListTitle = "Sicil Listesi";
+
+    /// <summary>TC sutunu yalnizca yetkili sorguda yazilir; yetkisizde bos sutun bile birakilmaz.</summary>
+    private static ReportDefinition DefinitionFor(ReportType type, ReportQuery query)
+    {
+        var definition = Definitions[type];
+        return type == ReportType.StudentList && !query.IncludeSensitive
+            ? definition with { Columns = definition.Columns.Where(x => x.Title != ReportCsvService.NationalIdHeader).ToArray() }
+            : definition;
     }
 
     private static void AddStyles(WorkbookPart workbookPart)
@@ -252,7 +263,9 @@ public sealed class ReportExcelService : IExcelService
         [ReportType.Turnstile] = Def("Turnike Raporu", C("Tarih", ColumnKind.Date, Date, 20), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Kart", ColumnKind.Text, x => x.CardNo, 16), C("Cihaz", ColumnKind.Text, x => x.Device, 20), C("Karar", ColumnKind.Text, x => ReportText.Decision(x.Decision), 14), C("Sonuç", ColumnKind.Text, x => ReportText.Status(x), 16), C("Açıklama", ColumnKind.Text, x => ReportText.Description(x), 28)),
         [ReportType.DeniedAccess] = Def("Reddedilen Geçişler Raporu", C("Tarih", ColumnKind.Date, Date, 20), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Kart", ColumnKind.Text, x => x.CardNo, 16), C("Öğün", ColumnKind.Text, x => x.MealType, 14), C("Cihaz", ColumnKind.Text, x => x.Device, 20), C("Neden", ColumnKind.Text, x => ReportText.Status(x), 24)),
         [ReportType.CardMovements] = Def("Kart Hareketleri Raporu", C("Tarih", ColumnKind.Date, Date, 20), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Sınıf", ColumnKind.Text, x => x.Class, 12), C("Kart", ColumnKind.Text, x => x.CardNo, 16), C("Durum", ColumnKind.Text, x => ReportText.Status(x), 16), C("Açıklama", ColumnKind.Text, x => ReportText.Description(x), 28)),
-        [ReportType.HolidayTransfer] = Def("Tatil ve Aktarım Raporu", C("Tarih", ColumnKind.Date, Date, 14), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Öğün", ColumnKind.Text, x => x.MealType, 14), C("Adet", ColumnKind.Integer, x => x.MealCount, 10), C("Durum", ColumnKind.Text, x => ReportText.Status(x), 16), C("Açıklama", ColumnKind.Text, x => ReportText.Description(x), 32))
+        [ReportType.HolidayTransfer] = Def("Tatil ve Aktarım Raporu", C("Tarih", ColumnKind.Date, Date, 14), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Öğün", ColumnKind.Text, x => x.MealType, 14), C("Adet", ColumnKind.Integer, x => x.MealCount, 10), C("Durum", ColumnKind.Text, x => ReportText.Status(x), 16), C("Açıklama", ColumnKind.Text, x => ReportText.Description(x), 32)),
+        // Sicil Listesi: eski programin disa aktarimiyla ayni sira, ad/soyad ayri; TC en sonda (DefinitionFor yetkisizde kaldirir).
+        [ReportType.StudentList] = Def(StudentListTitle, C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad", ColumnKind.Text, x => x.FirstName, 18), C("Soyad", ColumnKind.Text, x => x.LastName, 18), C("Sınıf", ColumnKind.Text, x => x.Class, 10), C("Şube", ColumnKind.Text, x => x.Section, 10), C("Bölüm", ColumnKind.Text, x => x.Department, 16), C("Görev", ColumnKind.Text, x => x.Job, 14), C("Kart No", ColumnKind.Text, x => x.CardNo, 16), C("Veli", ColumnKind.Text, x => x.ParentName, 24), C("Veli Telefonu", ColumnKind.Text, x => x.ParentPhone, 16), C("Durum", ColumnKind.Text, x => ReportText.Status(x), 10), C("Kayıt Tarihi", ColumnKind.Date, x => (object?)x.ReportDate, 14), C(ReportCsvService.NationalIdHeader, ColumnKind.Text, x => x.NationalId, 16))
     };
 
     private sealed record ReportDefinition(string Title, IReadOnlyList<ReportColumn> Columns);
@@ -263,17 +276,20 @@ public sealed class ReportExcelService : IExcelService
     {
         private readonly OpenXmlWriter writer;
         private readonly IReadOnlyList<ReportColumn> columns;
+        private readonly bool isStudentList;
         private bool disposed;
         private long meals;
         private decimal amount;
         private int passed;
         private int denied;
 
-        public SheetWriter(WorksheetPart part, OpenXmlWriter writer, IReadOnlyList<ReportColumn> columns)
+        public SheetWriter(WorksheetPart part, OpenXmlWriter writer, IReadOnlyList<ReportColumn> columns,
+            bool isStudentList = false)
         {
             Part = part;
             this.writer = writer;
             this.columns = columns;
+            this.isStudentList = isStudentList;
         }
 
         public WorksheetPart Part { get; }
@@ -296,8 +312,11 @@ public sealed class ReportExcelService : IExcelService
             var totalRow = FirstDataRow + (uint)DataRows;
             var cells = new List<Cell> { TextCell($"A{totalRow}", "Toplam", 7) };
             if (columns.Count > 1) cells.Add(NumberCell($"B{totalRow}", DataRows, 7));
+            // Sicil Listesi'nde gecis sayisi yoktur; MealCount aktif ogrenciyi (1/0) tasir.
             if (columns.Count > 2)
-                cells.Add(TextCell($"C{totalRow}", $"Geçen: {passed} | Reddedilen: {denied}", 7));
+                cells.Add(TextCell($"C{totalRow}", isStudentList
+                    ? $"Aktif: {meals} | Pasif: {DataRows - meals}"
+                    : $"Geçen: {passed} | Reddedilen: {denied}", 7));
             for (var index = 3; index < columns.Count; index++)
             {
                 if (columns[index].Kind == ColumnKind.Integer)

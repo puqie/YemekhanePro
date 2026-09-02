@@ -11,7 +11,7 @@ namespace Yemekhane.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/device-cards")]
-public sealed class DeviceCardsController(IDeviceCardSyncService sync) : ControllerBase
+public sealed class DeviceCardsController(IDeviceCardSyncService sync, IDeviceCardListQuery cards) : ControllerBase
 {
     /// <summary>Cihaz bazinda yuklenen / bekleyen / hatali kart sayilari.</summary>
     [HttpGet("summary")]
@@ -31,6 +31,16 @@ public sealed class DeviceCardsController(IDeviceCardSyncService sync) : Control
     public Task<IReadOnlyList<PendingDeviceCard>> Pending(Guid deviceId, [FromQuery] int limit,
         CancellationToken cancellationToken) =>
         sync.GetPendingAsync(deviceId, limit is > 0 and <= 500 ? limit : 100, cancellationToken);
+
+    /// <summary>
+    /// Bir cihazdaki kartlarin tamami (yuklu / bekleyen / hatali), arama ve sayfalamayla.
+    /// Kaynak sunucunun kart-cihaz durum tablosudur; cihaz bellegi dogrudan okunmaz.
+    /// </summary>
+    [HttpGet("{deviceId:guid}/cards")]
+    [PermissionAuthorize(Permissions.DevicesRead)]
+    public Task<DeviceCardListResult> Cards(Guid deviceId, [FromQuery] string? search = null,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken cancellationToken = default) =>
+        cards.ListAsync(new DeviceCardListQuery(deviceId, search, page, pageSize), cancellationToken);
 
     /// <summary>Karti tum aktif cihazlara yeniden yuklenmek uzere kuyruga alir.</summary>
     [HttpPost("cards/{cardId:guid}/resync")]

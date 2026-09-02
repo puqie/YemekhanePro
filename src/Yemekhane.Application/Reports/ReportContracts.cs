@@ -12,7 +12,13 @@ public enum ReportType
     Turnstile,
     DeniedAccess,
     CardMovements,
-    HolidayTransfer
+    HolidayTransfer,
+    /// <summary>
+    /// Sicil Listesi: eski programin "Raporlar > Sicil Listesi" ekrani. Olay kaydi degil,
+    /// ogrencinin kendisi satirdir (no, ad, sinif/sube, kart, veli, durum, kayit tarihi).
+    /// Sona eklendi: enum sayisal serilestiriliyor, araya girmek eski istemciyle uyumu bozar.
+    /// </summary>
+    StudentList
 }
 
 public sealed record ReportQuery(
@@ -33,7 +39,10 @@ public sealed record ReportQuery(
     string SortBy = "timestamp",
     bool Descending = true,
     int Page = 1,
-    int PageSize = 50);
+    int PageSize = 50,
+    // TC kimlik no yalnizca students.sensitive.read yetkisi olan cagirana doner. Bayragi
+    // sorgu dizgesinden DEGIL, denetleyici JWT talebinden koyar; istemci kendine yetki veremez.
+    bool IncludeSensitive = false);
 
 public sealed record ReportRow
 {
@@ -58,6 +67,11 @@ public sealed record ReportRow
     public string? Decision { get; init; }
     public string? Status { get; init; }
     public string? Description { get; init; }
+    // Sicil Listesi'ne ozgu alanlar: diger raporlarda bos kalir ve filtre/siralama anahtari degildir
+    // (EF, projeksiyonda atanmayan uyeyi yalnizca filtre/siralamada kullanilirsa ceviremez).
+    public string? NationalId { get; init; }
+    public string? ParentName { get; init; }
+    public string? ParentPhone { get; init; }
     public int MealCount { get; init; }
     // Tutar icerde kurus (long) olarak tutulur; kayan nokta yuvarlama hatasi olmasin diye.
     // JSON'a yalnizca "amount" yazilir, ancak bu alan salt-okunur (computed) kalirsa masaustu

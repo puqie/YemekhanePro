@@ -14,10 +14,18 @@ namespace Yemekhane.Desktop.ViewModels;
 public enum ReportFilters
 {
     None = 0, Student = 1, Card = 2, Name = 4, Organization = 8, Meal = 16, Device = 32,
-    Decision = 64, Status = 128
+    Decision = 64, Status = 128,
+    /// <summary>Baslangic/bitis tarihi. Sicil Listesi'nde yok: kayit tarihi filtresi listeyi bos gosterirdi.</summary>
+    Date = 256,
+    /// <summary>Aktif / Pasif / Tumu acilir kutusu (Sicil Listesi). Serbest metin "Durum" yerine gecer.</summary>
+    ActiveState = 512
 }
 
-public sealed record ReportTypeOption(ReportType Type, string Name, ReportFilters Filters);
+/// <summary>Rapor turu; <paramref name="Subtitle"/> listede adin altinda kucuk aciklama olarak gorunur.</summary>
+public sealed record ReportTypeOption(ReportType Type, string Name, ReportFilters Filters, string Subtitle = "");
+
+/// <summary>Sicil Listesi'nin Aktif / Pasif secenegi; Value sunucuya giden durum kodu (null = Tumu).</summary>
+public sealed record ReportStateOption(string Name, string? Value);
 
 public sealed class ReportColumnViewModel : ObservableObject
 {
@@ -52,6 +60,13 @@ public sealed class ReportGridRow
     public string StudentNo => source.StudentNo ?? "";
     public string CardNo => source.CardNo ?? "";
     public string Name => $"{source.FirstName} {source.LastName}".Trim();
+    // Sicil Listesi sutunlari.
+    public string FirstName => source.FirstName ?? "";
+    public string LastName => source.LastName ?? "";
+    public string ParentName => source.ParentName ?? "";
+    public string ParentPhone => source.ParentPhone ?? "";
+    public string NationalId => source.NationalId ?? "";
+    public string RegisteredOn => source.ReportDate?.ToString("dd.MM.yyyy", Turkish) ?? "";
     public string Class => source.Class ?? "";
     public string Section => source.Section ?? "";
     public string Department => source.Department ?? "";
@@ -102,6 +117,7 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private readonly IReportLayoutStore layouts;
     private readonly IReportDialogService dialogs;
     private readonly bool canRead;
+    private readonly bool canReadSensitive;
     private CancellationTokenSource? operation;
     private ReportTypeOption selectedReport;
     private ReportSummary summary = new(0, 0, 0, 0, 0);
@@ -112,6 +128,7 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private int sortVersion;
     private DateTime? startDate, endDate;
     private string? studentNo, cardNo, firstName, lastName, className, section, department, job, mealType, device, decision, status;
+    private ReportStateOption? selectedActiveState;
 
     public ReportsViewModel(IReportApiClient api, IEnumerable<string> permissions, IReportLayoutStore? layouts = null,
         IReportDialogService? dialogs = null, TimeProvider? clock = null)
@@ -119,21 +136,27 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         this.api = api; this.layouts = layouts ?? new FileReportLayoutStore(); this.dialogs = dialogs ?? new ReportDialogService();
         var permissionSet = permissions.ToHashSet(StringComparer.Ordinal);
         canRead = permissionSet.Contains("reports.read"); CanExport = permissionSet.Contains("reports.export");
+        canReadSensitive = permissionSet.Contains("students.sensitive.read");
+        const ReportFilters Date = ReportFilters.Date;
         ReportTypes =
         [
-            new(ReportType.DailyAccess, "Günlük Geçiş", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Device | ReportFilters.Decision | ReportFilters.Status),
-            new(ReportType.MealEntitlement, "Yemek Hakediş", ReportFilters.Student | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Status),
-            new(ReportType.StudentMealUsage, "Öğrenci Kullanımı", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Status),
-            new(ReportType.ClassMeal, "Sınıf Yemek", ReportFilters.Student | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal),
-            new(ReportType.DailyCash, "Günlük Kasa", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
-            new(ReportType.Income, "Gelir", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
-            new(ReportType.Sms, "SMS", ReportFilters.Student | ReportFilters.Name | ReportFilters.Status),
-            new(ReportType.Turnstile, "Turnike", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Device | ReportFilters.Decision | ReportFilters.Status),
-            new(ReportType.DeniedAccess, "Reddedilen Geçiş", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Device | ReportFilters.Status),
-            new(ReportType.CardMovements, "Kart Hareketleri", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
-            new(ReportType.HolidayTransfer, "Tatil / Aktarım", ReportFilters.Student | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Status)
+            // Eski programin "Raporlar" menusundeki ilk madde; tarih filtresi yok (bkz. ReportFilters.Date).
+            new(ReportType.StudentList, "Sicil Listesi", ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.ActiveState, "Öğrenci, kart ve veli"),
+            new(ReportType.DailyAccess, "Günlük Geçiş", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Device | ReportFilters.Decision | ReportFilters.Status, "Detaylı geçiş dökümü"),
+            new(ReportType.MealEntitlement, "Yemek Hakediş", Date | ReportFilters.Student | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Status),
+            new(ReportType.StudentMealUsage, "Öğrenci Kullanımı", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal | ReportFilters.Status),
+            new(ReportType.ClassMeal, "Sınıf Yemek", Date | ReportFilters.Student | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Meal),
+            new(ReportType.DailyCash, "Günlük Kasa", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
+            new(ReportType.Income, "Gelir", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
+            new(ReportType.Sms, "SMS", Date | ReportFilters.Student | ReportFilters.Name | ReportFilters.Status),
+            new(ReportType.Turnstile, "Turnike", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Device | ReportFilters.Decision | ReportFilters.Status),
+            new(ReportType.DeniedAccess, "Reddedilen Geçiş", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Device | ReportFilters.Status),
+            new(ReportType.CardMovements, "Kart Hareketleri", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
+            new(ReportType.HolidayTransfer, "Tatil / Aktarım", Date | ReportFilters.Student | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Status)
         ];
-        selectedReport = ReportTypes[0];
+        // Acilista Gunluk Gecis secili kalir: memurun gunluk sorusu "bugun kim gecti"dir; Sicil Listesi
+        // listede ilk siradadir ama 420 satirlik tam listeyi her aciliste cekmek gereksiz.
+        selectedReport = ReportTypes.First(x => x.Type == ReportType.DailyAccess);
         var today = (clock ?? TimeProvider.System).GetLocalNow().Date;
         startDate = endDate = today;
         ApplyCommand = new AsyncCommand(() => ApplyAsync());
@@ -152,10 +175,15 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public ObservableCollection<ReportGridRow> Rows { get; } = [];
     public ObservableCollection<ReportGridRow> SelectedRows { get; } = [];
     public IReadOnlyList<int> PageSizes { get; } = [25, 50, 100, 200];
+    public IReadOnlyList<ReportStateOption> ActiveStates { get; } = [new("Tümü", null), new("Aktif", "ACTIVE"), new("Pasif", "INACTIVE")];
+    /// <summary>Rapor turu listesinin alt basligi: "12 canlı rapor".</summary>
+    public string ReportCountText => $"{ReportTypes.Count} canlı rapor";
     public ReportTypeOption SelectedReport { get => selectedReport; set { if (selectedReport == value) return; selectedReport = value; Page = 1; BuildColumns(); Raise(); Raise(nameof(SummaryText)); RaiseFilterProperties(); _ = ApplyAsync(); } }
     public ReportSummary Summary { get => summary; private set { if (Set(ref summary, value)) { Raise(nameof(SummaryText)); Raise(nameof(PageText)); Raise(nameof(IsEmpty)); RefreshCommands(); } } }
     public string SummaryText => SelectedReport.Type switch
     {
+        // Sicil Listesi'nde TotalMeals aktif ogrenci sayisini tasir (EfReportRepository.StudentList).
+        ReportType.StudentList => $"Toplam {Summary.TotalRecords:N0}   •   Aktif {Summary.TotalMeals:N0}   •   Pasif {Summary.TotalRecords - Summary.TotalMeals:N0}",
         // Gunluk Kasa gruplu (gun x gelir turu) dondugu icin "Toplam" satir sayisi degil,
         // TotalMeals'te tasinan islem adedi kullaniciya anlamli olan sayidir.
         ReportType.DailyCash => $"Toplam {Summary.TotalRecords:N0}   •   İşlem {Summary.TotalMeals:N0}   •   Tutar {Summary.Amount.ToString("C2", Turkish)}",
@@ -174,6 +202,10 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public string? ErrorMessage { get => errorMessage; private set { if (Set(ref errorMessage, value)) { Raise(nameof(HasError)); Raise(nameof(IsEmpty)); } } }
     public string? StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
+    public bool ShowDateFilters => HasFilter(ReportFilters.Date);
+    /// <summary>Tarih filtresi olmayan raporda kullaniciya nedeni soylenir; sessizce yok sayilmaz.</summary>
+    public bool ShowDateNote => !HasFilter(ReportFilters.Date);
+    public bool ShowActiveStateFilter => HasFilter(ReportFilters.ActiveState);
     public bool ShowStudentFilters => HasFilter(ReportFilters.Student);
     public bool ShowCardFilter => HasFilter(ReportFilters.Card);
     public bool ShowNameFilters => HasFilter(ReportFilters.Name);
@@ -196,6 +228,8 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public string? Device { get => device; set => Set(ref device, value); }
     public string? Decision { get => decision; set => Set(ref decision, value); }
     public string? Status { get => status; set => Set(ref status, value); }
+    /// <summary>Aktif / Pasif / Tumu; SelectedItem ile baglanir (WPF null SelectedValue'yu "secim yok" sayar, "Tümü" bos gorunurdu).</summary>
+    public ReportStateOption? SelectedActiveState { get => selectedActiveState ?? ActiveStates[0]; set => Set(ref selectedActiveState, value); }
     public ICommand ApplyCommand { get; }
     public ICommand ResetCommand { get; }
     public ICommand PreviousPageCommand { get; }
@@ -206,6 +240,18 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public ICommand CopySelectedCommand { get; }
 
     public Task InitializeAsync() => ApplyAsync();
+
+    /// <summary>
+    /// "reports/{ReportType}" rotasi (orn. Ogrenciler ekranindaki "Dışa Aktar" -> Sicil Listesi).
+    /// Bilinmeyen tur hicbir sey yapmaz: yanlis bir derin baglanti ekrani bozmamali.
+    /// </summary>
+    public void HandleRoute(string route)
+    {
+        var separator = route.LastIndexOf('/');
+        if (separator < 0 || !Enum.TryParse<ReportType>(route[(separator + 1)..], ignoreCase: true, out var type)) return;
+        var option = ReportTypes.FirstOrDefault(x => x.Type == type);
+        if (option is not null) SelectedReport = option;
+    }
 
     public async Task ApplyAsync()
     {
@@ -269,6 +315,7 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     {
         StartDate = EndDate = DateTime.Today;
         StudentNo = CardNo = FirstName = LastName = ClassName = Section = Department = Job = MealType = Device = Decision = Status = null;
+        SelectedActiveState = ActiveStates[0];
         await ApplyAsync();
     }
 
@@ -282,6 +329,9 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
             await api.ExportAsync(SelectedReport.Type, appliedQuery, format, path);
             StatusMessage = $"Rapor kaydedildi: {path}";
         }
+        // Sunucu 429 (dakikada 5 disa aktarma) veya 400 dondugunde nedeni kullaniciya soylenir;
+        // genel "kaydedilemedi" mesaji hemen tekrar denemeye itip yine 429 aldiriyordu.
+        catch (ApiRequestException ex) { ErrorMessage = ex.Message; }
         catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or LoginRequiredException)
         { ErrorMessage = "Rapor dosyası kaydedilemedi. Hedef yolu ve API bağlantısını kontrol edin."; }
         finally { IsLoading = false; }
@@ -298,8 +348,9 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     }
 
     private ReportQuery BuildQuery(int targetPage) => new(
-        StartDate.HasValue ? ToIstanbulOffset(StartDate.Value.Date) : null,
-        EndDate.HasValue ? ToIstanbulOffset(EndDate.Value.Date.AddDays(1)).AddTicks(-1) : null,
+        // Tarih filtresi olmayan raporda (Sicil Listesi) tarih hic gonderilmez; sunucu da yok sayar.
+        HasFilter(ReportFilters.Date) && StartDate.HasValue ? ToIstanbulOffset(StartDate.Value.Date) : null,
+        HasFilter(ReportFilters.Date) && EndDate.HasValue ? ToIstanbulOffset(EndDate.Value.Date.AddDays(1)).AddTicks(-1) : null,
         HasFilter(ReportFilters.Student) ? Clean(StudentNo) : null,
         HasFilter(ReportFilters.Card) ? Clean(CardNo) : null,
         HasFilter(ReportFilters.Name) ? Clean(FirstName) : null,
@@ -311,17 +362,19 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         HasFilter(ReportFilters.Meal) ? Clean(MealType) : null,
         HasFilter(ReportFilters.Device) ? Clean(Device) : null,
         HasFilter(ReportFilters.Decision) ? Clean(Decision) : null,
-        HasFilter(ReportFilters.Status) ? Clean(Status) : null,
+        HasFilter(ReportFilters.Status) ? Clean(Status) : HasFilter(ReportFilters.ActiveState) ? SelectedActiveState?.Value : null,
         appliedQuery.SortBy, appliedQuery.Descending, targetPage, PageSize);
 
     private void BuildColumns()
     {
         Columns.Clear();
-        var definitions = Definitions[SelectedReport.Type];
+        // TC kimlik sutunu yetkisiz kullaniciya HIC uretilmez: "Kolonlar" menusunden bile acilamaz.
+        // (Sunucu zaten degeri gondermez; bu yalnizca bos bir sutunun kafa karistirmasini onler.)
+        var definitions = Definitions[SelectedReport.Type].Where(x => canReadSensitive || x.Key != "NationalId").ToArray();
         var saved = layouts.Load(SelectedReport.Type).ToDictionary(x => x.Key, StringComparer.Ordinal);
         for (var index = 0; index < definitions.Length; index++)
         {
-            var definition = definitions[index]; var column = new ReportColumnViewModel(definition.Key, definition.Header, definition.Sort, definition.Width) { DisplayIndex = index };
+            var definition = definitions[index]; var column = new ReportColumnViewModel(definition.Key, definition.Header, definition.Sort, definition.Width) { DisplayIndex = index, IsVisible = definition.Visible };
             if (saved.TryGetValue(column.Key, out var layout))
             { column.DisplayIndex = layout.DisplayIndex; column.Width = layout.Width; column.IsVisible = layout.IsVisible; }
             Columns.Add(column);
@@ -331,6 +384,7 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private bool HasFilter(ReportFilters value) => SelectedReport.Filters.HasFlag(value);
     private void RaiseFilterProperties()
     {
+        Raise(nameof(ShowDateFilters)); Raise(nameof(ShowDateNote)); Raise(nameof(ShowActiveStateFilter));
         Raise(nameof(ShowStudentFilters)); Raise(nameof(ShowCardFilter)); Raise(nameof(ShowNameFilters));
         Raise(nameof(ShowOrganizationFilters)); Raise(nameof(ShowMealFilter)); Raise(nameof(ShowDeviceFilter));
         Raise(nameof(ShowDecisionFilter)); Raise(nameof(ShowStatusFilter));
@@ -350,16 +404,25 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     }
     public void Dispose() { operation?.Cancel(); operation?.Dispose(); }
 
-    private sealed record Definition(string Key, string Header, string? Sort, double Width);
+    private sealed record Definition(string Key, string Header, string? Sort, double Width, bool Visible = true);
     private static Definition C(string key, string title, string? sort = null, double width = 110) => new(key, title, sort, width);
+    /// <summary>Varsayilan olarak GIZLI sutun; kullanici "Kolonlar" menusunden acar (duzen kaydedilir).</summary>
+    private static Definition H(string key, string title, string? sort = null, double width = 110) => new(key, title, sort, width, false);
     // Genislik 0 = "*" (kalan alani doldurur). Onceki surumde tum sutunlar sabit pikseldi ve
     // Gunluk Gecis'te toplam 1017px, 1440px pencerede ~980px'lik tabloya sigmayip yatay
     // kaydirma cikariyordu. Her raporda en uzun serbest metin sutunu yildizdir; sabitler
     // hucre dolgusu (22px) dahil icerige gore olculdu (ReportsJourney kesik hucre denetimi).
     private static readonly Dictionary<ReportType, Definition[]> Definitions = new()
     {
-        // 9 sutun: ReportsView 7px hucre dolgusuyla (14px/sutun) olculdu; "Yemekhane Çıkış" 126, "Öğle Yemeği" 108.
-        [ReportType.DailyAccess] = [C("Date", "TARİH", "timestamp", 142), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("Class", "SINIF", "class", 55), C("CardNo", "KART", "cardNo", Auto), C("MealType", "ÖĞÜN", "mealType", 108), C("Device", "CİHAZ", "device", 126), C("Decision", "KARAR", "decision", 92), C("Status", "DURUM", "status", Star)],
+        // Sicil Listesi (eski program: No, Ad, Soyad, Sinif, Sube, Bolum, Gorev, Kart, Veli, Veli Tel, Durum, Kayit, TC).
+        // Ekranda ad-soyad diger 11 raporla ayni tek sutundur; disa aktarimda (CSV/Excel/PDF) Ad ve Soyad ayridir.
+        // 1440px'te ~980px tabloya 13 sutun sigmaz: Bolum/Gorev (cogu okulda bos) ve TC varsayilan GIZLI,
+        // "Kolonlar" menusunden acilir. TC zaten yalnizca students.sensitive.read ile uretilir (BuildColumns).
+        [ReportType.StudentList] = [C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Star), C("Class", "SINIF", "class", 55), C("Section", "ŞUBE", "section", 55), H("Department", "BÖLÜM", "department", Auto), H("Job", "GÖREV", "job", Auto), C("CardNo", "KART NO", "cardNo", Auto), C("ParentName", "VELİ", null, Auto), C("ParentPhone", "VELİ TEL", null, Auto), C("Status", "DURUM", "status", 62), C("RegisteredOn", "KAYIT", null, 84), H("NationalId", "TC KİMLİK", null, Auto)],
+        // Gunluk Gecis "detayli": eski programdaki Bolum / Gorev sutunlari ve Neden (Status) burada. Bolum/Gorev
+        // cogu okulda bostur ve 1440px'te 11 sutun sigmaz; varsayilan gizli, Kolonlar menusunden acilir.
+        // 9 gorunur sutun: ReportsView 7px hucre dolgusuyla (14px/sutun) olculdu; "Yemekhane Çıkış" 126, "Öğle Yemeği" 108.
+        [ReportType.DailyAccess] = [C("Date", "TARİH", "timestamp", 142), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("Class", "SINIF", "class", 55), H("Department", "BÖLÜM", "department", Auto), H("Job", "GÖREV", "job", Auto), C("CardNo", "KART", "cardNo", Auto), C("MealType", "ÖĞÜN", "mealType", 108), C("Device", "CİHAZ", "device", 126), C("Decision", "KARAR", "decision", 92), C("Status", "NEDEN", "status", Star)],
         [ReportType.MealEntitlement] = [C("Date", "TARİH", "timestamp", 100), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("Class", "SINIF", "class", 62), C("MealType", "ÖĞÜN", "mealType", 120), C("MealCount", "ADET", "mealCount", 70), C("Status", "DURUM", "status", Star)],
         [ReportType.StudentMealUsage] = [C("Date", "TARİH", "timestamp", 150), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("Class", "SINIF", "class", 62), C("MealType", "ÖĞÜN", "mealType", 120), C("CardNo", "KART", "cardNo", Auto), C("Status", "DURUM", "status", Star)],
         [ReportType.ClassMeal] = [C("Date", "TARİH", "timestamp", 150), C("Class", "SINIF", "class", 62), C("Section", "ŞUBE", "section", 62), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("MealType", "ÖĞÜN", "mealType", Star), C("MealCount", "ADET", "mealCount", 80)],

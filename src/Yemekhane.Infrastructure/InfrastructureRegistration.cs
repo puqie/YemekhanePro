@@ -110,6 +110,7 @@ public static class InfrastructureRegistration
         services.AddSingleton<StudentImportPreviewStore>();
         services.AddScoped<IStudentImportService, StudentImportService>();
         services.AddScoped<IDeviceCardSyncService, DeviceCardSyncService>();
+        services.AddScoped<IDeviceCardListQuery, EfDeviceCardListQuery>();
         return services;
     }
 

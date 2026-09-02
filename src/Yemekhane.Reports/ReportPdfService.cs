@@ -39,7 +39,7 @@ public sealed class ReportPdfService : IPdfService
         ArgumentNullException.ThrowIfNull(output);
         if (!output.CanWrite) throw new ArgumentException("PDF çıktı akışı yazılabilir olmalıdır.", nameof(output));
 
-        var definition = Definitions[type];
+        var definition = DefinitionFor(type, query);
         var summary = (await reportService.QueryAsync(type, query with { Page = 1, PageSize = 1 }, cancellationToken))
             .Summary;
         var generatedAt = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), Istanbul);
@@ -100,7 +100,7 @@ public sealed class ReportPdfService : IPdfService
         {
             y = DrawWrappedText(graphics, FormatDateRange(query), Font(8), y, width);
             y = DrawWrappedText(graphics, FormatFilters(query), Font(8), y, width);
-            y = DrawWrappedText(graphics, FormatSummary(summary), Font(8, true), y, width) + 5;
+            y = DrawWrappedText(graphics, FormatSummary(definition, summary), Font(8, true), y, width) + 5;
         }
 
         return y;
@@ -244,9 +244,23 @@ public sealed class ReportPdfService : IPdfService
         }
     }
 
-    private static string FormatSummary(ReportSummary summary) =>
-        $"Toplam kayıt: {summary.TotalRecords:N0} | Geçen: {summary.Passed:N0} | Reddedilen: {summary.Denied:N0} | " +
-        $"Öğün: {summary.TotalMeals:N0} | Tutar: {summary.Amount.ToString("N2", Turkish)} TL";
+    private static string FormatSummary(ReportDefinition definition, ReportSummary summary) =>
+        definition.Title == StudentListTitle
+            // Sicil Listesi'nde gecis/ogun/tutar yoktur; TotalMeals aktif ogrenci sayisini tasir.
+            ? $"Toplam öğrenci: {summary.TotalRecords:N0} | Aktif: {summary.TotalMeals:N0} | Pasif: {summary.TotalRecords - summary.TotalMeals:N0}"
+            : $"Toplam kayıt: {summary.TotalRecords:N0} | Geçen: {summary.Passed:N0} | Reddedilen: {summary.Denied:N0} | " +
+              $"Öğün: {summary.TotalMeals:N0} | Tutar: {summary.Amount.ToString("N2", Turkish)} TL";
+
+    private const string StudentListTitle = "Sicil Listesi";
+
+    /// <summary>TC sutunu yalnizca yetkili sorguda cizilir; yetkisizde bos sutun bile birakilmaz.</summary>
+    private static ReportDefinition DefinitionFor(ReportType type, ReportQuery query)
+    {
+        var definition = Definitions[type];
+        return type == ReportType.StudentList && !query.IncludeSensitive
+            ? definition with { Columns = definition.Columns.Where(x => x.Title != ReportCsvService.NationalIdHeader).ToArray() }
+            : definition;
+    }
 
     private static XFont Font(double size, bool bold = false) =>
         new(NotoSansFontResolver.FamilyName, size, bold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
@@ -279,7 +293,9 @@ public sealed class ReportPdfService : IPdfService
             [ReportType.Turnstile] = Def("Turnike Raporu", C("Tarih", Date, 1.3), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.4), C("Kart", x => x.CardNo), C("Cihaz", x => x.Device), C("Karar", x => ReportText.Decision(x.Decision)), C("Sonuç", x => ReportText.Status(x)), C("Açıklama", x => ReportText.Description(x), 1.5)),
             [ReportType.DeniedAccess] = Def("Reddedilen Geçişler Raporu", C("Tarih", Date, 1.3), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.4), C("Kart", x => x.CardNo), C("Öğün", x => x.MealType), C("Cihaz", x => x.Device), C("Neden", x => ReportText.Status(x), 1.4)),
             [ReportType.CardMovements] = Def("Kart Hareketleri Raporu", C("Tarih", Date, 1.3), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.5), C("Sınıf", x => x.Class), C("Kart", x => x.CardNo), C("Durum", x => ReportText.Status(x)), C("Açıklama", x => ReportText.Description(x), 1.4)),
-            [ReportType.HolidayTransfer] = Def("Tatil ve Aktarım Raporu", C("Tarih", Date), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.5), C("Öğün", x => x.MealType), C("Adet", x => x.MealCount.ToString(Turkish), .6), C("Durum", x => ReportText.Status(x)), C("Açıklama", x => ReportText.Description(x), 1.8))
+            [ReportType.HolidayTransfer] = Def("Tatil ve Aktarım Raporu", C("Tarih", Date), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.5), C("Öğün", x => x.MealType), C("Adet", x => x.MealCount.ToString(Turkish), .6), C("Durum", x => ReportText.Status(x)), C("Açıklama", x => ReportText.Description(x), 1.8)),
+            // Sicil Listesi 12-13 sutun: yatay A4. Agirliklar icerige gore (veli adi en uzun, sinif/sube en kisa).
+            [ReportType.StudentList] = Def(StudentListTitle, C("Öğrenci No", x => x.StudentNo, .9), C("Ad", x => x.FirstName, 1.1), C("Soyad", x => x.LastName, 1.1), C("Sınıf", x => x.Class, .6), C("Şube", x => x.Section, .6), C("Bölüm", x => x.Department, .9), C("Görev", x => x.Job, .8), C("Kart No", x => x.CardNo, .9), C("Veli", x => x.ParentName, 1.5), C("Veli Telefonu", x => x.ParentPhone, 1.1), C("Durum", x => ReportText.Status(x), .7), C("Kayıt Tarihi", x => x.ReportDate?.ToString("dd.MM.yyyy", Turkish), .9), C(ReportCsvService.NationalIdHeader, x => x.NationalId, 1.1))
         };
 
     private static ReportDefinition Def(string title, params ReportColumn[] columns) => new(title, columns);

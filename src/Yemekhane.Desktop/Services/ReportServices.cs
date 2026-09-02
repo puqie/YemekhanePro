@@ -28,6 +28,7 @@ public sealed class ReportApiClient(HttpClient client, IJwtSession session) : IR
         using var request = Authorized(BuildUrl(type, query));
         using var response = await client.SendAsync(request, cancellationToken);
         Ensure(response);
+        response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<ReportResult>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Rapor API yanıtı boş döndü.");
     }
@@ -42,6 +43,8 @@ public sealed class ReportApiClient(HttpClient client, IJwtSession session) : IR
             using var request = Authorized(BuildUrl(type, query, suffix, includePage: false));
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             Ensure(response);
+            // Disa aktarma dakikada 5 istekle sinirli (429); sunucunun basligi kullaniciya aynen ulasir.
+            if (!response.IsSuccessStatusCode) throw await ApiErrors.ReadAsync(response, cancellationToken);
             await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
             await using (var destination = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
                              64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan))
@@ -90,7 +93,6 @@ public sealed class ReportApiClient(HttpClient client, IJwtSession session) : IR
     private static void Ensure(HttpResponseMessage response)
     {
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        response.EnsureSuccessStatusCode();
     }
 }
 
