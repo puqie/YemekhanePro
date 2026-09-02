@@ -118,7 +118,7 @@ public sealed class CashViewModelTests
                 // Gorev 3: view'in kendi RowHeight="30" gecersiz kilmasi silindi;
                 // artik DesignSystem.xaml'in DataGrid stili (34) gecerli.
                 Assert.Equal(34, grid.RowHeight);
-                Assert.Equal(8, grid.Columns.Count);
+                Assert.Equal(9, grid.Columns.Count); // TARIH, OGRENCI, NO, KART, TUR, TUTAR, ACIKLAMA, IPTAL, IPTAL NEDENI
                 var xaml = File.ReadAllText(Path.Combine(FindRoot(), "src", "Yemekhane.Desktop", "Views", "CashView.xaml"));
                 Assert.Contains("Command=\"{Binding OpenReportsCommand}\"", xaml);
                 Assert.DoesNotContain("TASK 049", xaml);
@@ -198,7 +198,7 @@ public sealed class CashViewModelTests
         public Task DeactivateTypeAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default) =>
             Task.FromResult(new PagedResult<StudentListItem>([new(studentId, "1001", "CARD1", "Ada", "Yılmaz", null, null, null, null, true, 0, false, null)], 1, 2, 1));
-        private IncomeTransactionDetails Transaction() => new(Guid.NewGuid(), Guid.NewGuid(), studentId, "Ada Yılmaz", "CARD1", DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), false, null, null, null);
+        private IncomeTransactionDetails Transaction() => new(Guid.NewGuid(), Guid.NewGuid(), studentId, "Ada Yılmaz", "1001", "CARD1", DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), false, null, null, null);
     }
 
     private sealed class Session : IJwtSession { public string? AccessToken => "token"; public bool IsAuthenticated => true; }
@@ -211,7 +211,7 @@ public sealed class CashViewModelTests
             Requests.Add((request.RequestUri!, body));
             var json = request.Method == HttpMethod.Get
                 ? "{\"items\":[],\"page\":3,\"pageSize\":25,\"totalCount\":0}"
-                : JsonSerializer.Serialize(new IncomeTransactionDetails(Guid.NewGuid(), Guid.NewGuid(), null, null, null, DateTimeOffset.UtcNow, Guid.NewGuid(), "Nakit", 125.50m, null, Guid.NewGuid(), false, null, null, null));
+                : JsonSerializer.Serialize(new IncomeTransactionDetails(Guid.NewGuid(), Guid.NewGuid(), null, null, null, null, DateTimeOffset.UtcNow, Guid.NewGuid(), "Nakit", 125.50m, null, Guid.NewGuid(), false, null, null, null));
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         }
     }

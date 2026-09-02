@@ -21,6 +21,9 @@ public sealed record IncomeTransactionDetails(
     Guid OperationId,
     Guid? StudentId,
     string? StudentName,
+    // Ad soyad tek basina ayirt edici degil (ayni adli ogrenciler var); liste ve iptal onayi
+    // ogrenci numarasini da gosterir. Kartsiz ogrencide numara tek ayirt edici alandir.
+    string? StudentNo,
     string? CardNumber,
     DateTimeOffset TransactionAt,
     Guid IncomeTypeId,

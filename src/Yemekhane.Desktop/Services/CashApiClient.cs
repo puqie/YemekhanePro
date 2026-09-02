@@ -72,7 +72,7 @@ public sealed class CashApiClient(HttpClient client, IJwtSession session) : ICas
     private async Task<T> GetAsync<T>(string url, CancellationToken cancellationToken)
     {
         using var request = Authorized(HttpMethod.Get, url);
-        using var response = await client.SendAsync(request, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(request, cancellationToken); await EnsureAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Kasa API yanıtı boş döndü.");
     }
@@ -80,7 +80,7 @@ public sealed class CashApiClient(HttpClient client, IJwtSession session) : ICas
     private async Task<T> SendAsync<T>(HttpMethod method, string url, object body, CancellationToken cancellationToken)
     {
         using var request = Authorized(method, url); request.Content = JsonContent.Create(body);
-        using var response = await client.SendAsync(request, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(request, cancellationToken); await EnsureAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Kasa API yanıtı boş döndü.");
     }
@@ -88,7 +88,7 @@ public sealed class CashApiClient(HttpClient client, IJwtSession session) : ICas
     private async Task SendNoContentAsync(HttpMethod method, string url, CancellationToken cancellationToken)
     {
         using var request = Authorized(method, url);
-        using var response = await client.SendAsync(request, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(request, cancellationToken); await EnsureAsync(response, cancellationToken);
     }
 
     private HttpRequestMessage Authorized(HttpMethod method, string url)
@@ -101,9 +101,17 @@ public sealed class CashApiClient(HttpClient client, IJwtSession session) : ICas
 
     private static string Query(IEnumerable<KeyValuePair<string, string?>> values) => string.Join("&", values
         .Where(x => !string.IsNullOrWhiteSpace(x.Value)).Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value!)}"));
-    private static void Ensure(HttpResponseMessage response)
+    /// <summary>
+    /// Basarisiz yanitin ProblemDetails basligini <see cref="ApiRequestException"/> olarak tasir.
+    /// EnsureSuccessStatusCode sunucunun "Gelir türü adı zaten kayıtlı." gibi mesajini atiyordu;
+    /// kullanici yalnizca genel bir "kaydedilemedi" goruyor ve ne duzelteceğini bilemiyordu.
+    /// </summary>
+    private static async Task EnsureAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        response.EnsureSuccessStatusCode();
+        if (response.IsSuccessStatusCode) return;
+        // Sunucuya ulasilamayan / 5xx durumlari cevrimdisi akisina (HttpRequestException) birakilir.
+        if ((int)response.StatusCode >= 500) response.EnsureSuccessStatusCode();
+        throw await ApiErrors.ReadAsync(response, cancellationToken);
     }
 }

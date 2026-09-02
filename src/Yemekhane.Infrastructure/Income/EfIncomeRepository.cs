@@ -176,7 +176,7 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
         join student in dbContext.Students.AsNoTracking() on item.StudentId equals student.Id into students
         from student in students.DefaultIfEmpty()
         select new IncomeTransactionDetails(item.Id, item.OperationId, item.StudentId,
-            student == null ? null : student.FirstName + " " + student.LastName, item.CardNumber,
+            student == null ? null : student.FirstName + " " + student.LastName, student == null ? null : student.StudentNo, item.CardNumber,
             item.TransactionAt, item.IncomeTypeId, type.Name, item.Amount, item.Description, item.CreatedBy,
             item.IsVoided, item.VoidedAt, item.VoidedBy, item.VoidReason);
 
