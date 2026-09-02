@@ -118,6 +118,11 @@ public class ImportJourney
         // Hatasiz dosya: "hatalilari atla" kutusu gizli olmali.
         var clean = Path.Combine(LiveUiHarness.ShotDir, $"sicil-temiz-{stamp}.csv");
         File.WriteAllText(clean, $"NO;KART NO;AD;SOYAD\r\n{No(21)};IMPK{stamp}-21;Temiz;Bir\r\n{No(22)};IMPK{stamp}-22;Temiz;İki\r\n", new UTF8Encoding(true));
+        // Onizleme/uygulama uc noktalari kullanici basina dakikada 5 istekle sinirli
+        // ("expensive" politikasi); bu 6. cagri olur ve 429 ile duserdi. Pencere sifirlanana
+        // kadar beklenir -- ayni kullanicinin rapor disa aktarmalari da bu sayaca dahildir.
+        ui.Note("hiz siniri penceresi icin 61 sn bekleniyor");
+        ui.Delay(61000);
         dialogs.OpenResult = clean;
         vm.ChooseFileCommand.Execute(null);
         vm.PreviewCommand.Execute(null); ui.Delay(3000); ui.Pump();

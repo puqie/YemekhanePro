@@ -132,7 +132,12 @@ public sealed class Drawer : ContentControl
     /// <summary>Cekmeceyi kapatir ve odagi geldigi yere dondurur.</summary>
     public void Close()
     {
-        IsOpen = false;
+        // SetValue DEGIL: IsOpen hemen her yerde ViewModel'deki ozel-setter'li bir
+        // ozellige tek yonlu baglidir (IsOpen="{Binding IsAddOpen}"). Tek yonlu
+        // baglamaya yerel deger yazmak baglamayi KOPARIR: ilk "Kapat"tan sonra
+        // ViewModel IsAddOpen'i tekrar true yapsa da cekmece bir daha acilmazdi.
+        // SetCurrentValue baglamayi korur; CloseCommand ViewModel'i de kapatir.
+        SetCurrentValue(IsOpenProperty, false);
         if (CloseCommand?.CanExecute(null) == true)
             CloseCommand.Execute(null);
     }

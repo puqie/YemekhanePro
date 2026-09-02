@@ -524,7 +524,7 @@ public class ShellJourney
 
     private static void ResetLockout(string dbPath)
     {
-        using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath}");
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={dbPath};Pooling=False");
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = "UPDATE users SET LockoutEnd = NULL, FailedLoginAttempts = 0 WHERE NormalizedUsername = 'ADMIN'";

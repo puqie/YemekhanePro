@@ -36,9 +36,11 @@
                             <StackPanel Width="220" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğrenci ara (no, ad, soyad)" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Öğrenci arama veya filtre"/></StackPanel>
                             <Button Content="Ara" Command="{Binding SearchStudentsCommand}" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
                         </WrapPanel>
+                        <!-- Sinif/Grup secicileri yalnizca ilgili hedef turunde gorunur: Manuel secimde
+                             iki BOS acilir kutu duruyordu. -->
                         <WrapPanel>
-                            <StackPanel Width="220" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedClass}" ToolTip="Sınıf hedefi"/></StackPanel>
-                            <StackPanel Width="220" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Grup" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroup}" ToolTip="Grup hedefi"/></StackPanel>
+                            <StackPanel Width="220" Margin="0,0,10,8" Visibility="{Binding IsClassTarget, Converter={StaticResource Bool}}"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedClass}" ToolTip="Sınıf hedefi"/></StackPanel>
+                            <StackPanel Width="220" Margin="0,0,10,8" Visibility="{Binding IsGroupTarget, Converter={StaticResource Bool}}"><TextBlock Style="{StaticResource Label}" Text="Grup" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroup}" ToolTip="Grup hedefi"/></StackPanel>
                         </WrapPanel>
                         <!-- Ayni ad-soyadli ogrenciler yaygin oldugundan (dort ayri "ADA AKGUN")
                              SINIF/SUBE sutunlari alici secimini ayirt edici kilar; yanlis veliye

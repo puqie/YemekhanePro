@@ -69,6 +69,10 @@ public static class ApiErrors
         System.Net.HttpStatusCode.Conflict => "Bu kayıt zaten mevcut.",
         System.Net.HttpStatusCode.BadRequest => "Girilen bilgiler geçersiz.",
         System.Net.HttpStatusCode.NotFound => "Kayıt bulunamadı.",
+        // Rapor disa aktarma ve sicil aktarma onizlemesi sunucuda dakikada 5 istekle
+        // sinirli; 6. istek 429 doner. Genel "tekrar deneyin" mesaji kullaniciyi hemen
+        // tekrar denemeye itiyor ve yine 429 aliyordu.
+        System.Net.HttpStatusCode.TooManyRequests => "Kısa sürede çok fazla istek gönderildi; bir dakika bekleyip tekrar deneyin.",
         _ => "İstek işlenemedi. Lütfen tekrar deneyin."
     };
 
@@ -139,6 +143,13 @@ public sealed class DashboardRealtimeClient : IDashboardRealtimeClient, INotific
     public event EventHandler<NotificationEvent>? NotificationReceived;
     public event EventHandler<RealtimeConnectionState>? StateChanged;
 
+    /// <summary>
+    /// Son baglanma denemesinin ya da kopusun hatasi; teshis icin. Baglanti
+    /// kurulunca temizlenir. Once catch bloklari istisnayi tamamen yutuyordu ve
+    /// "Çevrimdışı" rozetinin NEDEN kaldigi hicbir yerden okunamiyordu.
+    /// </summary>
+    public Exception? LastError { get; private set; }
+
     /// <param name="retryInterval">
     /// Otomatik yeniden baglanma (0 s, 2 s, 10 s) pes ettikten sonra kac saniyede bir
     /// yeniden denenecegi. Varsayilan 10 s; testler kisaltir.
@@ -164,6 +175,7 @@ public sealed class DashboardRealtimeClient : IDashboardRealtimeClient, INotific
         // Closed'da kalici bir yeniden deneme dongusu baslatilir.
         connection.Closed += error =>
         {
+            LastError = error;
             StateChanged?.Invoke(this, RealtimeConnectionState.Disconnected);
             RetryUntilConnectedAsync().ContinueWith(static _ => { }, TaskScheduler.Default);
             return Task.CompletedTask;
@@ -182,11 +194,13 @@ public sealed class DashboardRealtimeClient : IDashboardRealtimeClient, INotific
         {
             await connection.StartAsync(cancellationToken);
             await SubscribeAsync(cancellationToken);
+            LastError = null;
             StateChanged?.Invoke(this, RealtimeConnectionState.Connected);
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            LastError = ex;
             StateChanged?.Invoke(this, RealtimeConnectionState.Disconnected);
             return false;
         }

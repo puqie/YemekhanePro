@@ -259,9 +259,18 @@ public sealed class StudentsLayoutTests
     public void FormAlanlariKullanilabilirGenislikte() =>
         UiThread.Run(() =>
         {
-            // 460px panelde NO | Ad iki sutunda durur (~205px); en uzun Turkce ad/soyad
-            // (HAŞLAMACI, SÖYLEMEZ) 13px yazi tipinde ~85px kaplar -- 180px bol bol yeter.
+            // 460px panelde kimlik satiri NO (96px) | Ad | Soyad uc sutundur (Tur 3: 900px
+            // yukseklikte formu kaydirmadan sigdirmak icin bir satir kazanildi). En uzun
+            // Turkce ad/soyad (HAŞLAMACI, SÖYLEMEZ) 13px yazi tipinde ~85px kaplar; ad/soyad
+            // icin 140px, dort haneli numara icin 90px yeter. Adres/not gibi uzun metin
+            // kutulari 180px altina inmemeli.
             const double usableWidth = 180;
+            static double Floor(string path) => path switch
+            {
+                "FormStudentNo" => 90,
+                "FormFirstName" or "FormLastName" => 140,
+                _ => usableWidth,
+            };
             var api = new FakeStudentApi();
             using var vm = MakeViewModel(api, ["students.read", "students.write"]);
             vm.OpenFullDetailCommand.Execute(SampleItem("Ada", "Katırcı", "1001", "CARD-1"));
@@ -281,12 +290,12 @@ public sealed class StudentsLayoutTests
             var narrow = Descendants(formPanel).OfType<TextBox>()
                 .Where(box => box.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path is { } path
                     && path.StartsWith("Form", StringComparison.Ordinal))
-                .Where(box => box.ActualWidth > 0 && box.ActualWidth < usableWidth)
+                .Where(box => box.ActualWidth > 0 && box.ActualWidth < Floor(box.GetBindingExpression(TextBox.TextProperty)!.ParentBinding.Path.Path))
                 .Select(box => $"{box.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path ?? box.Name}: {box.ActualWidth:F0}px")
                 .ToList();
 
             Assert.True(narrow.Count == 0,
-                $"Ogrenci formunda {narrow.Count} kutu {usableWidth:F0}px'den dar:{Environment.NewLine}" +
+                $"Ogrenci formunda {narrow.Count} kutu kullanilabilir genisligin altinda:{Environment.NewLine}" +
                 string.Join(Environment.NewLine, narrow));
         });
 

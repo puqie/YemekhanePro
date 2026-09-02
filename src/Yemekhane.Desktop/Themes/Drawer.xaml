@@ -23,8 +23,11 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type controls:Drawer}">
                     <Grid>
-                        <!-- Karartma katmani: disina tiklayinca kapanir. -->
-                        <Border x:Name="PART_Scrim" Background="{StaticResource ScrimBrush}"/>
+                        <!-- Karartma katmani: disina tiklayinca kapanir. WindowScrim.Extend ile
+                             ayni karartma yan menu ve kenar bosluklari dahil PENCERENIN TAMAMINA
+                             yayilir; once yalnizca sayfanin Grid'ini kapliyordu. -->
+                        <Border x:Name="PART_Scrim" Background="{StaticResource ScrimBrush}"
+                                controls:WindowScrim.Extend="True"/>
                         <Border Background="{StaticResource SurfaceBrush}"
                                 BorderBrush="{StaticResource BorderStrongBrush}"
                                 BorderThickness="1,0,0,0"

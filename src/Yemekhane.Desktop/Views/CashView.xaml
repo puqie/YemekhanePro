@@ -118,7 +118,7 @@
                 <TextBlock Text="Gelir türü" Style="{StaticResource Label}"/>
                 <ComboBox ItemsSource="{Binding IncomeTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedAddType}"/>
                 <TextBlock Text="Tarih ve saat" Style="{StaticResource Label}"/>
-                <WrapPanel><DatePicker Width="180" SelectedDate="{Binding AddDate}"/><TextBox Width="80" Margin="8,0" Text="{Binding TransactionTime, UpdateSourceTrigger=PropertyChanged}" ToolTip="SS:dd" AutomationProperties.Name="İşlem saati"/></WrapPanel>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="8"/><ColumnDefinition Width="96"/></Grid.ColumnDefinitions><DatePicker SelectedDate="{Binding AddDate}" AutomationProperties.Name="İşlem tarihi"/><TextBox Grid.Column="2" Text="{Binding TransactionTime, UpdateSourceTrigger=PropertyChanged}" ToolTip="Saat (SS:dd)" AutomationProperties.Name="İşlem saati"/></Grid>
                 <TextBlock Text="Tutar" Style="{StaticResource Label}"/>
                 <TextBox Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Türk lirası tutarı" ToolTip="Örnek: 125,50 ₺"/>
                 <TextBlock Text="Açıklama" Style="{StaticResource Label}"/>

@@ -81,6 +81,18 @@ public sealed class LiveUiHarness
         Navigation = new ShellNavigationService(routes);
 
         var realtime = new DashboardRealtimeClient(baseUri, Session);
+        // Teshis: durum gecisleri ve hata nedeni kosunun tamamini kapsayan tek dosyaya eklenir
+        // (journey-notes.txt her Run'da ezilir).
+        realtime.StateChanged += (_, state) =>
+        {
+            try
+            {
+                Directory.CreateDirectory(ShotDir);
+                File.AppendAllText(Path.Combine(ShotDir, "realtime.txt"),
+                    $"{DateTime.Now:HH:mm:ss.fff} {state} {realtime.LastError?.GetBaseException().Message}" + Environment.NewLine);
+            }
+            catch (IOException) { }
+        };
         Dashboard = new DashboardViewModel(new DashboardApiClient(Http, Session), realtime, Navigation, Session);
         Tracking = new DailyTrackingViewModel(new DailyTrackingApiClient(Http, Session), realtime, new FileDailyTrackingPreferences(), new SystemTrackingSoundPlayer());
         Students = new StudentsViewModel(new StudentApiClient(Http, Session), Navigation, Permissions);
@@ -168,10 +180,18 @@ public sealed class LiveUiHarness
     {
         Directory.CreateDirectory(ShotDir);
         Pump(3);
-        var w = (int)Math.Ceiling(Window.ActualWidth);
-        var h = (int)Math.Ceiling(Window.ActualHeight);
+        // Pencerenin kendisi degil, ISTEMCI alani cizilir: Window.ActualHeight baslik
+        // cubugunu da sayar ve PNG'nin altinda 40px bos beyaz serit kaliyordu. Pencere
+        // sablonundaki AdornerDecorator istemci alaninin tamamidir ve adorner katmanini
+        // (pencere geneli karartma) da icerir; VisualBrush ile ofsetsiz cizilir.
+        var client = FindAll<System.Windows.Documents.AdornerDecorator>().FirstOrDefault() ?? (FrameworkElement)Window.Content;
+        var w = (int)Math.Ceiling(client.ActualWidth);
+        var h = (int)Math.Ceiling(client.ActualHeight);
         var bmp = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
-        bmp.Render(Window);
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+            dc.DrawRectangle(new VisualBrush(client), null, new Rect(0, 0, w, h));
+        bmp.Render(visual);
         var enc = new PngBitmapEncoder();
         enc.Frames.Add(BitmapFrame.Create(bmp));
         var path = Path.Combine(ShotDir, name + ".png");
@@ -196,22 +216,59 @@ public sealed class LiveUiHarness
     /// Yolculugu STA is parcaciginda, Application ve tema sozlukleri kurulu halde calistirir.
     /// <c>YP_LIVE_API</c> yoksa hicbir sey yapmaz. Yolculuk icinde firlayan istisna testi dusurur.
     /// </summary>
+    /// <summary>
+    /// Tum yolculuklar TEK kalici STA is parcaciginda kosar. Once her Run kendi is
+    /// parcacigini acip bitince oldururdu; ama WPF Application surec basina BIR kez
+    /// olusturulabilir ve olusturuldugu is parcacigina baglidir. Ikinci yolculuktan
+    /// itibaren Application.Current.Dispatcher OLU bir dispatcher'di: ViewModel'lerin
+    /// "UI'da calistir" (RunOnUi) cagrilari oraya gidip hic donmuyor, SignalR baglantisi
+    /// "Bağlanıyor"da asili kaliyor ve Dashboard/Gunluk Takip/Bildirim yolculuklari tam
+    /// koşuda dusuyor, tek basina kosunca geciyordu.
+    /// </summary>
+    private static readonly object UiGate = new();
+    private static Dispatcher? uiDispatcher;
+
+    private static Dispatcher UiDispatcher()
+    {
+        lock (UiGate)
+        {
+            if (uiDispatcher is not null) return uiDispatcher;
+            var ready = new ManualResetEventSlim();
+            Exception? startupFailure = null;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                    if (System.Windows.Application.Current is null)
+                    {
+                        var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                        foreach (var d in new[] { "DesignSystem", "Drawer", "PageShell" })
+                            app.Resources.MergedDictionaries.Add(new ResourceDictionary
+                            { Source = new Uri($"pack://application:,,,/Yemekhane.Desktop;component/Themes/{d}.xaml") });
+                    }
+                    uiDispatcher = Dispatcher.CurrentDispatcher;
+                }
+                catch (Exception ex) { startupFailure = ex; }
+                finally { ready.Set(); }
+                Dispatcher.Run();
+            }) { IsBackground = true, Name = "LiveUi" };
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            ready.Wait();
+            if (startupFailure is not null) throw new InvalidOperationException("Canli UI is parcacigi baslatilamadi.", startupFailure);
+            return uiDispatcher!;
+        }
+    }
+
     public static void Run(Action<LiveUiHarness> journey, TimeSpan? timeout = null)
     {
         if (!Enabled) return;
         Exception? failure = null;
-        var t = new Thread(() =>
+        var operation = UiDispatcher().InvokeAsync(() =>
         {
             try
             {
-                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
-                if (System.Windows.Application.Current is null)
-                {
-                    var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-                    foreach (var d in new[] { "DesignSystem", "Drawer", "PageShell" })
-                        app.Resources.MergedDictionaries.Add(new ResourceDictionary
-                        { Source = new Uri($"pack://application:,,,/Yemekhane.Desktop;component/Themes/{d}.xaml") });
-                }
                 var harness = new LiveUiHarness(ApiUrl!);
                 try { journey(harness); }
                 finally
@@ -222,11 +279,8 @@ public sealed class LiveUiHarness
                 }
             }
             catch (Exception ex) { failure = ex; }
-            finally { Dispatcher.CurrentDispatcher.InvokeShutdown(); }
         });
-        t.SetApartmentState(ApartmentState.STA);
-        t.Start();
-        if (!t.Join(timeout ?? TimeSpan.FromMinutes(10))) throw new TimeoutException("Canli yolculuk zaman asimina ugradi.");
+        if (!operation.Task.Wait(timeout ?? TimeSpan.FromMinutes(10))) throw new TimeoutException("Canli yolculuk zaman asimina ugradi.");
         if (failure is not null) throw new InvalidOperationException("Canli yolculuk basarisiz: " + failure.Message, failure);
     }
 }

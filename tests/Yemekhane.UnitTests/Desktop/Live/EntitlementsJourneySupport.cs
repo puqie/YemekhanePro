@@ -37,7 +37,7 @@ internal static class EntLiveDb
     /// <summary>Tek deger dondururen sorgu (count/sum). Parametreler @p0, @p1... olarak baglanir.</summary>
     public static long Scalar(string sql, params object[] args)
     {
-        using var connection = new SqliteConnection($"Data Source={Path};Mode=ReadOnly");
+        using var connection = new SqliteConnection($"Data Source={Path};Mode=ReadOnly;Pooling=False");
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = sql;
@@ -48,7 +48,7 @@ internal static class EntLiveDb
 
     public static List<string?[]> Rows(string sql, params object[] args)
     {
-        using var connection = new SqliteConnection($"Data Source={Path};Mode=ReadOnly");
+        using var connection = new SqliteConnection($"Data Source={Path};Mode=ReadOnly;Pooling=False");
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = sql;

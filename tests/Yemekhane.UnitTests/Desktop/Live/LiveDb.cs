@@ -17,7 +17,7 @@ public sealed class LiveDb : IDisposable
     public static LiveDb Open()
     {
         var path = Path ?? throw new InvalidOperationException("YP_LIVE_DB tanimli degil.");
-        var connection = new SqliteConnection($"Data Source={path};Mode=ReadWrite");
+        var connection = new SqliteConnection($"Data Source={path};Mode=ReadWrite;Pooling=False");
         connection.Open();
         return new LiveDb(connection);
     }

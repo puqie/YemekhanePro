@@ -82,10 +82,11 @@
         </Grid>
     </controls:PageShell>
 
-    <Border Width="430" HorizontalAlignment="Right" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1,0,0,0" Padding="22" Visibility="{Binding IsDrawerOpen, Converter={StaticResource BoolToVisibility}}">
-        <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-            <Button Content="Kapat" Command="{Binding CloseDrawerCommand}" HorizontalAlignment="Right" Style="{StaticResource Action}"/>
-            <TextBlock Text="Gün Operasyonları" FontSize="20" FontWeight="SemiBold"/><TextBlock Text="{Binding SelectedDateTitle}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,14"/>
+    <!-- Diger ekranlardaki cekmeceyle AYNI kontrol: baslik, Kapat, Esc, karartma. Once
+         karartmasiz duz bir Border idi ve "Kapat" basligin ustunde duruyordu. -->
+    <controls:Drawer IsOpen="{Binding IsDrawerOpen, Mode=OneWay}" DrawerWidth="440" Title="Gün Operasyonları" CloseCommand="{Binding CloseDrawerCommand}">
+        <StackPanel>
+            <TextBlock Text="{Binding SelectedDateTitle}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,14"/>
             <UniformGrid Columns="3"><Border Style="{StaticResource Chip}" Margin="0,0,5,0"><StackPanel><TextBlock Text="Hakediş" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding SelectedDetails.Entitlements.Quantity}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border><Border Style="{StaticResource Chip}" Margin="5,0"><StackPanel><TextBlock Text="Kullanılan" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding SelectedDetails.Entitlements.Used}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border><Border Style="{StaticResource Chip}" Margin="5,0,0,0"><StackPanel><TextBlock Text="İzinli" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding SelectedDetails.LeaveCount}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border></UniformGrid>
             <TextBlock Text="Öğün Dağılımı" FontWeight="SemiBold" Margin="0,18,0,6"/><ItemsControl ItemsSource="{Binding SelectedDetails.Meals}"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,3"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding MealName}"/><TextBlock Grid.Column="1" Text="{Binding Quantity, StringFormat={}{0} hak}" Foreground="{StaticResource MutedBrush}"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
             <TextBlock Text="Olaylar ve İşlemler" FontWeight="SemiBold" Margin="0,18,0,6"/>
@@ -99,8 +100,8 @@
             <TextBlock Text="{Binding FormMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
             <!-- Basari/bilgi: tatil kaydedildi ama haklar henuz degismedi; sonraki adim soylenir. -->
             <Border Style="{StaticResource InfoBanner}" Margin="0,10,0,0" Visibility="{Binding HasInfo, Converter={StaticResource BoolToVisibility}}"><TextBlock x:Name="InfoMessageText" Text="{Binding InfoMessage}" TextWrapping="Wrap"/></Border>
-        </StackPanel></ScrollViewer>
-    </Border>
+        </StackPanel>
+    </controls:Drawer>
     <views:BulkOperationWizardView Panel.ZIndex="20" DataContext="{Binding BulkWizard}"/>
     </Grid>
 </UserControl>
