@@ -25,6 +25,37 @@ public sealed class OrganizationService(IOrganizationRepository repository)
         return repository.AddGroupAsync(request with { Name = name, GroupType = type }, cancellationToken);
     }
 
+    public Task<IReadOnlyList<LookupRecord>> ListLookupsAsync(LookupKind kind, CancellationToken cancellationToken = default) =>
+        repository.ListLookupsAsync(kind, cancellationToken);
+
+    public Task<LookupRecord> CreateLookupAsync(LookupKind kind, string name, CancellationToken cancellationToken = default) =>
+        repository.AddLookupAsync(kind, ValidateName(name, LookupLabel(kind)), cancellationToken);
+
+    public Task<LookupRecord> RenameLookupAsync(LookupKind kind, Guid id, string name, CancellationToken cancellationToken = default) =>
+        repository.RenameLookupAsync(kind, id, ValidateName(name, LookupLabel(kind)), cancellationToken);
+
+    public Task DeleteLookupAsync(LookupKind kind, Guid id, CancellationToken cancellationToken = default) =>
+        repository.DeleteLookupAsync(kind, id, cancellationToken);
+
+    /// <summary>Rota parcasi ("sections") tanim turune cevrilir; bilinmeyen parca 400.</summary>
+    public static LookupKind ParseKind(string segment) => segment?.Trim().ToLowerInvariant() switch
+    {
+        "classes" => LookupKind.Class,
+        "sections" => LookupKind.Section,
+        "departments" => LookupKind.Department,
+        "jobs" => LookupKind.Job,
+        _ => throw new RequestValidationException("Tanım türü classes, sections, departments veya jobs olmalıdır.")
+    };
+
+    public static string LookupLabel(LookupKind kind) => kind switch
+    {
+        LookupKind.Class => "Sınıf",
+        LookupKind.Section => "Şube",
+        LookupKind.Department => "Bölüm",
+        LookupKind.Job => "Görev",
+        _ => "Tanım"
+    };
+
     public Task ReplaceMembersAsync(Guid groupId, IReadOnlyCollection<Guid> studentIds, CancellationToken cancellationToken = default) =>
         repository.ReplaceMembersAsync(groupId, studentIds.Distinct().ToArray(), cancellationToken);
 
