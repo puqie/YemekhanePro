@@ -144,7 +144,21 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     public ClassRecord? GrantClass { get => grantClass; set { if (Set(ref grantClass, value)) Preview = null; } }
     public GroupRecord? GrantGroup { get => grantGroup; set { if (Set(ref grantGroup, value)) Preview = null; } }
     public string Grade { get => grade; set { if (Set(ref grade, value)) Preview = null; } }
-    public MealTypeDetails? GrantMeal { get => grantMeal; set { if (Set(ref grantMeal, value)) Preview = null; } }
+    public MealTypeDetails? GrantMeal { get => grantMeal; set { if (Set(ref grantMeal, value)) { Preview = null; Raise(nameof(GrantMealPriceText)); Raise(nameof(HasGrantMealPrice)); } } }
+    /// <summary>
+    /// Secili ogunun bedeli ("Öğün bedeli: ₺250,00"). Ucret sifirsa satir gizlenir: ucretsiz
+    /// ogunde "₺0,00" yazmak kullaniciya bir hata varmis gibi gorunur.
+    /// </summary>
+    public bool HasGrantMealPrice => GrantMeal is { Price: > 0 };
+    public string GrantMealPriceText => HasGrantMealPrice ? "Öğün bedeli: " + GrantMeal!.Price.ToString("C2", Turkish) : "";
+    /// <summary>
+    /// Onizlemenin toplam bedeli = ucret x hak adedi x gunluk adet. Sunucunun RightsCount'u
+    /// ogrenci x gun sayisidir, gunluk adedi icermez; ayni gun iki ogun verilirse bedel de iki kat.
+    /// </summary>
+    public decimal PreviewTotal => Preview is null || previewRequest is null || GrantMeal is null ? 0 : GrantMeal.Price * Preview.RightsCount * previewRequest.Quantity;
+    public bool HasPreviewTotal => HasPreview && PreviewTotal > 0;
+    public string PreviewTotalText => HasPreviewTotal ? "Toplam bedel: " + PreviewTotal.ToString("C2", Turkish) : "";
+    private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
     public DateTime GrantStartsOn { get => grantStartsOn; set { if (Set(ref grantStartsOn, value)) Preview = null; } }
     public DateTime GrantEndsOn { get => grantEndsOn; set { if (Set(ref grantEndsOn, value)) Preview = null; } }
     /// <summary>
@@ -160,7 +174,7 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     }
     public bool IncludeSaturday { get => includeSaturday; set { if (Set(ref includeSaturday, value)) Preview = null; } }
     public bool IncludeSunday { get => includeSunday; set { if (Set(ref includeSunday, value)) Preview = null; } }
-    public EntitlementPreview? Preview { get => preview; private set { if (Set(ref preview, value)) { Raise(nameof(HasPreview)); Raise(nameof(PreviewText)); (ApplyCommand as AsyncCommand)?.Refresh(); } } }
+    public EntitlementPreview? Preview { get => preview; private set { if (Set(ref preview, value)) { Raise(nameof(HasPreview)); Raise(nameof(PreviewText)); Raise(nameof(PreviewTotal)); Raise(nameof(HasPreviewTotal)); Raise(nameof(PreviewTotalText)); (ApplyCommand as AsyncCommand)?.Refresh(); } } }
     public bool HasPreview => Preview is not null;
     public string PreviewText => Preview is null ? "" : $"{Preview.StudentCount:N0} öğrenci • {Preview.DayCount:N0} gün • {Preview.RightsCount:N0} hak ({Preview.CreatedCount:N0} yeni, {Preview.UpdatedCount:N0} güncelleme)";
     public string? PreviewMessage { get => previewMessage; private set => Set(ref previewMessage, value); }
@@ -226,6 +240,35 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     {
         if (SelectedItems.Count > 0) ManualStudentIds = string.Join(", ", SelectedItems.Select(x => x.StudentId).Distinct());
         IsGrantOpen = true; Preview = null; PreviewMessage = null; StatusMessage = null;
+        // Ogun ucreti Tanimlar ekraninda degistirilmis olabilir; acilista yuklenen liste eski
+        // bedeli gosterirdi. Cekmece hemen acilir, liste arkada tazelenir (beklemek gerekmez).
+        _ = RefreshMealTypesAsync();
+    }
+
+    /// <summary>
+    /// Ogun listesini sunucudan tazeler; yalnizca DEGISEN kayitlar yerine konur (record deger
+    /// esitligi). Listeyi bosaltip yeniden doldurmak ComboBox secimini dusurur ve surmekte olan
+    /// onizlemeyi sifirlardi; degismeyen kayitlara dokunulmaz. Hata olursa eski liste kalir.
+    /// </summary>
+    public async Task RefreshMealTypesAsync()
+    {
+        try
+        {
+            var fresh = await api.MealTypesAsync();
+            foreach (var item in fresh)
+            {
+                var index = MealTypes.ToList().FindIndex(x => x.Id == item.Id);
+                if (index < 0) { MealTypes.Add(item); MealFilters.Add(new(item.Name, item.Id)); continue; }
+                if (MealTypes[index] == item) continue;
+                var wasSelected = GrantMeal?.Id == item.Id;
+                MealTypes[index] = item;
+                if (wasSelected) GrantMeal = item;
+            }
+            for (var i = MealTypes.Count - 1; i >= 0; i--)
+                if (fresh.All(x => x.Id != MealTypes[i].Id)) MealTypes.RemoveAt(i);
+            if (GrantMeal is null) GrantMeal = MealTypes.FirstOrDefault();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException or LoginRequiredException or ApiRequestException) { }
     }
     private void CloseGrant() { IsGrantOpen = false; Preview = null; PreviewMessage = null; }
     private void OpenBulk()

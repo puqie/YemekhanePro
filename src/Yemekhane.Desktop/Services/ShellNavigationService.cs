@@ -18,6 +18,8 @@ public static class ShellRoutes
     public const string Cash = "cash";
     public const string Settings = "settings";
     public const string StudentImport = "student-import";
+    /// <summary>Tanimlar ekrani: ogunler ve sinif/sube/bolum/gorev tanimlari.</summary>
+    public const string Definitions = "definitions";
     /// <summary>
     /// AYRILMIS rota: API tarafinda RbacController (users.manage) var ama masaustunde
     /// kullanici/rol ekrani henuz yazilmadi. Bu rota kasitli olarak HICBIR yerde kayitli

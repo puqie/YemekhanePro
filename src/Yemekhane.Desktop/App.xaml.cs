@@ -155,6 +155,8 @@ public partial class App : System.Windows.Application, IDisposable
         if (permissions.Contains("cash.read")) routes.Add(ShellRoutes.Cash);
         if (permissions.Contains("reports.read")) routes.Add(ShellRoutes.Reports);
         if (permissions.Contains("settings.read") || permissions.Contains("settings.manage")) routes.Add(ShellRoutes.Settings);
+        // Tanimlar: ogun uclari entitlements.manage, sinif/sube/bolum/gorev uclari students.write ister.
+        if (permissions.Contains("students.write") || permissions.Contains("entitlements.manage")) routes.Add(ShellRoutes.Definitions);
         var navigation = new ShellNavigationService(routes);
         globalSearch = new GlobalSearchViewModel(new GlobalSearchApiClient(httpClient, session), navigation);
         var viewModel = new DashboardViewModel(apiClient, realtimeClient, navigation, session);
@@ -179,10 +181,11 @@ public partial class App : System.Windows.Application, IDisposable
         studentImport = permissions.Contains("students.write")
             ? new StudentImportViewModel(new StudentImportApiClient(httpClient, session), new FileDialogService(), permissions)
             : null;
+        var definitions = new DefinitionsViewModel(new DefinitionsApiClient(httpClient, session), permissions);
         var window = new MainWindow { DataContext = viewModel, DailyTrackingDataContext = tracking,
             StudentsDataContext = students, MealEntitlementsDataContext = entitlements, CalendarDataContext = calendar,
             DevicesDataContext = devices, DeviceCardsDataContext = deviceCards, SmsDataContext = sms, CashDataContext = cash, ReportsDataContext = reports,
-             SettingsDataContext = settings, StudentImportDataContext = studentImport,
+             SettingsDataContext = settings, StudentImportDataContext = studentImport, DefinitionsDataContext = definitions,
              GlobalSearchDataContext = globalSearch, NotificationDataContext = notifications };
         window.ConfigureShortcuts(permissions);
         navigation.NavigationRequested += (_, args) => window.Navigate(args.Route);
@@ -229,6 +232,7 @@ public partial class App : System.Windows.Application, IDisposable
             ("Takvim toplu işlem", calendarBulk.InitializeAsync()),
             ("Bildirimler", notifications?.InitializeAsync() ?? Task.CompletedTask),
             ("Kart durumları", deviceCards?.InitializeAsync() ?? Task.CompletedTask),
+            ("Tanımlar", definitions.InitializeAsync()),
         ]);
         if (failures.Count > 0)
             System.Windows.MessageBox.Show(AppStartup.DescribeFailures(failures), "YemekhanePro",

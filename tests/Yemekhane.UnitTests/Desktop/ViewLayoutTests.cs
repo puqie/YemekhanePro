@@ -19,7 +19,7 @@ public sealed class ViewLayoutTests
     public static TheoryData<string> Views() =>
     [
         "students", "daily", "entitlements", "calendar", "devices",
-        "devicecards", "sms", "cash", "reports", "settings", "bulk"
+        "devicecards", "sms", "cash", "reports", "settings", "bulk", "definitions"
     ];
 
     /// <summary>
@@ -30,6 +30,12 @@ public sealed class ViewLayoutTests
     /// regresyonu degil, teorinin bu ekran icin zaten anlamsiz olmasi.
     /// DeviceCardsView.xaml'e DOKUNULMAZ (gorev kapsami disi); bunun yerine
     /// yalnizca bu teori o ekrani atlar.
+    /// </summary>
+    /// <summary>
+    /// "definitions" da bu teoride YOK: o ekranin giris kutulari ya kapali cekmecede
+    /// (Visibility=Collapsed) ya da DataContext'e bagli sekme sablonlarindadir; DataContext'siz
+    /// kurulumda hicbiri olculemez ve teori "hiçbir giriş alanı ölçülemedi" ile duser.
+    /// Genislik denetimi gercek ViewModel ile DefinitionsViewModelTests'te yapilir.
     /// </summary>
     public static TheoryData<string> ViewsWithInputFields() =>
     [
@@ -50,6 +56,7 @@ public sealed class ViewLayoutTests
         "reports" => new ReportsView(),
         "settings" => new SettingsView(),
         "bulk" => new BulkOperationWizardView(),
+        "definitions" => new DefinitionsView(),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Bilinmeyen görünüm.")
     };
 

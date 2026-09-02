@@ -93,6 +93,10 @@
                             Command="{Binding NavigateStudentImportCommand}"
                             AutomationProperties.Name="Sicil aktarma ekranini ac"
                             Visibility="{Binding CanNavigateStudentImport, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <Button Tag="definitions" Style="{StaticResource NavItem}" Content="Tanımlar"
+                            Command="{Binding NavigateDefinitionsCommand}"
+                            AutomationProperties.Name="Tanımlar sayfasını aç"
+                            Visibility="{Binding CanNavigateDefinitions, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                     <TextBlock Text="SİSTEM" Style="{StaticResource NavGroupTitle}"/>
                     <Button Tag="devices" Style="{StaticResource NavItem}" Content="Cihazlar / Turnikeler"
@@ -273,6 +277,7 @@
         <views:ReportsView x:Name="ReportsHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:SettingsView x:Name="SettingsHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:StudentImportView x:Name="StudentImportHost" Grid.Column="1" Visibility="Collapsed"/>
+        <views:DefinitionsView x:Name="DefinitionsHost" Grid.Column="1" Visibility="Collapsed"/>
         <Grid x:Name="NotificationHost" Grid.Column="1" Panel.ZIndex="90" HorizontalAlignment="Right" VerticalAlignment="Top"
               Width="390" MaxHeight="650" Margin="0,58,18,0"
               Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">

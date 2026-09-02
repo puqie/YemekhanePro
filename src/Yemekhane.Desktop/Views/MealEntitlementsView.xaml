@@ -167,6 +167,8 @@
                 <StackPanel Visibility="{Binding IsGradeTarget, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Kademe / sınıf seviyesi" Style="{StaticResource Label}"/><TextBox Text="{Binding Grade}" ToolTip="Örnek: 5"/></StackPanel>
                 <StackPanel Visibility="{Binding IsGroupTarget, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Grup" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding GrantGroup}"/></StackPanel>
                 <TextBlock Text="Öğün" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding GrantMeal}"/>
+                <!-- Ogun bedeli Tanimlar ekraninda girilir; sifirsa satir gizli (ucretsiz ogun). -->
+                <TextBlock x:Name="GrantMealPriceText" Text="{Binding GrantMealPriceText}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" Visibility="{Binding HasGrantMealPrice, Converter={StaticResource BoolToVisibility}}"/>
                 <TextBlock Text="Tarih aralığı" Style="{StaticResource Label}"/><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="8"/><ColumnDefinition/></Grid.ColumnDefinitions><DatePicker SelectedDate="{Binding GrantStartsOn}" AutomationProperties.Name="Hakediş başlangıç tarihi"/><DatePicker Grid.Column="2" SelectedDate="{Binding GrantEndsOn}" AutomationProperties.Name="Hakediş bitiş tarihi"/></Grid>
                 <!-- Metin olarak baglanir: int baglamada "abc" sessizce reddedilip ESKI adet kalirdi. -->
                 <TextBlock Text="Günlük adet (1-10)" Style="{StaticResource Label}"/><TextBox x:Name="QuantityBox" Width="110" HorizontalAlignment="Left" Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Günlük adet"/>
@@ -174,7 +176,7 @@
                 <Separator Margin="0,16"/>
                 <Button Content="Etkileri Önizle" Command="{Binding PreviewCommand}" Style="{StaticResource Primary}" HorizontalAlignment="Left"
                         ToolTip="Uygulamadan önce kaç öğrenciyi, kaç günü ve kaç hakkı etkileyeceğini gösterir."/>
-                <Border Background="{StaticResource InfoSoftBrush}" Padding="12" Margin="0,12,0,0" Visibility="{Binding HasPreview, Converter={StaticResource BoolToVisibility}}"><StackPanel><TextBlock Text="Önizleme" FontWeight="SemiBold"/><TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" Margin="0,5,0,10"/><Button Content="Uygula" Command="{Binding ApplyCommand}" Style="{StaticResource Action}" HorizontalAlignment="Left"/></StackPanel></Border>
+                <Border Background="{StaticResource InfoSoftBrush}" Padding="12" Margin="0,12,0,0" Visibility="{Binding HasPreview, Converter={StaticResource BoolToVisibility}}"><StackPanel><TextBlock Text="Önizleme" FontWeight="SemiBold"/><TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" Margin="0,5,0,0"/><TextBlock x:Name="PreviewTotalText" Text="{Binding PreviewTotalText}" FontWeight="SemiBold" Margin="0,4,0,0" Visibility="{Binding HasPreviewTotal, Converter={StaticResource BoolToVisibility}}"/><Button Margin="0,10,0,0" Content="Uygula" Command="{Binding ApplyCommand}" Style="{StaticResource Action}" HorizontalAlignment="Left"/></StackPanel></Border>
                 <TextBlock Text="{Binding PreviewMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
             </StackPanel>
         </controls:Drawer>
