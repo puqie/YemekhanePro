@@ -97,7 +97,7 @@ public class ShellJourney
         Assert.NotEmpty(students);
         ui.Note("Arama 'ali' gruplar: " + string.Join(", ", search.Results.Select(r => r.GroupTitle).Distinct()));
         // Ayni ad-soyadli ogrenciler: alt satir no + sinif/sube + kart tasimali ve satirlar birbirinden farkli olmali.
-        Assert.NotEmpty(students.GroupBy(r => r.Title).Where(g => g.Count() > 1));
+        Assert.Contains(students.GroupBy(r => r.Title), g => g.Count() > 1);
         foreach (var item in students) Assert.Matches(@"^No \d+ • .+ • Kart (\d+|yok)$", item.Subtitle);
         Assert.Equal(students.Count, students.Select(r => r.Subtitle).Distinct().Count());
 
@@ -333,7 +333,7 @@ public class ShellJourney
             Assert.True(button.Command.CanExecute(null), tag);
             button.Command.Execute(null); ui.Pump();
             Assert.Equal(Visibility.Visible, Host(ui, hosts[tag]).Visibility);
-            Assert.Single(buttons.Where(NavigationSelection.GetIsSelected));
+            Assert.Single(buttons, NavigationSelection.GetIsSelected);
             Assert.True(NavigationSelection.GetIsSelected(button), tag);
         }
         ui.Shot("shell-menu-01-ayarlar-secili");

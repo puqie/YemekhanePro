@@ -274,7 +274,12 @@ public sealed class DailyTrackingViewModel : ObservableObject
         {
             if (target.Any(x => x.Id == value.Id)) continue;
             var index = 1;
+            // CA1309 (ordinal karsilastirma) burada KASITLI olarak uygulanmaz: bu liste
+            // kullaniciya gosterilen Turkce adlardir (sinif, ogun, cihaz). Ordinal siralama
+            // "Çilek"i "Zeytin"den sonraya atardi; kullanici alfabetik sira bekler.
+#pragma warning disable CA1309
             while (index < target.Count && string.Compare(target[index].Name, value.Name, StringComparison.CurrentCulture) < 0) index++;
+#pragma warning restore CA1309
             target.Insert(index, value);
         }
     }

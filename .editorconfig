@@ -20,3 +20,32 @@ csharp_style_namespace_declarations = file_scoped:warning
 
 [**/Migrations/*.cs]
 dotnet_diagnostic.CA1861.severity = none
+
+# ---------------------------------------------------------------------------
+# Test kodu: performans ve kuresellestirme kurallari uyari olarak kalir, HATA olmaz.
+#
+# Kurulum betigi (scripts/build-installer.ps1) -warnaserror ile derler; bu kurallar
+# test kodunda 58 yerde tetikleniyordu ve kurulum uretimini blokluyordu. Uretim
+# kodunda (src/) kurallarin TAMAMI hata olarak gecerli kalir -- burada yalnizca
+# tests/ agaci gevsetilir:
+#   CA1305/CA1310/CA1862/CA1869 kultur/karsilastirma: test verisi sabit ve İngilizce.
+#   CA1861 sabit dizi: test icinde okunabilirlik dizinin yeniden kullanimindan onemli.
+#   CA1707 alt cizgi: test adlari Turkce ve alt cizgi tasiyabilir.
+#   CA1822/CA1852/CA1859/CA1826/CA1875/CA1001/CA1711: test yardimcilarinda mikro
+#   optimizasyon ve adlandirma kurallari urune degmez.
+# ---------------------------------------------------------------------------
+[tests/**/*.cs]
+dotnet_diagnostic.CA1305.severity = suggestion
+dotnet_diagnostic.CA1310.severity = suggestion
+dotnet_diagnostic.CA1309.severity = suggestion
+dotnet_diagnostic.CA1862.severity = suggestion
+dotnet_diagnostic.CA1869.severity = suggestion
+dotnet_diagnostic.CA1861.severity = suggestion
+dotnet_diagnostic.CA1707.severity = suggestion
+dotnet_diagnostic.CA1711.severity = suggestion
+dotnet_diagnostic.CA1822.severity = suggestion
+dotnet_diagnostic.CA1826.severity = suggestion
+dotnet_diagnostic.CA1852.severity = suggestion
+dotnet_diagnostic.CA1859.severity = suggestion
+dotnet_diagnostic.CA1875.severity = suggestion
+dotnet_diagnostic.CA1001.severity = suggestion

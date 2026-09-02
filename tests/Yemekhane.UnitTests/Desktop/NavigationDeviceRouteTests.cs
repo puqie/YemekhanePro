@@ -26,7 +26,7 @@ public sealed class NavigationDeviceRouteTests
         Assert.Equal(Visibility.Visible, ((FrameworkElement)window.FindName("DevicesHost")!).Visibility);
         Assert.Equal(Visibility.Collapsed, ((FrameworkElement)window.FindName("DashboardHost")!).Visibility);
         var buttons = ((Panel)window.FindName("NavigationButtons")!).Children.OfType<Button>().ToList();
-        var selected = Assert.Single(buttons.Where(NavigationSelection.GetIsSelected));
+        var selected = Assert.Single(buttons, NavigationSelection.GetIsSelected);
         Assert.Equal(ShellRoutes.Devices, selected.Tag);
         Assert.Equal(ShellRoutes.Devices, ((IShortcutCommandTarget)window).CurrentRoute);
     });

@@ -43,7 +43,12 @@ public sealed class StudentDetailTabViewModel(string key, Func<Task<IReadOnlyLis
     /// aksi halde kullanici gercek kaydini kaybettigini sanir.
     /// </summary>
     public bool IsEmpty => IsLoaded && Error is null && Items.Count == 0;
+    // CA1822 (static yapilabilir) BILEREK bastirildi: bu uye XAML'de {Binding EmptyText}
+    // ile baglanir ve WPF baglamalari static uyeleri COZEMEZ; static yapilirsa metin
+    // ekranda sessizce bos kalir.
+#pragma warning disable CA1822
     public string EmptyText => StudentTabFormatter.EmptyText;
+#pragma warning restore CA1822
 
     public async Task LoadAsync()
     {

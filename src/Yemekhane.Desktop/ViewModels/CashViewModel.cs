@@ -302,7 +302,9 @@ public sealed class CashViewModel : ObservableObject
     private async Task TopUpAsync()
     {
         TopUpError = ValidateTopUp(); if (TopUpError is not null) return;
-        TryParseAmount(TopUpAmountText, out var amount);
+        // ValidateTopUp tutari zaten ayristirip dogruladi; buraya ancak gecerli deger gelir.
+        // Yine de sonuc denetlenir: dogrulama ileride degisirse sessizce 0 TL yuklenmesin.
+        if (!TryParseAmount(TopUpAmountText, out var amount)) { TopUpError = "Tutar okunamadı."; return; }
         var student = LookupStudent!;
         try
         {
@@ -361,7 +363,8 @@ public sealed class CashViewModel : ObservableObject
         AddError = ValidateAdd(); if (AddError is not null) return;
         var time = TimeOnly.ParseExact(TransactionTime.Trim(), "HH:mm", CultureInfo.InvariantCulture);
         var local = AddDate.Date.Add(time.ToTimeSpan());
-        TryParseAmount(AmountText, out var amount);
+        // ValidateAdd tutari zaten dogruladi; sonuc yine de denetlenir (bkz. TopUpAsync).
+        if (!TryParseAmount(AmountText, out var amount)) { AddError = "Tutar okunamadı."; return; }
         try
         {
             await api.AddAsync(new CreateIncomeTransactionRequest(operationId, LookupStudent!.Id,

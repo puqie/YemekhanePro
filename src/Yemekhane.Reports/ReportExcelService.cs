@@ -121,7 +121,7 @@ public sealed class ReportExcelService : IExcelService
         }
     }
 
-    private SheetWriter CreateSheet(WorkbookPart workbookPart, ReportDefinition definition,
+    private static SheetWriter CreateSheet(WorkbookPart workbookPart, ReportDefinition definition,
         ReportQuery query, DateTimeOffset generatedAt, string schoolName)
     {
         var part = workbookPart.AddNewPart<WorksheetPart>();

@@ -41,7 +41,11 @@ public class LiveSeed
         await SeedAsync(path);
     }
 
-    public static async Task SeedAsync(string path)
+    /// <summary>
+    /// internal: bu sinifin bir [Fact]'i oldugu icin xUnit onu TEST SINIFI sayar ve
+    /// public metotlari test zanneder (xUnit1013). Yardimci metot disariya acilmaz.
+    /// </summary>
+    internal static async Task SeedAsync(string path)
     {
         var options = new DbContextOptionsBuilder<YemekhaneDbContext>()
             .UseSqlite($"Data Source={path}")

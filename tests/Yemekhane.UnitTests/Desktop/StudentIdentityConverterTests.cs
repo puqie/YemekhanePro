@@ -17,7 +17,7 @@ public sealed class StudentIdentityConverterTests
 {
     private static string Convert(params object?[] values) =>
         (string)new StudentIdentityConverter()
-            .Convert(values, typeof(string), null!, CultureInfo.InvariantCulture);
+            .Convert(values!, typeof(string), null!, CultureInfo.InvariantCulture);
 
     [Fact]
     public void TumAlanlarVarsaHepsiniGosterir() =>

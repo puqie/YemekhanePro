@@ -142,7 +142,11 @@ public sealed class DefinitionsViewModel : ObservableObject
     {
         MealError = ValidateMeal(MealName, MealStartsAt, MealEndsAt, MealPriceText);
         if (MealError is not null) return;
-        TryParseTime(MealStartsAt, out var starts); TryParseTime(MealEndsAt, out var ends); TryParsePrice(MealPriceText, out var price);
+        // ValidateMeal ucunu de zaten ayristirip dogruladi; sonuclar yine de denetlenir ki
+        // dogrulama ileride degisirse ogun sessizce 00:00 saat ve 0 TL ile kaydedilmesin.
+        if (!TryParseTime(MealStartsAt, out var starts) || !TryParseTime(MealEndsAt, out var ends)
+            || !TryParsePrice(MealPriceText, out var price))
+        { MealError = "Saat veya ücret okunamadı."; return; }
         var request = new SaveMealTypeRequest(MealName.Trim(), starts, ends, MealIsActive, price);
         try
         {
@@ -282,7 +286,12 @@ public sealed class LookupTabViewModel : ObservableObject
     public bool CanManage { get; }
     public string NewLabel => "Yeni " + Singular;
     public string NewPlaceholder => Singular + " adı";
+    // CA1822 (static yapilabilir) BILEREK bastirildi: bu uye XAML'de {Binding EmptyText}
+    // ile baglanir ve WPF baglamalari static uyeleri COZEMEZ; static yapilirsa metin
+    // ekranda sessizce bos kalir.
+#pragma warning disable CA1822
     public string EmptyText => "Henüz kayıt yok";
+#pragma warning restore CA1822
     public ObservableCollection<LookupRecord> Items { get; } = [];
     public bool IsEmpty => loaded && Items.Count == 0;
     public string SummaryText => $"{Items.Count} kayıt";

@@ -11,7 +11,7 @@ public class LiveSmokeJourney
     {
         Assert.True(ui.Permissions.Count > 20, $"admin izinleri okunamadi: {ui.Permissions.Count}");
         ui.LoadAll();
-        Assert.Empty(ui.Log.Where(x => x.StartsWith("YÜKLEME HATASI") || x.StartsWith("ZAMAN")));
+        Assert.DoesNotContain(ui.Log, x => x.StartsWith("YÜKLEME HATASI", StringComparison.Ordinal) || x.StartsWith("ZAMAN", StringComparison.Ordinal));
         Assert.True(ui.Students.Students.Count > 0, "ogrenci listesi bos geldi");
 
         foreach (var route in new[] { "dashboard", "daily-tracking", "students", "cash", "entitlements",

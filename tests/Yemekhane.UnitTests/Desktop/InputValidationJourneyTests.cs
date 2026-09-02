@@ -317,7 +317,8 @@ public sealed class InputValidationJourneyTests : IAsyncLifetime, IDisposable
         await Run(screen.ApplyCommand);
 
         var after = await InScope(db => db.MealEntitlements.CountAsync());
-        Assert.Equal(before, after);
+        // Vaka adi mesaja girer: hangi girdinin gectigi test ciktisindan okunabilsin.
+        Assert.True(before == after, $"{what}: hakediş yazılmamalıydı ({before} -> {after}).");
     }
 
     [Fact]

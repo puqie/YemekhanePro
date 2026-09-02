@@ -52,7 +52,7 @@ public sealed class StudentListExportTests
 
         using var document = SpreadsheetDocument.Open(output, false);
         Assert.Empty(new OpenXmlValidator().Validate(document));
-        var sheet = document.WorkbookPart!.WorksheetParts.Single().Worksheet;
+        var sheet = document.WorkbookPart!.WorksheetParts.Single().Worksheet!;
         var rows = sheet.Descendants<Row>().ToDictionary(x => x.RowIndex!.Value);
         Assert.Contains("Sicil Listesi", Text(rows[1].Elements<Cell>().First()));
         var header = rows[5].Elements<Cell>().Select(Text).ToArray();

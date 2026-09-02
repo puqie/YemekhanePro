@@ -67,7 +67,7 @@ public sealed class ReportPdfService : IPdfService
             graphics?.Dispose();
             page = document.AddPage();
             page.Size = PdfSharp.PageSize.A4;
-            page.Orientation = definition.Columns.Count > 6
+            page.Orientation = definition.Columns.Length > 6
                 ? PdfSharp.PageOrientation.Landscape
                 : PdfSharp.PageOrientation.Portrait;
             graphics = XGraphics.FromPdfPage(page);
@@ -112,7 +112,7 @@ public sealed class ReportPdfService : IPdfService
         }
     }
 
-    private double DrawPageHeading(XGraphics graphics, PdfPage page, ReportDefinition definition,
+    private static double DrawPageHeading(XGraphics graphics, PdfPage page, ReportDefinition definition,
         ReportQuery query, ReportSummary summary, bool firstPage, string schoolName)
     {
         var width = page.Width.Point - 2 * Margin;
@@ -331,6 +331,6 @@ public sealed class ReportPdfService : IPdfService
     private static ReportColumn C(string title, Func<ReportRow, string?> value, double weight = 1) =>
         new(title, value, weight);
 
-    private sealed record ReportDefinition(string Title, IReadOnlyList<ReportColumn> Columns);
+    private sealed record ReportDefinition(string Title, ReportColumn[] Columns);
     private sealed record ReportColumn(string Title, Func<ReportRow, string?> Value, double Weight);
 }

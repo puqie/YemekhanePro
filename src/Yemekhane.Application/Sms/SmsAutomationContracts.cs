@@ -161,7 +161,7 @@ public interface ISmsAutomationStore
     Task<SmsAutomationSettings?> GetAsync(CancellationToken cancellationToken);
     Task SaveAsync(SmsAutomationSettings settings, CancellationToken cancellationToken);
     Task<DateOnly?> GetLastRunDateAsync(CancellationToken cancellationToken);
-    Task SetLastRunDateAsync(DateOnly date, CancellationToken cancellationToken);
+    Task SetLastRunDateAsync(DateOnly runDate, CancellationToken cancellationToken);
 }
 
 public interface ISmsAutomationRepository

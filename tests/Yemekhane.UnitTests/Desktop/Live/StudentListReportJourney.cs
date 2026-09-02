@@ -160,7 +160,7 @@ public class StudentListReportJourney
         var xlsx = Export(ui, vm, vm.ExportExcelCommand, dialogs);
         using (var document = SpreadsheetDocument.Open(xlsx, false))
         {
-            var sheet = document.WorkbookPart!.WorksheetParts.First().Worksheet;
+            var sheet = document.WorkbookPart!.WorksheetParts.First().Worksheet!;
             var rows = sheet.Descendants<Row>().ToList();
             var header = rows.Single(x => x.RowIndex!.Value == 5).Elements<Cell>().Select(CellText).ToList();
             Assert.Contains("Veli Telefonu", header);

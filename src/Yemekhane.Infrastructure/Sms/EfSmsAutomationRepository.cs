@@ -46,8 +46,8 @@ public sealed class EfSmsAutomationStore(YemekhaneDbContext db, TimeProvider tim
             ? date : null;
     }
 
-    public Task SetLastRunDateAsync(DateOnly date, CancellationToken cancellationToken) =>
-        UpsertAsync(LastRunKey, date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), cancellationToken);
+    public Task SetLastRunDateAsync(DateOnly runDate, CancellationToken cancellationToken) =>
+        UpsertAsync(LastRunKey, runDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), cancellationToken);
 
     private async Task UpsertAsync(string key, string value, CancellationToken cancellationToken)
     {
