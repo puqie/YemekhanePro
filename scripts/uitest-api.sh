@@ -23,6 +23,7 @@ case "$cmd" in
       ConnectionStrings__Database="Data Source=$win_dir\\yemekhane.db" \
       Authentication__Jwt__SigningKey="test-imza-anahtari-en-az-32-bayt-olmali-1234567890" \
       Authentication__Jwt__AccessTokenMinutes=60 \
+      Authentication__DeviceKeys__0="test-cihaz-anahtari-1234567890" \
       Authentication__Bootstrap__Enabled=true \
       Authentication__Bootstrap__Username="admin" \
       Authentication__Bootstrap__Password="TestParola123!" \

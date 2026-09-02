@@ -102,10 +102,14 @@ public class LiveSeed
         }
         await db.SaveChangesAsync();
 
-        classes = await db.Set<SchoolClass>().ToListAsync();
-        sections = await db.Set<Section>().ToListAsync();
-        meals = await db.Set<MealType>().ToListAsync();
-        incomeTypes = await db.Set<IncomeType>().ToListAsync();
+        // Ada gore SIRALI okunur: EF, GUID anahtarli satirlari her kosuda farkli sirayla
+        // ekler ve sirasiz ToListAsync farkli sira dondurur. O zaman ayni Random tohumuyla
+        // bile 5252 numarali ogrenci bir veritabaninda 6C, digerinde 7B oluyordu ve sabit
+        // deger bekleyen yolculuk testleri rastgele dusuyordu.
+        classes = await db.Set<SchoolClass>().OrderBy(x => x.Name).ToListAsync();
+        sections = await db.Set<Section>().OrderBy(x => x.Name).ToListAsync();
+        meals = await db.Set<MealType>().OrderBy(x => x.Name).ToListAsync();
+        incomeTypes = await db.Set<IncomeType>().OrderBy(x => x.Name).ToListAsync();
 
         var students = new List<Student>();
         var cards = new List<StudentCard>();
@@ -192,7 +196,7 @@ public class LiveSeed
         await db.SaveChangesAsync();
         Log($"{tx.Count} gelir islemi");
 
-        var devices = await db.Set<Device>().ToListAsync();
+        var devices = await db.Set<Device>().OrderBy(x => x.Name).ToListAsync();
         var logs = new List<AccessLog>();
         for (var day = 0; day < 12; day++)
         {

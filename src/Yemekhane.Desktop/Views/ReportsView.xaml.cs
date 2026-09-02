@@ -41,8 +41,12 @@ public partial class ReportsView : UserControl
             {
                 Header = item.Header, Binding = new Binding(item.Key),
                 // 0 = yildiz: kalan alani doldurur, boylece tablo pencereye sigar ve yatay kaydirma cikmaz.
-                Width = item.Width > 0 ? new DataGridLength(item.Width) : new DataGridLength(1, DataGridLengthUnitType.Star),
-                MinWidth = item.Width > 0 ? 20 : 110,
+                // Auto (-1): icerige gore olculur -- ad soyad gibi uzunlugu veriye bagli sutunlar sabit
+                // pikselde ("GÜNCEL ÖĞRENCİ BİR" 128px > 126px) kesiliyordu.
+                Width = item.Width > 0 ? new DataGridLength(item.Width)
+                    : item.Width < 0 ? DataGridLength.Auto
+                    : new DataGridLength(1, DataGridLengthUnitType.Star),
+                MinWidth = item.Width > 0 ? 20 : item.Width < 0 ? 120 : 110,
                 CanUserSort = item.SortKey is not null, SortMemberPath = item.SortKey ?? ""
             };
             column.SetValue(FrameworkElement.TagProperty, item.Key);
@@ -92,7 +96,7 @@ public partial class ReportsView : UserControl
         {
             Key = (string?)column.GetValue(FrameworkElement.TagProperty), Index = column.DisplayIndex,
             // Yildiz sutun piksel olarak kaydedilirse bir sonraki acilista sabitlenir ve tablo yine tasar.
-            Width = column.Width.IsStar ? ReportsViewModel.Star : column.ActualWidth
+            Width = column.Width.IsStar ? ReportsViewModel.Star : column.Width.IsAuto ? ReportsViewModel.Auto : column.ActualWidth
         }).Where(x => x.Key is not null).ToDictionary(x => x.Key!, StringComparer.Ordinal);
         var layouts = viewModel.Columns.Select(column => displayed.TryGetValue(column.Key, out var value)
             ? new ReportColumnLayout(column.Key, value.Index, value.Width, column.IsVisible)

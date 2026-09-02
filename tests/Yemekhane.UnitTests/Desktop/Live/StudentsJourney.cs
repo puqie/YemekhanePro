@@ -190,8 +190,10 @@ public class StudentsJourney
         // beklenen sayi API'den alinir, sonuc satirlari terimle eslesmeli.
         foreach (var (term, minimum, matches) in new (string, int, Func<Yemekhane.Application.Students.StudentListItem, bool>)[]
         {
-            ("ali", 40, s => s.FirstName == "ALİ"), ("ALI", 40, s => s.FirstName == "ALİ"), ("ALİ", 40, s => s.FirstName == "ALİ"),
-            ("öz", 40, s => s.LastName.StartsWith("ÖZ") || s.FirstName.StartsWith("ÖZ")), ("ÖZTÜRK", 5, s => s.LastName == "ÖZTÜRK"), ("öztürk", 5, s => s.LastName == "ÖZTÜRK"),
+            // Ice aktarilan kayitlar karisik harfli olabilir ("Öznur Güngör"); uygulama arama icin
+            // normallestirir, olcut de ayni sekilde Turkce buyuk harfe cevirerek karsilastirir.
+            ("ali", 40, s => Up(s.FirstName) == "ALİ"), ("ALI", 40, s => Up(s.FirstName) == "ALİ"), ("ALİ", 40, s => Up(s.FirstName) == "ALİ"),
+            ("öz", 40, s => Up(s.LastName).StartsWith("ÖZ") || Up(s.FirstName).StartsWith("ÖZ")), ("ÖZTÜRK", 5, s => Up(s.LastName) == "ÖZTÜRK"), ("öztürk", 5, s => Up(s.LastName) == "ÖZTÜRK"),
         })
         {
             vm.Search = null;
@@ -225,10 +227,10 @@ public class StudentsJourney
         Assert.Equal("5010", vm.Students[0].StudentNo);
         vm.CardNumber = null;
         Filter(() => vm.FirstName = "ali", "firstName=ali&isActive=true", "ad (kucuk harf)");
-        Assert.All(vm.Students, s => Assert.Equal("ALİ", s.FirstName));
+        Assert.All(vm.Students, s => Assert.Equal("ALİ", Up(s.FirstName)));
         vm.FirstName = null;
         Filter(() => vm.LastName = "öz", "lastName=%C3%B6z&isActive=true", "soyad (kucuk harf)");
-        Assert.All(vm.Students, s => Assert.StartsWith("ÖZ", s.LastName));
+        Assert.All(vm.Students, s => Assert.StartsWith("ÖZ", Up(s.LastName)));
         vm.LastName = null;
         Filter(() => vm.IsActive = false, "isActive=false", "durum pasif");
         Assert.All(vm.Students, s => Assert.False(s.IsActive));
@@ -256,7 +258,8 @@ public class StudentsJourney
         var vm = ui.Students;
         Select(ui, "5009");
         Assert.Equal("5009", vm.FormStudentNo); Assert.Equal("ALİ", vm.FormFirstName); Assert.Equal("ÖZTÜRK", vm.FormLastName);
-        Assert.Equal("5C", vm.SelectedStudent!.ClassName);
+        // Sinif sabit yazilmaz (tohum sirasi degisince "5C" rastgele dusuyordu); secimde sinifin dolu gelmesi yeterli.
+        Assert.False(string.IsNullOrWhiteSpace(vm.SelectedStudent!.ClassName), "secilen ogrencinin sinifi bos");
         Assert.Equal(10, vm.Tabs.Count);
         ui.Shot("students-10-secim-5009");
 
@@ -395,13 +398,17 @@ public class StudentsJourney
 
         // Mevcut ogrencide duzenleme sinif/subeyi SILMEMELI (PUT tam kayit bekler).
         Select(ui, "5010");
-        Assert.Equal("8B", vm.SelectedStudent!.ClassName);
+        // Duzenleme oncesi sinif/sube API'den geldigi gibi alinir; sabit "8B"/"B" beklentisi
+        // tohum sirasina bagliydi. Dogrulanan sey: kayit sonrasi ikisi de AYNEN korunuyor.
+        var classBefore = vm.SelectedStudent!.ClassName; var sectionBefore = vm.SelectedStudent.SectionName;
+        Assert.False(string.IsNullOrWhiteSpace(classBefore), "5010 sinifsiz geldi");
+        Assert.False(string.IsNullOrWhiteSpace(sectionBefore), "5010 subesiz geldi");
         vm.EditStudentCommand.Execute(null); ui.Pump();
         vm.FormNotes = "Sınıf korunmalı";
         vm.SaveStudentCommand.Execute(null);
         Until(ui, () => !vm.IsFormOpen && vm.Details?.Notes == "Sınıf korunmalı", "5010 not kaydi: " + vm.ErrorMessage);
-        Assert.Equal("8B", vm.Students.First(s => s.StudentNo == "5010").ClassName);
-        Assert.Equal("B", vm.Students.First(s => s.StudentNo == "5010").SectionName);
+        Assert.Equal(classBefore, vm.Students.First(s => s.StudentNo == "5010").ClassName);
+        Assert.Equal(sectionBefore, vm.Students.First(s => s.StudentNo == "5010").SectionName);
         Assert.NotNull(vm.Details!.ClassId);
         ui.Shot("students-28-duzenle-sinif-korunur");
 
@@ -564,4 +571,6 @@ public class StudentsJourney
         Assert.True(denetim.TransformToAncestor(ui.Window).Transform(new Point(0, 0)).Y >= gTop, "Denetim, Genel'in ustune cikti");
         ui.Shot("students-51-tasarim-son-sekme");
     });
+
+    private static string Up(string? value) => (value ?? "").ToUpper(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
 }

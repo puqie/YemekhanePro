@@ -137,12 +137,16 @@ public class CashJourney
         Assert.NotNull(vm.LookupStudent);
         Assert.Equal("5252", vm.LookupStudent!.StudentNo);
         Assert.Contains("5252", vm.LookupStudentText);
-        Assert.Contains("6C", vm.LookupStudentText);
+        // Sinif/sube sabit yazilmaz: tohum deterministik olsa da kimlik metninin API'deki
+        // gercek sinifi tasimasi dogrulanan sey. (Once "6C" sabitti ve baska bir
+        // veritabaninda 7B cikinca test rastgele dusuyordu.)
+        Assert.False(string.IsNullOrWhiteSpace(vm.LookupStudent.ClassName), "sinif bos");
+        Assert.Contains(vm.LookupStudent.ClassName!, vm.LookupStudentText);
         ui.Note("Dogrulama metni (kartsiz): " + vm.LookupStudentText);
         vm.StudentNumber = "5016"; Execute(ui, vm.LookupStudentCommand);
         Assert.Equal("5016", vm.LookupStudent!.StudentNo);
         Assert.Contains("8350016", vm.LookupStudentText);
-        Assert.Contains("8B", vm.LookupStudentText);
+        Assert.Contains(vm.LookupStudent.ClassName!, vm.LookupStudentText);
         ui.Note("Dogrulama metni: " + vm.LookupStudentText);
         ui.Shot("cash-11-ekle-dogrulandi");
 
