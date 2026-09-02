@@ -199,7 +199,8 @@ public class ReportsJourney
             ("görev", () => vm.Job = "Öğretmen", "0"),
             ("öğün", () => vm.MealType = "Öğle", "m.Name IS NOT NULL AND instr(m.Name, 'Öğle') > 0"),
             ("cihaz", () => vm.Device = "Kantin", "instr(d.Name, 'Kantin') > 0"),
-            ("karar", () => vm.Decision = "DENY", "a.Decision = 'DENY'"),
+            // Karar artik acilir kutu: kullanici "Reddedildi" secer, sunucuya "DENY" kodu gider.
+            ("karar", () => vm.SelectedDecision = vm.Decisions.Single(x => x.Value == "DENY"), "a.Decision = 'DENY'"),
             ("durum", () => vm.Status = "Kart pasif", "instr(a.Reason, 'Kart pasif') > 0"),
         };
         foreach (var (name, set, sql) in cases)
@@ -410,6 +411,14 @@ public class ReportsJourney
                 // Ozet: Toplam = tum silinmemis ogrenciler, TotalMeals = aktif olanlar.
                 const string where = "FROM students s WHERE s.IsDeleted = 0";
                 return (db.Count("SELECT COUNT(*) " + where), 0, 0, db.Count($"SELECT COUNT(*) {where} AND s.IsActive = 1"), 0m);
+            }
+            case ReportType.Balance:
+            {
+                // Bakiye defteri satirlari ISARETLIDIR (yukleme +, dusum −): ozetteki tutar
+                // secilen araliktaki NET degisimdir, ciro degil. Kurus (long) olarak tutulur.
+                var where = $"FROM student_balance_entries b JOIN students s ON s.Id = b.StudentId AND s.IsDeleted = 0 WHERE {R("b.OccurredAt")}";
+                var cents = db.Count($"SELECT COALESCE(SUM(b.AmountCents), 0) {where}");
+                return (db.Count("SELECT COUNT(*) " + where), 0, 0, 0, cents / 100m);
             }
             default: throw new ArgumentOutOfRangeException(nameof(type));
         }

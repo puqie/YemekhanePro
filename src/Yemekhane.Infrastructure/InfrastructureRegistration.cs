@@ -109,6 +109,8 @@ public static class InfrastructureRegistration
         services.AddScoped<IStudentBalanceRepository, EfStudentBalanceRepository>();
         services.AddScoped<StudentBalanceService>();
         services.AddScoped<IReportRepository, EfReportRepository>();
+        // Rapor basliklarindaki kurum adi: appsettings yerine Ayarlar > Okul'da kaydedilen ad.
+        services.AddScoped<IReportBrandingProvider, EfReportBrandingProvider>();
         services.AddScoped<IDashboardRepository, EfDashboardRepository>();
         services.AddScoped<IDailyTrackingRepository, EfDailyTrackingRepository>();
         services.AddScoped<IBulkOperationRepository, EfBulkOperationRepository>();

@@ -43,7 +43,7 @@ public class StudentListReportJourney
         Assert.Equal(ReportType.StudentList, vm.ReportTypes[0].Type);
         Assert.Equal("Sicil Listesi", vm.ReportTypes[0].Name);
         Assert.False(string.IsNullOrWhiteSpace(vm.ReportTypes[0].Subtitle));
-        Assert.Equal("12 canlı rapor", vm.ReportCountText);
+        Assert.Equal("13 canlı rapor", vm.ReportCountText);
 
         // Alt basliklar 178px'lik kenar listesine SIGMALI: "Detaylı: bölüm, görev, cihaz, öğün, neden"
         // ekranda "...cihaz,..." diye kirpiliyordu (canli ekran goruntusunde goruldu).

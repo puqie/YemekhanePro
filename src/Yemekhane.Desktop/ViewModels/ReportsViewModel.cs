@@ -85,6 +85,8 @@ public sealed class ReportGridRow
     {
         ReportType.Turnstile => EnumTextConverter.Translate(source.Status, "TurnstileResult"),
         ReportType.DailyAccess or ReportType.DeniedAccess => EnumTextConverter.Translate(source.Status, "Reason"),
+        // Bakiye Hareketleri'nde "Status" defter satir turudur (TopUp/Deduction/Refund/Adjustment).
+        ReportType.Balance => EnumTextConverter.Translate(source.Status, "BalanceKind"),
         _ => EnumTextConverter.Translate(source.Status, "Status")
     };
     public string Description => source.Type == ReportType.Turnstile
@@ -127,8 +129,9 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private int page = 1, pageSize = 50;
     private int sortVersion;
     private DateTime? startDate, endDate;
-    private string? studentNo, cardNo, firstName, lastName, className, section, department, job, mealType, device, decision, status;
+    private string? studentNo, cardNo, firstName, lastName, className, section, department, job, mealType, device, status;
     private ReportStateOption? selectedActiveState;
+    private ReportStateOption? selectedDecision;
 
     public ReportsViewModel(IReportApiClient api, IEnumerable<string> permissions, IReportLayoutStore? layouts = null,
         IReportDialogService? dialogs = null, TimeProvider? clock = null)
@@ -152,7 +155,10 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
             new(ReportType.Turnstile, "Turnike", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Device | ReportFilters.Decision | ReportFilters.Status),
             new(ReportType.DeniedAccess, "Reddedilen Geçiş", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Device | ReportFilters.Status),
             new(ReportType.CardMovements, "Kart Hareketleri", Date | ReportFilters.Student | ReportFilters.Card | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status),
-            new(ReportType.HolidayTransfer, "Tatil / Aktarım", Date | ReportFilters.Student | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Status)
+            new(ReportType.HolidayTransfer, "Tatil / Aktarım", Date | ReportFilters.Student | ReportFilters.Name | ReportFilters.Meal | ReportFilters.Status),
+            // Bakiyeden yapilan harcama hicbir parasal raporda gorunmuyordu: dusum StudentBalanceEntry
+            // olarak yazilir, IncomeTransaction olarak degil; Gelir/Gunluk Kasa yalnizca ikincisini okur.
+            new(ReportType.Balance, "Bakiye Hareketleri", Date | ReportFilters.Student | ReportFilters.Name | ReportFilters.Organization | ReportFilters.Status, "Yükleme, düşüm ve iade")
         ];
         // Acilista Gunluk Gecis secili kalir: memurun gunluk sorusu "bugun kim gecti"dir; Sicil Listesi
         // listede ilk siradadir ama 420 satirlik tam listeyi her aciliste cekmek gereksiz.
@@ -176,6 +182,13 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public ObservableCollection<ReportGridRow> SelectedRows { get; } = [];
     public IReadOnlyList<int> PageSizes { get; } = [25, 50, 100, 200];
     public IReadOnlyList<ReportStateOption> ActiveStates { get; } = [new("Tümü", null), new("Aktif", "ACTIVE"), new("Pasif", "INACTIVE")];
+    /// <summary>
+    /// Karar filtresi serbest metindi: sonuc sutunu "İzin Verildi" yazarken kullanicinin filtreye
+    /// İngilizce "ALLOW" kodunu ezberleyip yazmasi gerekiyordu, Turkcesini yazan hic sonuc alamiyordu.
+    /// Degerler AccessLog.Decision kodlaridir (Gunluk Gecis ve Turnike raporlarinin ikisi de ayni).
+    /// </summary>
+    public IReadOnlyList<ReportStateOption> Decisions { get; } =
+        [new("Tümü", null), new("İzin Verildi", "ALLOW"), new("Reddedildi", "DENY"), new("Hata", "ERROR")];
     /// <summary>Rapor turu listesinin alt basligi: "12 canlı rapor".</summary>
     public string ReportCountText => $"{ReportTypes.Count} canlı rapor";
     public ReportTypeOption SelectedReport { get => selectedReport; set { if (selectedReport == value) return; selectedReport = value; Page = 1; BuildColumns(); Raise(); Raise(nameof(SummaryText)); RaiseFilterProperties(); _ = ApplyAsync(); } }
@@ -188,6 +201,8 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         // TotalMeals'te tasinan islem adedi kullaniciya anlamli olan sayidir.
         ReportType.DailyCash => $"Toplam {Summary.TotalRecords:N0}   •   İşlem {Summary.TotalMeals:N0}   •   Tutar {Summary.Amount.ToString("C2", Turkish)}",
         ReportType.Income => $"Toplam {Summary.TotalRecords:N0}   •   Tutar {Summary.Amount.ToString("C2", Turkish)}",
+        // Bakiye satirlari isaretlidir (yukleme +, dusum −); toplam, secilen araliktaki NET degisimdir.
+        ReportType.Balance => $"Toplam {Summary.TotalRecords:N0}   •   Net değişim {Summary.Amount.ToString("C2", Turkish)}",
         ReportType.MealEntitlement or ReportType.StudentMealUsage or ReportType.ClassMeal or ReportType.HolidayTransfer => $"Toplam {Summary.TotalRecords:N0}   •   Yemek {Summary.TotalMeals:N0}",
         ReportType.DailyAccess or ReportType.Turnstile or ReportType.DeniedAccess => $"Toplam {Summary.TotalRecords:N0}   •   Geçen {Summary.Passed:N0}   •   Reddedilen {Summary.Denied:N0}   •   Yemek {Summary.TotalMeals:N0}",
         _ => $"Toplam {Summary.TotalRecords:N0}"
@@ -226,10 +241,11 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     public string? Job { get => job; set => Set(ref job, value); }
     public string? MealType { get => mealType; set => Set(ref mealType, value); }
     public string? Device { get => device; set => Set(ref device, value); }
-    public string? Decision { get => decision; set => Set(ref decision, value); }
     public string? Status { get => status; set => Set(ref status, value); }
     /// <summary>Aktif / Pasif / Tumu; SelectedItem ile baglanir (WPF null SelectedValue'yu "secim yok" sayar, "Tümü" bos gorunurdu).</summary>
     public ReportStateOption? SelectedActiveState { get => selectedActiveState ?? ActiveStates[0]; set => Set(ref selectedActiveState, value); }
+    /// <summary>Karar filtresi; SelectedActiveState ile ayni desen (WPF null SelectedValue'yu "secim yok" sayar).</summary>
+    public ReportStateOption? SelectedDecision { get => selectedDecision ?? Decisions[0]; set => Set(ref selectedDecision, value); }
     public ICommand ApplyCommand { get; }
     public ICommand ResetCommand { get; }
     public ICommand PreviousPageCommand { get; }
@@ -314,8 +330,9 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private async Task ResetAsync()
     {
         StartDate = EndDate = DateTime.Today;
-        StudentNo = CardNo = FirstName = LastName = ClassName = Section = Department = Job = MealType = Device = Decision = Status = null;
+        StudentNo = CardNo = FirstName = LastName = ClassName = Section = Department = Job = MealType = Device = Status = null;
         SelectedActiveState = ActiveStates[0];
+        SelectedDecision = Decisions[0];
         await ApplyAsync();
     }
 
@@ -361,7 +378,7 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         HasFilter(ReportFilters.Organization) ? Clean(Job) : null,
         HasFilter(ReportFilters.Meal) ? Clean(MealType) : null,
         HasFilter(ReportFilters.Device) ? Clean(Device) : null,
-        HasFilter(ReportFilters.Decision) ? Clean(Decision) : null,
+        HasFilter(ReportFilters.Decision) ? SelectedDecision?.Value : null,
         HasFilter(ReportFilters.Status) ? Clean(Status) : HasFilter(ReportFilters.ActiveState) ? SelectedActiveState?.Value : null,
         appliedQuery.SortBy, appliedQuery.Descending, targetPage, PageSize);
 
@@ -433,6 +450,7 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
         [ReportType.Turnstile] = [C("Date", "TARİH", "timestamp", 150), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("CardNo", "KART", "cardNo", Auto), C("Device", "CİHAZ", "device", 125), C("Decision", "KARAR", "decision", 100), C("Status", "SONUÇ", "status", 110), C("Description", "AÇIKLAMA", null, Star)],
         [ReportType.DeniedAccess] = [C("Date", "TARİH", "timestamp", 150), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("CardNo", "KART", "cardNo", Auto), C("MealType", "ÖĞÜN", "mealType", 110), C("Device", "CİHAZ", "device", 125), C("Status", "NEDEN", "status", Star)],
         [ReportType.CardMovements] = [C("Date", "TARİH", "timestamp", 150), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("Class", "SINIF", "class", 62), C("CardNo", "KART", "cardNo", Auto), C("Status", "DURUM", "status", 100), C("Description", "AÇIKLAMA", null, Star)],
+        [ReportType.Balance] = [C("Date", "TARİH", "timestamp", 150), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("Class", "SINIF", "class", 62), H("Section", "ŞUBE", "section", Auto), C("Status", "HAREKET", "status", Auto), C("Amount", "TUTAR", null, Auto), C("Description", "AÇIKLAMA", null, Star)],
         [ReportType.HolidayTransfer] = [C("Date", "TARİH", "timestamp", 100), C("StudentNo", "NO", "studentNo", Auto), C("Name", "AD SOYAD", "firstName", Auto), C("MealType", "ÖĞÜN", "mealType", 120), C("MealCount", "ADET", "mealCount", 70), C("Status", "DURUM", "status", 110), C("Description", "AÇIKLAMA", null, Star)]
     };
     /// <summary>Sutun genisligi degeri: kalan alani doldur (DataGridLength Star).</summary>

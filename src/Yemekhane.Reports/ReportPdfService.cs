@@ -19,12 +19,21 @@ public sealed class ReportPdfService : IPdfService
     private readonly ReportService reportService;
     private readonly ReportPdfOptions options;
     private readonly TimeProvider timeProvider;
+    // Ayarlar > Okul'da kaydedilen ad; yoksa (veya saglayici verilmemisse) options.SchoolName kullanilir.
+    private readonly IReportBrandingProvider? branding;
 
     public ReportPdfService(ReportService reportService, IOptions<ReportPdfOptions> options, TimeProvider timeProvider)
+        : this(reportService, options, timeProvider, null)
+    {
+    }
+
+    public ReportPdfService(ReportService reportService, IOptions<ReportPdfOptions> options, TimeProvider timeProvider,
+        IReportBrandingProvider? branding)
     {
         this.reportService = reportService;
         this.options = options.Value;
         this.timeProvider = timeProvider;
+        this.branding = branding;
         if (this.options.BatchSize is < 1 or > ReportPdfOptions.MaximumBatchSize)
             throw new RequestValidationException(
                 $"PDF batch boyutu 1-{ReportPdfOptions.MaximumBatchSize} aralığında olmalıdır.");
@@ -43,9 +52,10 @@ public sealed class ReportPdfService : IPdfService
         var summary = (await reportService.QueryAsync(type, query with { Page = 1, PageSize = 1 }, cancellationToken))
             .Summary;
         var generatedAt = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), Istanbul);
+        var schoolName = await ResolveSchoolNameAsync(cancellationToken);
         using var document = new PdfDocument();
-        document.Info.Title = $"{options.SchoolName} - {definition.Title}";
-        document.Info.Author = options.SchoolName;
+        document.Info.Title = $"{schoolName} - {definition.Title}";
+        document.Info.Author = schoolName;
         document.Info.Subject = FormatFilters(query);
 
         PdfPage? page = null;
@@ -61,7 +71,7 @@ public sealed class ReportPdfService : IPdfService
                 ? PdfSharp.PageOrientation.Landscape
                 : PdfSharp.PageOrientation.Portrait;
             graphics = XGraphics.FromPdfPage(page);
-            y = DrawPageHeading(graphics, page, definition, query, summary, firstPage);
+            y = DrawPageHeading(graphics, page, definition, query, summary, firstPage, schoolName);
             DrawTableHeader(graphics, page, definition.Columns, y);
             y += RowHeight;
         }
@@ -84,12 +94,30 @@ public sealed class ReportPdfService : IPdfService
         await SaveAsync(document, output, cancellationToken);
     }
 
+    /// <summary>
+    /// Once Ayarlar'da kaydedilen okul adi denenir; satir yoksa yapilandirmadaki ad kullanilir.
+    /// Ad okunamazsa rapor uretimi durdurulmaz: baslikta yedek ad ile devam eder.
+    /// </summary>
+    private async Task<string> ResolveSchoolNameAsync(CancellationToken cancellationToken)
+    {
+        if (branding is null) return options.SchoolName;
+        try
+        {
+            var saved = await branding.SchoolNameAsync(cancellationToken);
+            return string.IsNullOrWhiteSpace(saved) ? options.SchoolName : saved;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return options.SchoolName;
+        }
+    }
+
     private double DrawPageHeading(XGraphics graphics, PdfPage page, ReportDefinition definition,
-        ReportQuery query, ReportSummary summary, bool firstPage)
+        ReportQuery query, ReportSummary summary, bool firstPage, string schoolName)
     {
         var width = page.Width.Point - 2 * Margin;
         var y = Margin;
-        graphics.DrawString(options.SchoolName, Font(14, true), XBrushes.Black,
+        graphics.DrawString(schoolName, Font(14, true), XBrushes.Black,
             new XRect(Margin, y, width, 20), XStringFormats.TopCenter);
         y += 22;
         graphics.DrawString(definition.Title, Font(12, true), XBrushes.Black,
@@ -293,6 +321,7 @@ public sealed class ReportPdfService : IPdfService
             [ReportType.Turnstile] = Def("Turnike Raporu", C("Tarih", Date, 1.3), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.4), C("Kart", x => x.CardNo), C("Cihaz", x => x.Device), C("Karar", x => ReportText.Decision(x.Decision)), C("Sonuç", x => ReportText.Status(x)), C("Açıklama", x => ReportText.Description(x), 1.5)),
             [ReportType.DeniedAccess] = Def("Reddedilen Geçişler Raporu", C("Tarih", Date, 1.3), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.4), C("Kart", x => x.CardNo), C("Öğün", x => x.MealType), C("Cihaz", x => x.Device), C("Neden", x => ReportText.Status(x), 1.4)),
             [ReportType.CardMovements] = Def("Kart Hareketleri Raporu", C("Tarih", Date, 1.3), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.5), C("Sınıf", x => x.Class), C("Kart", x => x.CardNo), C("Durum", x => ReportText.Status(x)), C("Açıklama", x => ReportText.Description(x), 1.4)),
+            [ReportType.Balance] = Def("Bakiye Hareketleri Raporu", C("Tarih", Date, 1.3), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.5), C("Sınıf", x => x.Class, .6), C("Şube", x => x.Section, .6), C("Hareket", x => ReportText.Status(x)), C("Tutar", Amount, .9), C("Açıklama", x => x.Description, 1.4)),
             [ReportType.HolidayTransfer] = Def("Tatil ve Aktarım Raporu", C("Tarih", Date), C("Öğrenci No", x => x.StudentNo), C("Ad Soyad", Name, 1.5), C("Öğün", x => x.MealType), C("Adet", x => x.MealCount.ToString(Turkish), .6), C("Durum", x => ReportText.Status(x)), C("Açıklama", x => ReportText.Description(x), 1.8)),
             // Sicil Listesi 12-13 sutun: yatay A4. Agirliklar icerige gore (veli adi en uzun, sinif/sube en kisa).
             [ReportType.StudentList] = Def(StudentListTitle, C("Öğrenci No", x => x.StudentNo, .9), C("Ad", x => x.FirstName, 1.1), C("Soyad", x => x.LastName, 1.1), C("Sınıf", x => x.Class, .6), C("Şube", x => x.Section, .6), C("Bölüm", x => x.Department, .9), C("Görev", x => x.Job, .8), C("Kart No", x => x.CardNo, .9), C("Veli", x => x.ParentName, 1.5), C("Veli Telefonu", x => x.ParentPhone, 1.1), C("Durum", x => ReportText.Status(x), .7), C("Kayıt Tarihi", x => x.ReportDate?.ToString("dd.MM.yyyy", Turkish), .9), C(ReportCsvService.NationalIdHeader, x => x.NationalId, 1.1))

@@ -89,6 +89,66 @@ public sealed class ReportExcelServiceTests
         Assert.Equal(2, repository.MaximumYieldedBatchSize);
     }
 
+    /// <summary>
+    /// Kullanici Ayarlar > Okul'a gercek okul adini yazip kaydediyordu ama rapor basligi
+    /// appsettings.json'daki sabit adi tasidigi icin degismiyordu. Kayitli ad artik onceliklidir;
+    /// kayit yoksa/bossa yapilandirmadaki ad yedek kalir.
+    /// </summary>
+    [Theory]
+    [InlineData("Şehit Öğretmen Ortaokulu", "Şehit Öğretmen Ortaokulu")]
+    [InlineData("   ", "ÇĞİÖŞÜ Anadolu Lisesi")]
+    [InlineData(null, "ÇĞİÖŞÜ Anadolu Lisesi")]
+    public async Task BaslikKayitliOkulAdiniKullanir(string? saved, string expected)
+    {
+        var repository = new ExcelRepository(CreateRows(ReportType.DailyAccess, 1));
+        var service = new ReportExcelService(new ReportService(repository),
+            Options.Create(new ReportExcelOptions { SchoolName = "ÇĞİÖŞÜ Anadolu Lisesi" }),
+            new FixedTimeProvider(new DateTimeOffset(2026, 8, 31, 12, 34, 0, TimeSpan.Zero)),
+            new StubBranding(saved));
+        await using var output = new MemoryStream();
+
+        await service.GenerateAsync(ReportType.DailyAccess, new ReportQuery(), output);
+
+        Assert.Contains(expected, FirstCellText(output));
+    }
+
+    /// <summary>Ad okunamazsa rapor uretimi durmaz; yapilandirmadaki ad ile devam eder.</summary>
+    [Fact]
+    public async Task OkulAdiOkunamazsaRaporYineUretilir()
+    {
+        var repository = new ExcelRepository(CreateRows(ReportType.DailyAccess, 1));
+        var service = new ReportExcelService(new ReportService(repository),
+            Options.Create(new ReportExcelOptions { SchoolName = "ÇĞİÖŞÜ Anadolu Lisesi" }),
+            new FixedTimeProvider(new DateTimeOffset(2026, 8, 31, 12, 34, 0, TimeSpan.Zero)),
+            new ThrowingBranding());
+        await using var output = new MemoryStream();
+
+        await service.GenerateAsync(ReportType.DailyAccess, new ReportQuery(), output);
+
+        Assert.Contains("ÇĞİÖŞÜ Anadolu Lisesi", FirstCellText(output));
+    }
+
+    private static string FirstCellText(MemoryStream output)
+    {
+        output.Position = 0;
+        using var document = SpreadsheetDocument.Open(output, false);
+        var part = document.WorkbookPart!.WorksheetParts.First();
+        var sheetData = part.Worksheet!.GetFirstChild<SheetData>()!;
+        var cell = sheetData.Elements<Row>().First().Elements<Cell>().First();
+        return cell.InlineString?.Text?.Text ?? cell.CellValue?.Text ?? "";
+    }
+
+    private sealed class StubBranding(string? value) : IReportBrandingProvider
+    {
+        public Task<string?> SchoolNameAsync(CancellationToken cancellationToken = default) => Task.FromResult(value);
+    }
+
+    private sealed class ThrowingBranding : IReportBrandingProvider
+    {
+        public Task<string?> SchoolNameAsync(CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("veritabanı okunamadı");
+    }
+
     private static ReportExcelService CreateService(ExcelRepository repository, int batchSize = 200,
         int maximumRows = ReportExcelOptions.ExcelMaximumRows) =>
         new(new ReportService(repository), Options.Create(new ReportExcelOptions

@@ -18,7 +18,15 @@ public enum ReportType
     /// ogrencinin kendisi satirdir (no, ad, sinif/sube, kart, veli, durum, kayit tarihi).
     /// Sona eklendi: enum sayisal serilestiriliyor, araya girmek eski istemciyle uyumu bozar.
     /// </summary>
-    StudentList
+    StudentList,
+    /// <summary>
+    /// Bakiye Hareketleri: on odemeli TL bakiyesinin defter dokumu (yukleme, dusum, iade,
+    /// duzeltme). Bakiyeden yapilan HARCAMA hicbir parasal raporda gorunmuyordu: dusum
+    /// StudentBalanceEntry olarak yazilir, IncomeTransaction olarak degil; Gelir ve Gunluk
+    /// Kasa raporlari yalnizca IncomeTransaction okudugu icin yuklemeler gorunup harcamalar
+    /// gorunmuyordu. Sona eklendi: enum sayisal serilestiriliyor, araya girmek uyumu bozar.
+    /// </summary>
+    Balance
 }
 
 public sealed record ReportQuery(

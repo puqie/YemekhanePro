@@ -17,13 +17,22 @@ public sealed class ReportExcelService : IExcelService
     private readonly ReportService reportService;
     private readonly ReportExcelOptions options;
     private readonly TimeProvider timeProvider;
+    // Ayarlar > Okul'da kaydedilen ad; yoksa (veya saglayici verilmemisse) options.SchoolName kullanilir.
+    private readonly IReportBrandingProvider? branding;
 
     public ReportExcelService(ReportService reportService, IOptions<ReportExcelOptions> options,
         TimeProvider timeProvider)
+        : this(reportService, options, timeProvider, null)
+    {
+    }
+
+    public ReportExcelService(ReportService reportService, IOptions<ReportExcelOptions> options,
+        TimeProvider timeProvider, IReportBrandingProvider? branding)
     {
         this.reportService = reportService;
         this.options = options.Value;
         this.timeProvider = timeProvider;
+        this.branding = branding;
         if (this.options.BatchSize is < 1 or > ReportService.MaximumPageSize)
             throw new RequestValidationException(
                 $"Excel batch boyutu 1-{ReportService.MaximumPageSize} aralığında olmalıdır.");
@@ -54,6 +63,7 @@ public sealed class ReportExcelService : IExcelService
     {
         var definition = DefinitionFor(type, query);
         var generatedAt = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), Istanbul);
+        var schoolName = await ResolveSchoolNameAsync(cancellationToken);
         using var document = SpreadsheetDocument.Create(output, SpreadsheetDocumentType.Workbook, true);
         var workbookPart = document.AddWorkbookPart();
         AddStyles(workbookPart);
@@ -70,7 +80,7 @@ public sealed class ReportExcelService : IExcelService
                 if (sheet is null || sheet.DataRows == capacity)
                 {
                     sheet?.Dispose();
-                    sheet = CreateSheet(workbookPart, definition, query, generatedAt);
+                    sheet = CreateSheet(workbookPart, definition, query, generatedAt, schoolName);
                     sheets.Add((workbookPart.GetIdOfPart(sheet.Part), $"Rapor {sheets.Count + 1}"));
                 }
                 sheet.Write(row, definition.Columns);
@@ -79,7 +89,7 @@ public sealed class ReportExcelService : IExcelService
 
         if (sheet is null)
         {
-            sheet = CreateSheet(workbookPart, definition, query, generatedAt);
+            sheet = CreateSheet(workbookPart, definition, query, generatedAt, schoolName);
             sheets.Add((workbookPart.GetIdOfPart(sheet.Part), "Rapor 1"));
         }
         sheet.Dispose();
@@ -93,8 +103,26 @@ public sealed class ReportExcelService : IExcelService
         workbookPart.Workbook.Save();
     }
 
+    /// <summary>
+    /// Once Ayarlar'da kaydedilen okul adi denenir; satir yoksa yapilandirmadaki ad kullanilir.
+    /// Ad okunamazsa rapor uretimi durdurulmaz: baslikta yedek ad ile devam eder.
+    /// </summary>
+    private async Task<string> ResolveSchoolNameAsync(CancellationToken cancellationToken)
+    {
+        if (branding is null) return options.SchoolName;
+        try
+        {
+            var saved = await branding.SchoolNameAsync(cancellationToken);
+            return string.IsNullOrWhiteSpace(saved) ? options.SchoolName : saved;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return options.SchoolName;
+        }
+    }
+
     private SheetWriter CreateSheet(WorkbookPart workbookPart, ReportDefinition definition,
-        ReportQuery query, DateTimeOffset generatedAt)
+        ReportQuery query, DateTimeOffset generatedAt, string schoolName)
     {
         var part = workbookPart.AddNewPart<WorksheetPart>();
         var writer = OpenXmlWriter.Create(part);
@@ -110,7 +138,7 @@ public sealed class ReportExcelService : IExcelService
             CustomWidth = true
         })));
         writer.WriteStartElement(new SheetData());
-        WriteRow(writer, 1, [TextCell("A1", $"{options.SchoolName} - {definition.Title}", 1)]);
+        WriteRow(writer, 1, [TextCell("A1", $"{schoolName} - {definition.Title}", 1)]);
         WriteRow(writer, 2, [TextCell("A2", FormatFilters(query), 2)]);
         WriteRow(writer, 3,
             [TextCell("A3", $"Oluşturulma: {generatedAt:dd.MM.yyyy HH:mm} Europe/Istanbul", 2)]);
@@ -263,6 +291,7 @@ public sealed class ReportExcelService : IExcelService
         [ReportType.Turnstile] = Def("Turnike Raporu", C("Tarih", ColumnKind.Date, Date, 20), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Kart", ColumnKind.Text, x => x.CardNo, 16), C("Cihaz", ColumnKind.Text, x => x.Device, 20), C("Karar", ColumnKind.Text, x => ReportText.Decision(x.Decision), 14), C("Sonuç", ColumnKind.Text, x => ReportText.Status(x), 16), C("Açıklama", ColumnKind.Text, x => ReportText.Description(x), 28)),
         [ReportType.DeniedAccess] = Def("Reddedilen Geçişler Raporu", C("Tarih", ColumnKind.Date, Date, 20), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Kart", ColumnKind.Text, x => x.CardNo, 16), C("Öğün", ColumnKind.Text, x => x.MealType, 14), C("Cihaz", ColumnKind.Text, x => x.Device, 20), C("Neden", ColumnKind.Text, x => ReportText.Status(x), 24)),
         [ReportType.CardMovements] = Def("Kart Hareketleri Raporu", C("Tarih", ColumnKind.Date, Date, 20), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Sınıf", ColumnKind.Text, x => x.Class, 12), C("Kart", ColumnKind.Text, x => x.CardNo, 16), C("Durum", ColumnKind.Text, x => ReportText.Status(x), 16), C("Açıklama", ColumnKind.Text, x => ReportText.Description(x), 28)),
+        [ReportType.Balance] = Def("Bakiye Hareketleri Raporu", C("Tarih", ColumnKind.Date, Date, 20), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Sınıf", ColumnKind.Text, x => x.Class, 12), C("Şube", ColumnKind.Text, x => x.Section, 10), C("Hareket", ColumnKind.Text, x => ReportText.Status(x), 16), C("Tutar", ColumnKind.Decimal, x => x.Amount, 14), C("Açıklama", ColumnKind.Text, x => x.Description, 28)),
         [ReportType.HolidayTransfer] = Def("Tatil ve Aktarım Raporu", C("Tarih", ColumnKind.Date, Date, 14), C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad Soyad", ColumnKind.Text, Name, 24), C("Öğün", ColumnKind.Text, x => x.MealType, 14), C("Adet", ColumnKind.Integer, x => x.MealCount, 10), C("Durum", ColumnKind.Text, x => ReportText.Status(x), 16), C("Açıklama", ColumnKind.Text, x => ReportText.Description(x), 32)),
         // Sicil Listesi: eski programin disa aktarimiyla ayni sira, ad/soyad ayri; TC en sonda (DefinitionFor yetkisizde kaldirir).
         [ReportType.StudentList] = Def(StudentListTitle, C("Öğrenci No", ColumnKind.Text, x => x.StudentNo, 14), C("Ad", ColumnKind.Text, x => x.FirstName, 18), C("Soyad", ColumnKind.Text, x => x.LastName, 18), C("Sınıf", ColumnKind.Text, x => x.Class, 10), C("Şube", ColumnKind.Text, x => x.Section, 10), C("Bölüm", ColumnKind.Text, x => x.Department, 16), C("Görev", ColumnKind.Text, x => x.Job, 14), C("Kart No", ColumnKind.Text, x => x.CardNo, 16), C("Veli", ColumnKind.Text, x => x.ParentName, 24), C("Veli Telefonu", ColumnKind.Text, x => x.ParentPhone, 16), C("Durum", ColumnKind.Text, x => ReportText.Status(x), 10), C("Kayıt Tarihi", ColumnKind.Date, x => (object?)x.ReportDate, 14), C(ReportCsvService.NationalIdHeader, ColumnKind.Text, x => x.NationalId, 16))

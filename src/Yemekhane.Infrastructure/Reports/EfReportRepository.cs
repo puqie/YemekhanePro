@@ -66,6 +66,7 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
         ReportType.CardMovements => Cards(),
         ReportType.HolidayTransfer => HolidaysAndTransfers(),
         ReportType.StudentList => StudentList(query.IncludeSensitive),
+        ReportType.Balance => Balances(),
         _ => throw new ArgumentOutOfRangeException(nameof(type))
     };
 
@@ -76,6 +77,36 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
     /// sutun SQL'de bile secilmez (CASE WHEN @p), istemciye hic gitmez.
     /// MealCount = aktif mi (1/0): ozet satirinda "Aktif / Pasif" sayisi TotalMeals uzerinden tasinir.
     /// </summary>
+    /// <summary>
+    /// Bakiye Hareketleri: her satir bir defter kaydidir (yukleme +, dusum −, iade, duzeltme).
+    /// AmountCents defterdeki isaretli kurusu AYNEN tasir; boylece rapor ozetindeki toplam,
+    /// secilen aralikta bakiyenin net degisimini verir. Status satir turunu (Kind) tasir ve
+    /// ReportText/EnumTextConverter "BalanceKind" sozluguyle Turkcelesir.
+    /// </summary>
+    private IQueryable<ReportRow> Balances() =>
+        from entry in dbContext.Set<StudentBalanceEntry>().AsNoTracking()
+        join studentValue in dbContext.Students.AsNoTracking() on entry.StudentId equals studentValue.Id
+        join classValue in dbContext.Set<SchoolClass>().AsNoTracking() on studentValue.ClassId equals (Guid?)classValue.Id into classJoin
+        from schoolClass in classJoin.DefaultIfEmpty()
+        join sectionValue in dbContext.Set<Section>().AsNoTracking() on studentValue.SectionId equals (Guid?)sectionValue.Id into sectionJoin
+        from section in sectionJoin.DefaultIfEmpty()
+        join departmentValue in dbContext.Set<Department>().AsNoTracking() on studentValue.DepartmentId equals (Guid?)departmentValue.Id into departmentJoin
+        from department in departmentJoin.DefaultIfEmpty()
+        join jobValue in dbContext.Set<Job>().AsNoTracking() on studentValue.JobId equals (Guid?)jobValue.Id into jobJoin
+        from job in jobJoin.DefaultIfEmpty()
+        select new ReportRow
+        {
+            Id = entry.Id, Type = ReportType.Balance, Timestamp = entry.OccurredAt,
+            SortValue = YemekhaneDbContext.JulianDay(entry.OccurredAt),
+            StudentNo = studentValue.StudentNo, FirstName = studentValue.FirstName, LastName = studentValue.LastName,
+            Class = schoolClass.Name, Section = section.Name, Department = department.Name, Job = job.Name,
+            Status = entry.Kind, Description = entry.Note,
+            AmountCents = entry.AmountCents, MealCount = 0,
+            // EF, projeksiyonda atanmayan uyeyi filtre/siralamada cevirmeyip nesneyi yeniden kuruyor;
+            // acikca null atamak sorguyu SQL'e cevrilebilir kiliyor.
+            CardNo = null, MealType = null, Device = null, Decision = null
+        };
+
     private IQueryable<ReportRow> StudentList(bool includeSensitive) =>
         dbContext.Students.AsNoTracking().Select(student => new ReportRow
         {

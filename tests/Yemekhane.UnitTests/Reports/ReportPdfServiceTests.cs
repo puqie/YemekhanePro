@@ -28,7 +28,9 @@ public sealed class ReportPdfServiceTests
         var landscape = type is ReportType.DailyAccess or ReportType.MealEntitlement
             or ReportType.StudentMealUsage or ReportType.ClassMeal
             or ReportType.Income or ReportType.Turnstile or ReportType.DeniedAccess
-            or ReportType.CardMovements or ReportType.HolidayTransfer or ReportType.StudentList;
+            or ReportType.CardMovements or ReportType.HolidayTransfer or ReportType.StudentList
+            // Bakiye Hareketleri 8 sutunludur (tarih, no, ad soyad, sinif, sube, hareket, tutar, aciklama).
+            or ReportType.Balance;
         Assert.Equal(landscape, page.Width > page.Height);
     }
 
