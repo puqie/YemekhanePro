@@ -2,6 +2,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
+    xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
     FontFamily="Segoe UI" FontSize="12">
 
     <UserControl.Resources>
@@ -10,6 +11,7 @@
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <converters:EnumTextConverter x:Key="EnumText"/>
             </ResourceDictionary>
 </UserControl.Resources>
 
@@ -27,11 +29,16 @@
 
         <controls:PageShell.Filters>
             <WrapPanel>
-                <StackPanel Width="230" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara"/></StackPanel>
-                <StackPanel Width="105" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Karar" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Decisions}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding SelectedDecision}" IsEditable="False" AutomationProperties.Name="Karar filtresi"/></StackPanel>
-                <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedMealTypeId}" AutomationProperties.Name="Öğün filtresi"/></StackPanel>
-                <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Cihaz" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Devices}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedDeviceId}" AutomationProperties.Name="Cihaz filtresi"/></StackPanel>
-                <StackPanel Width="130" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding SelectedClassId}" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
+                <StackPanel Width="230" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/><TextBox x:Name="SearchBox" Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara"/></StackPanel>
+                <!-- MinHeight 39: FieldCompact metin kutusu 39px olculuyor, kutular 30px kaliyordu ve tek satirda dengesiz
+                     duruyordu. ElementName baglamasi PageShell sablonunun icinde cozulmedigi icin sabit verildi.
+                     SelectedItem (SelectedValue degil): WPF, SelectedValue=null'i "secim yok" sayip kutuyu
+                     BOS gosteriyordu; "Tümü" ancak nesne olarak secilebilir. Bkz. DailyTrackingViewModel. -->
+                <!-- Genislik 130: tasarim sisteminde ComboBox MinWidth=120; 105px'lik kapta kutu tasip acilir ok kesiliyordu. -->
+                <StackPanel Width="130" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Karar" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" MinHeight="39" ItemsSource="{Binding Decisions}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedDecisionOption}" AutomationProperties.Name="Karar filtresi"/></StackPanel>
+                <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" MinHeight="39" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMealTypeOption}" AutomationProperties.Name="Öğün filtresi"/></StackPanel>
+                <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Cihaz" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" MinHeight="39" ItemsSource="{Binding Devices}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedDeviceOption}" AutomationProperties.Name="Cihaz filtresi"/></StackPanel>
+                <StackPanel Width="130" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" MinHeight="39" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedClassOption}" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
                 <Button Style="{StaticResource Action}" Command="{Binding ApplyFiltersCommand}" Content="Filtrele" IsDefault="True" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
             </WrapPanel>
         </controls:PageShell.Filters>
@@ -78,7 +85,7 @@
                             <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="80"/>
                             <DataGridTextColumn Header="Kart No" Binding="{Binding CardNumber}" Width="115"/>
                             <DataGridTextColumn Header="Öğrenci No" Binding="{Binding StudentNo}" Width="95"/>
-                            <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="*" MinWidth="150"/>
+                            <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="Auto" MinWidth="170"/>
                             <DataGridTextColumn Header="Sınıf" Binding="{Binding ClassName}" Width="90"/>
                             <DataGridTextColumn Header="Öğün" Binding="{Binding MealType}" Width="Auto" MinWidth="95"/>
                             <DataGridTemplateColumn Header="Durum" Width="Auto" MinWidth="120"><DataGridTemplateColumn.CellTemplate><DataTemplate>
@@ -87,8 +94,9 @@
                                     <TextBlock FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="✕ Reddedildi"/><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/><Style.Triggers><DataTrigger Binding="{Binding Decision}" Value="ALLOW"><Setter Property="Text" Value="✓ İzin Verildi"/><Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
                                 </Border>
                             </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Neden" Binding="{Binding Reason}" Width="180"/>
-                            <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="130"/>
+                            <!-- Neden yildiz: "Bu öğün daha önce kullanılmış" 180px'te kesiliyordu. -->
+                            <DataGridTextColumn Header="Neden" Binding="{Binding Reason, Converter={StaticResource EnumText}, ConverterParameter=Reason}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="130"/>
                         </DataGrid.Columns>
                     </DataGrid>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Kayıtlar yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel>

@@ -39,10 +39,27 @@ public partial class ReportsView : UserControl
         {
             var column = new DataGridTextColumn
             {
-                Header = item.Header, Binding = new Binding(item.Key), Width = item.Width,
+                Header = item.Header, Binding = new Binding(item.Key),
+                // 0 = yildiz: kalan alani doldurur, boylece tablo pencereye sigar ve yatay kaydirma cikmaz.
+                Width = item.Width > 0 ? new DataGridLength(item.Width) : new DataGridLength(1, DataGridLengthUnitType.Star),
+                MinWidth = item.Width > 0 ? 20 : 110,
                 CanUserSort = item.SortKey is not null, SortMemberPath = item.SortKey ?? ""
             };
             column.SetValue(FrameworkElement.TagProperty, item.Key);
+            // Uzun metin (neden, aciklama) sutuna sigmayabilir; fareyle ustune gelince tamami okunur.
+            var cell = new Style(typeof(TextBlock));
+            cell.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding(item.Key)));
+            if (item.Key is "MealCount" or "Amount")
+            {
+                // Sayisal sutunlar saga yaslanir: tutarlar alt alta hizalanmazsa 1.250,00 ile
+                // 250,00 goz ile karsilastirilamaz. Baslik da ayni hizada durur; tasarim sisteminin
+                // baslik stili (ReportGrid.ColumnHeaderStyle) temel alinir ki gorunum bozulmasin.
+                cell.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right));
+                var header = new Style(typeof(System.Windows.Controls.Primitives.DataGridColumnHeader), ReportGrid.ColumnHeaderStyle);
+                header.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Right));
+                column.HeaderStyle = header;
+            }
+            column.ElementStyle = cell;
             ReportGrid.Columns.Add(column);
         }
     }
@@ -74,7 +91,8 @@ public partial class ReportsView : UserControl
         var displayed = ReportGrid.Columns.Select((column, index) => new
         {
             Key = (string?)column.GetValue(FrameworkElement.TagProperty), Index = column.DisplayIndex,
-            Width = column.ActualWidth
+            // Yildiz sutun piksel olarak kaydedilirse bir sonraki acilista sabitlenir ve tablo yine tasar.
+            Width = column.Width.IsStar ? ReportsViewModel.Star : column.ActualWidth
         }).Where(x => x.Key is not null).ToDictionary(x => x.Key!, StringComparer.Ordinal);
         var layouts = viewModel.Columns.Select(column => displayed.TryGetValue(column.Key, out var value)
             ? new ReportColumnLayout(column.Key, value.Index, value.Width, column.IsVisible)

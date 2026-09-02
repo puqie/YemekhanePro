@@ -116,6 +116,27 @@ public sealed class ReportsViewModelTests
         if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
     }
 
+    /// <summary>
+    /// Gunluk Kasa ile Gelir ayni sutunlari gosteriyordu; sunucu artik Gunluk Kasa'yi gun +
+    /// gelir turu kirilimi olarak dondurdugu icin ekran da islem sayisini ve turu gostermeli.
+    /// </summary>
+    [Fact]
+    public async Task DailyCashShowsDailyBreakdownColumnsAndTransactionCount()
+    {
+        var api = new FakeApi { Result = Result(4) };
+        using var vm = new ReportsViewModel(api, ["reports.read"], new MemoryLayouts(), new FakeDialogs());
+        vm.SelectedReport = vm.ReportTypes.Single(x => x.Type == ReportType.DailyCash);
+        await UntilAsync(() => api.Queries.Any(x => x.Type == ReportType.DailyCash) && !vm.IsLoading);
+
+        Assert.Equal(["TARİH", "GELİR TÜRÜ", "İŞLEM", "DURUM", "TUTAR"], vm.Columns.Select(x => x.Header));
+        Assert.Contains("İşlem 4", vm.SummaryText);
+        Assert.Contains("Tutar", vm.SummaryText);
+
+        vm.SelectedReport = vm.ReportTypes.Single(x => x.Type == ReportType.Income);
+        Assert.Contains("AD SOYAD", vm.Columns.Select(x => x.Header));
+        Assert.DoesNotContain("İŞLEM", vm.Columns.Select(x => x.Header));
+    }
+
     private static ReportResult Result(int total) => new([Row()], 1, 50, new ReportSummary(total, 3, 2, 4, 125.50m));
     private static ReportRow Row() => new() { Id = Guid.NewGuid(), Type = ReportType.DailyAccess, Timestamp = new DateTimeOffset(2026, 8, 31, 12, 0, 0, TimeSpan.FromHours(3)), FirstName = "Ada", LastName = "Yılmaz", StudentNo = "42", Decision = "ALLOW" };
     private static async Task UntilAsync(Func<bool> predicate) { for (var i = 0; i < 100 && !predicate(); i++) await Task.Delay(10); Assert.True(predicate()); }

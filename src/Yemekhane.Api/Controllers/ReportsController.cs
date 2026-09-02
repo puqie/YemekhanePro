@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Yemekhane.Application.Reports;
 using Yemekhane.Reports;
 using Yemekhane.Api.Authorization;
@@ -7,8 +8,46 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace Yemekhane.Api.Controllers;
 
+/// <summary>
+/// Eylemin imzasinda olmayan sorgu parametrelerini 400 ile geri cevirir.
+///
+/// ASP.NET bilinmeyen parametreleri sessizce yok sayar: <c>?startDate=…</c> yazan bir
+/// istemci hicbir filtre uygulanmadan TUM kayitlari alir ve bunu "bugunun raporu" sanir.
+/// Rapor ucunda "filtre uygulanmadi" ile "filtre uygulandi, kayit yok" ayirt edilemezse
+/// rapor guvenilmez; bu yuzden yanlis ad hata olarak doner ve dogru adlar mesajda listelenir.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+public sealed class RejectUnknownQueryParametersAttribute : Attribute, IActionFilter
+{
+    public void OnActionExecuting(ActionExecutingContext context)
+    {
+        var known = context.ActionDescriptor.Parameters
+            .Where(x => x.BindingInfo?.BindingSource == null
+                        || x.BindingInfo.BindingSource == Microsoft.AspNetCore.Mvc.ModelBinding.BindingSource.Query)
+            .Select(x => x.BindingInfo?.BinderModelName ?? x.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var unknown = context.HttpContext.Request.Query.Keys
+            .Where(key => !known.Contains(key))
+            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (unknown.Length == 0) return;
+
+        var expected = string.Join(", ", known.Where(x => x != "cancellationToken").OrderBy(x => x, StringComparer.Ordinal));
+        context.Result = new BadRequestObjectResult(new ProblemDetails
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = $"Bilinmeyen sorgu parametresi: {string.Join(", ", unknown)}",
+            Detail = $"Geçerli parametreler: {expected}.",
+            Instance = context.HttpContext.Request.Path
+        });
+    }
+
+    public void OnActionExecuted(ActionExecutedContext context) { }
+}
+
 [ApiController]
 [Route("api/reports")]
+[RejectUnknownQueryParameters]
 public sealed class ReportsController(ReportService service, IPdfService pdfService, IExcelService excelService,
     ICsvService csvService) : ControllerBase
 {

@@ -105,10 +105,33 @@ public sealed class EnumTextConverter : IValueConverter
         ["NextBusinessDay"] = "Sonraki iş gününe aktarılır",
     };
 
+    // Gecis nedeni (AccessLog.Reason). Karar servisi Turkce yazar ("Kart pasif", "Bugün tatil");
+    // cihaz/tohum kaynakli kayitlar ise ham "OK" kodu tasiyabilir. Turkce metinler sozlukte
+    // olmadigi icin aynen gecer, yalnizca kod bicimindeki degerler cevrilir.
+    private static readonly Dictionary<string, string> Reason = new(Codes)
+    {
+        ["OK"] = "Geçiş onaylandı",
+    };
+
+    // Turnike olay sonucu (TurnstileEvent.Result) ve komutu; Turnike raporunda gorunur.
+    private static readonly Dictionary<string, string> TurnstileResult = new(Codes)
+    {
+        ["OK"] = "Başarılı",
+        ["TIMEOUT"] = "Zaman aşımı",
+        ["ERROR"] = "Hata",
+        ["SKIPPED"] = "Atlandı",
+        ["FAILED"] = "Başarısız",
+        ["COMPENSATED_RETRY_REQUIRED"] = "Hak iade edildi, yeniden geçiş gerekli",
+        ["OPEN"] = "Aç",
+        ["DENY"] = "Reddet",
+    };
+
     private static readonly Dictionary<string, Dictionary<string, string>> Maps = new(Codes)
     {
         ["Decision"] = Decision,
         ["Status"] = Status,
+        ["Reason"] = Reason,
+        ["TurnstileResult"] = TurnstileResult,
         ["Source"] = Source,
         ["LogLevel"] = LogLevel,
         ["DeviceStatus"] = DeviceStatus,

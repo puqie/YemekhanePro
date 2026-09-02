@@ -8,7 +8,11 @@ using Yemekhane.Desktop.Services;
 
 namespace Yemekhane.Desktop.ViewModels;
 
-public sealed record TrackingFilterOption(Guid Id, string Name);
+/// <summary>Acilir kutu secenegi; <paramref name="Id"/> null ise "Tümü" (filtre yok) demektir.</summary>
+public sealed record TrackingFilterOption(Guid? Id, string Name)
+{
+    public static readonly TrackingFilterOption All = new(null, "Tümü");
+}
 
 /// <summary>
 /// Karar filtresi secenegi: ekranda <paramref name="Name"/> (Turkce) gorunur,
@@ -65,9 +69,10 @@ public sealed class DailyTrackingViewModel : ObservableObject
     }
 
     public ObservableCollection<DailyTrackingRow> Rows { get; } = [];
-    public ObservableCollection<TrackingFilterOption> MealTypes { get; } = [];
-    public ObservableCollection<TrackingFilterOption> Devices { get; } = [];
-    public ObservableCollection<TrackingFilterOption> Classes { get; } = [];
+    // Ilk oge her zaman "Tümü": kutu bos acilmaz ve kullanici filtreyi nasil kaldiracagini gorur.
+    public ObservableCollection<TrackingFilterOption> MealTypes { get; } = [TrackingFilterOption.All];
+    public ObservableCollection<TrackingFilterOption> Devices { get; } = [TrackingFilterOption.All];
+    public ObservableCollection<TrackingFilterOption> Classes { get; } = [TrackingFilterOption.All];
     // Ekranda Turkce ad, API'ye İngilizce deger gider (MealEntitlements'taki Statuses ile ayni desen).
     public IReadOnlyList<TrackingDecisionOption> Decisions { get; } =
         [new("Tümü", null), new("İzin Verildi", "ALLOW"), new("Reddedildi", "DENY")];
@@ -84,10 +89,22 @@ public sealed class DailyTrackingViewModel : ObservableObject
     public bool HasMore => hasMore;
     public DailyTrackingSummary Summary { get => summary; private set => Set(ref summary, value); }
     public string? Search { get => search; set => Set(ref search, value); }
-    public string? SelectedDecision { get => selectedDecision; set => Set(ref selectedDecision, value); }
-    public Guid? SelectedMealTypeId { get => selectedMealTypeId; set => Set(ref selectedMealTypeId, value); }
-    public Guid? SelectedDeviceId { get => selectedDeviceId; set => Set(ref selectedDeviceId, value); }
-    public Guid? SelectedClassId { get => selectedClassId; set => Set(ref selectedClassId, value); }
+    public string? SelectedDecision { get => selectedDecision; set { if (Set(ref selectedDecision, value)) Raise(nameof(SelectedDecisionOption)); } }
+    public Guid? SelectedMealTypeId { get => selectedMealTypeId; set { if (Set(ref selectedMealTypeId, value)) Raise(nameof(SelectedMealTypeOption)); } }
+    public Guid? SelectedDeviceId { get => selectedDeviceId; set { if (Set(ref selectedDeviceId, value)) Raise(nameof(SelectedDeviceOption)); } }
+    public Guid? SelectedClassId { get => selectedClassId; set { if (Set(ref selectedClassId, value)) Raise(nameof(SelectedClassOption)); } }
+
+    // ComboBox'lar SelectedValue yerine SelectedItem ile baglanir: WPF, SelectedValue=null'i
+    // "secim yok" sayar ve kutu BOS gorunur; "Tümü" ogesi ancak nesne olarak secilebilir.
+    // API'ye giden deger (Id / Value) yine yukaridaki ham ozelliklerden okunur.
+    public TrackingDecisionOption SelectedDecisionOption
+    {
+        get => Decisions.FirstOrDefault(x => x.Value == SelectedDecision) ?? Decisions[0];
+        set => SelectedDecision = value?.Value;
+    }
+    public TrackingFilterOption? SelectedMealTypeOption { get => Find(MealTypes, SelectedMealTypeId); set => SelectedMealTypeId = value?.Id; }
+    public TrackingFilterOption? SelectedDeviceOption { get => Find(Devices, SelectedDeviceId); set => SelectedDeviceId = value?.Id; }
+    public TrackingFilterOption? SelectedClassOption { get => Find(Classes, SelectedClassId); set => SelectedClassId = value?.Id; }
     public bool SoundEnabled { get => soundEnabled; set { if (Set(ref soundEnabled, value)) preferences.SoundEnabled = value; } }
     public RealtimeConnectionState RealtimeState { get => realtimeState; private set { if (Set(ref realtimeState, value)) { Raise(nameof(IsOffline)); Raise(nameof(ConnectionText)); } } }
     public bool IsOffline => RealtimeState != RealtimeConnectionState.Connected;
@@ -238,16 +255,32 @@ public sealed class DailyTrackingViewModel : ObservableObject
 
     private void UpdateOptions()
     {
-        ReplaceOptions(MealTypes, Rows.Where(x => x.MealTypeId.HasValue && x.MealType is not null).Select(x => new TrackingFilterOption(x.MealTypeId!.Value, x.MealType!)));
-        ReplaceOptions(Devices, Rows.Select(x => new TrackingFilterOption(x.DeviceId, x.DeviceName)));
-        ReplaceOptions(Classes, Rows.Where(x => x.ClassId.HasValue && x.ClassName is not null).Select(x => new TrackingFilterOption(x.ClassId!.Value, x.ClassName!)));
+        MergeOptions(MealTypes, Rows.Where(x => x.MealTypeId.HasValue && x.MealType is not null).Select(x => new TrackingFilterOption(x.MealTypeId!.Value, x.MealType!)));
+        MergeOptions(Devices, Rows.Select(x => new TrackingFilterOption(x.DeviceId, x.DeviceName)));
+        MergeOptions(Classes, Rows.Where(x => x.ClassId.HasValue && x.ClassName is not null).Select(x => new TrackingFilterOption(x.ClassId!.Value, x.ClassName!)));
+        Raise(nameof(SelectedMealTypeOption)); Raise(nameof(SelectedDeviceOption)); Raise(nameof(SelectedClassOption));
     }
 
-    private static void ReplaceOptions(ObservableCollection<TrackingFilterOption> target, IEnumerable<TrackingFilterOption> values)
+    /// <summary>
+    /// Secenekler SILINMEZ, birikir. Onceki surum listeyi her yuklemede temizleyip yeniden
+    /// kuruyordu; WPF bagli ogesi kaybolan ComboBox'in secimini null'a cektigi icin "Filtrele"
+    /// dendigi anda filtre ViewModel'den ucuyor, sonraki sayfalama filtresiz gidiyordu. Ayrica
+    /// filtrelenmis sonuc yalnizca tek cihazi icerdiginden diger cihazlar kutudan kayboluyordu.
+    /// </summary>
+    private static void MergeOptions(ObservableCollection<TrackingFilterOption> target, IEnumerable<TrackingFilterOption> values)
     {
-        target.Clear();
-        foreach (var value in values.DistinctBy(x => x.Id).OrderBy(x => x.Name)) target.Add(value);
+        if (target.Count == 0 || target[0].Id is not null) target.Insert(0, TrackingFilterOption.All);
+        foreach (var value in values.DistinctBy(x => x.Id).OrderBy(x => x.Name, StringComparer.CurrentCulture))
+        {
+            if (target.Any(x => x.Id == value.Id)) continue;
+            var index = 1;
+            while (index < target.Count && string.Compare(target[index].Name, value.Name, StringComparison.CurrentCulture) < 0) index++;
+            target.Insert(index, value);
+        }
     }
+
+    private static TrackingFilterOption? Find(ObservableCollection<TrackingFilterOption> options, Guid? id) =>
+        options.FirstOrDefault(x => x.Id == id) ?? (id is null ? TrackingFilterOption.All : null);
 
     private void ClearRows() { Rows.Clear(); operationIds.Clear(); RaiseState(); }
     private void RaiseState() { Raise(nameof(IsEmpty)); Raise(nameof(HasRows)); Raise(nameof(HasError)); }

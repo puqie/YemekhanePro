@@ -12,13 +12,20 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <Style x:Key="FilterGroup" TargetType="StackPanel"><Setter Property="Margin" Value="0,0,8,0"/></Style>
         <Style x:Key="FilterLabel" TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource MutedBrush}"/><Setter Property="FontSize" Value="10"/><Setter Property="Margin" Value="0,0,0,3"/></Style>
+        <!-- Rapor tablosu 9 sutuna kadar cikar; tasarim sisteminin 11px hucre dolgusu (sutun basina 22px)
+             1440px'te tek basina ~200px yiyor ve Gunluk Gecis yatay kaydirmaya dusuyordu. Yalnizca bu
+             tabloda dolgu 7px'e cekilir; diger ekranlar tasarim sisteminin varsayilanini kullanmaya devam eder. -->
+        <Style x:Key="ReportCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}"><Setter Property="Padding" Value="7,0"/></Style>
+        <Style x:Key="ReportHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"><Setter Property="Padding" Value="7,0"/></Style>
             </ResourceDictionary>
 </UserControl.Resources>
     <Border Background="{StaticResource CanvasBrush}">
-    <Grid Margin="22,18">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="178"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <!-- Sag ve alt kenar bosluklari PageShell'in kendi 22/18 dolgusundan gelir; burada tekrar verilirse
+         kenar bosluklari ikiye katlanir (44px) ve tabloya kalan genislik 36px azalir. -->
+    <Grid Margin="22,18,0,0">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="178"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 
-        <Border Style="{StaticResource Panel}" Padding="8">
+        <Border Style="{StaticResource Panel}" Padding="8" Margin="0,0,0,18">
             <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <StackPanel Margin="7,6,7,13"><TextBlock Text="RAPOR TÜRLERİ" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold" FontSize="10"/><TextBlock Text="11 canlı rapor" Foreground="{StaticResource FaintBrush}" Margin="0,4,0,0"/></StackPanel>
                 <ListBox Grid.Row="1" ItemsSource="{Binding ReportTypes}" SelectedItem="{Binding SelectedReport}" BorderThickness="0" Background="Transparent" DisplayMemberPath="Name" AutomationProperties.Name="Rapor türleri">
@@ -27,7 +34,7 @@
             </Grid>
         </Border>
 
-        <controls:PageShell Grid.Column="2" Title="Rapor Merkezi" Subtitle="{Binding SelectedReport.Name, StringFormat={}{0} • sunucu filtreli görünüm • Europe/Istanbul}">
+        <controls:PageShell Grid.Column="1" Title="Rapor Merkezi" Subtitle="{Binding SelectedReport.Name, StringFormat={}{0} • sunucu filtreli görünüm • Europe/Istanbul}">
             <controls:PageShell.Actions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="12" Padding="9,4" Margin="0,0,9,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="{StaticResource WarningBrush}"/></Border>
@@ -73,7 +80,7 @@
                     <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding SummaryText}" Foreground="{StaticResource InkBrush}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
                             <Button Style="{StaticResource Action}" Content="Seçilenleri Kopyala" Command="{Binding CopySelectedCommand}"/>
-                            <Menu Background="White"><MenuItem Header="Kolonlar" ItemsSource="{Binding Columns}"><MenuItem.ItemContainerStyle><Style TargetType="MenuItem"><Setter Property="HeaderTemplate"><Setter.Value><DataTemplate><CheckBox Content="{Binding Header}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Click="ColumnVisibility_Click"/></DataTemplate></Setter.Value></Setter></Style></MenuItem.ItemContainerStyle></MenuItem></Menu>
+                            <Menu Background="White" VerticalAlignment="Center"><MenuItem Header="Kolonlar" ItemsSource="{Binding Columns}"><MenuItem.ItemContainerStyle><Style TargetType="MenuItem"><Setter Property="HeaderTemplate"><Setter.Value><DataTemplate><CheckBox Content="{Binding Header}" IsChecked="{Binding IsVisible, Mode=TwoWay}" Click="ColumnVisibility_Click"/></DataTemplate></Setter.Value></Setter></Style></MenuItem.ItemContainerStyle></MenuItem></Menu>
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -83,7 +90,7 @@
                         <!-- Padding alt degeri 16: yatay kaydirma cubugu DataGrid'in ICINDE cizilir ve
                              sutunlar sigmadiginda son gorunur satirin USTUNE biner; o satir hicbir
                              zaman tam okunamiyordu. Alt dolgu cubuga kendi yerini acar. -->
-                        <DataGrid x:Name="ReportGrid" Padding="0,0,0,16" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" SelectionMode="Extended" SelectionUnit="FullRow" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" Sorting="ReportGrid_Sorting" SelectionChanged="ReportGrid_SelectionChanged" ColumnReordered="ReportGrid_ColumnReordered" AutomationProperties.Name="Dinamik rapor tablosu">
+                        <DataGrid x:Name="ReportGrid" Padding="0,0,0,16" CellStyle="{StaticResource ReportCell}" ColumnHeaderStyle="{StaticResource ReportHeader}" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" SelectionMode="Extended" SelectionUnit="FullRow" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" Sorting="ReportGrid_Sorting" SelectionChanged="ReportGrid_SelectionChanged" ColumnReordered="ReportGrid_ColumnReordered" AutomationProperties.Name="Dinamik rapor tablosu">
                             <DataGrid.InputBindings><KeyBinding Modifiers="Control" Key="C" Command="{Binding CopySelectedCommand}"/><KeyBinding Modifiers="Control" Key="P" Command="{Binding ExportPdfCommand}"/><KeyBinding Modifiers="Control" Key="E" Command="{Binding ExportExcelCommand}"/></DataGrid.InputBindings>
                         </DataGrid>
                         <TextBlock Text="Bu filtrelerle kayıt bulunamadı. Tarih aralığını veya filtreleri değiştirin." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>

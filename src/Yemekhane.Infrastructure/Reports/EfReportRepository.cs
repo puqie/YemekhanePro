@@ -8,10 +8,13 @@ namespace Yemekhane.Infrastructure.Reports;
 
 public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRepository
 {
+    /// <summary>Turkiye sabit UTC+3'tur (2016'dan beri yaz saati yok); gun kirilimi bu kaydirma ile alinir.</summary>
+    private const string IstanbulDayShift = "+3 hours";
+
     public async Task<ReportResult> QueryAsync(ReportType type, ReportQuery query,
         CancellationToken cancellationToken)
     {
-        var filtered = ApplyFilters(Build(type), type, query);
+        var filtered = Prepare(type, query);
         var summary = await SummarizeAsync(filtered, cancellationToken);
         var items = await ApplySort(filtered, type, query)
             .Skip((query.Page - 1) * query.PageSize)
@@ -27,7 +30,7 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var batch = new List<ReportRow>(batchSize);
-        await foreach (var row in ApplySort(ApplyFilters(Build(type), type, query), type, query)
+        await foreach (var row in ApplySort(Prepare(type, query), type, query)
                            .AsAsyncEnumerable().WithCancellation(cancellationToken))
         {
             batch.Add(row);
@@ -38,6 +41,16 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
 
         if (batch.Count > 0) yield return batch;
     }
+
+    /// <summary>
+    /// Filtrelenmis satir kaynagi. Gunluk Kasa'da filtreler (tarih, ogrenci, sinif, durum...)
+    /// islem satirlarina uygulanir, SONRA gun + gelir turu + iptal kirilimina gruplanir;
+    /// boylece "5A sinifinin gunluk tahsilati" gibi sorular da kasa defteri olarak yanitlanir.
+    /// </summary>
+    private IQueryable<ReportRow> Prepare(ReportType type, ReportQuery query) =>
+        type == ReportType.DailyCash
+            ? DailyCash(ApplyFilters(Income(ReportType.DailyCash), ReportType.DailyCash, query))
+            : ApplyFilters(Build(type), type, query);
 
     private IQueryable<ReportRow> Build(ReportType type) => type switch
     {
@@ -155,12 +168,38 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
             CardNo = item.CardNumber, FirstName = student.FirstName, LastName = student.LastName,
             Class = schoolClass.Name, Department = department.Name, Section = section.Name, Job = job.Name,
             Decision = null, Status = item.IsVoided ? "VOIDED" : "ACTIVE",
-            Description = incomeType.Name + " / " + item.Description, MealCount = 0,
+            // Gelir raporunda aciklama "tur / serbest metin"; Gunluk Kasa yalnizca gelir turunu
+            // tasir ki gruplama anahtari olabilsin (serbest metin her islemde farkli olabilir).
+            Description = type == ReportType.DailyCash ? incomeType.Name : incomeType.Name + " / " + item.Description,
+            MealCount = type == ReportType.DailyCash ? 1 : 0,
             AmountCents = item.IsVoided ? 0L : (long)YemekhaneDbContext.Round((double)item.Amount * 100d),
             // EF, projeksiyonda atanmayan uyeyi filtre/siralamada cevirmeyip nesneyi yeniden kuruyor;
             // acikca null atamak sorguyu SQL'e cevrilebilir kiliyor.
             MealType = null, Device = null
         };
+
+    /// <summary>
+    /// Kasa defteri: her satir bir Istanbul gunu x gelir turu x (aktif / iptal) toplamidir.
+    /// MealCount islem sayisini, AmountCents o grubun tahsilatini tasir (iptaller 0 TL).
+    /// Timestamp bos, ReportDate dolu: ekran ve disa aktarma yalnizca gun gosterir.
+    /// </summary>
+    private static IQueryable<ReportRow> DailyCash(IQueryable<ReportRow> transactions) =>
+        transactions
+            .GroupBy(x => new
+            {
+                Day = YemekhaneDbContext.SqliteDate(x.Timestamp!.Value, IstanbulDayShift),
+                IncomeType = x.Description,
+                x.Status
+            })
+            .Select(group => new ReportRow
+            {
+                Id = group.Min(x => x.Id), Type = ReportType.DailyCash, Timestamp = null,
+                SortValue = group.Min(x => x.SortValue), ReportDate = group.Key.Day,
+                Description = group.Key.IncomeType, Status = group.Key.Status,
+                MealCount = group.Count(), AmountCents = group.Sum(x => x.AmountCents),
+                Decision = null, StudentNo = null, CardNo = null, FirstName = null, LastName = null,
+                Class = null, Department = null, Section = null, Job = null, MealType = null, Device = null
+            });
 
     private IQueryable<ReportRow> Sms() =>
         from log in dbContext.SmsLogs.AsNoTracking()
@@ -191,7 +230,9 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
             SortValue = YemekhaneDbContext.JulianDay(turnstile.Timestamp),
             StudentNo = student.StudentNo, CardNo = access.CardNumber, FirstName = student.FirstName,
             LastName = student.LastName, Device = device.Name, Decision = access.Decision,
-            Status = turnstile.Result, Description = turnstile.Command + " / " + turnstile.Error,
+            // Hata yoksa "OPEN / " gibi bos ayrac birakmamak icin yalnizca komut yazilir.
+            Status = turnstile.Result,
+            Description = turnstile.Error == null || turnstile.Error == "" ? turnstile.Command : turnstile.Command + " / " + turnstile.Error,
             MealCount = access.Decision == "ALLOW" ? 1 : 0, AmountCents = 0L,
             // EF, projeksiyonda atanmayan uyeyi filtre/siralamada cevirmeyip nesneyi yeniden kuruyor;
             // acikca null atamak sorguyu SQL'e cevrilebilir kiliyor.

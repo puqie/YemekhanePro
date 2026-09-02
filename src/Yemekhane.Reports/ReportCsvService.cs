@@ -27,11 +27,14 @@ public sealed class ReportCsvService(ReportService reportService) : ICsvService
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var date = row.Timestamp.HasValue
-                    ? TimeZoneInfo.ConvertTime(row.Timestamp.Value, Istanbul).ToString("dd.MM.yyyy HH:mm:ss.fff", Turkish)
+                    // Ekran ve PDF ile ayni bicim: milisaniye bir yemekhane gecisi icin gurultudur.
+                    ? TimeZoneInfo.ConvertTime(row.Timestamp.Value, Istanbul).ToString("dd.MM.yyyy HH:mm:ss", Turkish)
                     : row.ReportDate?.ToString("dd.MM.yyyy", Turkish);
                 string?[] values = [date, row.StudentNo, row.CardNo, row.FirstName, row.LastName, row.Class,
-                    row.Section, row.Department, row.Job, row.MealType, row.Device, row.Decision, row.Status,
-                    row.Description, row.MealCount.ToString(Turkish), row.Amount.ToString("N2", Turkish)];
+                    row.Section, row.Department, row.Job, row.MealType, row.Device,
+                    // Dosyada ham kod ("ALLOW", "VOIDED") degil Turkce metin; ekranla ayni sozluk.
+                    ReportText.Decision(row.Decision), ReportText.Status(row), ReportText.Description(row),
+                    row.MealCount.ToString(Turkish), row.Amount.ToString("N2", Turkish)];
                 await writer.WriteLineAsync(string.Join(';', values.Select(Escape)));
             }
             await writer.FlushAsync(cancellationToken);

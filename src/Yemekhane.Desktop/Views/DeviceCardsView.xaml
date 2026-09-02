@@ -31,7 +31,8 @@
                     </TextBlock>
                 </Border>
                 <Button Style="{StaticResource Action}" Content="Yenile" Command="{Binding RefreshCommand}"/>
-                <Button Style="{StaticResource Action}" Content="Şimdi yükle" Command="{Binding PushNowCommand}"/>
+                <!-- Ekranin tek birincil eylemi: marka rengi (turuncu) ile ayrisir. -->
+                <Button Style="{StaticResource Primary}" Content="Şimdi yükle" Command="{Binding PushNowCommand}"/>
             </StackPanel>
         </Grid>
 
@@ -39,6 +40,12 @@
                 Padding="11,7" Margin="0,14,0,10"
                 Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}">
             <TextBlock Text="{Binding Error}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"/>
+        </Border>
+        <!-- "Simdi yukle" sonucu: cihazlar cevrimdisiyken dugme sessiz kaliyordu. -->
+        <Border Grid.Row="1" Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource WarningBrush}" BorderThickness="1" CornerRadius="5"
+                Padding="11,7" Margin="0,14,0,10"
+                Visibility="{Binding HasStatusMessage, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
         </Border>
 
         <Grid Grid.Row="2" Margin="0,10,0,0">
@@ -153,7 +160,8 @@
                                         <Grid>
                                             <StackPanel>
                                                 <TextBlock Text="{Binding StudentName}" FontWeight="SemiBold"/>
-                                                <TextBlock Text="{Binding CardNumber}" Foreground="{StaticResource MutedBrush}"
+                                                <!-- No + sinif + kart: ayni adli ogrenciler ancak boyle ayirt edilir. -->
+                                                <TextBlock Text="{Binding IdentityText}" Foreground="{StaticResource MutedBrush}"
                                                            FontSize="11" Margin="0,2,0,0"/>
                                             </StackPanel>
                                             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">

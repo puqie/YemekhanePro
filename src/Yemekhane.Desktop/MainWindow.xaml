@@ -210,7 +210,7 @@
                                             <DataGridTextColumn Header="No" Binding="{Binding StudentNo}" Width="70"/>
                                             <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="105"/>
                                             <DataGridTextColumn Header="Karar" Binding="{Binding Decision, Converter={StaticResource EnumText}, ConverterParameter=Decision}" Width="Auto" MinWidth="95"/>
-                                            <DataGridTextColumn Header="Neden" Binding="{Binding Reason}" Width="120"/>
+                                            <DataGridTextColumn Header="Neden" Binding="{Binding Reason, Converter={StaticResource EnumText}, ConverterParameter=Reason}" Width="120"/>
                                         </DataGrid.Columns>
                                     </DataGrid>
                                     <TextBlock Grid.Row="1" Text="Bugün henüz geçiş kaydı yok." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}"/>
@@ -238,7 +238,7 @@
                             </Border>
                             <Border Grid.Column="1" Style="{StaticResource Panel}" Margin="7,0,0,0">
                                 <Grid><Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition /></Grid.RowDefinitions><TextBlock Text="Son Hatalar" Style="{StaticResource SectionTitle}" Margin="14,0" VerticalAlignment="Center"/>
-                                    <DataGrid Grid.Row="1" ItemsSource="{Binding Snapshot.RecentErrors}"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM HH:mm:ss}}" Width="110"/><DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="110"/><DataGridTextColumn Header="Seviye" Binding="{Binding Severity, Converter={StaticResource EnumText}, ConverterParameter=LogLevel}" Width="Auto" MinWidth="72"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/></DataGrid.Columns></DataGrid>
+                                    <DataGrid Grid.Row="1" ItemsSource="{Binding Snapshot.RecentErrors}"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM HH:mm:ss}}" Width="110"/><DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="110"/><DataGridTextColumn Header="Seviye" Binding="{Binding Severity, Converter={StaticResource EnumText}, ConverterParameter=LogLevel}" Width="Auto" MinWidth="72"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/></DataGrid.Columns></DataGrid>
                                 </Grid>
                             </Border>
                         </Grid>
