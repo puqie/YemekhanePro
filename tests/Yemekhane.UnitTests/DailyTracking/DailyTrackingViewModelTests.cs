@@ -67,6 +67,44 @@ public sealed class DailyTrackingViewModelTests
         Assert.Empty(vm.Rows);
     }
 
+    /// <summary>
+    /// Ogun/cihaz/sinif kutulari bos aciliyordu ("Tumu" yoktu) ve secenekler her yuklemede
+    /// silinip yeniden kuruluyordu: WPF bagli ogesi silinen ComboBox'in secimini null'a cekiyor,
+    /// yani "Filtrele" dendigi anda filtre ViewModel'den ucuyordu; sonraki "Daha eski kayitlari
+    /// yukle" filtresiz sorgu atiyordu. Secenekler artik birikir, ilk oge her zaman "Tumu"dur.
+    /// </summary>
+    [Fact]
+    public async Task FilterOptionsStartWithTumuAndSurviveReload()
+    {
+        var meal = Guid.NewGuid();
+        var row = Row(Guid.NewGuid(), DateTimeOffset.UtcNow) with { MealTypeId = meal, MealType = "Öğle" };
+        var api = new FakeApi(Page([row]));
+        var vm = Create(api, new FakeRealtime());
+        await vm.InitializeAsync();
+
+        Assert.Equal("Tümü", vm.MealTypes[0].Name);
+        Assert.Null(vm.MealTypes[0].Id);
+        Assert.Same(vm.MealTypes[0], vm.SelectedMealTypeOption);
+        Assert.Equal("Tümü", vm.Devices[0].Name);
+        Assert.Equal("Tümü", vm.Classes[0].Name);
+        Assert.Equal("Tümü", vm.SelectedDecisionOption.Name);
+
+        var option = vm.MealTypes[1];
+        vm.SelectedMealTypeOption = option;
+        Assert.Equal(meal, vm.SelectedMealTypeId);
+
+        api.Next = Page([]); // filtre sonucu bos: secenekler silinmemeli, secim korunmali
+        await vm.RefreshAsync();
+        Assert.Same(option, vm.MealTypes[1]);
+        Assert.Equal(meal, vm.SelectedMealTypeId);
+        Assert.Same(option, vm.SelectedMealTypeOption);
+
+        vm.SelectedDecisionOption = vm.Decisions[2];
+        Assert.Equal("DENY", vm.SelectedDecision);
+        vm.SelectedMealTypeOption = null; // WPF bos secim gonderirse filtre "Tumu"ye doner
+        Assert.Null(vm.SelectedMealTypeId);
+    }
+
     private static DailyTrackingViewModel Create(FakeApi api, FakeRealtime realtime,
         FakePreferences? preferences = null, FakeSound? sound = null) =>
         new(api, realtime, preferences ?? new FakePreferences(), sound ?? new FakeSound());

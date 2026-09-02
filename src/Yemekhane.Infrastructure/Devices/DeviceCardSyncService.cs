@@ -63,12 +63,16 @@ public sealed class DeviceCardSyncService(YemekhaneDbContext db, TimeProvider cl
         await (from state in db.DeviceCardStates.AsNoTracking()
                join student in db.Students.IgnoreQueryFilters().AsNoTracking()
                    on state.StudentId equals student.Id
+               join classValue in db.Set<SchoolClass>().AsNoTracking() on student.ClassId equals (Guid?)classValue.Id into classes
+               from schoolClass in classes.DefaultIfEmpty()
                where state.DeviceId == deviceId
                    && (state.Status == DeviceCardSyncStatus.Pending || state.Status == DeviceCardSyncStatus.PendingRemoval)
                orderby state.AttemptCount, state.CardNumber
+               // Ogrenci no + sinif: ayni ad-soyadli ogrenciler (uc ADA, dort ALI) kuyrukta ancak boyle ayirt edilir.
                select new PendingDeviceCard(state.CardId, state.StudentId, state.CardNumber,
                    student.FirstName + " " + student.LastName,
-                   state.Status == DeviceCardSyncStatus.PendingRemoval, state.AttemptCount))
+                   state.Status == DeviceCardSyncStatus.PendingRemoval, state.AttemptCount,
+                   student.StudentNo, schoolClass == null ? null : schoolClass.Name))
             .Take(limit)
             .ToListAsync(cancellationToken);
 

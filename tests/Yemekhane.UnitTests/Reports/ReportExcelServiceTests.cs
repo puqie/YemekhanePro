@@ -30,7 +30,8 @@ public sealed class ReportExcelServiceTests
     [Fact]
     public async Task WorkbookPreservesTurkishTextTypedCellsTotalsFiltersAndFormulaSafetyWhileStreaming()
     {
-        var rows = CreateRows(ReportType.DailyCash, 5);
+        // Gelir raporu: islem islem 7 sutunlu para duzeni (Gunluk Kasa artik gun x tur kirilimidir, 5 sutun).
+        var rows = CreateRows(ReportType.Income, 5);
         rows[0] = rows[0] with { Description = "=2+2" };
         var repository = new ExcelRepository(rows);
         var service = CreateService(repository, batchSize: 2);
@@ -40,7 +41,7 @@ public sealed class ReportExcelServiceTests
             FirstName: "ÇĞİÖŞÜ", Class: "10-Ş", Status: "Aktif");
         await using var output = new MemoryStream();
 
-        await service.GenerateAsync(ReportType.DailyCash, query, output);
+        await service.GenerateAsync(ReportType.Income, query, output);
 
         using var document = SpreadsheetDocument.Open(output, false);
         Assert.Empty(new OpenXmlValidator().Validate(document));

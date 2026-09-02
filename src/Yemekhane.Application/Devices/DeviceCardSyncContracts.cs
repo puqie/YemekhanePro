@@ -20,8 +20,13 @@ public static class DeviceCardSyncStatus
 }
 
 /// <summary>Cihaza gonderilmeyi bekleyen tek bir kart islemi.</summary>
+/// <remarks>
+/// <paramref name="StudentNo"/> ve <paramref name="ClassName"/> ayirt edicilik icin eklendi: gercek okul
+/// verisinde ayni ad-soyadli ogrenciler vardir; kuyrukta yalnizca ad gorunurse hangi ADA'nin karti
+/// yuklenmedi anlasilmaz. Sonda ve varsayilanli tutuldu ki eski cagiranlar bozulmasin.
+/// </remarks>
 public sealed record PendingDeviceCard(Guid CardId, Guid StudentId, string CardNumber, string StudentName,
-    bool IsRemoval, int AttemptCount);
+    bool IsRemoval, int AttemptCount, string? StudentNo = null, string? ClassName = null);
 
 /// <summary>Bir kartin tek bir cihazdaki durumunun operator gorunumu.</summary>
 public sealed record DeviceCardStatusRow(Guid DeviceId, string DeviceName, string Status,

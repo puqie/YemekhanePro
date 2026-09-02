@@ -23,8 +23,9 @@ public sealed class ReportPdfServiceTests
         using var pdf = PdfDocument.Open(output.ToArray());
         Assert.Equal(1, pdf.NumberOfPages);
         var page = pdf.GetPage(1);
+        // Gunluk Kasa gun x gelir turu kirilimi oldugu icin 5 sutunludur ve dikey sayfaya sigar.
         var landscape = type is ReportType.DailyAccess or ReportType.MealEntitlement
-            or ReportType.StudentMealUsage or ReportType.ClassMeal or ReportType.DailyCash
+            or ReportType.StudentMealUsage or ReportType.ClassMeal
             or ReportType.Income or ReportType.Turnstile or ReportType.DeniedAccess
             or ReportType.CardMovements or ReportType.HolidayTransfer;
         Assert.Equal(landscape, page.Width > page.Height);

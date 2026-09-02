@@ -90,6 +90,45 @@ public sealed class DeviceCardsViewModelTests
 
         Assert.Equal(1, api.PushCount);
         Assert.False(vm.HasOutstanding);
+        Assert.Equal("5 kart yüklendi; tüm cihazlar güncel.", vm.StatusMessage);
+    }
+
+    /// <summary>
+    /// Sunucu yalnizca BAGLI cihazlarin kuyrugunu isler; cihazlar cevrimdisiyken "Şimdi yükle"
+    /// hicbir sey degistirmeden "kabul edildi" donuyordu ve ekran sessiz kaliyordu. Kullanici
+    /// dugmenin calisip calismadigini bilmeli.
+    /// </summary>
+    [Fact]
+    public async Task PushNowWithOfflineDevicesExplainsWhyNothingChanged()
+    {
+        var api = new FakeApi
+        {
+            Summaries = [new(Guid.NewGuid(), "Ana Giriş", Loaded: 1, Pending: 4, Failed: 1)]
+        };
+        using var vm = new DeviceCardsViewModel(api);
+        await vm.InitializeAsync();
+
+        await vm.PushNowAsync();
+
+        Assert.True(vm.HasStatusMessage);
+        Assert.Contains("5 kart yüklenemedi", vm.StatusMessage);
+        Assert.Contains("çevrimdışı", vm.StatusMessage);
+        Assert.Null(vm.Error);
+
+        api.Summaries = [new(api.Summaries[0].DeviceId, "Ana Giriş", Loaded: 4, Pending: 1, Failed: 1)];
+        await vm.PushNowAsync();
+        Assert.Equal("3 kart yüklendi, 2 kart hâlâ bekliyor.", vm.StatusMessage);
+    }
+
+    /// <summary>Ayni adli ogrenciler kuyrukta no + sinif + kart ile ayirt edilir.</summary>
+    [Fact]
+    public void PendingCardShowsStudentNumberClassAndCard()
+    {
+        var full = new PendingCardViewModel(new PendingDeviceCard(Guid.NewGuid(), Guid.NewGuid(), "8350003", "ADA KATIRCI", false, 0, "5003", "5A"));
+        var bare = new PendingCardViewModel(new PendingDeviceCard(Guid.NewGuid(), Guid.NewGuid(), "8350004", "ADA KATIRCI", false, 0));
+
+        Assert.Equal("No 5003 · 5A · Kart 8350003", full.IdentityText);
+        Assert.Equal("Kart 8350004", bare.IdentityText);
     }
 
     [Fact]

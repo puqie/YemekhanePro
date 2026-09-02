@@ -34,6 +34,13 @@ public sealed class PendingCardViewModel(PendingDeviceCard value)
 {
     public string CardNumber => value.CardNumber;
     public string StudentName => value.StudentName;
+    /// <summary>"No 5003 · 5A · Kart 8350003": ayni adli ogrenciler kuyrukta ancak boyle ayirt edilir.</summary>
+    public string IdentityText => string.Join(" · ", new[]
+    {
+        string.IsNullOrWhiteSpace(value.StudentNo) ? null : "No " + value.StudentNo,
+        string.IsNullOrWhiteSpace(value.ClassName) ? null : value.ClassName,
+        "Kart " + value.CardNumber
+    }.Where(x => x is not null));
     public int AttemptCount => value.AttemptCount;
     public string ActionText => value.IsRemoval ? "Siliniyor" : "Yükleniyor";
     public bool HasRetried => value.AttemptCount > 0;
@@ -52,6 +59,7 @@ public sealed class DeviceCardsViewModel : ObservableObject, IDisposable
     private bool isLoading;
     private bool isPushing;
     private string? error;
+    private string? statusMessage;
     private DeviceCardSummaryViewModel? selectedDevice;
 
     public DeviceCardsViewModel(IDeviceCardsApiClient api)
@@ -69,6 +77,9 @@ public sealed class DeviceCardsViewModel : ObservableObject, IDisposable
     public bool IsPushing { get => isPushing; private set { if (Set(ref isPushing, value)) PushNowCommand.Refresh(); } }
     public string? Error { get => error; private set { if (Set(ref error, value)) Raise(nameof(HasError)); } }
     public bool HasError => Error is not null;
+    /// <summary>"Şimdi yükle" sonucunun kullaniciya gorunen ozeti; hata degil, bilgi.</summary>
+    public string? StatusMessage { get => statusMessage; private set { if (Set(ref statusMessage, value)) Raise(nameof(HasStatusMessage)); } }
+    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
 
     public DeviceCardSummaryViewModel? SelectedDevice
     {
@@ -148,11 +159,23 @@ public sealed class DeviceCardsViewModel : ObservableObject, IDisposable
     {
         IsPushing = true;
         Error = null;
+        StatusMessage = null;
+        var before = TotalOutstanding;
         try
         {
             await api.PushNowAsync();
             await InitializeAsync();
             if (SelectedDevice is { } device) await SelectDeviceAsync(device);
+            // Sunucu yalnizca BAGLI cihazlarin kuyrugunu isler (DeviceCardPushWorker); cihazlar
+            // cevrimdisiyken istek "kabul edildi" doner ama hicbir sey degismez. Kullanici bunu
+            // sessiz bir dugmeden anlayamaz; sonuc her durumda soylenir.
+            StatusMessage = before == 0
+                ? "Bekleyen kart yok; yüklenecek bir şey bulunmadı."
+                : TotalOutstanding == 0
+                    ? $"{before} kart yüklendi; tüm cihazlar güncel."
+                    : TotalOutstanding < before
+                        ? $"{before - TotalOutstanding} kart yüklendi, {TotalOutstanding} kart hâlâ bekliyor."
+                        : $"{TotalOutstanding} kart yüklenemedi: cihazlar çevrimdışı ya da yanıt vermiyor. Bağlantı kurulunca yükleme otomatik denenecek.";
         }
         catch (LoginRequiredException)
         {

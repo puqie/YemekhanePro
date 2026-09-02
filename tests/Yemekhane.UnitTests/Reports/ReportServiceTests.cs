@@ -173,6 +173,65 @@ public sealed class ReportServiceTests
         };
     }
 
+    /// <summary>
+    /// Gunluk Kasa ile Gelir raporu birebir ayni sorguyu calistiriyordu; iki rapor turunun
+    /// varligi anlamsizdi. Gunluk Kasa artik kasa defteri gibi GUN + GELIR TURU (+ iptal)
+    /// kirilimidir; Gelir ise islem islem listedir. Gun siniri Istanbul'a gore alinmalidir:
+    /// 2 Eylul 00:30 (+03:00) UTC'de hala 1 Eylul'dur, kasa defterinde 2 Eylul'e yazilmalidir.
+    /// </summary>
+    [Fact]
+    public async Task DailyCashGroupsTransactionsByIstanbulDayAndIncomeType()
+    {
+        await using var fixture = await ReportFixture.CreateAsync();
+        var monthly = new IncomeType { Name = "Aylık" };
+        var daily = new IncomeType { Name = "Günlük" };
+        fixture.Context.AddRange(monthly, daily);
+        var day1 = new DateTimeOffset(2026, 9, 1, 10, 0, 0, TimeSpan.FromHours(3));
+        fixture.Context.AddRange(
+            Income(monthly, 100m, day1), Income(monthly, 250m, day1.AddHours(3)),
+            Income(daily, 40m, day1.AddHours(5)), Income(daily, 60m, day1.AddHours(5), voided: true),
+            Income(monthly, 500m, new DateTimeOffset(2026, 9, 2, 0, 30, 0, TimeSpan.FromHours(3))));
+        await fixture.Context.SaveChangesAsync();
+
+        var cash = await fixture.Service.QueryAsync(ReportType.DailyCash, new ReportQuery(Descending: false));
+        var income = await fixture.Service.QueryAsync(ReportType.Income, new ReportQuery());
+
+        Assert.Equal(5, income.Summary.TotalRecords);
+        Assert.Equal(4, cash.Summary.TotalRecords);
+        Assert.Equal(income.Summary.Amount, cash.Summary.Amount);
+        Assert.Equal(890m, cash.Summary.Amount);
+        Assert.Equal(5, cash.Summary.TotalMeals);
+        var monthlyDay1 = cash.Items.Single(x => x.ReportDate == new DateOnly(2026, 9, 1) && x.Description == "Aylık");
+        Assert.Equal(2, monthlyDay1.MealCount);
+        Assert.Equal(350m, monthlyDay1.Amount);
+        Assert.Equal("ACTIVE", monthlyDay1.Status);
+        var voided = cash.Items.Single(x => x.Status == "VOIDED");
+        Assert.Equal(1, voided.MealCount);
+        Assert.Equal(0m, voided.Amount);
+        Assert.Equal(new DateOnly(2026, 9, 2), cash.Items.Last().ReportDate);
+        Assert.All(cash.Items, x => Assert.Null(x.Timestamp));
+
+        // Tarih filtresi gruplamadan ONCE, islem zamanina uygulanir.
+        var secondDay = await fixture.Service.QueryAsync(ReportType.DailyCash,
+            new ReportQuery(Start: new DateTimeOffset(2026, 9, 2, 0, 0, 0, TimeSpan.FromHours(3))));
+        Assert.Equal(1, secondDay.Summary.TotalRecords);
+        Assert.Equal(500m, secondDay.Summary.Amount);
+        var voidedOnly = await fixture.Service.QueryAsync(ReportType.DailyCash, new ReportQuery(Status: "VOIDED"));
+        Assert.Single(voidedOnly.Items);
+
+        // Disa aktarma ayni gruplu satirlari akitmalidir.
+        var streamed = new List<ReportRow>();
+        await foreach (var batch in fixture.Service.StreamBatchesAsync(ReportType.DailyCash, new ReportQuery()))
+            streamed.AddRange(batch);
+        Assert.Equal(4, streamed.Count);
+
+        IncomeTransaction Income(IncomeType type, decimal amount, DateTimeOffset at, bool voided = false) => new()
+        {
+            OperationId = Guid.NewGuid(), IncomeTypeId = type.Id, TransactionAt = at, Amount = amount,
+            CreatedBy = Guid.NewGuid(), IsVoided = voided, Description = "Eylül ödemesi"
+        };
+    }
+
     private sealed class ReportFixture(
         SqliteConnection connection,
         YemekhaneDbContext context,

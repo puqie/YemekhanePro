@@ -15,6 +15,16 @@ public sealed class YemekhaneDbContext(DbContextOptions<YemekhaneDbContext> opti
     public static double Round(double value) =>
         throw new InvalidOperationException("Bu metot yalnızca SQL sorgularında kullanılabilir.");
 
+    /// <summary>
+    /// SQLite <c>date(value, modifier)</c>: zaman damgasini takvim gunune indirger.
+    /// DateTimeOffset SQLite'ta metin tutuldugu icin EF gun kirilimini ceviremez; SQL'de
+    /// <c>date()</c> once UTC'ye cevirir, <paramref name="modifier"/> ("+3 hours") ile
+    /// Istanbul gunune tasinir. Sonuc 'yyyy-MM-dd' metnidir ve DateOnly olarak okunur.
+    /// </summary>
+    [DbFunction("date", IsBuiltIn = true)]
+    public static DateOnly SqliteDate(DateTimeOffset value, string modifier) =>
+        throw new InvalidOperationException("Bu metot yalnızca SQL sorgularında kullanılabilir.");
+
     public DbSet<Student> Students => Set<Student>();
     public DbSet<StudentCard> StudentCards => Set<StudentCard>();
     public DbSet<Parent> Parents => Set<Parent>();
