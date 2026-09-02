@@ -32,6 +32,9 @@ public sealed class MealTypeService(IMealTypeRepository repository)
         if (name.Length is < 2 or > 100) throw new RequestValidationException("Öğün adı 2-100 karakter olmalıdır.");
         if (request.StartsAt.HasValue != request.EndsAt.HasValue) throw new RequestValidationException("Öğün başlangıç ve bitiş saati birlikte girilmelidir.");
         if (request.StartsAt >= request.EndsAt) throw new RequestValidationException("Öğün bitiş saati başlangıçtan sonra olmalıdır.");
+        if (request.Price is < 0 or > 100_000) throw new RequestValidationException("Öğün ücreti 0 ile 100.000 ₺ arasında olmalıdır.");
+        // Kurus hassasiyeti: 12,345 gibi bir deger sessizce yuvarlanmasin.
+        if (decimal.Round(request.Price, 2, MidpointRounding.AwayFromZero) != request.Price) throw new RequestValidationException("Öğün ücreti en fazla iki ondalık basamak içerebilir.");
         return request with { Name = name };
     }
 }

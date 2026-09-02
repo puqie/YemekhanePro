@@ -1,7 +1,8 @@
 namespace Yemekhane.Application.Meals;
 
-public sealed record MealTypeDetails(Guid Id, string Name, TimeOnly? StartsAt, TimeOnly? EndsAt, bool IsActive);
-public sealed record SaveMealTypeRequest(string Name, TimeOnly? StartsAt = null, TimeOnly? EndsAt = null, bool IsActive = true);
+/// <summary>Price: ogun ucreti (₺, 2 hane). Eski programdaki "Ucret TL"; 0 = ucretsiz/tanimsiz.</summary>
+public sealed record MealTypeDetails(Guid Id, string Name, TimeOnly? StartsAt, TimeOnly? EndsAt, bool IsActive, decimal Price = 0);
+public sealed record SaveMealTypeRequest(string Name, TimeOnly? StartsAt = null, TimeOnly? EndsAt = null, bool IsActive = true, decimal Price = 0);
 
 public interface IMealTypeRepository
 {
