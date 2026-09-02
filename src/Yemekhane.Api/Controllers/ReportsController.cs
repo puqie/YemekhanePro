@@ -75,8 +75,15 @@ public sealed class ReportsController(ReportService service, IPdfService pdfServ
         [FromQuery] int pageSize = 50,
         CancellationToken cancellationToken = default) =>
         service.QueryAsync(type, new ReportQuery(start, end, studentNo, cardNo, firstName, lastName, @class,
-            department, section, job, mealType, device, decision, status, sortBy, descending, page, pageSize),
+            department, section, job, mealType, device, decision, status, sortBy, descending, page, pageSize,
+            CanReadSensitive()),
             cancellationToken);
+
+    /// <summary>
+    /// TC kimlik no (Sicil Listesi) yalnizca bu yetkiyle doner. Karar sorgu parametresinden degil
+    /// JWT talebinden alinir; StudentsController ile ayni kural.
+    /// </summary>
+    private bool CanReadSensitive() => User.HasClaim(Permissions.ClaimType, Permissions.StudentsSensitiveRead);
 
     [HttpGet("{type}/pdf")]
     [PermissionAuthorize(Permissions.ReportsExport)]
@@ -106,7 +113,7 @@ public sealed class ReportsController(ReportService service, IPdfService pdfServ
             $"attachment; filename=\"{type.ToString().ToLowerInvariant()}-{DateTime.UtcNow:yyyyMMdd}.pdf\"";
         await pdfService.GenerateAsync(type,
             new ReportQuery(start, end, studentNo, cardNo, firstName, lastName, @class, department, section, job,
-                mealType, device, decision, status, sortBy, descending),
+                mealType, device, decision, status, sortBy, descending, IncludeSensitive: CanReadSensitive()),
             Response.Body, cancellationToken);
     }
 
@@ -138,7 +145,7 @@ public sealed class ReportsController(ReportService service, IPdfService pdfServ
             $"attachment; filename=\"{type.ToString().ToLowerInvariant()}-{DateTime.UtcNow:yyyyMMdd}.xlsx\"";
         await excelService.GenerateAsync(type,
             new ReportQuery(start, end, studentNo, cardNo, firstName, lastName, @class, department, section, job,
-                mealType, device, decision, status, sortBy, descending),
+                mealType, device, decision, status, sortBy, descending, IncludeSensitive: CanReadSensitive()),
             Response.Body, cancellationToken);
     }
 
@@ -170,7 +177,7 @@ public sealed class ReportsController(ReportService service, IPdfService pdfServ
             $"attachment; filename=\"{type.ToString().ToLowerInvariant()}-{DateTime.UtcNow:yyyyMMdd}.csv\"";
         await csvService.GenerateAsync(type,
             new ReportQuery(start, end, studentNo, cardNo, firstName, lastName, @class, department, section, job,
-                mealType, device, decision, status, sortBy, descending),
+                mealType, device, decision, status, sortBy, descending, IncludeSensitive: CanReadSensitive()),
             Response.Body, cancellationToken);
     }
 }

@@ -119,6 +119,7 @@ public static class InfrastructureRegistration
         // ve veri klasoru gocu ayni koku paylasir. Program.cs'e dokunmadan baglanti dizgisinden turetilir.
         services.AddSingleton<IStudentPhotoStore>(new FileStudentPhotoStore(FileStudentPhotoStore.ResolveRoot(connectionString)));
         services.AddScoped<StudentPhotoService>();
+        services.AddScoped<IDeviceCardListQuery, EfDeviceCardListQuery>();
         return services;
     }
 

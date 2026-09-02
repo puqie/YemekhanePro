@@ -91,7 +91,11 @@ public sealed class ReportsViewModelTests
 
             handler.Status = HttpStatusCode.InternalServerError;
             await File.WriteAllTextAsync(target, "existing");
-            await Assert.ThrowsAsync<HttpRequestException>(() => client.ExportAsync(ReportType.DailyAccess, query, ReportExportFormat.Csv, target));
+            // Disa aktarma artik sunucunun mesajini tasiyan ApiRequestException firlatir (orn. 429
+            // "dakikada 5 istek"); kullanici genel bir hata yerine nedeni gorur. Dosya yine bozulmaz.
+            var failure = await Assert.ThrowsAsync<ApiRequestException>(() => client.ExportAsync(ReportType.DailyAccess, query, ReportExportFormat.Csv, target));
+            Assert.Equal(HttpStatusCode.InternalServerError, failure.StatusCode);
+            Assert.False(string.IsNullOrWhiteSpace(failure.Message));
             Assert.Equal("existing", await File.ReadAllTextAsync(target));
             Assert.Empty(Directory.GetFiles(directory, "*.tmp"));
         }

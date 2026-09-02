@@ -14,18 +14,43 @@ public sealed class ReportCsvService(ReportService reportService) : ICsvService
         "Öğün", "Cihaz", "Karar", "Durum", "Açıklama", "Yemek Adedi", "Tutar"
     ];
 
+    /// <summary>
+    /// Sicil Listesi olay degil kisi listesidir; olay raporlarinin 16 sutunlu ortak basligi
+    /// (ogun, cihaz, karar, tutar...) burada anlamsizdir. Eski programin sicil disa aktarimiyla
+    /// ayni sirada, ad ve soyad AYRI sutunda yazilir. TC yalnizca yetkili sorguda son sutundur.
+    /// </summary>
+    private static readonly string[] StudentListHeaders =
+    [
+        "Öğrenci No", "Ad", "Soyad", "Sınıf", "Şube", "Bölüm", "Görev", "Kart No",
+        "Veli", "Veli Telefonu", "Durum", "Kayıt Tarihi"
+    ];
+    public const string NationalIdHeader = "TC Kimlik No";
+
+    public static IReadOnlyList<string> HeadersFor(ReportType type, ReportQuery query) =>
+        type != ReportType.StudentList ? Headers
+        : query.IncludeSensitive ? [.. StudentListHeaders, NationalIdHeader] : StudentListHeaders;
+
     public async Task GenerateAsync(ReportType type, ReportQuery query, Stream output,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(output);
         await output.WriteAsync(Encoding.UTF8.GetPreamble(), cancellationToken);
         await using var writer = new StreamWriter(output, new UTF8Encoding(false), 64 * 1024, true);
-        await writer.WriteLineAsync(string.Join(';', Headers.Select(Escape)));
+        await writer.WriteLineAsync(string.Join(';', HeadersFor(type, query).Select(Escape)));
         await foreach (var batch in reportService.StreamBatchesAsync(type, query, cancellationToken: cancellationToken))
         {
             foreach (var row in batch)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (type == ReportType.StudentList)
+                {
+                    string?[] student = [row.StudentNo, row.FirstName, row.LastName, row.Class, row.Section,
+                        row.Department, row.Job, row.CardNo, row.ParentName, row.ParentPhone, ReportText.Status(row),
+                        row.ReportDate?.ToString("dd.MM.yyyy", Turkish)];
+                    if (query.IncludeSensitive) student = [.. student, row.NationalId];
+                    await writer.WriteLineAsync(string.Join(';', student.Select(Escape)));
+                    continue;
+                }
                 var date = row.Timestamp.HasValue
                     // Ekran ve PDF ile ayni bicim: milisaniye bir yemekhane gecisi icin gurultudur.
                     ? TimeZoneInfo.ConvertTime(row.Timestamp.Value, Istanbul).ToString("dd.MM.yyyy HH:mm:ss", Turkish)

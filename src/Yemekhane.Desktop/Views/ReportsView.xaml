@@ -28,9 +28,11 @@
 
         <Border Style="{StaticResource Panel}" Padding="8" Margin="0,0,0,18">
             <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <StackPanel Margin="7,6,7,13"><TextBlock Text="RAPOR TÜRLERİ" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold" FontSize="10"/><TextBlock Text="11 canlı rapor" Foreground="{StaticResource FaintBrush}" Margin="0,4,0,0"/></StackPanel>
-                <ListBox Grid.Row="1" ItemsSource="{Binding ReportTypes}" SelectedItem="{Binding SelectedReport}" BorderThickness="0" Background="Transparent" DisplayMemberPath="Name" AutomationProperties.Name="Rapor türleri">
-                    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="9,8"/><Setter Property="Margin" Value="0,1"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
+                <StackPanel Margin="7,6,7,13"><TextBlock Text="RAPOR TÜRLERİ" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold" FontSize="10"/><TextBlock Text="{Binding ReportCountText}" Foreground="{StaticResource FaintBrush}" Margin="0,4,0,0"/></StackPanel>
+                <ListBox Grid.Row="1" ItemsSource="{Binding ReportTypes}" SelectedItem="{Binding SelectedReport}" BorderThickness="0" Background="Transparent" AutomationProperties.Name="Rapor türleri">
+                    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="9,7"/><Setter Property="Margin" Value="0,1"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
+                    <!-- Alt baslik yalnizca doluysa yer kaplar (bos Run satir yuksekligi eklemez). -->
+                    <ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="{StaticResource FaintBrush}" TextTrimming="CharacterEllipsis"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Subtitle}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></StackPanel></DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
             </Grid>
         </Border>
@@ -48,8 +50,11 @@
             <controls:PageShell.Filters>
                 <StackPanel>
                     <WrapPanel>
-                        <StackPanel Style="{StaticResource FilterGroup}"><TextBlock Style="{StaticResource FilterLabel}" Text="Başlangıç"/><DatePicker Style="{StaticResource FieldCompactDate}" Width="135" SelectedDate="{Binding StartDate}"/></StackPanel>
-                        <StackPanel Style="{StaticResource FilterGroup}"><TextBlock Style="{StaticResource FilterLabel}" Text="Bitiş"/><DatePicker Style="{StaticResource FieldCompactDate}" Width="135" SelectedDate="{Binding EndDate}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDateFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Başlangıç"/><DatePicker Style="{StaticResource FieldCompactDate}" Width="135" SelectedDate="{Binding StartDate}"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDateFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Bitiş"/><DatePicker Style="{StaticResource FieldCompactDate}" Width="135" SelectedDate="{Binding EndDate}"/></StackPanel>
+                        <!-- Sicil Listesi: tarih filtresi yok; neden sessiz kalmasin diye yazilir. -->
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDateNote, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Tarih"/><TextBlock Text="Tarih filtresi uygulanmaz; tüm sicil listelenir." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Height="29" Padding="0,7,0,0"/></StackPanel>
+                        <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowActiveStateFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Durum"/><ComboBox Style="{StaticResource FieldCompactCombo}" Width="105" ItemsSource="{Binding ActiveStates}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedActiveState}" AutomationProperties.Name="Öğrenci durumu"/></StackPanel>
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowStudentFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Öğrenci no"/><TextBox Style="{StaticResource FieldCompact}" Width="105" Text="{Binding StudentNo, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowCardFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Kart no"/><TextBox Style="{StaticResource FieldCompact}" Width="115" Text="{Binding CardNo, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowNameFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Ad"/><TextBox Style="{StaticResource FieldCompact}" Width="105" Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>

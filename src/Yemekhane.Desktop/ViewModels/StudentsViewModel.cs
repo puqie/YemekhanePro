@@ -144,6 +144,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         GrantEntitlementCommand = new RelayCommand(GrantEntitlement, () => CanGrantEntitlement && (SelectedStudent is not null || Details is not null));
         OpenStudentDetailCommand = new AsyncCommand(() => SelectedStudent is null ? Task.CompletedTask : OpenDetailAsync(SelectedStudent));
         OpenSmsCommand = new RelayCommand(OpenSms, () => CanSendSms && (SelectedStudent is not null || Details is not null));
+        // Eski programdaki "Sicil Listesi" disa aktarimi: Raporlar'a Sicil Listesi secili gider; CSV/Excel/PDF orada.
+        ExportCommand = new RelayCommand(() => navigation.Navigate($"{ShellRoutes.Reports}/{Yemekhane.Application.Reports.ReportType.StudentList}"), () => CanExport);
     }
 
     public ObservableCollection<StudentListItem> Students { get; } = [];
@@ -275,6 +277,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public bool CanReadSensitive => permissions.Contains("students.sensitive.read");
     public bool CanGrantEntitlement => task43Available && permissions.Contains("entitlements.bulk");
     public bool CanSendSms => permissions.Contains("sms.send") && navigation.IsAvailable(ShellRoutes.Sms);
+    /// <summary>Raporlar rotasi yalnizca reports.read ile acilir (App.xaml.cs); dugme de ona bagli.</summary>
+    public bool CanExport => navigation.IsAvailable(ShellRoutes.Reports);
     public string GrantEntitlementReason => CanGrantEntitlement ? string.Empty : "Toplu hakediş yetkisi gerekiyor.";
 
     /// <summary>
@@ -352,6 +356,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public ICommand OpenSmsCommand { get; }
     public ICommand SelectPhotoCommand { get; }
     public ICommand RemovePhotoCommand { get; }
+    public ICommand ExportCommand { get; }
 
     /// <summary>
     /// Dugmelerin etkin/pasif durumu Details, SelectedStudent ve IsFormOpen'a baglidir; WPF

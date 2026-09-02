@@ -48,14 +48,16 @@
             <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
         </Border>
 
+        <!-- Ust: cihaz kartlari (satir basina 3-4 kart); alt: secili cihazin kart listesi TAM genislikte.
+             Eskiden liste 380px'lik sag panelde duruyordu; 7 sutunlu bir tablo oraya sigmaz. -->
         <Grid Grid.Row="2" Margin="0,10,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
-            <!-- Cihaz listesi: mudahale gereken cihazlar basta -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <!-- Cihaz listesi: mudahale gereken cihazlar basta. Cok cihazda dikey kaydirilir, panele yer kalir. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="400">
                 <ItemsControl ItemsSource="{Binding Devices}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -130,11 +132,17 @@
                                                        Foreground="{StaticResource DangerBrush}"/>
                                         </StackPanel>
                                     </Grid>
-                                    <Button Style="{StaticResource Action}" Content="Bekleyen kartları göster"
-                                            Margin="0,12,0,0" HorizontalAlignment="Left"
-                                            Command="{Binding DataContext.SelectDeviceCommand,
-                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <Button Style="{StaticResource Action}" Content="Cihazdaki kartlar"
+                                                ToolTip="Bu cihaza yüklenmiş, bekleyen ve hatalı kartların tam listesi"
+                                                Command="{Binding DataContext.ShowCardsCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"/>
+                                        <Button Style="{StaticResource Action}" Content="Bekleyen kartları göster"
+                                                Command="{Binding DataContext.SelectDeviceCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
@@ -142,16 +150,69 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <!-- Secili cihazin bekleyen kart kuyrugu -->
-            <Border Grid.Column="1" Width="380" Margin="10,0,0,0" Padding="16" Background="White"
+            <!-- Secili cihaz paneli: "Cihazdaki kartlar" tablosu + "Bekleyen kartlar" kuyrugu -->
+            <Border Grid.Row="1" Margin="0,2,0,0" Padding="16,12,16,12" Background="White"
                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7"
                     Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
                 <DockPanel>
-                    <StackPanel DockPanel.Dock="Top">
-                        <TextBlock Text="{Binding SelectedDevice.DeviceName}" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="Bekleyen kartlar" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
-                        <Separator Margin="0,12,0,8"/>
-                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedDevice.DeviceName}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <TabControl SelectedIndex="{Binding SelectedPanelTab}" BorderThickness="0" Background="Transparent" Padding="0,8,0,0">
+                        <!-- Sekme 0: cihazdaki kartlar (eski programdaki "Cihaz Sicil Listesi" karsiligi) -->
+                        <TabItem Header="{Binding CardsTabHeader}">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBox Style="{StaticResource FieldCompact}" Width="260" Margin="0,0,8,0" Text="{Binding CardSearch, UpdateSourceTrigger=PropertyChanged}" ToolTip="Öğrenci no, ad soyad veya kart numarası (baştan eşleşir)" AutomationProperties.Name="Cihazdaki kartlarda ara">
+                                        <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchCardsCommand}"/></TextBox.InputBindings>
+                                    </TextBox>
+                                    <Button Grid.Column="1" Style="{StaticResource Action}" Content="Ara" Command="{Binding SearchCardsCommand}"/>
+                                    <TextBlock Grid.Column="2" Text="Kaynak: sunucudaki kart-cihaz durum tablosu. Cihaz belleğinin doğrudan okunması turnike adaptörüne bağlıdır." Foreground="{StaticResource FaintBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="8,0,0,0"/>
+                                </Grid>
+                                <Grid Grid.Row="1">
+                                    <!-- Alt dolgu: son satir tablo kenarinda yarim kalmasin (rapor tablosuyla ayni kural). -->
+                                    <DataGrid x:Name="DeviceCardsGrid" Padding="0,0,0,8" ItemsSource="{Binding DeviceCards}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Cihazdaki kartlar">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="70"/>
+                                            <DataGridTextColumn Header="AD SOYAD" Binding="{Binding StudentName}" Width="Auto" MinWidth="150"/>
+                                            <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="60"/>
+                                            <DataGridTextColumn Header="KART NO" Binding="{Binding CardNumber}" Width="Auto" MinWidth="100"/>
+                                            <DataGridTextColumn Header="DURUM" Binding="{Binding StatusText}" Width="Auto" MinWidth="90">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFailed}" Value="True"><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsLoaded}" Value="True"><Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/></DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Header="SON SENKRON" Binding="{Binding LastSyncedText}" Width="Auto" MinWidth="130"/>
+                                            <!-- HATA yildiz sutundur (kalan alani doldurur); eylem sutunu SABIT genisliktedir.
+                                                 Ikisi de esnek olunca dugme sutunu panelin sag kenarindan tasip kirpiliyordu. -->
+                                            <DataGridTextColumn Header="HATA" Binding="{Binding LastError}" Width="*" MinWidth="90"/>
+                                            <DataGridTemplateColumn Header="" Width="128">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Button Style="{StaticResource Action}" Content="Yeniden yükle" Padding="8,3" Margin="0" IsEnabled="{Binding CanResync}" ToolTip="{Binding ResyncHint}" ToolTipService.ShowOnDisabled="True"
+                                                                Command="{Binding DataContext.ResyncCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <TextBlock Text="Bu cihaz için kayıtlı kart yok." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsCardsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                                    <ProgressBar IsIndeterminate="True" Width="220" Height="3" VerticalAlignment="Top" Visibility="{Binding IsCardsLoading, Converter={StaticResource BoolToVisibility}}"/>
+                                </Grid>
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                    <TextBlock Text="{Binding CardsPageText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousCardsPageCommand}"/>
+                                    <Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextCardsPageCommand}"/>
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+                        <!-- Sekme 1: bekleyen kart kuyrugu -->
+                        <TabItem Header="{Binding PendingTabHeader}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding PendingCards}">
                             <ItemsControl.ItemTemplate>
@@ -187,10 +248,12 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
                 </DockPanel>
             </Border>
 
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+            <StackPanel Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center"
                         Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
                 <ProgressBar IsIndeterminate="True" Width="240" Height="3"/>
                 <TextBlock Text="Kart durumu yükleniyor..." Foreground="{StaticResource MutedBrush}" Margin="0,12,0,0"/>

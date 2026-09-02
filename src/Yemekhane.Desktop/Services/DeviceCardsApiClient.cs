@@ -16,10 +16,32 @@ public interface IDeviceCardsApiClient
     Task PushNowAsync(CancellationToken cancellationToken = default);
 }
 
-public sealed class DeviceCardsApiClient(HttpClient client, IJwtSession session) : IDeviceCardsApiClient
+/// <summary>
+/// Cihazdaki kart listesi (yuklu / bekleyen / hatali; arama + sayfalama). Ayri arayuz: IDeviceCardsApiClient'in
+/// sahteleri cihaz testlerinde yasiyor; oraya uye eklemek onlari kirardi. Gercek istemci ikisini de uygular.
+/// </summary>
+public interface IDeviceCardListApiClient
+{
+    Task<DeviceCardListResult> GetCardsAsync(Guid deviceId, string? search, int page, int pageSize,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed class DeviceCardsApiClient(HttpClient client, IJwtSession session) : IDeviceCardsApiClient, IDeviceCardListApiClient
 {
     public Task<IReadOnlyList<DeviceCardSummary>> GetSummaryAsync(CancellationToken cancellationToken = default) =>
         GetAsync<DeviceCardSummary>("api/device-cards/summary", cancellationToken);
+
+    public async Task<DeviceCardListResult> GetCardsAsync(Guid deviceId, string? search, int page, int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = $"page={page}&pageSize={pageSize}";
+        if (!string.IsNullOrWhiteSpace(search)) query += "&search=" + Uri.EscapeDataString(search.Trim());
+        using var response = await client.SendAsync(
+            Request(HttpMethod.Get, $"api/device-cards/{deviceId:D}/cards?{query}"), cancellationToken);
+        Ensure(response);
+        return await response.Content.ReadFromJsonAsync<DeviceCardListResult>(cancellationToken: cancellationToken)
+            ?? throw new InvalidDataException("Cihaz kart listesi yanıtı boş döndü.");
+    }
 
     public Task<IReadOnlyList<PendingDeviceCard>> GetPendingAsync(Guid deviceId, int limit,
         CancellationToken cancellationToken = default) =>

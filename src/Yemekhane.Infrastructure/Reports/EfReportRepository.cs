@@ -50,9 +50,9 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
     private IQueryable<ReportRow> Prepare(ReportType type, ReportQuery query) =>
         type == ReportType.DailyCash
             ? DailyCash(ApplyFilters(Income(ReportType.DailyCash), ReportType.DailyCash, query))
-            : ApplyFilters(Build(type), type, query);
+            : ApplyFilters(Build(type, query), type, query);
 
-    private IQueryable<ReportRow> Build(ReportType type) => type switch
+    private IQueryable<ReportRow> Build(ReportType type, ReportQuery query) => type switch
     {
         ReportType.DailyAccess => Access(ReportType.DailyAccess, false),
         ReportType.MealEntitlement => Entitlements(),
@@ -65,8 +65,38 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
         ReportType.DeniedAccess => Access(ReportType.DeniedAccess, true),
         ReportType.CardMovements => Cards(),
         ReportType.HolidayTransfer => HolidaysAndTransfers(),
+        ReportType.StudentList => StudentList(query.IncludeSensitive),
         _ => throw new ArgumentOutOfRangeException(nameof(type))
     };
+
+    /// <summary>
+    /// Sicil Listesi: her satir bir ogrenci (silinmisler sorgu filtresiyle dislanir). Sinif/sube/bolum/gorev,
+    /// aktif kart ve birincil veli korele alt sorgudur: Guid? ile Guid'i join etmek EF'te kutulanip
+    /// cevrilemiyordu (bkz. EfStudentRepository). TC kimlik yalnizca yetkili cagirana yazilir; yetkisizde
+    /// sutun SQL'de bile secilmez (CASE WHEN @p), istemciye hic gitmez.
+    /// MealCount = aktif mi (1/0): ozet satirinda "Aktif / Pasif" sayisi TotalMeals uzerinden tasinir.
+    /// </summary>
+    private IQueryable<ReportRow> StudentList(bool includeSensitive) =>
+        dbContext.Students.AsNoTracking().Select(student => new ReportRow
+        {
+            Id = student.Id, Type = ReportType.StudentList, Timestamp = null, SortValue = 0d,
+            ReportDate = student.RegisteredOn,
+            StudentNo = student.StudentNo, FirstName = student.FirstName, LastName = student.LastName,
+            Class = dbContext.Set<SchoolClass>().Where(c => c.Id == student.ClassId).Select(c => c.Name).FirstOrDefault(),
+            Section = dbContext.Set<Section>().Where(c => c.Id == student.SectionId).Select(c => c.Name).FirstOrDefault(),
+            Department = dbContext.Set<Department>().Where(c => c.Id == student.DepartmentId).Select(c => c.Name).FirstOrDefault(),
+            Job = dbContext.Set<Job>().Where(c => c.Id == student.JobId).Select(c => c.Name).FirstOrDefault(),
+            CardNo = dbContext.StudentCards.Where(c => c.StudentId == student.Id && c.IsActive)
+                .OrderByDescending(c => YemekhaneDbContext.JulianDay(c.ValidFrom)).Select(c => c.CardNumber).FirstOrDefault(),
+            ParentName = dbContext.Parents.Where(p => p.StudentId == student.Id && p.IsActive)
+                .OrderByDescending(p => p.IsPrimary).Select(p => p.Name).FirstOrDefault(),
+            ParentPhone = dbContext.Parents.Where(p => p.StudentId == student.Id && p.IsActive)
+                .OrderByDescending(p => p.IsPrimary).Select(p => p.NormalizedPhone).FirstOrDefault(),
+            NationalId = includeSensitive ? student.NationalId : null,
+            Status = student.IsActive ? "ACTIVE" : "INACTIVE",
+            MealCount = student.IsActive ? 1 : 0, AmountCents = 0L,
+            MealType = null, Device = null, Decision = null, Description = null
+        });
 
     private IQueryable<ReportRow> Access(ReportType type, bool deniedOnly)
     {
@@ -292,6 +322,10 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
 
     private static IQueryable<ReportRow> ApplyFilters(IQueryable<ReportRow> rows, ReportType type, ReportQuery query)
     {
+        // Sicil Listesi'nde tarih filtresi YOK SAYILIR: ekran varsayilan olarak "bugun" gonderir ve
+        // kayit tarihine uygulansaydi liste her acilista bos gelirdi. Memurun sorusu "kimler kayitli",
+        // "bugun kim kaydoldu" degil; ekran bunu acikca yazar.
+        if (type == ReportType.StudentList) query = query with { Start = null, End = null };
         if (query.Start.HasValue)
         {
             var start = query.Start.Value;
@@ -318,8 +352,24 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
         rows = Contains(rows, query.MealType, x => x.MealType!);
         rows = Contains(rows, query.Device, x => x.Device!);
         rows = Contains(rows, query.Decision, x => x.Decision!);
-        rows = Contains(rows, query.Status, x => x.Status!);
+        // Sicil Listesi'nde durum TAM eslesir: "ACTIVE" icerik aramasi "INACTIVE"i de tutuyordu,
+        // yani "Aktif" filtresi pasif ogrencileri de listeliyordu. Diger raporlarda durum serbest
+        // metindir (orn. "Kart pasif" nedeni) ve parca eslesme dogru davranistir.
+        rows = type == ReportType.StudentList
+            ? Equals(rows, query.Status, x => x.Status!)
+            : Contains(rows, query.Status, x => x.Status!);
         return rows;
+    }
+
+    /// <summary>Tam (buyuk/kucuk harf duyarsiz) eslesme; kod degeri tasiyan sutunlar icin.</summary>
+    private static IQueryable<ReportRow> Equals(IQueryable<ReportRow> rows, string? value,
+        System.Linq.Expressions.Expression<Func<ReportRow, string>> selector)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return rows;
+        var parameter = selector.Parameters[0];
+        var body = System.Linq.Expressions.Expression.Equal(selector.Body,
+            System.Linq.Expressions.Expression.Constant(value.Trim().ToUpperInvariant()));
+        return rows.Where(System.Linq.Expressions.Expression.Lambda<Func<ReportRow, bool>>(body, parameter));
     }
 
     private static IQueryable<ReportRow> Contains(IQueryable<ReportRow> rows, string? value,
@@ -354,6 +404,12 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
             "status" => Order(rows, x => x.Status, descending),
             "mealcount" => Order(rows, x => x.MealCount, descending),
             "amount" => Order(rows, x => x.AmountCents, descending),
+            // Sicil Listesi'nin dogal sirasi sinif > sube > numara ve HER ZAMAN artandir: ReportQuery
+            // varsayilani Descending=true (olay raporlarinda "en yeni once" dogru), ama sinif listesi
+            // 8C'den 5A'ya dogru basilirsa memur icin okunaksizdir. Ters sirayi kullanici sutun
+            // basligina tiklayarak (SortBy="class") isteyebilir.
+            _ when type == ReportType.StudentList =>
+                rows.OrderBy(x => x.Class).ThenBy(x => x.Section).ThenBy(x => x.StudentNo),
             _ when UsesDate(type) => Order(rows, x => x.ReportDate, descending),
             _ => Order(rows, x => x.SortValue, descending)
         };

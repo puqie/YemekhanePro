@@ -98,6 +98,7 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="12" Padding="9,4" Margin="0,0,10,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="{StaticResource WarningBrush}"/></Border>
                 <Button Style="{StaticResource Action}" Content="Yeni Öğrenci" Command="{Binding NewStudentCommand}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Yeni öğrenci oluştur"/>
+                <Button Style="{StaticResource Action}" Content="Dışa Aktar" Command="{Binding ExportCommand}" Visibility="{Binding CanExport, Converter={StaticResource BoolToVisibility}}" ToolTip="Sicil Listesi raporunu açar; Excel, PDF veya CSV olarak kaydedin" AutomationProperties.Name="Sicil listesini dışa aktar"/>
                 <Button Style="{StaticResource Action}" Content="Yenile" Command="{Binding SearchCommand}"/>
             </StackPanel>
         </Grid>
