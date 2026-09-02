@@ -2,10 +2,30 @@
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
     [string]$Version = '1.0.0',
+
+    # Lisans imza sirri. Masaustu uygulamasi lisansi BU sirla dogrular; lisans sunucusu
+    # da ayni sirla imzalar. Verilmezse yayinlanan uygulama acilista durur (csproj
+    # icindeki InjectLicensingSigningSecret hedefi uyarir, -warnaserror ile hataya doner).
+    # Depoya YAZILMAZ: ortam degiskeninden okunur ya da parametreyle gecilir.
+    [string]$LicensingSigningSecret = $env:YEMEKHANE_LICENSING_SECRET,
+
     [switch]$SkipTests,
     [switch]$SkipSmoke,
     [switch]$SkipInstallCheck
 )
+
+if ([string]::IsNullOrWhiteSpace($LicensingSigningSecret)) {
+    throw @'
+Lisans imza sirri verilmedi; kurulum uretilse bile uygulama acilista dururdu.
+
+Kullanim:
+    $env:YEMEKHANE_LICENSING_SECRET = '<sir>'
+    .\scripts\build-installer.ps1 -Version 1.1.0
+
+Sir, lisans sunucusundaki Licensing:SigningSecret ile AYNI olmalidir; aksi halde
+sunucunun imzaladigi lisanslari masaustu dogrulayamaz.
+'@
+}
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -37,7 +57,7 @@ if (-not $SkipTests) {
 
 $publishCommon = @('-c', $configuration, '-r', 'win-x64', '--self-contained', 'true', '--no-restore',
     '-p:PublishTrimmed=false', '-p:PublishSingleFile=false', '-p:DebugType=None', '-p:DebugSymbols=false',
-    "-p:Version=$Version", '-warnaserror')
+    "-p:Version=$Version", "-p:LicensingSigningSecret=$LicensingSigningSecret", '-warnaserror')
 Invoke-DotNet (@('publish', (Join-Path $root 'src\Yemekhane.Desktop\Yemekhane.Desktop.csproj'), '-o', $desktopDir) + $publishCommon)
 Invoke-DotNet (@('publish', (Join-Path $root 'src\Yemekhane.Api\Yemekhane.Api.csproj'), '-o', $apiDir) + $publishCommon)
 
