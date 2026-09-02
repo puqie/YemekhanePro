@@ -10,6 +10,13 @@ namespace Yemekhane.Desktop.ViewModels;
 
 public sealed record TrackingFilterOption(Guid Id, string Name);
 
+/// <summary>
+/// Karar filtresi secenegi: ekranda <paramref name="Name"/> (Turkce) gorunur,
+/// API'ye <paramref name="Value"/> (ALLOW / DENY) gider. Ikisini ayirmazsak
+/// Turkce metin sorgu parametresi olarak gonderilir ve filtre hicbir sey dondurmez.
+/// </summary>
+public sealed record TrackingDecisionOption(string Name, string? Value);
+
 public sealed class DailyTrackingViewModel : ObservableObject
 {
     public const int MaximumRows = 500;
@@ -61,7 +68,9 @@ public sealed class DailyTrackingViewModel : ObservableObject
     public ObservableCollection<TrackingFilterOption> MealTypes { get; } = [];
     public ObservableCollection<TrackingFilterOption> Devices { get; } = [];
     public ObservableCollection<TrackingFilterOption> Classes { get; } = [];
-    public IReadOnlyList<string> Decisions { get; } = ["ALLOW", "DENY"];
+    // Ekranda Turkce ad, API'ye İngilizce deger gider (MealEntitlements'taki Statuses ile ayni desen).
+    public IReadOnlyList<TrackingDecisionOption> Decisions { get; } =
+        [new("Tümü", null), new("İzin Verildi", "ALLOW"), new("Reddedildi", "DENY")];
     public event EventHandler<string>? StudentDetailNavigationRequested;
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) RaiseState(); } }
     public bool IsLive { get => isLive; private set { if (Set(ref isLive, value)) { Raise(nameof(LiveText)); Raise(nameof(IsPaused)); } } }

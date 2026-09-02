@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Windows.Input;
 using Yemekhane.Application.Reports;
+using Yemekhane.Desktop.Converters;
 using Yemekhane.Desktop.Services;
 
 namespace Yemekhane.Desktop.ViewModels;
@@ -53,8 +54,12 @@ public sealed class ReportGridRow
     public string Job => source.Job ?? "";
     public string MealType => source.MealType ?? "";
     public string Device => source.Device ?? "";
-    public string Decision => source.Decision ?? "";
-    public string Status => source.Status ?? "";
+    // Rapor sutunlari kod icinde uretiliyor (ReportsView.xaml.cs/RebuildColumns), yani
+    // XAML'de tek tek converter takilamaz. Ceviriyi burada, yalnizca GORUNTULENEN
+    // metinde yapiyoruz; sunucuya giden filtre (ReportsViewModel.Decision/Status)
+    // ayri bir ozelliktir ve ham İngilizce kod olarak kalir.
+    public string Decision => EnumTextConverter.Translate(source.Decision, "Decision");
+    public string Status => EnumTextConverter.Translate(source.Status, "Status");
     public string Description => source.Description ?? "";
     public string MealCount => source.MealCount.ToString("N0", Turkish);
     public string Amount => source.Amount.ToString("C2", Turkish);

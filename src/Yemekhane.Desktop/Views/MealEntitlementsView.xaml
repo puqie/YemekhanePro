@@ -13,6 +13,8 @@
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <converters:AllInverseBoolConverter x:Key="AllInverseBool"/>
+        <!-- Ham API kodlarini (Active, Manual...) ekranda Turkce gosterir. -->
+        <converters:EnumTextConverter x:Key="EnumText"/>
             </ResourceDictionary>
 </UserControl.Resources>
     <Border Background="{StaticResource CanvasBrush}">
@@ -103,8 +105,8 @@
                         <DataGridTextColumn Header="ADET" Binding="{Binding Quantity}" Width="52"/>
                         <DataGridTextColumn Header="KULL." Binding="{Binding ConsumedQuantity}" Width="52"/>
                         <DataGridTextColumn Header="KALAN" Binding="{Binding RemainingQuantity}" Width="55"/>
-                        <DataGridTextColumn Header="DURUM" Binding="{Binding Status}" Width="76"/>
-                        <DataGridTextColumn Header="KAYNAK" Binding="{Binding Source}" Width="115"/>
+                        <DataGridTextColumn Header="DURUM" Binding="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=Status}" Width="76"/>
+                        <DataGridTextColumn Header="KAYNAK" Binding="{Binding Source, Converter={StaticResource EnumText}, ConverterParameter=Source}" Width="115"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <StackPanel Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Hakedişler yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel>

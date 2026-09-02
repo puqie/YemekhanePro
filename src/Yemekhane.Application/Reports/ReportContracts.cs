@@ -59,9 +59,18 @@ public sealed record ReportRow
     public string? Status { get; init; }
     public string? Description { get; init; }
     public int MealCount { get; init; }
+    // Tutar icerde kurus (long) olarak tutulur; kayan nokta yuvarlama hatasi olmasin diye.
+    // JSON'a yalnizca "amount" yazilir, ancak bu alan salt-okunur (computed) kalirsa masaustu
+    // istemci yaniti geri okurken AmountCents=0 kalir ve her satir 0,00 TL gorunurdu.
+    // Bu yuzden Amount'a bir setter verildi: deserialize sirasinda gelen lirayi kurusa
+    // cevirip tek dogruluk kaynagi olan AmountCents'e yaziyor.
     [System.Text.Json.Serialization.JsonIgnore]
     public long AmountCents { get; init; }
-    public decimal Amount => AmountCents / 100m;
+    public decimal Amount
+    {
+        get => AmountCents / 100m;
+        init => AmountCents = (long)decimal.Round(value * 100m, MidpointRounding.AwayFromZero);
+    }
 }
 
 public sealed record ReportSummary(int TotalRecords, int Passed, int Denied, long TotalMeals, decimal Amount);

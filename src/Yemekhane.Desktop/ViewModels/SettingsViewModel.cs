@@ -5,9 +5,16 @@ using System.Globalization;
 using System.Windows.Input;
 using Microsoft.Win32;
 using Yemekhane.Application.Settings;
+using Yemekhane.Desktop.Converters;
 using Yemekhane.Desktop.Services;
 
 namespace Yemekhane.Desktop.ViewModels;
+
+/// <summary>
+/// Log seviyesi secenegi: ekranda <paramref name="Name"/> (Turkce),
+/// yapilandirmaya <paramref name="Value"/> (Serilog'un tanidigi İngilizce ad) yazilir.
+/// </summary>
+public sealed record LogLevelOption(string Name, string Value);
 
 public sealed class SettingsViewModel : ObservableObject
 {
@@ -49,7 +56,13 @@ public sealed class SettingsViewModel : ObservableObject
     public IReadOnlyList<string> SmsAuthTypes { get; } = ["None", "Basic", "Bearer", "ApiKey"];
     public IReadOnlyList<string> BackupFrequencies { get; } = ["Daily", "Weekly"];
     public IReadOnlyList<DayOfWeek> WeekDays { get; } = Enum.GetValues<DayOfWeek>();
-    public IReadOnlyList<string> LogLevels { get; } = ["Trace", "Debug", "Information", "Warning", "Error", "Critical"];
+    // Ekranda Turkce ad gorunur, API'ye ve appsettings'e İngilizce seviye adi gider.
+    // Serilog "Bilgi" adinda bir seviye tanimaz; ad ile deger ayrilmazsa loglama bozulur.
+    public IReadOnlyList<LogLevelOption> LogLevels { get; } =
+    [
+        new("İzleme", "Trace"), new("Ayıklama", "Debug"), new("Bilgi", "Information"),
+        new("Uyarı", "Warning"), new("Hata", "Error"), new("Kritik", "Critical")
+    ];
     public ObservableCollection<ApplicationLogItem> Logs { get; } = [];
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) RefreshCommands(); } }
     public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
@@ -69,7 +82,8 @@ public sealed class SettingsViewModel : ObservableObject
     public bool SyncEnabled { get => syncEnabled; set { Change(ref syncEnabled, value); RefreshCommands(); } } public string SyncEndpoint { get => syncEndpoint; set => Change(ref syncEndpoint, value); }
     public string SyncDeviceId { get => syncDeviceId; set => Change(ref syncDeviceId, value); } public int SyncIntervalMinutes { get => syncIntervalMinutes; set => Change(ref syncIntervalMinutes, value); }
     public bool SyncSecretConfigured => original?.Sync.SecretConfigured == true; public string? SyncSecret { get => syncSecret; set => Change(ref syncSecret, value); }
-    public string SyncStatusText => original is null ? "-" : $"{original.Sync.Status.State} | Bekleyen: {original.Sync.Status.Pending} | Hatalı: {original.Sync.Status.Failed} | Çakışma: {original.Sync.Status.Conflicts}";
+    // Durum kodu ("Disabled", "Ready"...) sunucudan İngilizce gelir; satirin geri kalani zaten Turkce.
+    public string SyncStatusText => original is null ? "-" : $"{EnumTextConverter.Translate(original.Sync.Status.State, "SyncState")} | Bekleyen: {original.Sync.Status.Pending} | Hatalı: {original.Sync.Status.Failed} | Çakışma: {original.Sync.Status.Conflicts}";
 
     /// <summary>Cakisan islemler operatorun karar vermesini bekler; listelenmezse sessizce olu kalirlar.</summary>
     public ObservableCollection<SyncConflictItem> Conflicts { get; } = [];
@@ -84,7 +98,20 @@ public sealed class SettingsViewModel : ObservableObject
     public string LogLevel { get => logLevel; set => Change(ref logLevel, value); } public int LogRetentionDays { get => logRetentionDays; set => Change(ref logRetentionDays, value); } public string LogPath { get => logPath; set => Change(ref logPath, value); }
     public string? RestorePath { get => restorePath; set { if (Set(ref restorePath, value)) RefreshCommands(); } } public string? RestoreConfirmation { get => restoreConfirmation; set { if (Set(ref restoreConfirmation, value)) RefreshCommands(); } }
     public int DeviceCount => original?.Links.Devices ?? 0; public int MealTypeCount => original?.Links.ActiveMealTypes ?? 0;
-    public IReadOnlyList<string> DeviceSummaries => original?.Links.DeviceSummaries ?? [];
+    // Sunucu "CihazAdi - Connected" bicminde birlestirilmis metin yollar (SettingsService).
+    // Cihaz adinda da " - " gecebilecegi icin SON ayirici bolunur; yalnizca durum kismi cevrilir.
+    // Ayirici yoksa metne dokunulmaz -- beklenmedik bicim kirpilmamalidir.
+    public IReadOnlyList<string> DeviceSummaries =>
+        (original?.Links.DeviceSummaries ?? []).Select(TranslateDeviceSummary).ToList();
+
+    private static string TranslateDeviceSummary(string summary)
+    {
+        var separator = summary.LastIndexOf(" - ", StringComparison.Ordinal);
+        if (separator < 0) return summary;
+        var name = summary[..separator];
+        var status = summary[(separator + 3)..];
+        return $"{name} - {EnumTextConverter.Translate(status, "DeviceStatus")}";
+    }
     public IReadOnlyList<string> MealTypes => original?.Links.MealTypes ?? [];
     public ICommand SaveCommand { get; } public ICommand CancelCommand { get; } public ICommand RefreshCommand { get; }
     public ICommand BackupNowCommand { get; } public ICommand ChooseRestoreCommand { get; } public ICommand ValidateBackupCommand { get; } public ICommand RestoreCommand { get; }

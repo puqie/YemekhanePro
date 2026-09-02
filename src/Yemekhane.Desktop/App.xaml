@@ -17,6 +17,8 @@
             <converters:StudentIdentityConverter x:Key="StudentIdentity" />
             <converters:StatusBadgeConverter x:Key="StatusBadge" />
             <converters:StatusBrushConverter x:Key="StatusBrush" />
+            <!-- Ham API kodlarini (ALLOW, Active, Information...) ekranda Turkce gosterir. -->
+            <converters:EnumTextConverter x:Key="EnumText" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
