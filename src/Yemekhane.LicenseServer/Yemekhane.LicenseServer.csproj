@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Yemekhane.Licensing iki hedef derler; buradan net10.0 hedefi kullanilir
+       (donanim okuma ve DPAPI saklama yalnizca Windows hedefinde vardir). Imzalama
+       kodu TEK yerdedir: sunucu ve masaustu ayni LicenseSignature'i calistirir, aksi
+       halde sunucunun imzaladigi lisansi masaustu dogrulayamazdi. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Yemekhane.Licensing\Yemekhane.Licensing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+  </ItemGroup>
+
+
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>yemekhane-license-server</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

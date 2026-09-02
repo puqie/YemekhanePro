@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YemekhanePro Lisans Yönetimi</title>
+<style>
+  :root {
+    --accent: #E8722C; --ink: #16202C; --muted: #667487; --faint: #93A1B2;
+    --border: #DDE3EA; --surface: #FFFFFF; --canvas: #F4F6F9;
+    --ok: #1B8A5A; --danger: #C0392B; --warn: #B7791F;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--ink);
+         font: 14px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { background: var(--ink); color: #fff; padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 19px; font-weight: 600; }
+  header p { margin: 4px 0 0; color: #9FB0C4; font-size: 12px; }
+  main { max-width: 1240px; margin: 0 auto; padding: 22px 24px 60px; }
+  .card { background: var(--surface); border: 1px solid var(--border);
+          border-radius: 6px; padding: 16px; margin-bottom: 18px; }
+  .card h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+  label { display: block; font-size: 11px; font-weight: 600; color: var(--muted);
+          text-transform: uppercase; letter-spacing: .03em; margin-bottom: 4px; }
+  input, select, textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--border);
+          border-radius: 4px; font: inherit; background: #fff; color: var(--ink); }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .row > div { flex: 1 1 170px; }
+  button { font: inherit; padding: 8px 15px; border-radius: 4px; cursor: pointer;
+           border: 1px solid var(--border); background: #fff; color: var(--ink); }
+  button:hover { border-color: var(--faint); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover { filter: brightness(.95); }
+  button.danger { color: var(--danger); border-color: #E8C4BF; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+       color: var(--muted); padding: 8px 10px; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: #FAFBFC; }
+  .key { font-family: Consolas, monospace; font-weight: 600; letter-spacing: .02em; white-space: nowrap; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .b-ok { background: #E4F4EC; color: var(--ok); }
+  .b-warn { background: #FBF0DC; color: var(--warn); }
+  .b-danger { background: #FBE9E7; color: var(--danger); }
+  .b-idle { background: #EEF1F5; color: var(--muted); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .actions button { padding: 4px 9px; font-size: 12px; }
+  #message { padding: 10px 13px; border-radius: 4px; margin-bottom: 14px; display: none; }
+  #message.ok { display: block; background: #E4F4EC; color: var(--ok); }
+  #message.err { display: block; background: #FBE9E7; color: var(--danger); }
+  .new-key { background: #FFF8F2; border: 1px solid #F5D9C2; border-radius: 5px;
+             padding: 13px; margin-top: 12px; display: none; }
+  .new-key .key { font-size: 21px; color: var(--accent); }
+  .wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>YemekhanePro Lisans Yönetimi</h1>
+  <p>Süresiz ve yıllık lisans satışı, iptal ve makine yönetimi</p>
+</header>
+
+<main>
+  <div id="message"></div>
+
+  <!-- Yonetici belirteci yalnizca bu tarayicida (sessionStorage) tutulur: sunucuya
+       kaydedilmez ve sekme kapaninca silinir. -->
+  <div class="card">
+    <h2>Yönetici erişimi</h2>
+    <div class="row">
+      <div style="flex:3 1 320px">
+        <label for="token">Yönetici belirteci</label>
+        <input id="token" type="password" placeholder="Licensing:AdminToken değeri" autocomplete="off">
+      </div>
+      <div style="flex:0 0 auto">
+        <button class="primary" onclick="saveToken()">Bağlan</button>
+      </div>
+    </div>
+    <p class="muted" style="margin:9px 0 0">
+      Belirteç yalnızca bu tarayıcıda tutulur; sekmeyi kapattığınızda silinir.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Yeni lisans sat</h2>
+    <div class="row">
+      <div style="flex:2 1 240px">
+        <label for="customer">Müşteri / okul adı</label>
+        <input id="customer" placeholder="Örn. Şehit Öğretmen Anadolu Lisesi">
+      </div>
+      <div>
+        <label for="edition">Sürüm</label>
+        <input id="edition" value="Standart">
+      </div>
+      <div>
+        <label for="plan">Lisans türü</label>
+        <select id="plan">
+          <option value="">Süresiz (tek seferlik)</option>
+          <option value="1">1 yıllık</option>
+          <option value="2">2 yıllık</option>
+          <option value="3">3 yıllık</option>
+          <option value="5">5 yıllık</option>
+        </select>
+      </div>
+      <div style="flex:2 1 200px">
+        <label for="notes">Not (isteğe bağlı)</label>
+        <input id="notes" placeholder="Fatura no, iletişim...">
+      </div>
+      <div style="flex:0 0 auto">
+        <button class="primary" onclick="createLicense()">Lisans oluştur</button>
+      </div>
+    </div>
+    <div class="new-key" id="newKey"></div>
+  </div>
+
+  <div class="card">
+    <h2>Lisanslar</h2>
+    <div class="row" style="margin-bottom:12px">
+      <div style="flex:2 1 260px">
+        <label for="search">Ara (müşteri adı veya anahtar)</label>
+        <input id="search" placeholder="Aramak için yazın" oninput="debouncedLoad()">
+      </div>
+      <div style="flex:0 0 auto"><button onclick="loadLicenses()">Yenile</button></div>
+    </div>
+    <div class="wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Anahtar</th><th>Müşteri</th><th>Sürüm</th><th>Tür</th>
+            <th>Durum</th><th>Makine</th><th>Son görülme</th><th>İşlemler</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="8" class="muted">Başlamak için yönetici belirtecinizi girin.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let timer = null;
+
+function token() { return sessionStorage.getItem('adminToken') || ''; }
+function saveToken() {
+  const value = $('token').value.trim();
+  if (!value) { show('Belirteç boş olamaz.', false); return; }
+  sessionStorage.setItem('adminToken', value);
+  $('token').value = '';
+  loadLicenses();
+}
+
+function show(text, ok) {
+  const box = $('message');
+  box.textContent = text;
+  box.className = ok ? 'ok' : 'err';
+  if (ok) setTimeout(() => { box.className = ''; }, 4000);
+}
+
+async function api(path, options) {
+  const init = Object.assign({ headers: {} }, options || {});
+  init.headers['X-Admin-Token'] = token();
+  if (init.body) init.headers['Content-Type'] = 'application/json';
+  const response = await fetch('/admin' + path, init);
+  if (response.status === 401) { throw new Error('Yönetici belirteci geçersiz.'); }
+  if (!response.ok) {
+    let detail = 'İşlem başarısız (' + response.status + ').';
+    try { const body = await response.json(); if (body && body.message) detail = body.message; } catch (e) {}
+    throw new Error(detail);
+  }
+  return response.status === 200 && response.headers.get('content-length') !== '0'
+    ? response.json().catch(() => null) : null;
+}
+
+function debouncedLoad() { clearTimeout(timer); timer = setTimeout(loadLicenses, 300); }
+
+async function loadLicenses() {
+  if (!token()) { return; }
+  try {
+    const search = encodeURIComponent($('search').value.trim());
+    const list = await api('/licenses' + (search ? '?search=' + search : ''));
+    render(list || []);
+  } catch (error) { show(error.message, false); }
+}
+
+function planText(row) {
+  if (!row.expiresAt) return '<span class="badge b-ok">Süresiz</span>';
+  const end = new Date(row.expiresAt);
+  return '<span class="badge b-idle">Yıllık</span><div class="muted">' +
+         end.toLocaleDateString('tr-TR') + '</div>';
+}
+
+function statusText(row) {
+  if (row.revokedAt) return '<span class="badge b-danger">İptal</span>';
+  if (row.expiresAt && new Date(row.expiresAt) <= new Date())
+    return '<span class="badge b-warn">Süresi doldu</span>';
+  return '<span class="badge b-ok">Etkin</span>';
+}
+
+function render(list) {
+  const body = $('rows');
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="8" class="muted">Kayıt bulunamadı.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(row => {
+    const key = row.licenseKey;
+    const machine = row.activatedAt
+      ? '<span class="badge b-ok">Bağlı</span>'
+      : '<span class="badge b-idle">Boşta</span>';
+    const seen = row.lastValidatedAt
+      ? new Date(row.lastValidatedAt).toLocaleString('tr-TR') + '<div class="muted">' + row.validationCount + ' doğrulama</div>'
+      : '<span class="muted">—</span>';
+    const buttons = [];
+    if (row.revokedAt) buttons.push(btn('İptali geri al', 'restore', key));
+    else buttons.push(btn('İptal et', 'revoke', key, 'danger'));
+    if (row.expiresAt) { buttons.push(btn('+1 yıl', 'extend', key)); buttons.push(btn('Süresiz yap', 'perpetual', key)); }
+    if (row.activatedAt) buttons.push(btn('Makineyi çöz', 'release', key));
+    return '<tr>' +
+      '<td class="key">' + esc(key) + '</td>' +
+      '<td>' + esc(row.customerName) + (row.notes ? '<div class="muted">' + esc(row.notes) + '</div>' : '') + '</td>' +
+      '<td>' + esc(row.edition) + '</td>' +
+      '<td>' + planText(row) + '</td>' +
+      '<td>' + statusText(row) + (row.revokedReason ? '<div class="muted">' + esc(row.revokedReason) + '</div>' : '') + '</td>' +
+      '<td>' + machine + '</td>' +
+      '<td>' + seen + '</td>' +
+      '<td><div class="actions">' + buttons.join('') + '</div></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function btn(label, action, key, kind) {
+  return '<button class="' + (kind || '') + '" onclick="act(\'' + action + '\',\'' + key + '\')">' + label + '</button>';
+}
+
+function esc(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function act(action, key) {
+  try {
+    if (action === 'revoke') {
+      const reason = prompt('İptal gerekçesi (isteğe bağlı):') ;
+      if (reason === null) return;
+      await api('/licenses/' + key + '/revoke', { method: 'POST', body: JSON.stringify({ reason }) });
+      show(key + ' iptal edildi.', true);
+    } else if (action === 'restore') {
+      await api('/licenses/' + key + '/restore', { method: 'POST' });
+      show(key + ' yeniden etkinleştirildi.', true);
+    } else if (action === 'extend') {
+      await api('/licenses/' + key + '/extend', { method: 'POST', body: JSON.stringify({ years: 1 }) });
+      show(key + ' bir yıl uzatıldı.', true);
+    } else if (action === 'perpetual') {
+      if (!confirm(key + ' süresiz lisansa çevrilsin mi?')) return;
+      await api('/licenses/' + key + '/perpetual', { method: 'POST' });
+      show(key + ' artık süresiz.', true);
+    } else if (action === 'release') {
+      if (!confirm(key + ' makineden çözülsün mü? Müşteri yeni bilgisayarda aktive edebilir.')) return;
+      await api('/licenses/' + key + '/release-machine', { method: 'POST' });
+      show(key + ' makineden çözüldü.', true);
+    }
+    loadLicenses();
+  } catch (error) { show(error.message, false); }
+}
+
+async function createLicense() {
+  try {
+    const plan = $('plan').value;
+    const payload = {
+      customerName: $('customer').value.trim(),
+      edition: $('edition').value.trim(),
+      years: plan === '' ? null : Number(plan),
+      notes: $('notes').value.trim()
+    };
+    const created = await api('/licenses', { method: 'POST', body: JSON.stringify(payload) });
+    const box = $('newKey');
+    box.style.display = 'block';
+    box.innerHTML = '<div class="muted">Müşteriye verilecek anahtar</div>' +
+      '<div class="key">' + esc(created.licenseKey) + '</div>' +
+      '<div class="muted">' + esc(created.customerName) + ' — ' +
+      (created.expiresAt ? new Date(created.expiresAt).toLocaleDateString('tr-TR') + ' tarihine kadar' : 'süresiz') + '</div>';
+    $('customer').value = ''; $('notes').value = '';
+    loadLicenses();
+  } catch (error) { show(error.message, false); }
+}
+
+if (token()) loadLicenses();
+</script>
+</body>
+</html>

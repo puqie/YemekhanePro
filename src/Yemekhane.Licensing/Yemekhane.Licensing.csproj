@@ -6,13 +6,33 @@
        kontrolunu atlamayi kolaylastirirdi. Kural LayerDependencyTests ile kilitlidir. -->
 
   <PropertyGroup>
-    <!-- WMI (System.Management) ve DPAPI (ProtectedData) yalnizca Windows'ta calisir. -->
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- IKI HEDEF:
+           net10.0-windows  masaustu icin; WMI (donanim parmak izi) ve DPAPI (lisans
+                            dosyasinin sifrelenmesi) yalnizca burada derlenir.
+           net10.0          lisans SUNUCUSU icin; sunucu donanim okumaz ve dosya
+                            saklamaz, yalnizca imzalar. Boylece Linux'ta da barinabilir.
+
+         Alternatifi, imzalama dosyalarini sunucuya Link ile kopyalamakti; o zaman ayni
+         tur adi iki derlemede birden bulunur (CS0433) ve test projesi ikisine birden
+         referans veremezdi. -->
+    <TargetFrameworks>net10.0-windows;net10.0</TargetFrameworks>
     <UseWindowsForms>false</UseWindowsForms>
     <UseWPF>false</UseWPF>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- Donanim okuma, DPAPI ile sifreli saklama ve bunlari kullanan istemci servisi
+       YALNIZCA Windows hedefinde derlenir. Sunucu tarafinda kalan sey imzalama,
+       sozlesme kayitlari ve parmak izi hash'lemedir. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="HardwareFingerprintReader.cs" />
+    <Compile Remove="LicenseStore.cs" />
+    <Compile Remove="LicenseService.cs" />
+    <Compile Remove="HttpLicenseActivationClient.cs" />
+    <Compile Remove="LicenseActivationClient.cs" />
+    <Compile Remove="FingerprintMatcher.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
     <PackageReference Include="System.Management" Version="10.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>

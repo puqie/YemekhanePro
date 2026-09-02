@@ -35,6 +35,7 @@
     <ProjectReference Include="..\..\src\Yemekhane.Sync\Yemekhane.Sync.csproj" />
     <ProjectReference Include="..\..\src\Yemekhane.Desktop\Yemekhane.Desktop.csproj" />
     <ProjectReference Include="..\..\src\Yemekhane.Licensing\Yemekhane.Licensing.csproj" />
+    <ProjectReference Include="..\..\src\Yemekhane.LicenseServer\Yemekhane.LicenseServer.csproj" />
   </ItemGroup>
 
 </Project>
