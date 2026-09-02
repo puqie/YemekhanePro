@@ -51,8 +51,8 @@
 
             <UniformGrid Grid.Row="0" Columns="3" Margin="0,0,0,12">
                 <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="14,10" Margin="0,0,6,0"><StackPanel><TextBlock Text="TOPLAM" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding Summary.Total}" FontSize="23" FontWeight="SemiBold"/></StackPanel></Border>
-                <Border Background="{StaticResource SuccessSoftBrush}" BorderBrush="{StaticResource SuccessBrush}" BorderThickness="1" Padding="14,10" Margin="6,0"><StackPanel><TextBlock Text="ONAY • ALLOW" Foreground="{StaticResource SuccessBrush}"/><TextBlock Text="{Binding Summary.Allowed}" FontSize="23" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"/></StackPanel></Border>
-                <Border Background="{StaticResource DangerSoftBrush}" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1" Padding="14,10" Margin="6,0,0,0"><StackPanel><TextBlock Text="RED • DENY" Foreground="{StaticResource DangerBrush}"/><TextBlock Text="{Binding Summary.Denied}" FontSize="23" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}"/></StackPanel></Border>
+                <Border Background="{StaticResource SuccessSoftBrush}" BorderBrush="{StaticResource SuccessBrush}" BorderThickness="1" Padding="14,10" Margin="6,0"><StackPanel><TextBlock Text="İZİN VERİLEN" Foreground="{StaticResource SuccessBrush}"/><TextBlock Text="{Binding Summary.Allowed}" FontSize="23" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"/></StackPanel></Border>
+                <Border Background="{StaticResource DangerSoftBrush}" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1" Padding="14,10" Margin="6,0,0,0"><StackPanel><TextBlock Text="REDDEDİLEN" Foreground="{StaticResource DangerBrush}"/><TextBlock Text="{Binding Summary.Denied}" FontSize="23" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}"/></StackPanel></Border>
             </UniformGrid>
 
             <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
@@ -80,8 +80,8 @@
                             <DataGridTextColumn Header="Öğrenci No" Binding="{Binding StudentNo}" Width="95"/>
                             <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="*" MinWidth="150"/>
                             <DataGridTextColumn Header="Sınıf" Binding="{Binding ClassName}" Width="90"/>
-                            <DataGridTextColumn Header="Öğün" Binding="{Binding MealType}" Width="95"/>
-                            <DataGridTemplateColumn Header="Durum" Width="105"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                            <DataGridTextColumn Header="Öğün" Binding="{Binding MealType}" Width="Auto" MinWidth="95"/>
+                            <DataGridTemplateColumn Header="Durum" Width="Auto" MinWidth="120"><DataGridTemplateColumn.CellTemplate><DataTemplate>
                                 <Border CornerRadius="9" Padding="7,2" HorizontalAlignment="Left">
                                     <Border.Style><Style TargetType="Border"><Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/><Style.Triggers><DataTrigger Binding="{Binding Decision}" Value="ALLOW"><Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/></DataTrigger></Style.Triggers></Style></Border.Style>
                                     <TextBlock FontWeight="SemiBold"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="✕ Reddedildi"/><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/><Style.Triggers><DataTrigger Binding="{Binding Decision}" Value="ALLOW"><Setter Property="Text" Value="✓ İzin Verildi"/><Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>

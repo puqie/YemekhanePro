@@ -54,8 +54,8 @@
                         <TextBlock Text="Otomatik yedekleme burada ayarlanır; alttaki elle işlemler her zaman kullanılabilir." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
                         <CheckBox Content="Otomatik yedeklemeyi etkinleştir" IsChecked="{Binding BackupEnabled}"/>
                         <WrapPanel Margin="0,10,0,0">
-                            <StackPanel Width="180"><TextBlock Style="{StaticResource Label}" Text="Sıklık"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding BackupFrequencies}" SelectedItem="{Binding BackupFrequency}"/></StackPanel>
-                            <StackPanel Width="180" Margin="10,0"><TextBlock Style="{StaticResource Label}" Text="Haftanın günü"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding WeekDays}" SelectedItem="{Binding BackupWeeklyDay}"/></StackPanel>
+                            <StackPanel Width="180"><TextBlock Style="{StaticResource Label}" Text="Sıklık"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding BackupFrequencies}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding BackupFrequency}"/></StackPanel>
+                            <StackPanel Width="180" Margin="10,0"><TextBlock Style="{StaticResource Label}" Text="Haftanın günü"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding WeekDays}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding BackupWeeklyDay}"/></StackPanel>
                             <StackPanel Width="120"><TextBlock Style="{StaticResource Label}" Text="Saat (HH:mm)"/><TextBox Style="{StaticResource Field}" Text="{Binding BackupTime}"/></StackPanel>
                         </WrapPanel>
                         <TextBlock Style="{StaticResource Label}" Text="Saklanacak yedek sayısı"/>

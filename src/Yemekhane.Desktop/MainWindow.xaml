@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:Yemekhane.Desktop.Views"
         xmlns:desktop="clr-namespace:Yemekhane.Desktop"
+        xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
         Title="YemekhanePro • Operasyon Merkezi" Icon="pack://application:,,,/Yemekhane.Desktop;component/Assets/logo-256.png" Width="1440" Height="900"
         MinWidth="1280" MinHeight="720" WindowStartupLocation="CenterScreen"
          Language="tr-TR" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12"
@@ -13,6 +14,9 @@
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <!-- Cihaz durumlari API'den ham Ingilizce gelir (Error, Reconnecting, Offline).
+             Cihazlar ve Ayarlar ekranlarinda cevriliyordu, Dashboard'da kalmisti. -->
+        <converters:EnumTextConverter x:Key="EnumText" />
         <!-- DesignSystem.xaml'in implicit DataGrid stilini GENISLETIR (BasedOn),
              yerine gecmez: implicit stiller birbirini genisletmez, degistirir.
              Once bu stil temayi tumden degistiriyordu ve dashboard'daki
@@ -159,7 +163,14 @@
             </Border>
 
             <Grid Grid.Row="1">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <!-- HorizontalScrollBarVisibility Auto -> Disabled: Auto oldugunda ScrollViewer
+                     icerige SONSUZ genislik verir. O zaman DataGrid "istedigin kadar genis ol"
+                     diye olculur, Width="*" ve sabit piksel genislikler anlamini yitirir ve
+                     sutunlar WPF'in 20px'lik varsayilan MinWidth'ine coker: Canli Gecisler,
+                     Sinif Kullanim Ozeti ve Son Hatalar tablolarinin sutun basliklari hic
+                     gorunmuyordu (olculdu: ActualWidth=20). Disabled ile icerik pencere
+                     genisligine sigar; zaten Grid'in MinWidth=1000 tanimi alt siniri korur. -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <Grid MinWidth="1000" Margin="22,18" Visibility="{Binding ShowContent, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -194,11 +205,11 @@
                                     <Grid Margin="14,0"><TextBlock Text="Canlı Geçişler" Style="{StaticResource SectionTitle}" VerticalAlignment="Center"/><TextBlock Text="son 20" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
                                     <DataGrid Grid.Row="1" ItemsSource="{Binding Snapshot.RecentAccess}">
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss.fff}}" Width="98"/>
+                                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="80"/>
                                             <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="*" MinWidth="130"/>
                                             <DataGridTextColumn Header="No" Binding="{Binding StudentNo}" Width="70"/>
-                                            <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="105"/>
-                                            <DataGridTextColumn Header="Karar" Binding="{Binding Decision}" Width="68"/>
+                                            <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="105"/>
+                                            <DataGridTextColumn Header="Karar" Binding="{Binding Decision, Converter={StaticResource EnumText}, ConverterParameter=Decision}" Width="Auto" MinWidth="95"/>
                                             <DataGridTextColumn Header="Neden" Binding="{Binding Reason}" Width="120"/>
                                         </DataGrid.Columns>
                                     </DataGrid>
@@ -213,7 +224,7 @@
                                         <StackPanel><TextBlock Text="{Binding Snapshot.DeviceSummary.Offline}" FontSize="21" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/><TextBlock Text="Çevrimdışı" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/></StackPanel>
                                         <StackPanel><TextBlock Text="{Binding Snapshot.DeviceSummary.Error}" FontSize="21" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}" HorizontalAlignment="Center"/><TextBlock Text="Hata" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/></StackPanel>
                                     </UniformGrid>
-                                    <ListView Grid.Row="2" ItemsSource="{Binding Snapshot.Devices}" BorderThickness="0" Margin="7,0"><ListView.ItemTemplate><DataTemplate><Grid Margin="5,4"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="{Binding Type}" Foreground="{StaticResource MutedBrush}" FontSize="10"/></StackPanel><Border Grid.Column="1" Background="{StaticResource HoverBrush}" CornerRadius="9" Padding="8,3" VerticalAlignment="Center"><TextBlock Text="{Binding Status}" Foreground="{StaticResource MutedBrush}"/></Border></Grid></DataTemplate></ListView.ItemTemplate></ListView>
+                                    <ListView Grid.Row="2" ItemsSource="{Binding Snapshot.Devices}" BorderThickness="0" Margin="7,0"><ListView.ItemTemplate><DataTemplate><Grid Margin="5,4"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="{Binding Type}" Foreground="{StaticResource MutedBrush}" FontSize="10"/></StackPanel><Border Grid.Column="1" Background="{StaticResource HoverBrush}" CornerRadius="9" Padding="8,3" Margin="10,0,0,0" VerticalAlignment="Center"><TextBlock Text="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=DeviceStatus}" Foreground="{StaticResource MutedBrush}"/></Border></Grid></DataTemplate></ListView.ItemTemplate></ListView>
                                 </Grid>
                             </Border>
                         </Grid>
@@ -227,7 +238,7 @@
                             </Border>
                             <Border Grid.Column="1" Style="{StaticResource Panel}" Margin="7,0,0,0">
                                 <Grid><Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition /></Grid.RowDefinitions><TextBlock Text="Son Hatalar" Style="{StaticResource SectionTitle}" Margin="14,0" VerticalAlignment="Center"/>
-                                    <DataGrid Grid.Row="1" ItemsSource="{Binding Snapshot.RecentErrors}"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM HH:mm:ss}}" Width="110"/><DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="110"/><DataGridTextColumn Header="Seviye" Binding="{Binding Severity}" Width="72"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/></DataGrid.Columns></DataGrid>
+                                    <DataGrid Grid.Row="1" ItemsSource="{Binding Snapshot.RecentErrors}"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM HH:mm:ss}}" Width="110"/><DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="110"/><DataGridTextColumn Header="Seviye" Binding="{Binding Severity, Converter={StaticResource EnumText}, ConverterParameter=LogLevel}" Width="Auto" MinWidth="72"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/></DataGrid.Columns></DataGrid>
                                 </Grid>
                             </Border>
                         </Grid>

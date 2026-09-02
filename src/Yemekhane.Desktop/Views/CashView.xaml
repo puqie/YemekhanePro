@@ -57,7 +57,7 @@
                             <DataGridTextColumn Header="TARİH" Binding="{Binding TransactionAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="125"/>
                             <DataGridTextColumn Header="ÖĞRENCİ" Binding="{Binding StudentName}" Width="*" MinWidth="145"/>
                             <DataGridTextColumn Header="KART" Binding="{Binding CardNumber}" Width="105"/>
-                            <DataGridTextColumn Header="TÜR" Binding="{Binding IncomeTypeName}" Width="130"/>
+                            <DataGridTextColumn Header="TÜR" Binding="{Binding IncomeTypeName}" Width="Auto" MinWidth="130"/>
                             <DataGridTextColumn Header="TUTAR" Binding="{Binding Amount, StringFormat={}{0:C2}}" Width="100"/>
                             <DataGridTextColumn Header="AÇIKLAMA" Binding="{Binding Description}" Width="*" MinWidth="130"/>
                             <DataGridCheckBoxColumn Header="İPTAL" Binding="{Binding IsVoided}" Width="55"/>
@@ -89,8 +89,14 @@
 
         <controls:Drawer Grid.RowSpan="4" IsOpen="{Binding IsAddOpen}" DrawerWidth="400" Title="Gelir Ekle" CloseCommand="{Binding CloseAddCommand}">
             <StackPanel>
-                <TextBlock Text="Tam öğrenci no veya kart no" Style="{StaticResource Label}"/>
-                <WrapPanel><TextBox Width="135" Text="{Binding StudentNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam öğrenci numarası"/><TextBox Width="135" Margin="7,0" Text="{Binding LookupCardNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam kart numarası"/><Button Style="{StaticResource Action}" Content="Doğrula" Command="{Binding LookupStudentCommand}"/></WrapPanel>
+                <!-- Once TEK etiket ("Tam ogrenci no veya kart no") IKI kutuyu kapsiyordu:
+                     kullanici hangisine ogrenci no hangisine kart no girecegini bilemiyordu.
+                     Her kutu kendi etiketini tasir. -->
+                <WrapPanel>
+                    <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Text="{Binding StudentNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam öğrenci numarası" ToolTip="Tam öğrenci numarası"/></StackPanel>
+                    <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Text="{Binding LookupCardNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam kart numarası" ToolTip="Tam kart numarası"/></StackPanel>
+                    <Button Style="{StaticResource Action}" Content="Doğrula" Command="{Binding LookupStudentCommand}" VerticalAlignment="Bottom"/>
+                </WrapPanel>
                 <TextBlock Text="{Binding LookupStudentText}" Foreground="{StaticResource AccentBrush}" Margin="0,8" TextWrapping="Wrap"/>
                 <TextBlock Text="Gelir türü" Style="{StaticResource Label}"/>
                 <ComboBox ItemsSource="{Binding IncomeTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedAddType}"/>

@@ -16,6 +16,15 @@ namespace Yemekhane.Desktop.ViewModels;
 /// </summary>
 public sealed record LogLevelOption(string Name, string Value);
 
+/// <summary>Yedekleme siklik/gun secenekleri icin ad-deger cifti.</summary>
+/// <remarks>
+/// Once ComboBox'lar ham degeri gosteriyordu: kullanici Turkce arayuzde
+/// "Daily" ve "Sunday" goruyordu. Ad ekranda, Value ise API'ye gider --
+/// sunucu sozlesmesi degismez.
+/// </remarks>
+public sealed record BackupFrequencyOption(string Name, string Value);
+public sealed record WeekDayOption(string Name, DayOfWeek Value);
+
 public sealed class SettingsViewModel : ObservableObject
 {
     private readonly ISettingsApiClient api;
@@ -54,8 +63,15 @@ public sealed class SettingsViewModel : ObservableObject
 
     public bool CanRead { get; } public bool CanManage { get; } public bool CanNavigateUsers { get; }
     public IReadOnlyList<string> SmsAuthTypes { get; } = ["None", "Basic", "Bearer", "ApiKey"];
-    public IReadOnlyList<string> BackupFrequencies { get; } = ["Daily", "Weekly"];
-    public IReadOnlyList<DayOfWeek> WeekDays { get; } = Enum.GetValues<DayOfWeek>();
+    public IReadOnlyList<BackupFrequencyOption> BackupFrequencies { get; } =
+        [new("Günlük", "Daily"), new("Haftalık", "Weekly")];
+    public IReadOnlyList<WeekDayOption> WeekDays { get; } =
+    [
+        new("Pazartesi", DayOfWeek.Monday), new("Salı", DayOfWeek.Tuesday),
+        new("Çarşamba", DayOfWeek.Wednesday), new("Perşembe", DayOfWeek.Thursday),
+        new("Cuma", DayOfWeek.Friday), new("Cumartesi", DayOfWeek.Saturday),
+        new("Pazar", DayOfWeek.Sunday)
+    ];
     // Ekranda Turkce ad gorunur, API'ye ve appsettings'e İngilizce seviye adi gider.
     // Serilog "Bilgi" adinda bir seviye tanimaz; ad ile deger ayrilmazsa loglama bozulur.
     public IReadOnlyList<LogLevelOption> LogLevels { get; } =
