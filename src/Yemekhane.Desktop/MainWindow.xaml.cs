@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Linq;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Data;
 using System.Windows.Controls;
@@ -226,7 +227,11 @@ public partial class MainWindow : Window, IShortcutCommandTarget
     bool IShortcutCommandTarget.CanExecute(ShortcutCommand command) => command switch
     {
         ShortcutCommand.GlobalSearch or ShortcutCommand.Help => true,
-        ShortcutCommand.Students => true,
+        // Tanimlar ekraninda F2 tablonun kendi "yeniden adlandir" kisayolu. Pencerenin
+        // PreviewKeyDown'i DataGrid.InputBindings'ten ONCE tuneller ve TryExecute true
+        // dondugunde e.Handled = true yapiyordu: F2 orada yeniden adlandirmak yerine
+        // kullaniciyi Ogrenciler ekranina atiyor, tablo kisayolu hic calismiyordu.
+        ShortcutCommand.Students => BaseRoute(currentRoute) != ShellRoutes.Definitions,
         ShortcutCommand.CardRead => permissions.Contains("cards.manage"),
         ShortcutCommand.DailyTracking => true,
         ShortcutCommand.Refresh => CurrentRefreshCommand() is { } refresh && refresh.CanExecute(null),
@@ -319,8 +324,11 @@ public partial class MainWindow : Window, IShortcutCommandTarget
                 (calendar.IsDrawerOpen || calendar.BulkWizard is { IsOpen: true } or { IsHistoryOpen: true }),
             ShellRoutes.Entitlements => MealEntitlementsDataContext is MealEntitlementsViewModel entitlements &&
                 (entitlements.IsCancelConfirmationOpen || entitlements.IsGrantOpen || entitlements.BulkWizard is { IsOpen: true } or { IsHistoryOpen: true }),
-            ShellRoutes.Cash => CashDataContext is CashViewModel cash && (cash.IsVoidOpen || cash.IsAddOpen),
-            ShellRoutes.Definitions => DefinitionsDataContext is DefinitionsViewModel definitions && definitions.IsMealOpen,
+            // IsTopUpOpen (TL bakiye yukleme) ve IsRenameOpen (tanim yeniden adlandirma)
+            // eksikti: bu iki cekmece acikken Escape hicbir sey yapmiyordu.
+            ShellRoutes.Cash => CashDataContext is CashViewModel cash && (cash.IsVoidOpen || cash.IsAddOpen || cash.IsTopUpOpen),
+            ShellRoutes.Definitions => DefinitionsDataContext is DefinitionsViewModel definitions
+                && (definitions.IsMealOpen || definitions.Tabs.Any(tab => tab.IsRenameOpen)),
             _ => false
         };
     }
@@ -359,10 +367,19 @@ public partial class MainWindow : Window, IShortcutCommandTarget
                 }
                 break;
             case ShellRoutes.Cash:
-                if (CashDataContext is CashViewModel cash) Execute(cash.IsVoidOpen ? cash.CloseVoidCommand : cash.CloseAddCommand);
+                if (CashDataContext is CashViewModel cash)
+                    Execute(cash.IsVoidOpen ? cash.CloseVoidCommand
+                        : cash.IsTopUpOpen ? cash.CloseTopUpCommand
+                        : cash.CloseAddCommand);
                 break;
             case ShellRoutes.Definitions:
-                if (DefinitionsDataContext is DefinitionsViewModel definitions) Execute(definitions.CloseMealCommand);
+                if (DefinitionsDataContext is DefinitionsViewModel definitions)
+                {
+                    // Yeniden adlandirma kutusu sekme basina ayridir; acik olani kapatilir.
+                    if (definitions.Tabs.FirstOrDefault(tab => tab.IsRenameOpen) is { } renaming)
+                        Execute(renaming.CloseRenameCommand);
+                    else Execute(definitions.CloseMealCommand);
+                }
                 break;
         }
     }

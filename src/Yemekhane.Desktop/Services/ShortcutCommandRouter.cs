@@ -93,7 +93,8 @@ public sealed class ShortcutCommandRouter(IShortcutCommandTarget target)
     /// <summary>Rota kimligi ("daily-tracking") kullaniciya gosterilmez; ekranin Turkce adi yazilir.</summary>
     public static string RouteTitle(string route) => route switch
     {
-        ShellRoutes.Dashboard => "Dashboard",
+        // Yan menu ve sayfa basligiyla ayni ad: F1 yardiminda "Etkin: Dashboard" yaziyordu.
+        ShellRoutes.Dashboard => "Genel Bakış",
         ShellRoutes.DailyTracking => "Günlük Takip",
         ShellRoutes.Students or ShellRoutes.StudentDetail or ShellRoutes.StudentsCreate or ShellRoutes.Cards or ShellRoutes.CardReader => "Öğrenciler",
         ShellRoutes.Entitlements => "Yemek Hakedişleri",
@@ -105,6 +106,9 @@ public sealed class ShortcutCommandRouter(IShortcutCommandTarget target)
         ShellRoutes.Cash => "Kasa",
         ShellRoutes.Reports => "Raporlar",
         ShellRoutes.Settings => "Ayarlar",
+        // Eksikti: Tanimlar ekraninda F1 yardimi ham rota kimligini ("definitions") gosteriyordu.
+        ShellRoutes.Definitions => "Tanımlar",
+        // UsersRoles bilerek yok: o rota hicbir yere kayitli degil, ekrani henuz yazilmadi.
         _ => route
     };
 
@@ -123,6 +127,8 @@ public sealed class ShortcutCommandRouter(IShortcutCommandTarget target)
         ShortcutCommand.Refresh => "Bu görünüm yenilemeyi desteklemiyor",
         ShortcutCommand.CloseTopmost => "Açık katman yok",
         ShortcutCommand.Activate => "Uygulanabilir odak yok",
+        // Tanimlar ekraninda F2 tablonun "yeniden adlandir" kisayoluna birakilir.
+        ShortcutCommand.Students => "Bu ekranda F2, seçili tanımı yeniden adlandırır",
         _ => "Bu oturumda kullanılamıyor"
     };
 
