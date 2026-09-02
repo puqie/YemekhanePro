@@ -87,7 +87,7 @@ public class EntitlementsJourneyBulk
         ui.Note("sonuc: " + wizard.ResultMessage);
         ui.Shot("bulk-07-adim7-sonuc");
         foreach (var p in picked)
-            Assert.Equal(1, LiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Cancelled'", p.Id.ToString().ToUpperInvariant()));
+            Assert.Equal(1, EntLiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Cancelled'", p.Id.ToString().ToUpperInvariant()));
         // Sihirbaz uygulayinca arkadaki liste kendini yeniledi (Changed olayi)
         ui.Delay(2000); ui.Pump();
         Assert.All(picked, p => Assert.DoesNotContain(vm.Items, x => x.Id == p.Id && x.Status == "Active"));
@@ -107,7 +107,7 @@ public class EntitlementsJourneyBulk
         Assert.NotNull(wizard.ResultMessage);
         ui.Note("geri alma: " + wizard.ResultMessage);
         foreach (var p in picked)
-            Assert.Equal(1, LiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Active'", p.Id.ToString().ToUpperInvariant()));
+            Assert.Equal(1, EntLiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Active'", p.Id.ToString().ToUpperInvariant()));
         Assert.Equal("Reverted", wizard.History[0].Status); Assert.False(wizard.History[0].CanUndo);
         ui.Shot("bulk-09-geri-alindi");
         // Liste de geri alindi

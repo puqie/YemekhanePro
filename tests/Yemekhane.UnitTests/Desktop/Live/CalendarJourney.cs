@@ -32,10 +32,10 @@ public class CalendarJourney
         // Gun rozetleri: her gun icin ogrenci sayisi ve kullanilan/toplam SQLite ile ayni (yalnizca aktif haklar)
         foreach (var day in vm.Days.Where(x => x.IsCurrentMonth))
         {
-            var date = LiveDb.Date(day.Date);
-            var students = LiveDb.Scalar("select count(distinct StudentId) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", date);
-            var quantity = LiveDb.Scalar("select coalesce(sum(Quantity),0) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", date);
-            var used = LiveDb.Scalar("select coalesce(sum(ConsumedQuantity),0) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", date);
+            var date = EntLiveDb.Date(day.Date);
+            var students = EntLiveDb.Scalar("select count(distinct StudentId) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", date);
+            var quantity = EntLiveDb.Scalar("select coalesce(sum(Quantity),0) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", date);
+            var used = EntLiveDb.Scalar("select coalesce(sum(ConsumedQuantity),0) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", date);
             Assert.Equal(students, day.Value.Entitlements.StudentCount);
             Assert.Equal(quantity, day.Value.Entitlements.Quantity);
             Assert.Equal(used, day.Value.Entitlements.Used);
@@ -63,7 +63,7 @@ public class CalendarJourney
         vm.ApplyScopeCommand.Execute(null); ui.Delay(1500); ui.Pump();
         Assert.False(vm.HasError, vm.ErrorMessage);
         var day7a = vm.Days.Single(x => x.Date == new DateOnly(2026, 9, 2));
-        var db7a = LiveDb.Scalar("select count(distinct e.StudentId) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='7A' and e.EntitlementDate='2026-09-02' and e.Status='Active'");
+        var db7a = EntLiveDb.Scalar("select count(distinct e.StudentId) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='7A' and e.EntitlementDate='2026-09-02' and e.Status='Active'");
         Assert.Equal(db7a, day7a.Value.Entitlements.StudentCount);
         ui.Note("7A kapsami 2 Eylul: " + day7a.MealText);
         ui.Shot("cal-04-kapsam-7a");
@@ -85,17 +85,17 @@ public class CalendarJourney
         ui.LoadAll(); ui.Navigate("holiday-transfer");
         var vm = ui.Calendar;
         // Yolculuk tekrar kosulabilsin: daha once tatil/istisna yazilmamis, hakedisi olan bir is gunu sec.
-        var used = LiveDb.Rows("select Date from holidays union select Date from schedule_exceptions").Select(r => r[0]!).ToHashSet(StringComparer.Ordinal);
+        var used = EntLiveDb.Rows("select Date from holidays union select Date from schedule_exceptions").Select(r => r[0]!).ToHashSet(StringComparer.Ordinal);
         var date = Enumerable.Range(0, 12).Select(i => new DateOnly(2026, 9, 14).AddDays(i))
-            .First(x => x.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday) && !used.Contains(LiveDb.Date(x))
-                && LiveDb.Scalar("select count(*) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", LiveDb.Date(x)) > 0);
+            .First(x => x.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday) && !used.Contains(EntLiveDb.Date(x))
+                && EntLiveDb.Scalar("select count(*) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", EntLiveDb.Date(x)) > 0);
         ui.Note("secilen gun: " + date);
         Assert.True(LiveUiHarness.Wait(vm.SelectDayAsync(date), Timeout)); ui.Pump();
         Assert.True(vm.IsDrawerOpen); Assert.NotNull(vm.SelectedDetails);
         var details = vm.SelectedDetails!;
-        var d = LiveDb.Date(date);
-        Assert.Equal(LiveDb.Scalar("select coalesce(sum(Quantity),0) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", d), details.Entitlements.Quantity);
-        Assert.Equal(LiveDb.Scalar("select coalesce(sum(ConsumedQuantity),0) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", d), details.Entitlements.Used);
+        var d = EntLiveDb.Date(date);
+        Assert.Equal(EntLiveDb.Scalar("select coalesce(sum(Quantity),0) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", d), details.Entitlements.Quantity);
+        Assert.Equal(EntLiveDb.Scalar("select coalesce(sum(ConsumedQuantity),0) from meal_entitlements where EntitlementDate=@p0 and Status='Active'", d), details.Entitlements.Used);
         var meal = Assert.Single(details.Meals); Assert.Equal("Öğle Yemeği", meal.MealName);
         Assert.Equal(details.Entitlements.Quantity, meal.Quantity);
         Assert.Equal(date.ToDateTime(TimeOnly.MinValue).ToString("d MMMM yyyy, dddd", System.Globalization.CultureInfo.GetCultureInfo("tr-TR")), vm.SelectedDateTitle);
@@ -110,7 +110,7 @@ public class CalendarJourney
         vm.HolidayName = ""; vm.CreateHolidayCommand.Execute(null); ui.Delay(1500); ui.Pump();
         Assert.True(vm.IsHolidayFormOpen); Assert.False(string.IsNullOrWhiteSpace(vm.FormMessage), "bos ad icin mesaj yok");
         Assert.Contains("Tatil adı", vm.FormMessage);
-        Assert.Equal(0, LiveDb.Scalar("select count(*) from holidays where Date=@p0", d));
+        Assert.Equal(0, EntLiveDb.Scalar("select count(*) from holidays where Date=@p0", d));
         ui.Note("bos tatil adi mesaji: " + vm.FormMessage);
         ui.Shot("cal-12-tatil-bos-ad");
         // Tek harf: sunucu kurali (2-200) Turkce olarak ulasir
@@ -121,8 +121,8 @@ public class CalendarJourney
         vm.HolidayName = "Deneme Tatili"; vm.HolidayType = "Administrative"; vm.TransferBehavior = "NextBusinessDay";
         vm.CreateHolidayCommand.Execute(null); ui.Delay(3000); ui.Pump();
         Assert.False(vm.IsHolidayFormOpen, vm.FormMessage);
-        Assert.Equal(1, LiveDb.Scalar("select count(*) from holidays where Date=@p0 and Name='Deneme Tatili' and HolidayType='Administrative' and TransferBehavior='NextBusinessDay'", d));
-        Assert.Equal(1, LiveDb.Scalar("select count(*) from holiday_scopes hs join holidays h on h.Id=hs.HolidayId where h.Date=@p0 and hs.ScopeType='AllSchool'", d));
+        Assert.Equal(1, EntLiveDb.Scalar("select count(*) from holidays where Date=@p0 and Name='Deneme Tatili' and HolidayType='Administrative' and TransferBehavior='NextBusinessDay'", d));
+        Assert.Equal(1, EntLiveDb.Scalar("select count(*) from holiday_scopes hs join holidays h on h.Id=hs.HolidayId where h.Date=@p0 and hs.ScopeType='AllSchool'", d));
         // Gun hucresi tatil rozeti tasir
         var cell = vm.Days.Single(x => x.Date == date);
         Assert.True(cell.HasHoliday); Assert.Equal("Deneme Tatili", cell.HolidayText);
@@ -133,7 +133,7 @@ public class CalendarJourney
         Assert.Contains("toplu uygula", vm.InfoMessage!, StringComparison.OrdinalIgnoreCase);
         // Tatil kaydi haklari KENDISI degistirmez: aktif hak sayisi ayni
         Assert.Equal(details.Entitlements.Quantity, vm.SelectedDetails!.Entitlements.Quantity);
-        Assert.Equal(0, LiveDb.Scalar("select count(*) from meal_transfers where OriginalDate=@p0", d));
+        Assert.Equal(0, EntLiveDb.Scalar("select count(*) from meal_transfers where OriginalDate=@p0", d));
         ui.Shot("cal-13-tatil-olusturuldu");
 
         // Ekranda ham kod yok
@@ -147,7 +147,7 @@ public class CalendarJourney
         ui.Shot("cal-14-istisna-formu");
         vm.CreateExceptionCommand.Execute(null); ui.Delay(3000); ui.Pump();
         Assert.False(vm.IsExceptionFormOpen, vm.FormMessage);
-        Assert.Equal(1, LiveDb.Scalar("select count(*) from schedule_exceptions where Date=@p0 and ExceptionType='Trip' and EntitlementBehavior='Keep' and Description='Müze gezisi'", d));
+        Assert.Equal(1, EntLiveDb.Scalar("select count(*) from schedule_exceptions where Date=@p0 and ExceptionType='Trip' and EntitlementBehavior='Keep' and Description='Müze gezisi'", d));
         Assert.True(vm.Days.Single(x => x.Date == date).HasTrip);
         Assert.Contains(vm.SelectedOperations, x => x.Title.Contains("Gezi") && x.Detail == "Müze gezisi");
         ui.Shot("cal-15-istisna-olusturuldu");
@@ -178,7 +178,7 @@ public class CalendarJourney
         // LoadAll yalnizca Hakedisler'in sihirbazini yukler; uygulama (App.xaml.cs:210) takvimin
         // sihirbazini da yukler. Harness eksigi, gercek hata degil.
         Assert.True(LiveUiHarness.Wait(wizard.InitializeAsync(), Timeout));
-        var date = new DateOnly(2026, 9, 17); var d = LiveDb.Date(date);
+        var date = new DateOnly(2026, 9, 17); var d = EntLiveDb.Date(date);
         Assert.True(LiveUiHarness.Wait(vm.SelectDayAsync(date), Timeout)); ui.Pump();
         var before = vm.SelectedDetails!.Entitlements.Quantity;
         Assert.True(before > 0);
@@ -189,7 +189,7 @@ public class CalendarJourney
         Assert.False(vm.IsHolidayFormOpen, vm.FormMessage);
 
         // O gun hala aktif hakki olan ilk sinif kapsaminda toplu iptal (yolculuk tekrar kosulabilsin)
-        var className = LiveDb.Rows("select c.Name from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where e.EntitlementDate=@p0 and e.Status='Active' and e.Quantity>e.ConsumedQuantity group by c.Name order by c.Name", d).Select(r => r[0]!).First();
+        var className = EntLiveDb.Rows("select c.Name from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where e.EntitlementDate=@p0 and e.Status='Active' and e.Quantity>e.ConsumedQuantity group by c.Name order by c.Name", d).Select(r => r[0]!).First();
         ui.Note("toplu iptal sinifi: " + className);
         vm.OpenBulkCommand.Execute(null); ui.Pump();
         Assert.True(wizard.IsOpen); Assert.Equal("Delete", wizard.TransferBehavior);
@@ -200,14 +200,14 @@ public class CalendarJourney
         wizard.NextCommand.Execute(null); ui.Delay(300); ui.Pump();
         wizard.NextCommand.Execute(null); ui.Delay(2500); ui.Pump();
         Assert.Equal(5, wizard.Step);
-        var expected = LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name=@p1 and e.EntitlementDate=@p0 and e.Status='Active' and e.Quantity>e.ConsumedQuantity", d, className);
+        var expected = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name=@p1 and e.EntitlementDate=@p0 and e.Status='Active' and e.Quantity>e.ConsumedQuantity", d, className);
         Assert.True(expected > 0);
         Assert.Equal(expected, wizard.Preview!.EntitlementCount);
         ui.Shot("cal-20-toplu-onizleme-sinif");
         wizard.NextCommand.Execute(null); ui.Delay(300); ui.Pump();
         wizard.ApplyCommand.Execute(null); ui.Delay(3500); ui.Pump();
         Assert.True(wizard.Step == 7, $"uygulama basarisiz (adim {wizard.Step}): {wizard.ErrorMessage}");
-        Assert.Equal(0, LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name=@p1 and e.EntitlementDate=@p0 and e.Status='Active'", d, className));
+        Assert.Equal(0, EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name=@p1 and e.EntitlementDate=@p0 and e.Status='Active'", d, className));
         wizard.CloseCommand.Execute(null); ui.Delay(2000); ui.Pump();
 
         // Takvim kendini yeniledi: gun rozeti ve cekmece yalnizca AKTIF haklari sayar

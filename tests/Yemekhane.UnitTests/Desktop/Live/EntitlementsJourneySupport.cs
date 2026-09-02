@@ -15,7 +15,9 @@ namespace Yemekhane.UnitTests.Desktop.Live;
 /// DB yolu <c>YP_LIVE_DB</c> ortam degiskeninden okunur; verilmezse
 /// <c>YP_SHOT_DIR</c>'in ust klasorundeki <c>yemekhane.db</c> denenir.
 /// </remarks>
-internal static class LiveDb
+// Ad EntLiveDb: Raporlar/Ayarlar yolculuklari da "LiveDb" adli (ornek tabanli) bir yardimci ekledi;
+// iki tanim ayni ad alaninda catisiyordu. Bu statik surum hakedis/takvim yolculuklarina ozeldir.
+internal static class EntLiveDb
 {
     public static string? Path
     {
@@ -66,20 +68,3 @@ internal static class LiveDb
     public static string Date(DateOnly value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 }
 
-internal static class LiveApi
-{
-    /// <summary>Oturum jetonuyla GET; JSON'u T'ye cevirir. Dispatcher'i kilitlememek icin Wait ile beklenir.</summary>
-    public static T Get<T>(LiveUiHarness ui, string url)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ui.Session.AccessToken);
-        var task = Task.Run(async () =>
-        {
-            using var response = await ui.Http.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-            return (await response.Content.ReadFromJsonAsync<T>())!;
-        });
-        if (!LiveUiHarness.Wait(task, TimeSpan.FromSeconds(30))) throw new TimeoutException("API GET zaman asimi: " + url);
-        return task.Result;
-    }
-}

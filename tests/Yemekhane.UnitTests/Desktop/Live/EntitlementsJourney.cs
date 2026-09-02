@@ -30,12 +30,12 @@ public class EntitlementsJourney
         ui.Shot("ent-01-liste");
 
         // Varsayilan tarih araligi (bugun-7 .. bugun+7) SQLite ile birebir.
-        var from = LiveDb.Date(vm.StartsOn!.Value); var to = LiveDb.Date(vm.EndsOn!.Value);
-        var dbCount = LiveDb.Scalar("select count(*) from meal_entitlements where EntitlementDate between @p0 and @p1", from, to);
-        var dbQuantity = LiveDb.Scalar("select coalesce(sum(Quantity),0) from meal_entitlements where EntitlementDate between @p0 and @p1", from, to);
-        var dbConsumed = LiveDb.Scalar("select coalesce(sum(ConsumedQuantity),0) from meal_entitlements where EntitlementDate between @p0 and @p1", from, to);
+        var from = EntLiveDb.Date(vm.StartsOn!.Value); var to = EntLiveDb.Date(vm.EndsOn!.Value);
+        var dbCount = EntLiveDb.Scalar("select count(*) from meal_entitlements where EntitlementDate between @p0 and @p1", from, to);
+        var dbQuantity = EntLiveDb.Scalar("select coalesce(sum(Quantity),0) from meal_entitlements where EntitlementDate between @p0 and @p1", from, to);
+        var dbConsumed = EntLiveDb.Scalar("select coalesce(sum(ConsumedQuantity),0) from meal_entitlements where EntitlementDate between @p0 and @p1", from, to);
         // Kalan: yalnizca AKTIF haklar (iptal/aktarilmis hakkin kullanilabilir kalani yoktur)
-        var dbRemaining = LiveDb.Scalar("select coalesce(sum(Quantity-ConsumedQuantity),0) from meal_entitlements where EntitlementDate between @p0 and @p1 and Status='Active'", from, to);
+        var dbRemaining = EntLiveDb.Scalar("select coalesce(sum(Quantity-ConsumedQuantity),0) from meal_entitlements where EntitlementDate between @p0 and @p1 and Status='Active'", from, to);
         Assert.Equal(dbCount, vm.TotalCount);
         Assert.Equal(dbQuantity, vm.TotalQuantity);
         Assert.Equal(dbConsumed, vm.ConsumedQuantity);
@@ -55,7 +55,7 @@ public class EntitlementsJourney
         // Ogrenci no filtresi
         vm.StudentNo = "5012"; Load(ui, vm);
         Assert.All(vm.Items, x => Assert.Equal("5012", x.StudentNo));
-        var dbStudent = LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId where s.student_no='5012' and e.EntitlementDate between @p0 and @p1", from, to);
+        var dbStudent = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId where s.student_no='5012' and e.EntitlementDate between @p0 and @p1", from, to);
         Assert.Equal(dbStudent, vm.TotalCount);
         ui.Shot("ent-03-filtre-no");
         vm.StudentNo = null;
@@ -69,7 +69,7 @@ public class EntitlementsJourney
         // Ad soyad filtresi: ayni adli ogrenciler (uc ADA) listede no + sinif ile ayirt edilebilir.
         vm.StudentName = "ADA"; Load(ui, vm);
         Assert.All(vm.Items, x => Assert.Contains("ADA", x.StudentName, StringComparison.Ordinal));
-        var dbAda = LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId where (s.FirstName || ' ' || s.LastName) like '%ADA%' and e.EntitlementDate between @p0 and @p1", from, to);
+        var dbAda = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId where (s.FirstName || ' ' || s.LastName) like '%ADA%' and e.EntitlementDate between @p0 and @p1", from, to);
         Assert.Equal(dbAda, vm.TotalCount);
         ui.Shot("ent-04-filtre-ad");
         vm.StudentName = null;
@@ -77,7 +77,7 @@ public class EntitlementsJourney
         // Sinif filtresi
         vm.ClassName = "7A"; Load(ui, vm);
         Assert.All(vm.Items, x => Assert.Equal("7A", x.ClassName));
-        var db7a = LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='7A' and e.EntitlementDate between @p0 and @p1", from, to);
+        var db7a = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='7A' and e.EntitlementDate between @p0 and @p1", from, to);
         Assert.Equal(db7a, vm.TotalCount);
         vm.ClassName = null;
 
@@ -91,13 +91,13 @@ public class EntitlementsJourney
 
         // Durum filtresi
         vm.Status = "Cancelled"; Load(ui, vm);
-        Assert.Equal(LiveDb.Scalar("select count(*) from meal_entitlements where Status='Cancelled' and EntitlementDate between @p0 and @p1", from, to), vm.TotalCount);
+        Assert.Equal(EntLiveDb.Scalar("select count(*) from meal_entitlements where Status='Cancelled' and EntitlementDate between @p0 and @p1", from, to), vm.TotalCount);
         vm.Status = null; Load(ui, vm);
         Assert.Equal(dbCount, vm.TotalCount);
 
         // Tarih araligi daraltma
         vm.StartsOn = new DateTime(2026, 9, 2); vm.EndsOn = new DateTime(2026, 9, 2); Load(ui, vm);
-        Assert.Equal(LiveDb.Scalar("select count(*) from meal_entitlements where EntitlementDate='2026-09-02'"), vm.TotalCount);
+        Assert.Equal(EntLiveDb.Scalar("select count(*) from meal_entitlements where EntitlementDate='2026-09-02'"), vm.TotalCount);
         Assert.All(vm.Items, x => Assert.Equal(new DateOnly(2026, 9, 2), x.Date));
         ui.Shot("ent-06-tek-gun");
 
@@ -138,8 +138,8 @@ public class EntitlementsJourney
 
         vm.Quantity = 1; vm.PreviewCommand.Execute(null); ui.Delay(2000); ui.Pump();
         Assert.True(vm.HasPreview, "onizleme yok: " + vm.PreviewMessage);
-        var classCount = LiveDb.Scalar("select count(*) from students s join classes c on c.Id=s.ClassId where c.Name='5A' and s.IsActive=1");
-        var existing = LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='5A' and e.EntitlementDate between '2026-09-21' and '2026-09-25'");
+        var classCount = EntLiveDb.Scalar("select count(*) from students s join classes c on c.Id=s.ClassId where c.Name='5A' and s.IsActive=1");
+        var existing = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='5A' and e.EntitlementDate between '2026-09-21' and '2026-09-25'");
         Assert.Equal(classCount, vm.Preview!.StudentCount);
         Assert.Equal(5, vm.Preview.DayCount);
         Assert.Equal(classCount * 5, vm.Preview.RightsCount);
@@ -149,7 +149,7 @@ public class EntitlementsJourney
 
         vm.ApplyCommand.Execute(null); ui.Delay(3000); ui.Pump();
         Assert.False(vm.IsGrantOpen, "uygulama sonrasi cekmece kapanmadi: " + vm.PreviewMessage);
-        var created = LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='5A' and e.EntitlementDate between '2026-09-21' and '2026-09-25'");
+        var created = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='5A' and e.EntitlementDate between '2026-09-21' and '2026-09-25'");
         Assert.Equal(classCount * 5, created);
         // Basari geri bildirimi ekranda: cekmece kapandi ama sonuc metni listede kaldi.
         Assert.True(vm.HasStatus, "uygulama sonrasi durum metni yok");
@@ -174,8 +174,8 @@ public class EntitlementsJourney
         ui.Shot("ent-14-onizleme-guncelleme");
         vm.ApplyCommand.Execute(null); ui.Delay(3000); ui.Pump();
         Assert.False(vm.IsGrantOpen, vm.PreviewMessage);
-        Assert.Equal(classCount, LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='5A' and e.EntitlementDate='2026-09-21'"));
-        Assert.Equal(classCount * 2, LiveDb.Scalar("select sum(Quantity) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='5A' and e.EntitlementDate='2026-09-21'"));
+        Assert.Equal(classCount, EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='5A' and e.EntitlementDate='2026-09-21'"));
+        Assert.Equal(classCount * 2, EntLiveDb.Scalar("select sum(Quantity) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='5A' and e.EntitlementDate='2026-09-21'"));
         Load(ui, vm);
         Assert.Equal(classCount * 5 + classCount, vm.TotalQuantity);
     });
@@ -209,10 +209,10 @@ public class EntitlementsJourney
         ui.Shot("ent-17-manuel-onizleme");
         vm.ApplyCommand.Execute(null); ui.Delay(3000); ui.Pump();
         Assert.False(vm.IsGrantOpen, vm.PreviewMessage);
-        Assert.Equal(2, LiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId where s.student_no in ('5012','5013') and e.EntitlementDate='2026-09-28' and e.Status='Active'"));
+        Assert.Equal(2, EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId where s.student_no in ('5012','5013') and e.EntitlementDate='2026-09-28' and e.Status='Active'"));
 
         // Kimlik (GUID) girisi de calismaya devam eder (derin baglanti yolu)
-        var studentId = LiveDb.Rows("select Id from students where student_no='5014'")[0][0]!;
+        var studentId = EntLiveDb.Rows("select Id from students where student_no='5014'")[0][0]!;
         vm.HandleRoute(Yemekhane.Desktop.Services.ShellRoutes.Entitlements + "/" + studentId.ToLowerInvariant()); ui.Pump();
         Assert.True(vm.IsGrantOpen);
         vm.GrantStartsOn = new DateTime(2026, 9, 28); vm.GrantEndsOn = new DateTime(2026, 9, 28);
@@ -239,7 +239,7 @@ public class EntitlementsJourney
         { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent };
         ui.Window.RaiseEvent(args); ui.Pump();
         Assert.False(vm.IsCancelConfirmationOpen, "Escape onay penceresini kapatmadi");
-        Assert.Equal(1, LiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Active'", id));
+        Assert.Equal(1, EntLiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Active'", id));
         ui.Shot("ent-24-escape-sonrasi");
     });
 
@@ -265,19 +265,19 @@ public class EntitlementsJourney
         var ids = vm.SelectedItems.Select(x => x.Id.ToString().ToUpperInvariant()).ToArray();
         vm.CloseCancelCommand.Execute(null); ui.Pump();
         Assert.False(vm.IsCancelConfirmationOpen);
-        foreach (var id in ids) Assert.Equal(1, LiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Active'", id));
+        foreach (var id in ids) Assert.Equal(1, EntLiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Active'", id));
 
         // Onayla: durum Iptal
         vm.RequestCancelCommand.Execute(null); ui.Pump();
         vm.ConfirmCancelCommand.Execute(null); ui.Delay(2500); ui.Pump();
         Assert.False(vm.IsCancelConfirmationOpen);
         Assert.False(vm.HasError, vm.ErrorMessage);
-        foreach (var id in ids) Assert.Equal(1, LiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Cancelled'", id));
+        foreach (var id in ids) Assert.Equal(1, EntLiveDb.Scalar("select count(*) from meal_entitlements where upper(Id)=@p0 and Status='Cancelled'", id));
         Assert.True(vm.HasStatus, "iptal sonrasi durum metni yok"); Assert.Contains("2 hak iptal edildi", vm.StatusMessage);
         // Tum durumlar: iptal satirlari listede "Iptal" ve KALAN 0; ozet kalan yalnizca aktifleri sayar
         vm.Status = null; Load(ui, vm);
         Assert.All(ids, id => Assert.Contains(vm.Items, x => x.Id.ToString().ToUpperInvariant() == id && x.Status == "Cancelled" && x.RemainingQuantity == 0));
-        Assert.Equal(LiveDb.Scalar("select coalesce(sum(Quantity-ConsumedQuantity),0) from meal_entitlements e join students s on s.Id=e.StudentId where (s.FirstName || ' ' || s.LastName) like '%ADA%' and e.EntitlementDate='2026-09-03' and e.Status='Active'"), vm.RemainingQuantity);
+        Assert.Equal(EntLiveDb.Scalar("select coalesce(sum(Quantity-ConsumedQuantity),0) from meal_entitlements e join students s on s.Id=e.StudentId where (s.FirstName || ' ' || s.LastName) like '%ADA%' and e.EntitlementDate='2026-09-03' and e.Status='Active'"), vm.RemainingQuantity);
         Assert.True(vm.TotalQuantity > vm.RemainingQuantity, "iptal edilen haklar kalan toplamindan dusmedi");
         ui.Shot("ent-22-iptal-sonrasi");
 
