@@ -204,6 +204,21 @@ public sealed class StudentImportService(
                     }
                     dbContext.StudentCards.Add(new StudentCard { StudentId = student.Id, CardNumber = row.CardNumber, ValidFrom = now });
                 }
+
+                // TELEFON sutunu okunup dogrulaniyor ama once HICBIR YERE yazilmiyordu: operator
+                // dosyaya veli telefonu koyuyor, onizleme kabul ediyor, SMS ekrani ise "telefon yok"
+                // diyordu. Ayni numarali aktif veli yoksa "Veli" adiyla kayit acilir; ogrencinin
+                // ilk velisi ise birincil olur (SMS alicisi). Var olan veli kayitlarina dokunulmaz.
+                if (row.Phone is not null)
+                {
+                    var parents = await dbContext.Parents.Where(x => x.StudentId == student.Id && x.IsActive).ToListAsync(cancellationToken);
+                    if (parents.All(x => x.NormalizedPhone != row.Phone))
+                        dbContext.Parents.Add(new Parent
+                        {
+                            StudentId = student.Id, Name = "Veli", NormalizedPhone = row.Phone,
+                            IsPrimary = parents.Count == 0, CreatedAt = now, UpdatedAt = now
+                        });
+                }
             }
 
             auditService.Record(new AuditEntry("StudentsImported", nameof(Student), operation.Id.ToString(),
@@ -518,5 +533,5 @@ public sealed class StudentImportService(
     private static ImportPreviewResult ToPreview(StudentImportSnapshot snapshot) => new(
         snapshot.Token, snapshot.Hash, snapshot.ExpiresAt, snapshot.Rows.Count,
         snapshot.Rows.Count(x => x.Status == "New"), snapshot.Rows.Count(x => x.Status == "Update"), snapshot.Rows.Count(x => x.Status == "Error"),
-        snapshot.Rows.Select(x => new ImportPreviewRow(x.RowNumber, x.StudentNo, x.CardNumber, x.FirstName, x.LastName, x.Status, x.Errors.ToArray())).ToArray());
+        snapshot.Rows.Select(x => new ImportPreviewRow(x.RowNumber, x.StudentNo, x.CardNumber, x.FirstName, x.LastName, x.Status, x.Errors.ToArray(), x.ClassName, x.Phone)).ToArray());
 }

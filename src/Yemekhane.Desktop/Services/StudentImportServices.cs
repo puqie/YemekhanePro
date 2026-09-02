@@ -66,7 +66,7 @@ public sealed class StudentImportApiClient(HttpClient client, IJwtSession sessio
         {
             using var request = Authorized(HttpMethod.Get, $"api/imports/students/{Uri.EscapeDataString(token)}/errors.csv");
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            Ensure(response);
+            await EnsureAsync(response, cancellationToken);
             await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
             await using (var destination = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
                              64 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan))
@@ -95,17 +95,22 @@ public sealed class StudentImportApiClient(HttpClient client, IJwtSession sessio
     private async Task<T> SendAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         using var response = await client.SendAsync(request, cancellationToken);
-        Ensure(response);
+        await EnsureAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("İçe aktarma API yanıtı boş döndü.");
     }
 
-    private static void Ensure(HttpResponseMessage response)
+    /// <summary>
+    /// Sunucunun reddi ("Zorunlu başlıklar eksik: NO, KART NO, AD, SOYAD." gibi) ProblemDetails
+    /// basligiyla ApiRequestException olarak tasinir. Once HAM JSON govdesi HttpRequestException
+    /// mesajina konuyordu; ViewModel bu tipi tanimadigi icin kullanici yalnizca genel
+    /// "Dosya okunamadı" metnini goruyor, dosyada neyi duzeltecegini ogrenemiyordu.
+    /// </summary>
+    private static async Task EnsureAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             throw new LoginRequiredException();
         if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(response.Content.ReadAsStringAsync().GetAwaiter().GetResult(),
-                null, response.StatusCode);
+            throw await ApiErrors.ReadAsync(response, cancellationToken);
     }
 }

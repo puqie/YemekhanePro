@@ -14,7 +14,7 @@ public sealed class EfBulkSmsRepository(YemekhaneDbContext dbContext, TimeProvid
     public async Task<SmsTargetOptions> TargetsAsync(string? search, CancellationToken cancellationToken)
     {
         var students = dbContext.Students.AsNoTracking().Where(x => x.IsActive);
-        if (search is not null) students = students.Where(x => x.StudentNo.Contains(search) || x.FirstName.Contains(search) || x.LastName.Contains(search));
+        if (search is not null) students = ApplySearch(students, search);
         var studentItems = await students.OrderBy(x => x.LastName).ThenBy(x => x.FirstName).Take(100)
             // Sinif ve sube, alici listesinde ayni isimli ogrencileri ayirt etmek icin
             // sart. LEFT JOIN semantigi icin iliskisel join yerine korelasyonlu alt
@@ -44,12 +44,37 @@ public sealed class EfBulkSmsRepository(YemekhaneDbContext dbContext, TimeProvid
             "Filter" => ApplyFilter(query, scope),
             _ => query
         };
+        // Birincil veli varsa o, yoksa herhangi bir aktif veli. Once yalnizca IsPrimary=true
+        // araniyordu: velisi "birincil" isaretlenmeden kaydedilmis ogrenci (ogrenci ekrani
+        // buna izin veriyor) onizlemede "TELEFON YOK" sayiliyor ve veliye SMS hic gitmiyordu.
+        // Ogrenci listesi (EfStudentRepository) ayni kural ile telefon gosterdiginden
+        // operator "telefon var ama SMS gitmedi" celiskisini goruyordu.
         return await query.OrderBy(x => x.LastName).ThenBy(x => x.FirstName).Select(student =>
             new SmsRecipientSource(student.Id, student.FirstName + " " + student.LastName,
-                dbContext.Parents.Where(parent => parent.StudentId == student.Id && parent.IsActive && parent.IsPrimary)
+                dbContext.Parents.Where(parent => parent.StudentId == student.Id && parent.IsActive)
+                    .OrderByDescending(parent => parent.IsPrimary).ThenBy(parent => parent.Id)
                     .Select(parent => parent.Name).FirstOrDefault(),
-                dbContext.Parents.Where(parent => parent.StudentId == student.Id && parent.IsActive && parent.IsPrimary)
+                dbContext.Parents.Where(parent => parent.StudentId == student.Id && parent.IsActive)
+                    .OrderByDescending(parent => parent.IsPrimary).ThenBy(parent => parent.Id)
                     .Select(parent => parent.NormalizedPhone).FirstOrDefault())).ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Ad/soyad aramasini Turkce kurallariyla, buyuk-kucuk harf duyarsiz yapar.
+    /// </summary>
+    /// <remarks>
+    /// Once <c>FirstName.Contains(search)</c> kullaniliyordu; EF bunu SQLite'ta
+    /// <c>instr()</c>'a cevirir ve instr HARF DUYARLIDIR. Sicil verisi buyuk harf
+    /// ("ADA AKGÜN") tutuldugundan operatorun yazdigi "ada" HIC sonuc dondurmuyor,
+    /// SMS alici listesi bos kaliyordu. Ogrenci ekrani ise SearchName sutunu ile
+    /// buluyordu; iki ekran ayni ogrenciyi farkli goruyordu. SearchName, ad+soyadin
+    /// TurkishSearchText ile normallestirilmis (buyuk harf, İ->I) halidir.
+    /// </remarks>
+    private static IQueryable<Student> ApplySearch(IQueryable<Student> query, string search)
+    {
+        var term = search.Trim();
+        var normalized = TurkishSearchText.Normalize(term);
+        return query.Where(x => x.StudentNo.Contains(term) || x.SearchName.Contains(normalized));
     }
 
     public async Task<BulkSmsEnqueueResult> EnqueueAsync(IReadOnlyList<SmsRecipientPreview> recipients,
@@ -89,11 +114,7 @@ public sealed class EfBulkSmsRepository(YemekhaneDbContext dbContext, TimeProvid
         if (scope.ClassId.HasValue) query = query.Where(x => x.ClassId == scope.ClassId);
         if (scope.SectionId.HasValue) query = query.Where(x => x.SectionId == scope.SectionId);
         if (scope.DepartmentId.HasValue) query = query.Where(x => x.DepartmentId == scope.DepartmentId);
-        if (!string.IsNullOrWhiteSpace(scope.Search))
-        {
-            var search = scope.Search.Trim();
-            query = query.Where(x => x.StudentNo.Contains(search) || x.FirstName.Contains(search) || x.LastName.Contains(search));
-        }
+        if (!string.IsNullOrWhiteSpace(scope.Search)) query = ApplySearch(query, scope.Search);
         return query;
     }
 
