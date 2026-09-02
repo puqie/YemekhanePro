@@ -117,7 +117,7 @@
         <!-- Satirlar -->
         <Border Grid.Row="3" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
             <Grid>
-                <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
+                <DataGrid ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True" AutomationProperties.Name="İçe aktarma önizleme listesi"
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                           BorderThickness="0" CanUserSortColumns="True"
                           EnableRowVirtualization="True" EnableColumnVirtualization="True"

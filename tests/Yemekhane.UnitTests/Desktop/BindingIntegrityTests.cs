@@ -243,6 +243,40 @@ public sealed class BindingIntegrityTests
         return type!;
     }
 
+    /// <summary>
+    /// Cok satirli her TextBox sarma + ustten hizalama tasimali.
+    ///
+    /// Tasarim sistemindeki TextBox varsayilani VerticalContentAlignment="Center" (DesignSystem.xaml).
+    /// AcceptsReturn="True" + sabit Height verilip TextWrapping yazilmazsa kutu cok satirlik yer
+    /// kaplar ama metin SARMAZ: tek satir halinde saga kayar ve kutunun dikey ORTASINDA yuzer.
+    /// Kullanici 500 karakter yazabildigi halde yalnizca bir satirini gorur, kaydirma cubugu da
+    /// olmadigi icin yazdigini geri okuyamaz. Kasa "İptal nedeni" ZORUNLU ve denetim izine
+    /// giren bir alan oldugu icin bu sinsi bir hataydi.
+    /// </summary>
+    [Fact]
+    public void CokSatirliKutularSararVeUsttenHizalanir()
+    {
+        var problems = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(ViewsDirectory(), "*.xaml"))
+        {
+            // Cihazlar ekrani kullanicinin uzerinde calistigi turnike isi; kapsam disi.
+            if (Path.GetFileName(file) is "DevicesView.xaml") continue;
+            var xaml = File.ReadAllText(file);
+            foreach (Match match in Regex.Matches(xaml, @"<TextBox\b[^>]*>", RegexOptions.Singleline))
+            {
+                var tag = match.Value;
+                if (!tag.Contains("AcceptsReturn=\"True\"", StringComparison.Ordinal)) continue;
+                if (tag.Contains("TextWrapping=\"Wrap\"", StringComparison.Ordinal)
+                    && tag.Contains("VerticalContentAlignment=\"Top\"", StringComparison.Ordinal)) continue;
+                problems.Add($"{Path.GetFileName(file)}: {tag[..Math.Min(120, tag.Length)]}");
+            }
+        }
+
+        Assert.True(problems.Count == 0,
+            "Cok satirli TextBox TextWrapping=\"Wrap\" ve VerticalContentAlignment=\"Top\" tasimali:"
+            + Environment.NewLine + string.Join(Environment.NewLine, problems));
+    }
+
     private static string ViewsDirectory() =>
         Path.Combine(FindRoot(), "src", "Yemekhane.Desktop", "Views");
 

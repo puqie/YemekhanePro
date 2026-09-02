@@ -82,11 +82,11 @@
                             <!-- Milisaniye (.fff) kaldirildi: bir yemekhane gecisinde
                                  saniye zaten fazlasiyla yeterli, ".000" her satirda
                                  yer kaplayip okumayi zorlastiriyordu. -->
-                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="80"/>
-                            <DataGridTextColumn Header="Kart No" Binding="{Binding CardNumber}" Width="115"/>
-                            <DataGridTextColumn Header="Öğrenci No" Binding="{Binding StudentNo}" Width="95"/>
+                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="Auto" MinWidth="68"/>
+                            <DataGridTextColumn Header="Kart No" Binding="{Binding CardNumber}" Width="Auto" MinWidth="90"/>
+                            <DataGridTextColumn Header="Öğrenci No" Binding="{Binding StudentNo}" Width="Auto" MinWidth="80"/>
                             <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="Auto" MinWidth="170"/>
-                            <DataGridTextColumn Header="Sınıf" Binding="{Binding ClassName}" Width="90"/>
+                            <DataGridTextColumn Header="Sınıf" Binding="{Binding ClassName}" Width="Auto" MinWidth="62"/>
                             <DataGridTextColumn Header="Öğün" Binding="{Binding MealType}" Width="Auto" MinWidth="95"/>
                             <DataGridTemplateColumn Header="Durum" Width="Auto" MinWidth="120"><DataGridTemplateColumn.CellTemplate><DataTemplate>
                                 <Border CornerRadius="9" Padding="7,2" HorizontalAlignment="Left">
@@ -95,7 +95,7 @@
                                 </Border>
                             </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                             <!-- Neden yildiz: "Bu öğün daha önce kullanılmış" 180px'te kesiliyordu. -->
-                            <DataGridTextColumn Header="Neden" Binding="{Binding Reason, Converter={StaticResource EnumText}, ConverterParameter=Reason}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="Neden" Binding="{Binding Reason, Converter={StaticResource EnumText}, ConverterParameter=Reason}" Width="*" MinWidth="150" MaxWidth="320"/>
                             <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="130"/>
                         </DataGrid.Columns>
                     </DataGrid>

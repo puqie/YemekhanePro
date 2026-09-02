@@ -40,8 +40,26 @@ public sealed class NotificationUnreadCountTests
         Assert.Equal(2, vm.Items.Count);
     }
 
+    /// <summary>
+    /// Kosul ucusta olan komutla AYNI ANDA calisir: dogrudan vm.Items uzerinde LINQ
+    /// calistirmak, ViewModel listeyi guncellerken "Collection was modified" firlatir
+    /// (tam kosuda rastgele dusme nedeni). Kosul once listenin kopyasini alir.
+    /// </summary>
     private static async Task WaitUntilAsync(Func<bool> condition)
-    { for (var i = 0; i < 500 && !condition(); i++) await Task.Delay(10); Assert.True(condition()); }
+    {
+        for (var i = 0; i < 500; i++)
+        {
+            if (Safe(condition)) { Assert.True(Safe(condition)); return; }
+            await Task.Delay(10);
+        }
+        Assert.True(Safe(condition));
+    }
+
+    private static bool Safe(Func<bool> condition)
+    {
+        try { return condition(); }
+        catch (InvalidOperationException) { return false; }
+    }
 
     private static NotificationItem Item(Guid id) => new(id, "Warning", "DeviceError", "Cihaz", "Hata",
         DateTimeOffset.UtcNow, "Device", "device-1", ShellRoutes.Devices, null, 1, DateTimeOffset.UtcNow, null, null);

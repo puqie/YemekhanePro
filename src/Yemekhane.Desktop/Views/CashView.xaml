@@ -57,16 +57,16 @@
                     <DataGrid Grid.Row="2" x:Name="TransactionsGrid" IsEnabled="{Binding IsAddOpen, Converter={StaticResource InverseBool}}" ItemsSource="{Binding Transactions}" SelectedItem="{Binding SelectedTransaction}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Kasa işlem listesi">
                         <DataGrid.InputBindings><KeyBinding Key="Delete" Command="{Binding OpenVoidCommand}"/><KeyBinding Key="Enter" Command="{Binding OpenVoidCommand}"/></DataGrid.InputBindings>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="TARİH" Binding="{Binding TransactionAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="Auto" MinWidth="130"/>
-                            <DataGridTextColumn Header="ÖĞRENCİ" Binding="{Binding StudentName}" Width="*" MinWidth="145"/>
+                            <DataGridTextColumn Header="TARİH" Binding="{Binding TransactionAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="Auto" MinWidth="118"/>
+                            <DataGridTextColumn Header="ÖĞRENCİ" Binding="{Binding StudentName}" Width="*" MinWidth="130" MaxWidth="260"/>
                             <!-- Ayni adli ogrenciler (uc ADA AKGUN gibi) yalnizca adla ayirt edilemez; numara her satirda gorunur. -->
                             <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="70"/>
-                            <DataGridTextColumn Header="KART" Binding="{Binding CardNumber}" Width="Auto" MinWidth="105"/>
+                            <DataGridTextColumn Header="KART" Binding="{Binding CardNumber}" Width="Auto" MinWidth="92"/>
                             <DataGridTextColumn Header="TÜR" Binding="{Binding IncomeTypeName}" Width="Auto" MinWidth="130"/>
                             <DataGridTextColumn Header="TUTAR" Binding="{Binding Amount, StringFormat={}{0:C2}}" Width="Auto" MinWidth="100"/>
-                            <DataGridTextColumn Header="AÇIKLAMA" Binding="{Binding Description}" Width="*" MinWidth="130"/>
+                            <DataGridTextColumn Header="AÇIKLAMA" Binding="{Binding Description}" Width="*" MinWidth="120" MaxWidth="240"/>
                             <DataGridCheckBoxColumn Header="İPTAL" Binding="{Binding IsVoided}" Width="Auto" MinWidth="60"/>
-                            <DataGridTextColumn Header="İPTAL NEDENİ" Binding="{Binding VoidReason}" Width="Auto" MinWidth="140"/>
+                            <DataGridTextColumn Header="İPTAL NEDENİ" Binding="{Binding VoidReason}" Width="Auto" MinWidth="120"/>
                         </DataGrid.Columns>
                     </DataGrid>
                     <Grid Grid.Row="3" Margin="0,8,0,0">
@@ -131,7 +131,7 @@
                 <TextBlock Text="Tutar" Style="{StaticResource Label}"/>
                 <TextBox Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Türk lirası tutarı" ToolTip="Örnek: 125,50 ₺"/>
                 <TextBlock Text="Açıklama" Style="{StaticResource Label}"/>
-                <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" AcceptsReturn="True" Height="62"/>
+                <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" AcceptsReturn="True" Height="62" TextWrapping="Wrap" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"/>
                 <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="4" Padding="10,8" Margin="0,14,0,0">
                     <CheckBox IsChecked="{Binding AddConfirmed}" AutomationProperties.Name="Gelir kaydını onayla"><TextBlock Text="Öğrenci, tür, tarih ve tutarı kontrol ederek kaydı onaylıyorum." TextWrapping="Wrap"/></CheckBox>
                 </Border>
@@ -169,7 +169,7 @@
                 <DatePicker SelectedDate="{Binding TopUpExpiresOn}" AutomationProperties.Name="Bakiye bitiş tarihi"/>
                 <TextBlock Style="{StaticResource Caption}" Text="Boş bırakılırsa süresiz. Doluysa bu tarihten sonra kalan tutar geçişte kullanılmaz." TextWrapping="Wrap" Margin="0,4,0,0"/>
                 <TextBlock Text="Açıklama" Style="{StaticResource Label}"/>
-                <TextBox Text="{Binding TopUpNote, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" AcceptsReturn="True" Height="62"/>
+                <TextBox Text="{Binding TopUpNote, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" AcceptsReturn="True" Height="62" TextWrapping="Wrap" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"/>
                 <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="4" Padding="10,8" Margin="0,14,0,0">
                     <CheckBox IsChecked="{Binding TopUpConfirmed}" AutomationProperties.Name="Bakiye yüklemesini onayla"><TextBlock Text="Öğrenci ve tutarı kontrol ederek yüklemeyi onaylıyorum; kasaya “Bakiye Yükleme” geliri işlenecek." TextWrapping="Wrap"/></CheckBox>
                 </Border>
@@ -204,7 +204,7 @@
                     </StackPanel>
                 </Border>
                 <TextBlock Text="İptal nedeni (zorunlu)" Style="{StaticResource Label}"/>
-                <TextBox Text="{Binding VoidReason, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" AcceptsReturn="True" Height="75"/>
+                <TextBox Text="{Binding VoidReason, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" AcceptsReturn="True" Height="75" TextWrapping="Wrap" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"/>
                 <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="4" Padding="10,8" Margin="0,14,0,0">
                     <CheckBox IsChecked="{Binding VoidConfirmed}" AutomationProperties.Name="İşlem iptalini onayla"><TextBlock Text="Yukarıdaki kesin tutar ve öğrenciye ait işlemi iptal ettiğimi onaylıyorum." TextWrapping="Wrap"/></CheckBox>
                 </Border>

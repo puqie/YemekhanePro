@@ -41,8 +41,8 @@
             <controls:PageShell.Actions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="12" Padding="9,4" Margin="0,0,9,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="{StaticResource WarningBrush}"/></Border>
-                    <Button Style="{StaticResource Action}" Content="PDF" Command="{Binding ExportPdfCommand}" ToolTip="Geçerli filtrelerin tamamını PDF aktar (Ctrl+P komutu hazır)"/>
-                    <Button Style="{StaticResource Action}" Content="Excel" Command="{Binding ExportExcelCommand}" ToolTip="Geçerli filtrelerin tamamını Excel aktar (Ctrl+E komutu hazır)"/>
+                    <Button Style="{StaticResource Action}" Content="PDF" Command="{Binding ExportPdfCommand}" ToolTip="Geçerli filtrelerin tamamını PDF dosyasına kaydeder (Ctrl+P). Yazıcıya göndermez; kaydedilen dosyayı açıp oradan yazdırın."/>
+                    <Button Style="{StaticResource Action}" Content="Excel" Command="{Binding ExportExcelCommand}" ToolTip="Geçerli filtrelerin tamamını Excel dosyasına kaydeder (Ctrl+E)."/>
                     <Button Style="{StaticResource Action}" Content="CSV" Command="{Binding ExportCsvCommand}"/>
                 </StackPanel>
             </controls:PageShell.Actions>
