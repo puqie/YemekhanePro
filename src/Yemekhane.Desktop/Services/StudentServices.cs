@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -67,7 +67,9 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         using (document)
         {
             var root = arrayProperty is null ? document.RootElement : document.RootElement.GetProperty(arrayProperty);
-            return root.EnumerateArray().Select(x => (object)new StudentDetailRow(Summarize(x))).ToArray();
+            // Bicimlendirme sekmeye ozeldir: her sekmenin hangi alanlari hangi
+            // Turkce etiketle gosterecegi StudentTabFormatter'da tanimlidir.
+            return root.EnumerateArray().Select(x => (object)new StudentDetailRow(StudentTabFormatter.Summarize(tab, x))).ToArray();
         }
     }
 
@@ -136,9 +138,6 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
             .Select(x => $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value!)}"));
     }
 
-    private static string Summarize(JsonElement value) => string.Join("  |  ", value.EnumerateObject()
-        .Where(x => x.Value.ValueKind is not JsonValueKind.Null and not JsonValueKind.Object and not JsonValueKind.Array)
-        .Take(6).Select(x => $"{x.Name}: {x.Value.ToString()}"));
 }
 
 public sealed record StudentDetailRow(string Summary);

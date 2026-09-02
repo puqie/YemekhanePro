@@ -72,7 +72,10 @@
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss.fff}}" Width="105"/>
+                            <!-- Milisaniye (.fff) kaldirildi: bir yemekhane gecisinde
+                                 saniye zaten fazlasiyla yeterli, ".000" her satirda
+                                 yer kaplayip okumayi zorlastiriyordu. -->
+                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="80"/>
                             <DataGridTextColumn Header="Kart No" Binding="{Binding CardNumber}" Width="115"/>
                             <DataGridTextColumn Header="Öğrenci No" Binding="{Binding StudentNo}" Width="95"/>
                             <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="*" MinWidth="150"/>

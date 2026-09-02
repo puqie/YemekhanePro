@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Common;
@@ -16,7 +16,16 @@ public sealed class EfBulkSmsRepository(YemekhaneDbContext dbContext, TimeProvid
         var students = dbContext.Students.AsNoTracking().Where(x => x.IsActive);
         if (search is not null) students = students.Where(x => x.StudentNo.Contains(search) || x.FirstName.Contains(search) || x.LastName.Contains(search));
         var studentItems = await students.OrderBy(x => x.LastName).ThenBy(x => x.FirstName).Take(100)
-            .Select(x => new SmsTargetStudent(x.Id, x.StudentNo, x.FirstName + " " + x.LastName)).ToListAsync(cancellationToken);
+            // Sinif ve sube, alici listesinde ayni isimli ogrencileri ayirt etmek icin
+            // sart. LEFT JOIN semantigi icin iliskisel join yerine korelasyonlu alt
+            // sorgu kullaniyoruz: Student.ClassId/SectionId NULLABLE oldugundan sinifi
+            // atanmamis ogrencide FirstOrDefault() null doner ve satir DUSMEZ.
+            // (Nullable anahtarla "join ... equals (Guid?)" kalibi EF'te kutulama
+            // ceviri hatasina yol acabiliyor; alt sorgu bu tuzagi da atlar.)
+            .Select(x => new SmsTargetStudent(x.Id, x.StudentNo, x.FirstName + " " + x.LastName,
+                dbContext.Set<SchoolClass>().Where(c => c.Id == x.ClassId).Select(c => c.Name).FirstOrDefault(),
+                dbContext.Set<Section>().Where(s => s.Id == x.SectionId).Select(s => s.Name).FirstOrDefault()))
+            .ToListAsync(cancellationToken);
         var classes = await dbContext.Set<SchoolClass>().AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name)
             .Select(x => new SmsTargetOption(x.Id, x.Name)).ToListAsync(cancellationToken);
         var groups = await dbContext.Set<StudentGroup>().AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name)

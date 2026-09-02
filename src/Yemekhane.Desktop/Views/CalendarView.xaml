@@ -24,11 +24,19 @@
         </controls:PageShell.Actions>
 
         <controls:PageShell.Filters>
-            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <Button Content="‹" Command="{Binding PreviousMonthCommand}" Style="{StaticResource Action}" AutomationProperties.Name="Önceki ay"/>
-                <TextBlock Grid.Column="1" Text="{Binding MonthTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0"/>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="Kapsam" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/><ComboBox Width="190" ItemsSource="{Binding Scopes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedScope}"/><Button Content="Uygula" Command="{Binding ApplyScopeCommand}" Style="{StaticResource Action}" Margin="7,0,0,0"/></StackPanel>
-                <Button Grid.Column="3" Content="›" Command="{Binding NextMonthCommand}" Style="{StaticResource Action}" Margin="12,0,0,0" AutomationProperties.Name="Sonraki ay"/>
+            <!-- Ay gezinme cifti (‹ ay adi ›) TEK BIR GRUP olarak solda durur.
+                 Onceki duzende "‹" sutun 0'da, "›" ise sutun 3'te (en sagda) idi:
+                 aralarina ay basligi VE kapsam secici giriyordu, yani ayni isin
+                 iki dugmesi ekranin iki ucuna dagilmisti. Kullanici sonraki aya
+                 gecmek icin fareyi 1000px oteye tasimak zorunda kaliyordu. -->
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="‹" Command="{Binding PreviousMonthCommand}" Style="{StaticResource Action}" AutomationProperties.Name="Önceki ay"/>
+                    <TextBlock Text="{Binding MonthTitle}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"
+                               TextAlignment="Center" MinWidth="150" Margin="8,0"/>
+                    <Button Content="›" Command="{Binding NextMonthCommand}" Style="{StaticResource Action}" AutomationProperties.Name="Sonraki ay"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="Kapsam" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/><ComboBox Width="190" ItemsSource="{Binding Scopes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedScope}"/><Button Content="Uygula" Command="{Binding ApplyScopeCommand}" Style="{StaticResource Action}" Margin="7,0,0,0"/></StackPanel>
             </Grid>
         </controls:PageShell.Filters>
 

@@ -42,8 +42,12 @@ public sealed class ReportGridRow
     private readonly ReportRow source;
     public ReportGridRow(ReportRow source) { this.source = source; Source = source; }
     public ReportRow Source { get; }
+    // Milisaniye (.fff) kaldirildi: "dd.MM.yyyy HH:mm:ss.fff" 23 karakter tutuyordu
+    // ve 145px'lik TARIH sutununa sigmadigi icin "02.09.2026 11:58:00.(" seklinde,
+    // karakterin ortasindan kesiliyordu -- raporun asil sorusu olan "ne zaman oldu"
+    // hicbir satirda okunamiyordu. Saniye bir yemekhane gecisinde fazlasiyla yeterli.
     public string Date => source.Timestamp.HasValue
-        ? TimeZoneInfo.ConvertTime(source.Timestamp.Value, Istanbul).ToString("dd.MM.yyyy HH:mm:ss.fff", Turkish)
+        ? TimeZoneInfo.ConvertTime(source.Timestamp.Value, Istanbul).ToString("dd.MM.yyyy HH:mm:ss", Turkish)
         : source.ReportDate?.ToString("dd.MM.yyyy", Turkish) ?? "";
     public string StudentNo => source.StudentNo ?? "";
     public string CardNo => source.CardNo ?? "";
@@ -328,16 +332,16 @@ public sealed class ReportsViewModel : ObservableObject, IDisposable
     private static Definition C(string key, string title, string? sort = null, double width = 110) => new(key, title, sort, width);
     private static readonly Dictionary<ReportType, Definition[]> Definitions = new()
     {
-        [ReportType.DailyAccess] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("Class", "SINIF", "class", 80), C("CardNo", "KART", "cardNo"), C("MealType", "ÖĞÜN", "mealType"), C("Device", "CİHAZ", "device", 130), C("Decision", "KARAR", "decision", 85), C("Status", "DURUM", "status", 130)],
-        [ReportType.MealEntitlement] = [C("Date", "TARİH", "timestamp"), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 80), C("MealType", "ÖĞÜN", "mealType"), C("MealCount", "ADET", "mealCount", 70), C("Status", "DURUM", "status")],
-        [ReportType.StudentMealUsage] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 80), C("MealType", "ÖĞÜN", "mealType"), C("CardNo", "KART", "cardNo"), C("Status", "DURUM", "status")],
-        [ReportType.ClassMeal] = [C("Date", "TARİH", "timestamp", 145), C("Class", "SINIF", "class", 80), C("Section", "ŞUBE", "section", 80), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("MealType", "ÖĞÜN", "mealType"), C("MealCount", "ADET", "mealCount", 70)],
+        [ReportType.DailyAccess] = [C("Date", "TARİH", "timestamp", 155), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("Class", "SINIF", "class", 62), C("CardNo", "KART", "cardNo"), C("MealType", "ÖĞÜN", "mealType"), C("Device", "CİHAZ", "device", 130), C("Decision", "KARAR", "decision", 85), C("Status", "DURUM", "status", 130)],
+        [ReportType.MealEntitlement] = [C("Date", "TARİH", "timestamp"), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 62), C("MealType", "ÖĞÜN", "mealType"), C("MealCount", "ADET", "mealCount", 70), C("Status", "DURUM", "status")],
+        [ReportType.StudentMealUsage] = [C("Date", "TARİH", "timestamp", 155), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 62), C("MealType", "ÖĞÜN", "mealType"), C("CardNo", "KART", "cardNo"), C("Status", "DURUM", "status")],
+        [ReportType.ClassMeal] = [C("Date", "TARİH", "timestamp", 155), C("Class", "SINIF", "class", 62), C("Section", "ŞUBE", "section", 62), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("MealType", "ÖĞÜN", "mealType"), C("MealCount", "ADET", "mealCount", 70)],
         [ReportType.DailyCash] = MoneyColumns(), [ReportType.Income] = MoneyColumns(),
-        [ReportType.Sms] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Description", "AÇIKLAMA", null, 260), C("Status", "DURUM", "status")],
-        [ReportType.Turnstile] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("CardNo", "KART", "cardNo"), C("Device", "CİHAZ", "device", 130), C("Decision", "KARAR", "decision", 85), C("Status", "SONUÇ", "status"), C("Description", "AÇIKLAMA", null, 180)],
-        [ReportType.DeniedAccess] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("CardNo", "KART", "cardNo"), C("MealType", "ÖĞÜN", "mealType"), C("Device", "CİHAZ", "device", 130), C("Status", "NEDEN", "status", 170)],
-        [ReportType.CardMovements] = [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 80), C("CardNo", "KART", "cardNo"), C("Status", "DURUM", "status"), C("Description", "AÇIKLAMA", null, 190)],
+        [ReportType.Sms] = [C("Date", "TARİH", "timestamp", 155), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Description", "AÇIKLAMA", null, 260), C("Status", "DURUM", "status")],
+        [ReportType.Turnstile] = [C("Date", "TARİH", "timestamp", 155), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("CardNo", "KART", "cardNo"), C("Device", "CİHAZ", "device", 130), C("Decision", "KARAR", "decision", 85), C("Status", "SONUÇ", "status"), C("Description", "AÇIKLAMA", null, 180)],
+        [ReportType.DeniedAccess] = [C("Date", "TARİH", "timestamp", 155), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 150), C("CardNo", "KART", "cardNo"), C("MealType", "ÖĞÜN", "mealType"), C("Device", "CİHAZ", "device", 130), C("Status", "NEDEN", "status", 170)],
+        [ReportType.CardMovements] = [C("Date", "TARİH", "timestamp", 155), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("Class", "SINIF", "class", 62), C("CardNo", "KART", "cardNo"), C("Status", "DURUM", "status"), C("Description", "AÇIKLAMA", null, 190)],
         [ReportType.HolidayTransfer] = [C("Date", "TARİH", "timestamp"), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("MealType", "ÖĞÜN", "mealType"), C("MealCount", "ADET", "mealCount", 70), C("Status", "DURUM", "status"), C("Description", "AÇIKLAMA", null, 220)]
     };
-    private static Definition[] MoneyColumns() => [C("Date", "TARİH", "timestamp", 145), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("CardNo", "KART", "cardNo"), C("Description", "AÇIKLAMA", null, 220), C("Status", "DURUM", "status"), C("Amount", "TUTAR", "amount", 100)];
+    private static Definition[] MoneyColumns() => [C("Date", "TARİH", "timestamp", 155), C("StudentNo", "NO", "studentNo", 85), C("Name", "AD SOYAD", "firstName", 160), C("CardNo", "KART", "cardNo"), C("Description", "AÇIKLAMA", null, 220), C("Status", "DURUM", "status"), C("Amount", "TUTAR", "amount", 100)];
 }

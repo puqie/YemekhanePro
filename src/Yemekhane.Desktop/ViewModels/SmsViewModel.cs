@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Globalization;
 using System.Net.Http;
@@ -8,12 +8,23 @@ using Yemekhane.Desktop.Services;
 
 namespace Yemekhane.Desktop.ViewModels;
 
-public sealed class SmsStudentChoice(Guid id, string studentNo, string name, Action? changed = null) : ObservableObject
+// Alici secim listesinde ayni ad-soyada sahip birden fazla ogrenci bulunabilir
+// (gercek okul verisinde dort ayri "ADA AKGUN"). Sinif ve sube gosterilmezse
+// operator yanlis ogrenciyi secip YANLIS VELIYE SMS gonderir. Bu yuzden secim
+// ogesi sinif/sube de tasir.
+// ClassName/SectionName API'de nullable'dir (Student.ClassId/SectionId nullable;
+// sinifi atanmamis ogrenci olabilir); burada bos stringe indirgenir ki
+// DataGrid hucresi bos gorunsun, baglama hata vermesin ve hicbir yerde
+// null referans cokmesi olusmasin.
+public sealed class SmsStudentChoice(Guid id, string studentNo, string name, Action? changed = null,
+    string? className = null, string? sectionName = null) : ObservableObject
 {
     private bool isSelected;
     public Guid Id { get; } = id;
     public string StudentNo { get; } = studentNo;
     public string Name { get; } = name;
+    public string ClassName { get; } = className ?? "";
+    public string SectionName { get; } = sectionName ?? "";
     public bool IsSelected { get => isSelected; set { if (Set(ref isSelected, value)) changed?.Invoke(); } }
 }
 
@@ -152,7 +163,8 @@ public sealed class SmsViewModel : ObservableObject, IDisposable
             var result = await api.TargetsAsync(string.IsNullOrWhiteSpace(Search) ? null : Search, lifetime.Token);
             Students.Clear(); foreach (var item in result.Students)
             {
-                var choice = new SmsStudentChoice(item.Id, item.StudentNo, item.Name, InvalidatePreview);
+                var choice = new SmsStudentChoice(item.Id, item.StudentNo, item.Name, InvalidatePreview,
+                    item.ClassName, item.SectionName);
                 choice.IsSelected = selected.Contains(item.Id); Students.Add(choice);
             }
             Classes.Clear(); foreach (var item in result.Classes) Classes.Add(item);

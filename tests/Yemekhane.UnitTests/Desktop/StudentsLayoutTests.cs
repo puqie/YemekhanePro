@@ -268,6 +268,175 @@ public sealed class StudentsLayoutTests
                 string.Join(Environment.NewLine, narrow));
         });
 
+    /// <summary>
+    /// Gorev: liste sutunlari kesilmemeli. Once 12 sutunun sabit genislikleri toplami
+    /// 911px idi ama liste sutunu 1440x900'de yalnizca ~745px; DataGrid hepsini orantili
+    /// kucultunce "5001" -> "500'", "8350001" -> "835(", "Aktif" -> "Ak" oluyordu. Ayni
+    /// ad-soyada sahip ogrencileri (iki ayri ALİ ÖZTÜRK) ayirt eden sutunlar tam da
+    /// bunlardi.
+    ///
+    /// Test XAML metnini OKUMAZ: gercek gorsel agaci 1440x900'de olcup DataGrid'in
+    /// ActualWidth toplamini mevcut alanla kiyaslar. Yalnizca "toplam sigiyor mu" demek
+    /// yetmez -- WPF "*" sutunlari zaten kalan alani doldurur, o yuzden test asil SABIT
+    /// genislikli sutunlarin ic metnini de olcer.
+    /// </summary>
+    [Fact]
+    public void ListeSutunlariTasmadanSigar() =>
+        UiThread.Run(() =>
+        {
+            var api = new FakeStudentApi();
+            using var vm = MakeViewModel(api, ["students.read", "students.write"]);
+            // Gercek veriden en uzun ornekler: 4 haneli no, 7 haneli kart, uzun Turkce isim.
+            vm.Students.Add(SampleItem("HÜSEYİN", "HAŞLAMACI", "5001", "8350001"));
+            vm.Students.Add(SampleItem("SÜMEYYE", "ÖZDEMİR", "5002", "8350002"));
+
+            var view = new StudentsView { DataContext = vm };
+            UiThread.ApplyResources(view);
+            var host = new Border { Width = 1440, Height = 900, Child = view };
+            host.Measure(new Size(1440, 900));
+            host.Arrange(new Rect(0, 0, 1440, 900));
+            host.UpdateLayout();
+
+            var grid = (DataGrid)view.FindName("StudentsGrid")!;
+            Assert.True(grid.ActualWidth > 0, "Ogrenci listesi olculemedi.");
+
+            var totalColumns = grid.Columns.Sum(column => column.ActualWidth);
+            Assert.True(totalColumns <= grid.ActualWidth + 1,
+                $"Sutun genislikleri toplami {totalColumns:F0}px, kullanilabilir alan {grid.ActualWidth:F0}px: " +
+                "liste yatay kayar ve sutunlar kesilir.");
+
+            // Sabit genislikli her sutun, hem BASLIGINI hem de en uzun HUCRE metnini
+            // hucre dolgusu (11+11px) ile birlikte kesilmeden tasiyabilmeli.
+            const double cellPadding = 22;
+            var tight = new List<string>();
+            foreach (var (header, longest, fontSize) in new[]
+            {
+                ("NO", "5001", 13.0),
+                ("SINIF", "6A", 13.0),
+                ("ŞUBE", "A", 13.0),
+                ("KART NO", "8350001", 13.0),
+                ("DURUM", "Aktif", 11.0),
+            })
+            {
+                var column = grid.Columns.Single(c => (string)c.Header == header);
+                var needed = Math.Max(TextWidth(header, 11, FontWeights.SemiBold), TextWidth(longest, fontSize, FontWeights.Normal)) + cellPadding;
+                if (column.ActualWidth < needed)
+                    tight.Add($"{header}: {column.ActualWidth:F0}px < gereken {needed:F0}px (\"{longest}\")");
+            }
+            Assert.True(tight.Count == 0,
+                $"{tight.Count} sutun icerigini kesiyor:{Environment.NewLine}{string.Join(Environment.NewLine, tight)}");
+
+            // Kaldirilan sutunlar geri gelmemeli: geri donerlerse toplam yine tasar.
+            foreach (var removed in new[] { "BÖLÜM", "VELİ TEL", "BUGÜNKÜ HAK", "BUGÜN GİRİŞ", "SON GİRİŞ" })
+                Assert.DoesNotContain(grid.Columns, c => (string)c.Header == removed);
+        });
+
+    /// <summary>
+    /// Gorev: listeden bir ogrenci SECILIR SECILMEZ sagdaki formun NO/Ad/Soyad kutulari
+    /// o ogrencinin bilgileriyle dolmali. Once bu ucu yalnizca OpenEdit() dolduruyordu,
+    /// yani "Duzenle" dugmesine basilana kadar form BOS kaliyordu.
+    /// </summary>
+    [Fact]
+    public void OgrenciSecilinceFormDolar()
+    {
+        var api = new FakeStudentApi();
+        using var vm = MakeViewModel(api, ["students.read", "students.write"]);
+        var elif = SampleItem("ELİF", "ÇETİN", "5003", "8350003");
+
+        vm.SelectedStudent = elif;
+
+        Assert.Equal("5003", vm.FormStudentNo);
+        Assert.Equal("ELİF", vm.FormFirstName);
+        Assert.Equal("ÇETİN", vm.FormLastName);
+        // Form salt okunur kalmali: dolmak duzenlemeye izin vermek DEGILDIR.
+        Assert.False(vm.IsFormOpen);
+    }
+
+    /// <summary>
+    /// Baska bir ogrenciye gecilince form ESKI ogrenciyi tasimamali; secim kalkinca
+    /// (null) form temizlenmeli. Aksi halde panel yanlis ogrenciyi gosterir.
+    /// </summary>
+    [Fact]
+    public void SecimDegisinceFormTakipEder()
+    {
+        var api = new FakeStudentApi();
+        using var vm = MakeViewModel(api, ["students.read", "students.write"]);
+
+        vm.SelectedStudent = SampleItem("ELİF", "ÇETİN", "5003", "8350003");
+        vm.SelectedStudent = SampleItem("ALİ", "ÖZTÜRK", "5004", "8350004");
+
+        Assert.Equal("5004", vm.FormStudentNo);
+        Assert.Equal("ALİ", vm.FormFirstName);
+        Assert.Equal("ÖZTÜRK", vm.FormLastName);
+
+        vm.SelectedStudent = null;
+        Assert.Equal("", vm.FormStudentNo);
+        Assert.Equal("", vm.FormFirstName);
+        Assert.Equal("", vm.FormLastName);
+    }
+
+    /// <summary>
+    /// "Yeni Ogrenci" akisi BOZULMAMALI: bir ogrenci secili iken Yeni Ogrenci'ye
+    /// basilinca form BOS baslamali (OpenCreate SelectedStudent'a dokunmaz, o yuzden
+    /// secimden doldurma yeni kaydin uzerine yazmamali).
+    /// </summary>
+    [Fact]
+    public void YeniOgrenciFormuBosBaslar()
+    {
+        var api = new FakeStudentApi();
+        using var vm = MakeViewModel(api, ["students.read", "students.write"]);
+        vm.SelectedStudent = SampleItem("ELİF", "ÇETİN", "5003", "8350003");
+
+        vm.NewStudentCommand.Execute(null);
+
+        Assert.Equal("", vm.FormStudentNo);
+        Assert.Equal("", vm.FormFirstName);
+        Assert.Equal("", vm.FormLastName);
+        Assert.True(vm.IsFormOpen);
+    }
+
+    /// <summary>
+    /// SameStudent korumasi bozulmamali: Details ile SelectedStudent farkli ogrencileri
+    /// gosterirken salt okunur blok gizli kalmali. Form artik secimle doldugu icin bu
+    /// korumanin hala calistigini ayrica dogrulanir.
+    /// </summary>
+    [Fact]
+    public void FormDolarkenSameStudentKorumasiSurer() =>
+        UiThread.Run(() =>
+        {
+            var api = new FakeStudentApi();
+            using var vm = MakeViewModel(api, ["students.read", "students.write"]);
+            var a = SampleItem("ELİF", "ÇETİN", "5003", "8350003");
+            var b = SampleItem("ALİ", "ÖZTÜRK", "5004", "8350004");
+
+            vm.OpenFullDetailCommand.Execute(a);
+            vm.SelectedStudent = b; // Details hala A'yi tasir.
+            Assert.Equal("5004", vm.FormStudentNo); // Form yeni secimi gosterir.
+
+            var view = new StudentsView { DataContext = vm };
+            UiThread.ApplyResources(view);
+            var host = new Border { Width = 1440, Height = 900, Child = view };
+            host.Measure(new Size(1440, 900));
+            host.Arrange(new Rect(0, 0, 1440, 900));
+            host.UpdateLayout();
+
+            var cardNoBox = Descendants(view).OfType<TextBox>()
+                .FirstOrDefault(box => box.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path == "SelectedStudent.CardNumber");
+            Assert.NotNull(cardNoBox);
+            Assert.False(IsEffectivelyVisible(cardNoBox!),
+                "Form secimle dolduruldu ama SameStudent korumasi bozuldu.");
+        });
+
+    /// <summary>Bir metnin Segoe UI ile kaplayacagi gercek genislik (px).</summary>
+    private static double TextWidth(string text, double fontSize, FontWeight weight)
+    {
+        var typeface = new System.Windows.Media.Typeface(
+            new System.Windows.Media.FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal);
+        return new System.Windows.Media.FormattedText(text, System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight, typeface, fontSize, System.Windows.Media.Brushes.Black, 1.0)
+            .WidthIncludingTrailingWhitespace;
+    }
+
     private static StudentsViewModel MakeViewModel(FakeStudentApi api, IEnumerable<string> permissions) =>
         new(api, new ShellNavigationService([ShellRoutes.Students]), permissions);
 

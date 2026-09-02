@@ -54,16 +54,20 @@
 
         <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,14,0,10">
             <WrapPanel>
-                <DatePicker Style="{StaticResource FieldCompactDate}" Width="125" SelectedDate="{Binding StartsOn}" ToolTip="Başlangıç tarihi"/>
-                <DatePicker Style="{StaticResource FieldCompactDate}" Width="125" SelectedDate="{Binding EndsOn}" ToolTip="Bitiş tarihi"/>
-                <TextBox Style="{StaticResource FieldCompact}" Width="95" Text="{Binding StudentNo}" ToolTip="Öğrenci NO"/>
-                <TextBox Style="{StaticResource FieldCompact}" Width="105" Text="{Binding CardNumber}" ToolTip="Kart no"/>
-                <TextBox Style="{StaticResource FieldCompact}" Width="150" Text="{Binding StudentName}" ToolTip="Ad soyad"/>
-                <TextBox Style="{StaticResource FieldCompact}" Width="105" Text="{Binding ClassName}" ToolTip="Sınıf"/>
-                <ComboBox Style="{StaticResource FieldCompactCombo}" Width="120" ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroup}" ToolTip="Grup"/>
-                <ComboBox Style="{StaticResource FieldCompactCombo}" Width="110" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMeal}" ToolTip="Öğün"/>
-                <ComboBox Style="{StaticResource FieldCompactCombo}" Width="95" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding Status}" ToolTip="Durum"/>
-                <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" IsDefault="True"/>
+                <!-- Filtre alanlarina GORUNUR etiket eklendi. Once yalnizca ToolTip
+                     vardi: dokuz bos kutu yan yana duruyor, kullanici fareyi uzerine
+                     getirip beklemeden hangisinin ne oldugunu bilemiyordu. Ogrenciler
+                     ekranindaki etiketli desenin aynisi. -->
+                <StackPanel Width="125" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Başlangıç" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding StartsOn}" ToolTip="Başlangıç tarihi"/></StackPanel>
+                <StackPanel Width="125" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Bitiş" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding EndsOn}" ToolTip="Bitiş tarihi"/></StackPanel>
+                <StackPanel Width="95" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding StudentNo}" ToolTip="Öğrenci NO"/></StackPanel>
+                <StackPanel Width="105" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding CardNumber}" ToolTip="Kart no"/></StackPanel>
+                <StackPanel Width="150" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Ad soyad" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding StudentName}" ToolTip="Ad soyad"/></StackPanel>
+                <StackPanel Width="105" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding ClassName}" ToolTip="Sınıf"/></StackPanel>
+                <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Grup" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroup}" ToolTip="Grup"/></StackPanel>
+                <StackPanel Width="110" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMeal}" ToolTip="Öğün"/></StackPanel>
+                <StackPanel Width="95" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Durum" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding Status}" ToolTip="Durum"/></StackPanel>
+                <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" IsDefault="True" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
             </WrapPanel>
         </Border>
 
@@ -96,17 +100,26 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="TARİH" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}" Width="82"/>
-                        <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="72"/>
-                        <DataGridTextColumn Header="KART NO" Binding="{Binding CardNumber}" Width="92"/>
-                        <DataGridTextColumn Header="ÖĞÜN" Binding="{Binding MealName}" Width="82"/>
+                        <!-- TARIH ve OGUN genisletildi: "09.09.2026" 82px'e sigmiyor
+                             ("09.09.202" olarak kesiliyordu), "Ogle Yemegi" de oyle
+                             ("Ogle Yem"). Yer, tek/iki karakter tasiyan SINIF ile
+                             kisa degerli KAYNAK sutunlarindan alindi. -->
+                        <!-- Width="Auto": DataGridCell stilinde her hucrede 22px yatay
+                             dolgu var (Padding 11,0). Sabit piksel verildiginde bu dolgu
+                             metinden calindigi icin "09.09.2026" 95px'te bile
+                             "09.09.202" olarak kesiliyordu. Auto icerigi VE dolguyu
+                             birlikte olcer; kesme kalmaz. -->
+                        <DataGridTextColumn Header="TARİH" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}" Width="Auto" MinWidth="95"/>
+                        <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="66"/>
+                        <DataGridTextColumn Header="KART NO" Binding="{Binding CardNumber}" Width="Auto" MinWidth="88"/>
+                        <DataGridTextColumn Header="ÖĞÜN" Binding="{Binding MealName}" Width="Auto" MinWidth="90"/>
                         <DataGridTextColumn Header="AD SOYAD" Binding="{Binding StudentName}" Width="*" MinWidth="145"/>
-                        <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="72"/>
+                        <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="58"/>
                         <DataGridTextColumn Header="ADET" Binding="{Binding Quantity}" Width="52"/>
                         <DataGridTextColumn Header="KULL." Binding="{Binding ConsumedQuantity}" Width="52"/>
                         <DataGridTextColumn Header="KALAN" Binding="{Binding RemainingQuantity}" Width="55"/>
                         <DataGridTextColumn Header="DURUM" Binding="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=Status}" Width="76"/>
-                        <DataGridTextColumn Header="KAYNAK" Binding="{Binding Source, Converter={StaticResource EnumText}, ConverterParameter=Source}" Width="115"/>
+                        <DataGridTextColumn Header="KAYNAK" Binding="{Binding Source, Converter={StaticResource EnumText}, ConverterParameter=Source}" Width="80"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <StackPanel Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Hakedişler yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel>

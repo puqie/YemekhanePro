@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using System.Windows.Input;
@@ -9,22 +9,44 @@ using Yemekhane.Desktop.Services;
 
 namespace Yemekhane.Desktop.ViewModels;
 
-public sealed class StudentDetailTabViewModel(string title, Func<Task<IReadOnlyList<object>>> loader) : ObservableObject
+public sealed class StudentDetailTabViewModel(string key, Func<Task<IReadOnlyList<object>>> loader) : ObservableObject
 {
     private bool isLoaded, isLoading;
     private string? error;
-    public string Title { get; } = title;
+
+    /// <summary>
+    /// API'ye giden KIMLIK. Ingilizce kalir cunku LoadTabAsync bu degeri switch'liyor;
+    /// ekranda gorunen metinle karistirilirsa sunucu sekmeyi tanimaz.
+    /// </summary>
+    public string Key { get; } = key;
+
+    /// <summary>
+    /// Ekranda gorunen Turkce baslik; bilinmeyen anahtar oldugu gibi gosterilir.
+    /// Baslik sozlugu StudentTabFormatter'da, alan tanimlariyla ayni yerde tutulur:
+    /// bir sekme eklendiginde baslik ve alan listesi birlikte yazilsin diye.
+    /// </summary>
+    public string Title { get; } = StudentTabFormatter.TabTitle(key);
+
     public ObservableCollection<object> Items { get; } = [];
-    public bool IsLoaded { get => isLoaded; private set => Set(ref isLoaded, value); }
+    public bool IsLoaded { get => isLoaded; private set { if (Set(ref isLoaded, value)) Raise(nameof(IsEmpty)); } }
     public bool IsLoading { get => isLoading; private set => Set(ref isLoading, value); }
-    public string? Error { get => error; private set => Set(ref error, value); }
+    public string? Error { get => error; private set { if (Set(ref error, value)) Raise(nameof(IsEmpty)); } }
+
+    /// <summary>
+    /// "Kayit yok" YALNIZCA yukleme basariyla bitip hic satir gelmediyse dogrudur.
+    /// Yuklenmeden once (henuz bilinmiyor) ya da hata varsa (alinamadi) false kalir:
+    /// aksi halde kullanici gercek kaydini kaybettigini sanir.
+    /// </summary>
+    public bool IsEmpty => IsLoaded && Error is null && Items.Count == 0;
+    public string EmptyText => StudentTabFormatter.EmptyText;
+
     public async Task LoadAsync()
     {
         if (IsLoaded || IsLoading) return;
         IsLoading = true; Error = null;
         try { foreach (var item in await loader()) Items.Add(item); IsLoaded = true; }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or LoginRequiredException) { Error = "Sekme verisi alınamadı."; }
-        finally { IsLoading = false; }
+        finally { IsLoading = false; Raise(nameof(IsEmpty)); }
     }
 }
 
@@ -102,7 +124,49 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public bool IsCardWorkflowOpen { get => isCardWorkflowOpen; private set => Set(ref isCardWorkflowOpen, value); }
     public string? CardWorkflowMessage { get => cardWorkflowMessage; private set => Set(ref cardWorkflowMessage, value); }
     public bool IsCardReaderAvailable => cardReadSource.IsAvailable;
-    public StudentListItem? SelectedStudent { get => selectedStudent; set { if (Set(ref selectedStudent, value)) (GrantEntitlementCommand as RelayCommand)?.Refresh(); } }
+    /// <summary>
+    /// Listeden bir ogrenci secilir secilmez form alanlari (NO / Ad / Soyad) O ogrencinin
+    /// degerleriyle DOLDURULUR.
+    ///
+    /// Onceden bu ucu YALNIZCA OpenEdit() dolduruyordu, yani "Duzenle" dugmesine basilana
+    /// kadar. Kullanici listeden ELİF ÇETİN'e tiklayinca sagdaki "Ogrenci Formu" panelinin
+    /// ust kutulari BOS kaliyor, secilen ogrencinin kim oldugu formda hic gorunmuyordu.
+    ///
+    /// Form varsayilan olarak SALT OKUNUR kalir: IsFormOpen'a burada DOKUNULMAZ, dolayisiyla
+    /// kutular yalnizca "Duzenle" (OpenEdit) sonrasinda yazilabilir hale gelir. Kaydet komutu
+    /// da IsFormOpen'a bagli oldugundan salt okunur haldeki bu degerler kazara gonderilemez.
+    ///
+    /// null atamasi da doldurma sayilir ve formu TEMIZLER: aksi halde secim kalkinca onceki
+    /// ogrencinin NO/Ad/Soyad'i ekranda kalir ve SameStudent korumasiyla gizlenen salt okunur
+    /// blogun aksine yanlis ogrenciyi gostermeye devam ederdi.
+    /// </summary>
+    public StudentListItem? SelectedStudent
+    {
+        get => selectedStudent;
+        set
+        {
+            if (!Set(ref selectedStudent, value)) return;
+            (GrantEntitlementCommand as RelayCommand)?.Refresh();
+            FillFormFromSelection(value);
+        }
+    }
+
+    /// <summary>
+    /// Secili ogrencinin kimlik alanlarini forma yazar. Not/TC/Adres liste ogesinde YOKTUR;
+    /// onlar ancak api.GetAsync donunce (Details) bilinir, o yuzden burada TEMIZLENIR --
+    /// yoksa onceki ogrencinin notu yeni secimin yaninda durur.
+    ///
+    /// "Yeni Ogrenci" akisi BOZULMAZ: OpenCreate() SelectedStudent'a hic dokunmaz, kendi
+    /// ClearForm() cagrisini bu metottan SONRA yapar; form bos baslar.
+    /// </summary>
+    private void FillFormFromSelection(StudentListItem? item)
+    {
+        FormStudentNo = item?.StudentNo ?? "";
+        FormFirstName = item?.FirstName ?? "";
+        FormLastName = item?.LastName ?? "";
+        FormNationalId = FormAddress = FormNotes = null;
+        RaiseForm();
+    }
     public StudentDetails? Details { get => details; private set { if (Set(ref details, value)) (GrantEntitlementCommand as RelayCommand)?.Refresh(); } }
     public StudentDetailTabViewModel? SelectedTab { get => selectedTab; set { if (Set(ref selectedTab, value) && value is not null) _ = value.LoadAsync(); } }
     public bool CanWrite => permissions.Contains("students.write");
@@ -231,7 +295,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         {
             await api.GiveLeaveAsync(new CreateLeaveRequest(Details.Id, DateOnly.FromDateTime(LeaveStartsOn), DateOnly.FromDateTime(LeaveEndsOn),
                 LeaveType, null, LeaveBehavior, Guid.Empty));
-            var tab = Tabs.FirstOrDefault(x => x.Title == "Leaves"); if (tab is not null && !tab.IsLoaded) SelectedTab = tab;
+            // Key: API kimligi (Ingilizce); Title artik Turkce oldugu icin arama Key uzerinden.
+            var tab = Tabs.FirstOrDefault(x => x.Key == "Leaves");
+            if (tab is not null && !tab.IsLoaded) SelectedTab = tab;
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "İzin kaydedilemedi."); }
     }

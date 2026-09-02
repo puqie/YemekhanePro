@@ -102,8 +102,11 @@
                     <Button Style="{StaticResource Action}" Content="Hata Raporunu İndir"
                             Command="{Binding DownloadErrorsCommand}"
                             Visibility="{Binding HasErrorRows, Converter={StaticResource BoolToVisibility}}"/>
-                    <Button Style="{StaticResource Action}" Content="İçe Aktar" Command="{Binding ApplyCommand}"
-                            Background="{StaticResource InfoBrush}" Foreground="White" BorderBrush="{StaticResource InfoBrush}"/>
+                    <!-- Bu ekranin birincil eylemi. Once elle InfoBrush (MAVI) ile
+                         boyanmisti: marka rengi turuncu oldugu icin tek mavi dugme
+                         olarak duruyordu, ustelik elle boyama Primary stilindeki
+                         hover/disabled tetikleyicilerini de gecersiz kiliyordu. -->
+                    <Button Style="{StaticResource Primary}" Content="İçe Aktar" Command="{Binding ApplyCommand}"/>
                 </StackPanel>
             </StackPanel>
         </Border>

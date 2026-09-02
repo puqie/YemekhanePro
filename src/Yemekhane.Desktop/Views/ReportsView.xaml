@@ -55,7 +55,7 @@
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDecisionFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="KARAR"/><TextBox Style="{StaticResource FieldCompact}" Width="90" Text="{Binding Decision, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowStatusFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="DURUM"/><TextBox Style="{StaticResource FieldCompact}" Width="105" Text="{Binding Status, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                     </WrapPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Style="{StaticResource Action}" Content="Sıfırla" Command="{Binding ResetCommand}"/><Button Padding="16,6" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0" Content="Uygula" Command="{Binding ApplyCommand}" IsDefault="True"/></StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Style="{StaticResource Action}" Content="Sıfırla" Command="{Binding ResetCommand}"/><Button Style="{StaticResource Primary}" Padding="16,6" Content="Uygula" Command="{Binding ApplyCommand}" IsDefault="True"/></StackPanel>
                 </StackPanel>
             </controls:PageShell.Filters>
 
@@ -80,7 +80,10 @@
 
                 <Border Grid.Row="1" Style="{StaticResource Panel}">
                     <Grid>
-                        <DataGrid x:Name="ReportGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" SelectionMode="Extended" SelectionUnit="FullRow" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" Sorting="ReportGrid_Sorting" SelectionChanged="ReportGrid_SelectionChanged" ColumnReordered="ReportGrid_ColumnReordered" AutomationProperties.Name="Dinamik rapor tablosu">
+                        <!-- Padding alt degeri 16: yatay kaydirma cubugu DataGrid'in ICINDE cizilir ve
+                             sutunlar sigmadiginda son gorunur satirin USTUNE biner; o satir hicbir
+                             zaman tam okunamiyordu. Alt dolgu cubuga kendi yerini acar. -->
+                        <DataGrid x:Name="ReportGrid" Padding="0,0,0,16" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" SelectionMode="Extended" SelectionUnit="FullRow" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" Sorting="ReportGrid_Sorting" SelectionChanged="ReportGrid_SelectionChanged" ColumnReordered="ReportGrid_ColumnReordered" AutomationProperties.Name="Dinamik rapor tablosu">
                             <DataGrid.InputBindings><KeyBinding Modifiers="Control" Key="C" Command="{Binding CopySelectedCommand}"/><KeyBinding Modifiers="Control" Key="P" Command="{Binding ExportPdfCommand}"/><KeyBinding Modifiers="Control" Key="E" Command="{Binding ExportExcelCommand}"/></DataGrid.InputBindings>
                         </DataGrid>
                         <TextBlock Text="Bu filtrelerle kayıt bulunamadı. Tarih aralığını veya filtreleri değiştirin." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>

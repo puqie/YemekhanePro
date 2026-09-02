@@ -1,4 +1,4 @@
-using Yemekhane.Application.Common;
+﻿using Yemekhane.Application.Common;
 
 namespace Yemekhane.Application.Sms;
 
@@ -83,7 +83,14 @@ public sealed record BulkSmsPreview(int MatchedStudents, int RecipientCount, int
     string PreviewToken, DateTimeOffset ExpiresAt);
 public sealed record ApplyBulkSmsRequest(BulkSmsRequest Request, string PreviewToken);
 public sealed record BulkSmsEnqueueResult(int QueuedCount, int ExistingCount, bool IdempotentReplay);
-public sealed record SmsTargetStudent(Guid Id, string StudentNo, string Name);
+// Ayni ad-soyada sahip ogrenciler bu okul verisinde YAYGIN (dort ayri "ADA AKGUN").
+// Alici listesi yalnizca no+ad gosterirse operator yanlis ogrenciyi secip
+// YANLIS VELIYE SMS gonderebilir; sinif/sube alanlari bu ayirt ediciligi saglar.
+// Ogrencinin ClassId/SectionId alanlari NULLABLE oldugundan (sinifi atanmamis
+// ogrenci olabilir) bu iki alan da null olabilir; varsayilan deger verilerek
+// mevcut cagri yerleri bozulmadan sozlesme genisletilir.
+public sealed record SmsTargetStudent(Guid Id, string StudentNo, string Name,
+    string? ClassName = null, string? SectionName = null);
 public sealed record SmsTargetOption(Guid Id, string Name);
 public sealed record SmsTargetOptions(IReadOnlyList<SmsTargetStudent> Students,
     IReadOnlyList<SmsTargetOption> Classes, IReadOnlyList<SmsTargetOption> Groups);

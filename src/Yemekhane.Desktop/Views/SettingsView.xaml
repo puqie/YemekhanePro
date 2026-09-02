@@ -29,7 +29,7 @@
             <StackPanel><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
         </controls:PageShell.FooterLeft>
         <controls:PageShell.FooterRight>
-            <StackPanel Orientation="Horizontal" Visibility="{Binding CanManage, Converter={StaticResource Bool}}"><TextBlock Text="Kaydedilmemiş değişiklikler" Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="{Binding IsDirty, Converter={StaticResource Bool}}"/><Button Content="İptal" Command="{Binding CancelCommand}"/><Button Content="Kaydet" Command="{Binding SaveCommand}" Background="{StaticResource AccentBrush}" Foreground="White"/></StackPanel>
+            <StackPanel Orientation="Horizontal" Visibility="{Binding CanManage, Converter={StaticResource Bool}}"><TextBlock Text="Kaydedilmemiş değişiklikler" Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="{Binding IsDirty, Converter={StaticResource Bool}}"/><Button Content="İptal" Command="{Binding CancelCommand}"/><Button Content="Kaydet" Command="{Binding SaveCommand}" Style="{StaticResource Primary}"/></StackPanel>
         </controls:PageShell.FooterRight>
 
         <Grid>
