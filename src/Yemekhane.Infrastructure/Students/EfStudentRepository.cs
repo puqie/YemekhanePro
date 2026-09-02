@@ -17,8 +17,24 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
     {
         var students = dbContext.Students.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(query.StudentNo)) students = students.Where(x => x.StudentNo == query.StudentNo.Trim());
-        if (!string.IsNullOrWhiteSpace(query.FirstName)) students = students.Where(x => EF.Functions.Like(x.FirstName, $"%{query.FirstName.Trim()}%"));
-        if (!string.IsNullOrWhiteSpace(query.LastName)) students = students.Where(x => EF.Functions.Like(x.LastName, $"%{query.LastName.Trim()}%"));
+        // Ad/Soyad/genel arama SearchName uzerinden yapilir, ham sutunlar uzerinden DEGIL:
+        // SQLite'in LIKE'i yalnizca ASCII harflerde buyuk/kucuk harf duyarsizdir. Ham
+        // sutunla "ali" ALİ'yi, "öz" ÖZTÜRK'u bulamiyordu (canli API'de dogrulandi: 0 sonuc),
+        // yalnizca birebir buyuk harfli "ÖZ" sonuc veriyordu. SearchName Turkce kurallarla
+        // normallestirilmis "AD SOYAD" metnidir (bkz. TurkishSearchText); arama terimi de
+        // ayni kuralla normallestirilip sozcuk BASINDAN eslestirilir: ad "ali" ile
+        // baslayanlar, soyad " ali" ile baslayanlar. Sozcuk icinden eslesme (HALİL, NAİLE)
+        // kasten yoktur; kullanici ad filtresine "ali" yazinca ALİ'leri bekler.
+        if (!string.IsNullOrWhiteSpace(query.FirstName))
+        {
+            var value = TurkishSearchText.Normalize(query.FirstName);
+            students = students.Where(x => x.SearchName.StartsWith(value));
+        }
+        if (!string.IsNullOrWhiteSpace(query.LastName))
+        {
+            var value = " " + TurkishSearchText.Normalize(query.LastName);
+            students = students.Where(x => x.SearchName.Contains(value));
+        }
         if (query.ClassId.HasValue) students = students.Where(x => x.ClassId == query.ClassId);
         if (query.SectionId.HasValue) students = students.Where(x => x.SectionId == query.SectionId);
         if (query.DepartmentId.HasValue) students = students.Where(x => x.DepartmentId == query.DepartmentId);
@@ -47,10 +63,14 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         }
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            var term = $"%{query.Search.Trim()}%";
-            students = students.Where(x => EF.Functions.Like(x.StudentNo, term) || EF.Functions.Like(x.FirstName, term)
-                || EF.Functions.Like(x.LastName, term) || dbContext.StudentCards.Any(card => card.StudentId == x.Id
-                    && card.IsActive && EF.Functions.Like(card.CardNumber, term)));
+            // Numara ve kart BASTAN eslesir: "5009" onceden %5009% ile 8350090-8350099
+            // kartlarini da getirip 9 sonuc uretiyordu; kullanici tek ogrenciyi ariyordu.
+            var term = query.Search.Trim();
+            var normalized = TurkishSearchText.Normalize(term);
+            var lastNameTerm = " " + normalized;
+            students = students.Where(x => x.StudentNo.StartsWith(term)
+                || x.SearchName.StartsWith(normalized) || x.SearchName.Contains(lastNameTerm)
+                || dbContext.StudentCards.Any(card => card.StudentId == x.Id && card.IsActive && card.CardNumber.StartsWith(term)));
         }
 
         var total = await students.CountAsync(cancellationToken);
