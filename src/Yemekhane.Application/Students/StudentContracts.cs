@@ -78,4 +78,6 @@ public interface IStudentRepository
     Task<Guid> AddAsync(SaveStudentRequest request, CancellationToken cancellationToken);
     Task<bool> UpdateAsync(Guid id, SaveStudentRequest request, CancellationToken cancellationToken);
     Task<bool> SoftDeleteAsync(Guid id, CancellationToken cancellationToken);
+    /// <summary>Yalnizca fotograf yolunu yazar; tam kaydi yeniden gondermek gerekmez.</summary>
+    Task<bool> SetPhotoPathAsync(Guid id, string? photoPath, CancellationToken cancellationToken);
 }

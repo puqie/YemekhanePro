@@ -44,16 +44,27 @@ public sealed class StudentsLayoutTests
             Assert.True(form.ActualWidth > 0, "Ogrenci formu gorunur degil.");
         });
 
-    /// <summary>Kaldirilan alanlar formda bulunmamali.</summary>
+    /// <summary>
+    /// TC / Adres gibi hassas ve uzun alanlar sag paneldeki OZETTE yer almaz (panel 460px,
+    /// kisa kalmali); yalnizca Ogrenci Karti cekmecesinde duzenlenir. Onceden bu alanlar
+    /// hicbir yerde yoktu; simdi cekmecede OLMALI, panelde OLMAMALI.
+    /// </summary>
     [Theory]
     [InlineData("FormNationalId")]
     [InlineData("FormAddress")]
-    public void KaldirilanAlanFormdaYok(string bindingPath)
+    [InlineData("FormFingerprintId")]
+    [InlineData("FormPid")]
+    public void HassasAlanYalnizcaCekmecede(string bindingPath)
     {
         var xaml = File.ReadAllText(Path.Combine(
             RepositoryRoot(), "src", "Yemekhane.Desktop", "Views", "StudentsView.xaml"));
+        var drawerStart = xaml.IndexOf("x:Name=\"StudentCardDrawer\"", StringComparison.Ordinal);
+        Assert.True(drawerStart > 0, "Ogrenci Karti cekmecesi (StudentCardDrawer) bulunamadi.");
+        var panel = xaml[..drawerStart];
+        var drawer = xaml[drawerStart..];
 
-        Assert.DoesNotContain(bindingPath, xaml);
+        Assert.DoesNotContain(bindingPath, panel);
+        Assert.Contains(bindingPath, drawer);
     }
 
     /// <summary>Kart okuma modali bilerek korunur.</summary>
@@ -195,7 +206,10 @@ public sealed class StudentsLayoutTests
 
             var cardNoBox = Descendants(view).OfType<TextBox>()
                 .First(box => box.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path == "SelectedStudent.CardNumber");
-            var noBox = Descendants(view).OfType<TextBox>()
+            // Yazilabilir NO kutusu artik Ogrenci Karti CEKMECESINDEDIR; paneldeki NO kutusu
+            // her zaman salt okunur ozettir. Karsilastirma cekmecedeki kutuyla yapilir.
+            var drawer = (FrameworkElement)view.FindName("StudentCardDrawer")!;
+            var noBox = Descendants(drawer).OfType<TextBox>()
                 .First(box => box.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path == "FormStudentNo");
 
             Assert.True(cardNoBox.IsReadOnly, "Kart No alani salt okunur olmali.");

@@ -3,8 +3,11 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Yemekhane.Application.Cards;
 using Yemekhane.Application.Leaves;
+using Yemekhane.Application.Organization;
 using Yemekhane.Application.Students;
 using Yemekhane.Desktop.Services;
 
@@ -89,11 +92,33 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private StudentDetails? details;
     private StudentDetailTabViewModel? selectedTab;
     private Guid? routeClassId, routeGroupId;
+    /// <summary>
+    /// Fotograf durumu: <c>photoBytes</c> sunucudaki (Details.PhotoPath) dosyanin icerigi;
+    /// <c>pendingPhoto</c> kullanicinin "Resim Sec" ile sectigi ama HENUZ kaydedilmemis dosya;
+    /// <c>photoRemoved</c> "Kaldir"a basildigini soyler. Yukleme/silme Kaydet'te yapilir: yeni
+    /// ogrencide kimlik daha yokken dosya gonderilemez, duzenlemede de Iptal ile geri alinabilmeli.
+    /// </summary>
+    private byte[]? photoBytes, pendingPhoto;
+    private string? pendingPhotoName, photoError;
+    private bool photoRemoved, lookupsLoaded;
+    private ImageSource? photoImage;
+    private DateTime? formBirthDate;
+    private string formStudentNo = "", formFirstName = "", formLastName = "";
+    private string? formNationalId, formAddress, formNotes, formFingerprintId, formPid;
+    private readonly IFileDialogService fileDialog;
 
     public StudentsViewModel(IStudentApiClient api, IShellNavigationService navigation, IEnumerable<string> permissions,
-        bool task43Available = false, ICardReadEventSource? cardReadSource = null)
+        bool task43Available = false, ICardReadEventSource? cardReadSource = null, IFileDialogService? fileDialog = null)
     {
         this.api = api; this.navigation = navigation; this.permissions = permissions.ToHashSet(StringComparer.Ordinal);
+        // Varsayilan gercek diyalog: App.xaml.cs'e dokunmadan uretimde calisir; testler kendi sahtesini verir.
+        this.fileDialog = fileDialog ?? new FileDialogService();
+        FormClass = new LookupPickerViewModel(LookupKind.Class, api);
+        FormSection = new LookupPickerViewModel(LookupKind.Section, api);
+        FormDepartment = new LookupPickerViewModel(LookupKind.Department, api);
+        FormJob = new LookupPickerViewModel(LookupKind.Job, api);
+        SelectPhotoCommand = new RelayCommand(SelectPhoto, () => IsFormOpen);
+        RemovePhotoCommand = new RelayCommand(RemovePhoto, () => IsFormOpen && HasPhoto);
         this.task43Available = task43Available || (navigation.IsAvailable(ShellRoutes.Entitlements) && this.permissions.Contains("entitlements.bulk"));
         this.cardReadSource = cardReadSource ?? new DeviceCardReadEventSource(null);
         uiContext = SynchronizationContext.Current;
@@ -188,7 +213,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             if (!Set(ref selectedStudent, value)) return;
             FillFormFromSelection(value);
             IsDeleteArmed = false; InfoMessage = null;
-            Raise(nameof(CardActionText));
+            Raise(nameof(CardActionText)); Raise(nameof(DetailCardNumber)); Raise(nameof(DetailDepartmentName));
             RefreshCommands();
         }
     }
@@ -226,6 +251,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             if (!IsFormOpen) { FormNotes = value?.Notes; Raise(nameof(FormNotes)); }
             IsDeleteArmed = false;
             Raise(nameof(CardActionText)); Raise(nameof(ShowDeactivate)); Raise(nameof(ShowActivate));
+            Raise(nameof(FormSubtitle)); Raise(nameof(DetailDepartmentName)); Raise(nameof(DetailJobName)); Raise(nameof(PhotoPath)); Raise(nameof(DetailCardNumber));
             RefreshCommands();
         }
     }
@@ -261,12 +287,39 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         ? !string.IsNullOrWhiteSpace(SelectedStudent.CardNumber)
         : true;
 
-    public string FormStudentNo { get; set; } = "";
-    public string FormFirstName { get; set; } = "";
-    public string FormLastName { get; set; } = "";
-    public string? FormNationalId { get; set; }
-    public string? FormAddress { get; set; }
-    public string? FormNotes { get; set; }
+    // Bu alanlar auto-property DEGIL: her atama PropertyChanged tetiklemeli. Once yalnizca
+    // RaiseForm() cagrildiginda bildirim gidiyordu; forma disaridan tek bir alan yazan her
+    // yol (ve programatik atama) ekranda GORUNMUYORDU. Set(...) ile atama ve bildirim tek yerde.
+    public string FormStudentNo { get => formStudentNo; set { if (Set(ref formStudentNo, value ?? "")) { Raise(nameof(FormSubtitle)); ClearValidationError(); } } }
+    public string FormFirstName { get => formFirstName; set { if (Set(ref formFirstName, value ?? "")) ClearValidationError(); } }
+    public string FormLastName { get => formLastName; set { if (Set(ref formLastName, value ?? "")) ClearValidationError(); } }
+    public string? FormNationalId { get => formNationalId; set { if (Set(ref formNationalId, value)) ClearValidationError(); } }
+    public string? FormAddress { get => formAddress; set => Set(ref formAddress, value); }
+    public string? FormNotes { get => formNotes; set => Set(ref formNotes, value); }
+    /// <summary>Sicil karti alanlari (eski programdaki form): dogum tarihi, parmak izi, PI ID ve dort tanim.</summary>
+    public DateTime? FormBirthDate { get => formBirthDate; set { if (Set(ref formBirthDate, value)) ClearValidationError(); } }
+    public string? FormFingerprintId { get => formFingerprintId; set => Set(ref formFingerprintId, value); }
+    public string? FormPid { get => formPid; set => Set(ref formPid, value); }
+    public LookupPickerViewModel FormClass { get; }
+    public LookupPickerViewModel FormSection { get; }
+    public LookupPickerViewModel FormDepartment { get; }
+    public LookupPickerViewModel FormJob { get; }
+    /// <summary>Cekmece alt basligi: yeni kayit mi, hangi ogrenci duzenleniyor.</summary>
+    public string FormSubtitle => Details is null ? "Yeni öğrenci kaydı" : $"No {Details.StudentNo} · {Details.FirstName} {Details.LastName}";
+    /// <summary>Sag panel ozeti: Bolum ve Gorev adlari tanim listelerinden cozulur (Details yalnizca Id tasir).</summary>
+    public string? DetailDepartmentName => FormDepartment.NameOf(Details?.DepartmentId) ?? SelectedStudent?.DepartmentName;
+    public string? DetailJobName => FormJob.NameOf(Details?.JobId);
+    /// <summary>Cekmecedeki salt okunur Kart No: yalnizca secim ve detay AYNI ogrenciyken (bkz. SameStudent).</summary>
+    public string? DetailCardNumber => Details is not null && SelectedStudent?.Id == Details.Id ? SelectedStudent.CardNumber : null;
+    /// <summary>Cekmecedeki 96px onizleme; fotograf yoksa null ve gri siluet gorunur.</summary>
+    public ImageSource? PhotoImage { get => photoImage; private set { if (Set(ref photoImage, value)) { Raise(nameof(HasPhoto)); (RemovePhotoCommand as RelayCommand)?.Refresh(); } } }
+    public bool HasPhoto => PhotoImage is not null;
+    public string? PhotoError { get => photoError; private set { if (Set(ref photoError, value)) Raise(nameof(HasPhotoError)); } }
+    public bool HasPhotoError => !string.IsNullOrWhiteSpace(PhotoError);
+    /// <summary>Kaydet'te yuklenecek dosya adi (test/gozlem icin); yoksa null.</summary>
+    public string? PendingPhotoName => pendingPhotoName;
+    /// <summary>Kaydedilmis fotografin sunucudaki goreli yolu.</summary>
+    public string? PhotoPath => Details?.PhotoPath;
     public string LeaveType { get; set; } = "Mazeret";
     public DateTime LeaveStartsOn { get; set; } = DateTime.Today;
     public DateTime LeaveEndsOn { get; set; } = DateTime.Today;
@@ -297,6 +350,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public ICommand GrantEntitlementCommand { get; }
     public ICommand OpenStudentDetailCommand { get; }
     public ICommand OpenSmsCommand { get; }
+    public ICommand SelectPhotoCommand { get; }
+    public ICommand RemovePhotoCommand { get; }
 
     /// <summary>
     /// Dugmelerin etkin/pasif durumu Details, SelectedStudent ve IsFormOpen'a baglidir; WPF
@@ -316,6 +371,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         (ReplaceCardCommand as AsyncCommand)?.Refresh();
         (GrantEntitlementCommand as RelayCommand)?.Refresh();
         (OpenSmsCommand as RelayCommand)?.Refresh();
+        (SelectPhotoCommand as RelayCommand)?.Refresh();
+        (RemovePhotoCommand as RelayCommand)?.Refresh();
     }
 
     public async Task InitializeAsync() => await LoadAsync(1);
@@ -384,11 +441,11 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         Details = await api.GetAsync(id); IsQuickDetailOpen = false; IsDetailOpen = true;
         // Rota ile (orn. Panel'den) acilan detay listede secili olmayabilir; form yine de
         // bu ogrenciyi gostermeli, onceki secimin adini degil.
-        if (SelectedStudent?.Id != id)
-        {
-            FormStudentNo = Details.StudentNo; FormFirstName = Details.FirstName; FormLastName = Details.LastName;
-            FormNationalId = Details.NationalId; FormAddress = Details.Address; FormNotes = Details.Notes; RaiseForm();
-        }
+        if (SelectedStudent?.Id != id) FillFormFromDetails(Details);
+        // Fotograf ve tanim adlari (Bolum/Gorev) detayla birlikte gelir; hata olursa panel
+        // bos kalir ama ogrenci detayi acilmaya devam eder.
+        _ = LoadPhotoAsync(Details);
+        if (!lookupsLoaded) _ = EnsureLookupsAsync();
         Tabs.Clear();
         Tabs.Add(new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
             ([new StudentDetailRow($"No: {Details.StudentNo}  |  Ad Soyad: {Details.FirstName} {Details.LastName}  |  Durum: {(Details.IsActive ? "Aktif" : "Pasif")}")])));
@@ -426,6 +483,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         SelectedStudent = listed;
         FillFormFromSelection(listed);
         FormNotes = fresh.Notes; Raise(nameof(FormNotes));
+        await LoadPhotoAsync(fresh);
     }
 
     private async Task ReloadTabAsync(string key)
@@ -445,12 +503,119 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         if (wasSelected) SelectedTab = fresh; else if (old.IsLoaded) await fresh.LoadAsync();
     }
 
-    private void OpenCreate() { IsFormOpen = false; Details = null; ClearForm(); IsFormOpen = true; IsDetailOpen = true; IsQuickDetailOpen = false; }
+    /// <summary>
+    /// "Yeni Ogrenci" / "Duzenle" Ogrenci Karti cekmecesini acar. Tanim listeleri her
+    /// acilista sunucudan yenilenir (Tanimlar ekraninda eklenen bir sube burada da gorunsun);
+    /// yukleme bitince secimler Details'e gore yeniden kurulur.
+    /// </summary>
+    private void OpenCreate()
+    {
+        IsFormOpen = false; Details = null; ClearForm(); ResetPhotoState(null);
+        IsFormOpen = true; IsDetailOpen = true; IsQuickDetailOpen = false;
+        _ = PrepareFormAsync(null);
+    }
     private void OpenEdit()
     {
         if (Details is null) return;
-        FormStudentNo = Details.StudentNo; FormFirstName = Details.FirstName; FormLastName = Details.LastName;
-        FormNationalId = Details.NationalId; FormAddress = Details.Address; FormNotes = Details.Notes; IsFormOpen = true; RaiseForm();
+        FillFormFromDetails(Details); ResetPhotoState(photoBytes); IsFormOpen = true;
+        _ = PrepareFormAsync(Details);
+    }
+
+    /// <summary>Dort tanim listesini yukler, sonra secimleri verilen kayda gore kurar.</summary>
+    private async Task PrepareFormAsync(StudentDetails? source)
+    {
+        await EnsureLookupsAsync(refresh: true);
+        FormClass.Select(source?.ClassId); FormSection.Select(source?.SectionId);
+        FormDepartment.Select(source?.DepartmentId); FormJob.Select(source?.JobId);
+    }
+
+    private async Task EnsureLookupsAsync(bool refresh = false)
+    {
+        if (lookupsLoaded && !refresh) return;
+        await Task.WhenAll(FormClass.LoadAsync(), FormSection.LoadAsync(), FormDepartment.LoadAsync(), FormJob.LoadAsync());
+        lookupsLoaded = true;
+        Raise(nameof(DetailDepartmentName)); Raise(nameof(DetailJobName));
+    }
+
+    private void FillFormFromDetails(StudentDetails d)
+    {
+        FormStudentNo = d.StudentNo; FormFirstName = d.FirstName; FormLastName = d.LastName;
+        FormNationalId = d.NationalId; FormAddress = d.Address; FormNotes = d.Notes;
+        FormBirthDate = d.BirthDate?.ToDateTime(TimeOnly.MinValue); FormFingerprintId = d.FingerprintId; FormPid = d.Pid;
+        FormClass.Select(d.ClassId); FormSection.Select(d.SectionId); FormDepartment.Select(d.DepartmentId); FormJob.Select(d.JobId);
+        RaiseForm();
+    }
+
+    /// <summary>
+    /// Sunucudaki fotografi indirir ve onizlemeyi kurar. Fotografsiz kayitta indirme YAPILMAZ
+    /// (404 beklemek yerine PhotoPath'e bakilir). Baska bir ogrenciye gecildiyse gec gelen
+    /// yanit yok sayilir; aksi halde A'nin fotografi B'nin kartinda gorunurdu.
+    /// </summary>
+    private async Task LoadPhotoAsync(StudentDetails? d)
+    {
+        photoBytes = null;
+        if (d is null || string.IsNullOrWhiteSpace(d.PhotoPath)) { if (!IsFormOpen) ResetPhotoState(null); return; }
+        try
+        {
+            var bytes = await api.DownloadPhotoAsync(d.Id);
+            if (Details?.Id != d.Id) return;
+            photoBytes = bytes;
+            if (!IsFormOpen) ResetPhotoState(bytes);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException or LoginRequiredException or ApiRequestException)
+        { PhotoError = "Fotoğraf alınamadı."; }
+    }
+
+    /// <summary>Bekleyen secim/kaldirma atilir; onizleme verilen (sunucudaki) icerige doner.</summary>
+    private void ResetPhotoState(byte[]? serverBytes)
+    {
+        pendingPhoto = null; pendingPhotoName = null; photoRemoved = false; PhotoError = null;
+        PhotoImage = StudentPhotoImage.Create(serverBytes);
+        Raise(nameof(PendingPhotoName));
+    }
+
+    /// <summary>
+    /// "Resim Sec": dosya diyalogundan JPG/PNG alinir, 2 MB siniri istemcide de denetlenir
+    /// (sunucu ayrica denetler). Dosya belleğe okunur; disk kilidi birakilmaz.
+    /// </summary>
+    private void SelectPhoto()
+    {
+        var path = fileDialog.OpenFile("Fotoğraf Seç", "Resim dosyaları (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png");
+        if (string.IsNullOrWhiteSpace(path)) return;
+        StagePhoto(path);
+    }
+
+    /// <summary>Diyalogsuz yol (test ve surukle-birak icin): dosyayi dogrulayip bekleyen fotograf yapar.</summary>
+    public void StagePhoto(string path)
+    {
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is not (".jpg" or ".jpeg" or ".png")) { PhotoError = "Yalnızca JPG ve PNG dosyaları seçilebilir."; return; }
+        byte[] bytes;
+        try { bytes = File.ReadAllBytes(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { PhotoError = "Resim dosyası okunamadı."; return; }
+        if (bytes.LongLength > StudentPhotoService.MaximumBytes) { PhotoError = "Fotoğraf en fazla 2 MB olabilir."; return; }
+        var image = StudentPhotoImage.Create(bytes);
+        if (image is null) { PhotoError = "Resim dosyası okunamadı."; return; }
+        pendingPhoto = bytes; pendingPhotoName = Path.GetFileName(path); photoRemoved = false; PhotoError = null;
+        PhotoImage = image; Raise(nameof(PendingPhotoName));
+    }
+
+    private void RemovePhoto()
+    {
+        pendingPhoto = null; pendingPhotoName = null; PhotoError = null;
+        photoRemoved = Details?.PhotoPath is not null;
+        PhotoImage = null; Raise(nameof(PendingPhotoName));
+    }
+
+    /// <summary>Kaydedilen ogrenciye bekleyen fotografi yukler ya da kaldirilan fotografi siler.</summary>
+    private async Task CommitPhotoAsync(Guid id)
+    {
+        if (pendingPhoto is not null)
+        {
+            await api.UploadPhotoAsync(id, pendingPhotoName ?? "photo.png", pendingPhoto);
+            pendingPhoto = null; pendingPhotoName = null;
+        }
+        else if (photoRemoved) { await api.DeletePhotoAsync(id); photoRemoved = false; }
     }
 
     /// <summary>
@@ -461,11 +626,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private void CancelEdit()
     {
         IsFormOpen = false; ErrorMessage = null;
-        if (Details is not null)
-        {
-            FormStudentNo = Details.StudentNo; FormFirstName = Details.FirstName; FormLastName = Details.LastName;
-            FormNationalId = Details.NationalId; FormAddress = Details.Address; FormNotes = Details.Notes; RaiseForm();
-        }
+        // Secilen ama kaydedilmeyen fotograf atilir; onizleme sunucudaki haline doner.
+        ResetPhotoState(photoBytes);
+        if (Details is not null) FillFormFromDetails(Details);
         else FillFormFromSelection(SelectedStudent);
     }
 
@@ -475,7 +638,13 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         try
         {
             var saved = await api.SaveAsync(Details?.Id, BuildSaveRequest(Details?.IsActive ?? true));
+            string? photoFailure = null;
+            // Fotograf kayittan SONRA gider (yeni ogrencide kimlik ancak simdi var). Yukleme
+            // duserse ogrenci yine kaydedilmistir: form kapanir, hata ayrica soylenir.
+            try { await CommitPhotoAsync(saved.Id); }
+            catch (Exception ex) when (IsWriteFailure(ex)) { photoFailure = Describe(ex, "Fotoğraf yüklenemedi."); }
             await RefreshAfterWriteAsync(saved.Id);
+            if (photoFailure is not null) ErrorMessage = "Öğrenci kaydedildi ancak fotoğraf işlenemedi: " + photoFailure;
         }
         // Form ACIK BIRAKILIR: kullanici numarayi duzeltip yeniden deneyebilmelidir.
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci kaydedilemedi."); }
@@ -483,16 +652,21 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// PUT /api/students/{id} TAM kaydi bekler: gonderilmeyen alanlar sunucuda null'a
-    /// yazilir. Formda yalnizca NO/Ad/Soyad/TC/Adres/Not var; sinif, sube, bolum, dogum
-    /// tarihi, parmak izi, fotograf gibi alanlar Details'ten AYNEN tasinir. Onceden
-    /// tasinmiyordu ve bir ogrencinin adini duzeltmek sinif/subesini SILIYORDU
-    /// (canli API'de dogrulandi: 8B/B -> null/null).
+    /// yazilir. Sicil karti artik her alani tasir; HEPSI formdan gider. Tek istisna
+    /// fotograf yolu: onu yalnizca fotograf uclari (yukle/sil) degistirir, burada Details'ten
+    /// aynen tasinir -- aksi halde adini duzeltmek fotografi SILERDI.
     /// </summary>
     private SaveStudentRequest BuildSaveRequest(bool isActive) => new(
         FormStudentNo, FormFirstName, FormLastName, Empty(FormNationalId),
-        BirthDate: Details?.BirthDate, ClassId: Details?.ClassId, SectionId: Details?.SectionId, DepartmentId: Details?.DepartmentId,
-        JobId: Details?.JobId, FingerprintId: Details?.FingerprintId, Pid: Details?.Pid,
+        BirthDate: FormBirthDate.HasValue ? DateOnly.FromDateTime(FormBirthDate.Value) : null,
+        ClassId: FormClass.SelectedId, SectionId: FormSection.SelectedId, DepartmentId: FormDepartment.SelectedId,
+        JobId: FormJob.SelectedId, FingerprintId: Empty(FormFingerprintId), Pid: Empty(FormPid),
         Address: Empty(FormAddress), PhotoPath: Details?.PhotoPath, Notes: Empty(FormNotes), IsActive: isActive);
+
+    /// <summary>Pasiflestir/Aktiflestir: form acik degildir, kayit Details'ten AYNEN yeniden yazilir.</summary>
+    private static SaveStudentRequest RequestFromDetails(StudentDetails d, bool isActive) => new(
+        d.StudentNo, d.FirstName, d.LastName, d.NationalId, d.BirthDate, d.ClassId, d.SectionId, d.DepartmentId,
+        d.JobId, d.FingerprintId, d.Pid, d.Address, d.PhotoPath, d.Notes, isActive);
 
     /// <summary>
     /// Ogrenciyi pasife alir ya da yeniden aktif eder (bkz. ShowDeactivate aciklamasi).
@@ -504,9 +678,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         if (Details is null) return;
         try
         {
-            FormStudentNo = Details.StudentNo; FormFirstName = Details.FirstName; FormLastName = Details.LastName;
-            FormNationalId = Details.NationalId; FormAddress = Details.Address; FormNotes = Details.Notes;
-            var saved = await api.SaveAsync(Details.Id, BuildSaveRequest(active));
+            var saved = await api.SaveAsync(Details.Id, RequestFromDetails(Details, active));
             await RefreshAfterWriteAsync(saved.Id);
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, failure); }
@@ -526,7 +698,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             await api.DeactivateAsync(deleted.Id);
             IsDeleteArmed = false; IsFormOpen = false; Details = null; Tabs.Clear(); SelectedTab = null;
             await LoadAsync(Page);
-            SelectedStudent = null; ClearForm(); ErrorMessage = null;
+            SelectedStudent = null; ClearForm(); ResetPhotoState(null); photoBytes = null; ErrorMessage = null;
             InfoMessage = $"{deleted.StudentNo} numaralı öğrenci ({deleted.FirstName} {deleted.LastName}) silindi.";
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { IsDeleteArmed = false; ErrorMessage = Describe(ex, "Öğrenci silinemedi."); }
@@ -641,19 +813,69 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         var id = Details?.Id ?? SelectedStudent?.Id;
         if (id.HasValue) navigation.Navigate($"{ShellRoutes.Sms}/{id.Value:D}");
     }
+    /// <summary>
+    /// Kullanici sorunlu alani duzeltince BAYAT dogrulama mesajini siler. Aksi halde
+    /// "TC Kimlik No 11 rakam olmalidir." gecerli bir TC girildikten sonra da ekranda
+    /// kalir ve kullanici neyin yanlis oldugunu aramaya devam eder.
+    /// Yalnizca form ACIKKEN ve mesaj bu formun kendi dogrulamasindan geldiyse temizlenir;
+    /// sunucudan gelen yazma hatasi (orn. "numara zaten kayitli") kaybolmamali... o da
+    /// kullanici numarayi degistirince anlamsizlasir, bu yuzden ayni yol kullanilir.
+    /// </summary>
+    private void ClearValidationError() { if (IsFormOpen && HasError) ErrorMessage = null; }
+
     private string? ValidateForm()
     {
         if (string.IsNullOrWhiteSpace(FormStudentNo) || FormStudentNo.Trim().Length > 32) return "Öğrenci NO alanı 1-32 karakter olmalıdır.";
         if (string.IsNullOrWhiteSpace(FormFirstName) || FormFirstName.Trim().Length > 100) return "Ad alanı zorunludur.";
         if (string.IsNullOrWhiteSpace(FormLastName) || FormLastName.Trim().Length > 100) return "Soyad alanı zorunludur.";
-        if (!string.IsNullOrWhiteSpace(FormNationalId) && (FormNationalId.Length != 11 || !FormNationalId.All(char.IsDigit))) return "TC Kimlik No 11 rakam olmalıdır.";
+        if (!string.IsNullOrWhiteSpace(FormNationalId) && (FormNationalId.Trim().Length != 11 || !FormNationalId.Trim().All(char.IsDigit))) return "TC Kimlik No 11 rakam olmalıdır.";
+        if (FormBirthDate.HasValue && FormBirthDate.Value.Date > DateTime.Today) return "Doğum tarihi gelecekte olamaz.";
+        if (FormFingerprintId?.Trim().Length > 64) return "Parmak izi ID en fazla 64 karakter olabilir.";
+        if (FormPid?.Trim().Length > 64) return "PI ID en fazla 64 karakter olabilir.";
+        if (FormAddress?.Trim().Length > 500) return "Adres en fazla 500 karakter olabilir.";
         return null;
     }
-    private void ClearForm() { FormStudentNo = FormFirstName = FormLastName = ""; FormNationalId = FormAddress = FormNotes = null; RaiseForm(); }
-    private void RaiseForm() { Raise(nameof(FormStudentNo)); Raise(nameof(FormFirstName)); Raise(nameof(FormLastName)); Raise(nameof(FormNationalId)); Raise(nameof(FormAddress)); Raise(nameof(FormNotes)); }
+    private void ClearForm()
+    {
+        FormStudentNo = FormFirstName = FormLastName = ""; FormNationalId = FormAddress = FormNotes = FormFingerprintId = FormPid = null;
+        FormBirthDate = null; FormClass.Select(null); FormSection.Select(null); FormDepartment.Select(null); FormJob.Select(null);
+        RaiseForm();
+    }
+    private void RaiseForm()
+    {
+        Raise(nameof(FormStudentNo)); Raise(nameof(FormFirstName)); Raise(nameof(FormLastName)); Raise(nameof(FormNationalId)); Raise(nameof(FormAddress)); Raise(nameof(FormNotes));
+        Raise(nameof(FormFingerprintId)); Raise(nameof(FormPid)); Raise(nameof(FormBirthDate)); Raise(nameof(FormSubtitle));
+    }
     private void CloseDrawers() { IsQuickDetailOpen = IsDetailOpen = IsFormOpen = false; }
     private static string? Empty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     public void Dispose() { searchDelay?.Cancel(); searchDelay?.Dispose(); cardReadOperation?.Cancel(); cardReadOperation?.Dispose(); GC.SuppressFinalize(this); }
 }
 
 public sealed record StudentStatusOption(string Name, bool? Value);
+
+/// <summary>
+/// Bayt dizisinden DONMUS (Freeze) bir BitmapImage uretir. Dosya yolundan URI ile
+/// yuklemek dosyayi kilitler ve "Kaldir" sonrasi silinemezdi; bellek akisi + OnLoad
+/// ile disk aninda serbest kalir. Freeze: goruntu arka plan is parcaciginda uretilse
+/// bile arayuz is parcacigindan kullanilabilir.
+/// </summary>
+public static class StudentPhotoImage
+{
+    public static ImageSource? Create(byte[]? bytes)
+    {
+        if (bytes is null || bytes.Length == 0) return null;
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.DecodePixelWidth = 192;
+            image.StreamSource = new MemoryStream(bytes);
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+        catch (Exception ex) when (ex is NotSupportedException or IOException or ArgumentException or InvalidOperationException)
+        { return null; }
+    }
+}
