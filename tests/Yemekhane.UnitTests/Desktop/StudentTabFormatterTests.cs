@@ -214,6 +214,23 @@ public sealed class StudentTabFormatterTests
         Assert.Equal("Ad Soyad: AYŞE ÇETİN  |  Yakınlık: Anne  |  Telefon: 05321234567  |  Birincil: Evet  |  Durum: Aktif", text);
     }
 
+    /// <summary>
+    /// Izin sekmesi: hakedis davranisi kodu (Keep/Cancel/NextBusinessDay) ham kalmamali.
+    /// Canli denetimde "Hakediş: Keep" gorunuyordu.
+    /// </summary>
+    [Theory]
+    [InlineData("Keep", "Hakediş: Hak korunur")]
+    [InlineData("Cancel", "Hakediş: Hak iptal edilir")]
+    [InlineData("NextBusinessDay", "Hakediş: Sonraki iş gününe aktarılır")]
+    public void IzinSatiriHakedisDavranisiniTurkcelestirir(string code, string expected)
+    {
+        var text = Summarize("Leaves", $$"""
+        {"id":"d29e1c49-4b1a-4f0e-9c3d-2b7a5e6f1a8c","studentId":"1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+         "startsOn":"2026-09-09","endsOn":"2026-09-10","leaveType":"Mazeret","description":null,"entitlementBehavior":"{{code}}"}
+        """);
+        Assert.Equal($"Başlangıç: 09.09.2026  |  Bitiş: 10.09.2026  |  İzin Türü: Mazeret  |  {expected}", text);
+    }
+
     /// <summary>Hakedis sekmesi: DateOnly saat icermeden yazilmali, durum Turkcelesmeli.</summary>
     [Fact]
     public void HakedisSatiriTarihVeKalaniGosterir()
@@ -239,7 +256,8 @@ public sealed class StudentTabFormatterTests
          "startsOn":"2026-09-05","endsOn":"2026-09-07","leaveType":"Mazeret",
          "description":"Sağlık raporu","entitlementBehavior":"Keep"}
         """);
-        Assert.Equal("Başlangıç: 05.09.2026  |  Bitiş: 07.09.2026  |  İzin Türü: Mazeret  |  Hakediş: Keep  |  Açıklama: Sağlık raporu", text);
+        // "Keep" ham kodu artik Turkcelesir (LeaveBehavior sozlugu).
+        Assert.Equal("Başlangıç: 05.09.2026  |  Bitiş: 07.09.2026  |  İzin Türü: Mazeret  |  Hakediş: Hak korunur  |  Açıklama: Sağlık raporu", text);
     }
 
     [Fact]

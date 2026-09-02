@@ -94,6 +94,17 @@ public sealed class EnumTextConverter : IValueConverter
         ["Attention"] = "İnceleme gerekiyor",
     };
 
+    /// <summary>
+    /// Izin kaydinin yemek hakkina etkisi (LeaveService.Behaviors). Ogrenci detayindaki
+    /// Izinler sekmesi bu kodu ham ("Keep") gosteriyordu.
+    /// </summary>
+    private static readonly Dictionary<string, string> LeaveBehavior = new(Codes)
+    {
+        ["Keep"] = "Hak korunur",
+        ["Cancel"] = "Hak iptal edilir",
+        ["NextBusinessDay"] = "Sonraki iş gününe aktarılır",
+    };
+
     private static readonly Dictionary<string, Dictionary<string, string>> Maps = new(Codes)
     {
         ["Decision"] = Decision,
@@ -102,6 +113,7 @@ public sealed class EnumTextConverter : IValueConverter
         ["LogLevel"] = LogLevel,
         ["DeviceStatus"] = DeviceStatus,
         ["SyncState"] = SyncState,
+        ["LeaveBehavior"] = LeaveBehavior,
     };
 
     /// <summary>Kod icinden de kullanilabilsin diye ayri: ViewModel'ler XAML'siz cevirir.</summary>

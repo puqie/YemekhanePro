@@ -22,6 +22,14 @@ public interface IStudentApiClient
     Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default);
     Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default);
     Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Aktif karti OLMAYAN ogrenciye ilk kartini atar (POST /students/{id}/cards).
+    /// Varsayilan govde: baska ekranlarin (SMS gibi) yalnizca arama icin kullandigi
+    /// sahte istemciler bu ucu uygulamak zorunda kalmasin; gercek istemci ve ogrenci
+    /// ekrani testleri kendi uygulamasini verir.
+    /// </summary>
+    Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci kart atamayı desteklemiyor.");
 }
 
 public sealed class StudentApiClient(HttpClient client, IJwtSession session) : IStudentApiClient
@@ -84,6 +92,14 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
     public async Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
     {
         using var message = Authorized(HttpMethod.Post, $"api/students/{studentId:D}/cards/replace");
+        message.Content = JsonContent.Create(request);
+        using var response = await client.SendAsync(message, cancellationToken);
+        await EnsureAsync(response, cancellationToken);
+    }
+
+    public async Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Post, $"api/students/{studentId:D}/cards");
         message.Content = JsonContent.Create(request);
         using var response = await client.SendAsync(message, cancellationToken);
         await EnsureAsync(response, cancellationToken);

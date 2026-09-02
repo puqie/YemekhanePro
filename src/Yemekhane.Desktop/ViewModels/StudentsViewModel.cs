@@ -1,5 +1,6 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Windows.Input;
 using Yemekhane.Application.Cards;
@@ -48,6 +49,17 @@ public sealed class StudentDetailTabViewModel(string key, Func<Task<IReadOnlyLis
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or LoginRequiredException) { Error = "Sekme verisi alınamadı."; }
         finally { IsLoading = false; Raise(nameof(IsEmpty)); }
     }
+
+    /// <summary>
+    /// Sekmeyi "hic yuklenmemis" durumuna dondurup yeniden yukler. Izin verildikten ya da
+    /// kart degistirildikten sonra cagrilir: aksi halde daha once acilmis sekme eski
+    /// listeyi gostermeye devam eder ve kullanici islemin yapilmadigini sanir.
+    /// </summary>
+    public Task ReloadAsync()
+    {
+        Items.Clear(); IsLoaded = false; Error = null;
+        return LoadAsync();
+    }
 }
 
 public sealed class StudentsViewModel : ObservableObject, IDisposable
@@ -57,11 +69,20 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private readonly HashSet<string> permissions;
     private readonly ICardReadEventSource cardReadSource;
     private readonly bool task43Available;
+    /// <summary>
+    /// Arayuz is parcaciginin baglami. Gecikmeli arama (DebounceSearch) bir havuz is
+    /// parcaciginda uyanir; listeyi ORADAN degistirmek WPF'te NotSupportedException
+    /// atar ("CollectionView ... farkli bir is parcacigindan degisiklikleri desteklemez")
+    /// ve bu hata Task.Run icinde kaybolur: kullanici arama kutusuna yazar, hicbir sey
+    /// olmaz. Yukleme bu baglama geri gonderilir. Baglam yoksa (birim testi) dogrudan calisir.
+    /// </summary>
+    private readonly SynchronizationContext? uiContext;
     private CancellationTokenSource? searchDelay;
     private string? search, studentNo, cardNumber, firstName, lastName, classId, sectionId, departmentId, errorMessage;
     private bool? isActive = true;
     private bool isLoading, isOffline, isQuickDetailOpen, isDetailOpen, isFormOpen, isCardWorkflowOpen;
-    private string? cardWorkflowMessage;
+    private string? cardWorkflowMessage, infoMessage;
+    private bool isDeleteArmed;
     private CancellationTokenSource? cardReadOperation;
     private int page = 1, pageSize = 50, totalCount;
     private StudentListItem? selectedStudent;
@@ -75,15 +96,20 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         this.api = api; this.navigation = navigation; this.permissions = permissions.ToHashSet(StringComparer.Ordinal);
         this.task43Available = task43Available || (navigation.IsAvailable(ShellRoutes.Entitlements) && this.permissions.Contains("entitlements.bulk"));
         this.cardReadSource = cardReadSource ?? new DeviceCardReadEventSource(null);
+        uiContext = SynchronizationContext.Current;
         SearchCommand = new AsyncCommand(() => LoadAsync(1)); NextPageCommand = new AsyncCommand(() => LoadAsync(Page + 1), () => Page * PageSize < TotalCount);
         PreviousPageCommand = new AsyncCommand(() => LoadAsync(Page - 1), () => Page > 1);
         OpenQuickDetailCommand = new ParameterCommand<StudentListItem>(OpenQuickDetail);
         OpenFullDetailCommand = new ParameterCommand<StudentListItem>(item => _ = OpenDetailAsync(item));
         CloseDrawersCommand = new RelayCommand(CloseDrawers);
         NewStudentCommand = new RelayCommand(OpenCreate, () => CanWrite);
-        EditStudentCommand = new RelayCommand(OpenEdit, () => CanWrite && Details is not null);
+        EditStudentCommand = new RelayCommand(OpenEdit, () => CanWrite && Details is not null && !IsFormOpen);
+        CancelEditCommand = new RelayCommand(CancelEdit, () => IsFormOpen);
         SaveStudentCommand = new AsyncCommand(SaveAsync, () => CanWrite && IsFormOpen);
-        DeactivateCommand = new AsyncCommand(DeactivateAsync, () => CanDeactivate && Details?.IsActive == true);
+        DeactivateCommand = new AsyncCommand(() => SetActiveAsync(false, "Öğrenci pasife alınamadı."), () => CanWrite && Details?.IsActive == true);
+        ActivateCommand = new AsyncCommand(() => SetActiveAsync(true, "Öğrenci aktifleştirilemedi."), () => CanWrite && Details?.IsActive == false);
+        DeleteCommand = new AsyncCommand(DeleteAsync, () => CanDeactivate && Details is not null);
+        CancelDeleteCommand = new RelayCommand(() => IsDeleteArmed = false, () => IsDeleteArmed);
         GiveLeaveCommand = new AsyncCommand(GiveLeaveAsync, () => CanWrite && Details is not null);
         ReplaceCardCommand = new AsyncCommand(ReplaceCardAsync, () => CanManageCards && Details is not null);
         ReadCardCommand = new AsyncCommand(ReadCardAsync, () => CanManageCards && this.cardReadSource.IsAvailable);
@@ -116,11 +142,25 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
     public string? ErrorMessage { get => errorMessage; private set { if (Set(ref errorMessage, value)) Raise(nameof(HasError)); } }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+    /// <summary>Basarili ama ekranda izi kalmayan islemin (silme) geri bildirimi.</summary>
+    public string? InfoMessage { get => infoMessage; private set { if (Set(ref infoMessage, value)) Raise(nameof(HasInfo)); } }
+    public bool HasInfo => !string.IsNullOrWhiteSpace(InfoMessage);
+    /// <summary>
+    /// Silme iki adimlidir: ilk tiklama dugmeyi "Silmeyi Onayla"ya cevirir, ikincisi siler.
+    /// Modal onay kutusu yerine bu yol secildi: tek tiklamayla geri donusu olmayan bir
+    /// silme (kayit tum listelerden kaybolur) kabul edilemez, ama modal da bu ekranda yok.
+    /// </summary>
+    public bool IsDeleteArmed
+    {
+        get => isDeleteArmed;
+        private set { if (Set(ref isDeleteArmed, value)) { Raise(nameof(DeleteButtonText)); (CancelDeleteCommand as RelayCommand)?.Refresh(); } }
+    }
+    public string DeleteButtonText => IsDeleteArmed ? "Silmeyi Onayla" : "Sil";
     public bool IsEmpty => !IsLoading && TotalCount == 0 && !HasError;
     public bool ShowGrid => !IsLoading;
     public bool IsQuickDetailOpen { get => isQuickDetailOpen; private set => Set(ref isQuickDetailOpen, value); }
     public bool IsDetailOpen { get => isDetailOpen; private set => Set(ref isDetailOpen, value); }
-    public bool IsFormOpen { get => isFormOpen; private set => Set(ref isFormOpen, value); }
+    public bool IsFormOpen { get => isFormOpen; private set { if (Set(ref isFormOpen, value)) RefreshCommands(); } }
     public bool IsCardWorkflowOpen { get => isCardWorkflowOpen; private set => Set(ref isCardWorkflowOpen, value); }
     public string? CardWorkflowMessage { get => cardWorkflowMessage; private set => Set(ref cardWorkflowMessage, value); }
     public bool IsCardReaderAvailable => cardReadSource.IsAvailable;
@@ -146,8 +186,10 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         set
         {
             if (!Set(ref selectedStudent, value)) return;
-            (GrantEntitlementCommand as RelayCommand)?.Refresh();
             FillFormFromSelection(value);
+            IsDeleteArmed = false; InfoMessage = null;
+            Raise(nameof(CardActionText));
+            RefreshCommands();
         }
     }
 
@@ -158,16 +200,48 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     ///
     /// "Yeni Ogrenci" akisi BOZULMAZ: OpenCreate() SelectedStudent'a hic dokunmaz, kendi
     /// ClearForm() cagrisini bu metottan SONRA yapar; form bos baslar.
+    ///
+    /// Form ACIKKEN (kullanici yazarken) secim degisirse yazilanlar SILINMEZ: LoadAsync
+    /// listeyi yenilerken DataGrid secimi bir an icin null'a ceker; bu null yuzunden
+    /// kullanicinin yarim formu ucup gitmemeli.
     /// </summary>
     private void FillFormFromSelection(StudentListItem? item)
     {
+        if (IsFormOpen) return;
         FormStudentNo = item?.StudentNo ?? "";
         FormFirstName = item?.FirstName ?? "";
         FormLastName = item?.LastName ?? "";
         FormNationalId = FormAddress = FormNotes = null;
         RaiseForm();
     }
-    public StudentDetails? Details { get => details; private set { if (Set(ref details, value)) (GrantEntitlementCommand as RelayCommand)?.Refresh(); } }
+    public StudentDetails? Details
+    {
+        get => details;
+        private set
+        {
+            if (!Set(ref details, value)) return;
+            // Detay gelince (ya da Yeni Ogrenci ile temizlenince) NOT alani da gelir/gider:
+            // liste ogesinde not yoktur, kullanici secili ogrencinin notunu Duzenle'ye
+            // basmadan gorebilmelidir.
+            if (!IsFormOpen) { FormNotes = value?.Notes; Raise(nameof(FormNotes)); }
+            IsDeleteArmed = false;
+            Raise(nameof(CardActionText)); Raise(nameof(ShowDeactivate)); Raise(nameof(ShowActivate));
+            RefreshCommands();
+        }
+    }
+    /// <summary>
+    /// Pasiflestir/Aktiflestir dugmelerinden yalnizca uygun olan GORUNUR (ikisi birden
+    /// pasif halde durmaz): aktif ogrencide Pasiflestir, pasif ogrencide Aktiflestir.
+    ///
+    /// PASIFLESTIRME ile SILME AYRILDI. Onceden "Pasiflestir" DELETE /students/{id}
+    /// cagiriyordu; sunucu bunu IsDeleted=true ile yapar ve kayit TUM sorgulardan
+    /// (global filtre) kaybolur -- "Pasif" filtresinde bile gorunmez, geri alinamaz.
+    /// Oysa ekranin "Pasif" filtresi ve rozeti IsActive=false kaydi anlatir (tohumda 25 tane).
+    /// Simdi Pasiflestir/Aktiflestir kaydi IsActive ile yeniden yazar (geri alinabilir),
+    /// DELETE ise ayri ve onayli "Sil" dugmesindedir.
+    /// </summary>
+    public bool ShowDeactivate => CanWrite && Details?.IsActive == true;
+    public bool ShowActivate => CanWrite && Details?.IsActive == false;
     public StudentDetailTabViewModel? SelectedTab { get => selectedTab; set { if (Set(ref selectedTab, value) && value is not null) _ = value.LoadAsync(); } }
     public bool CanWrite => permissions.Contains("students.write");
     public bool CanDeactivate => permissions.Contains("students.deactivate");
@@ -176,6 +250,16 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public bool CanGrantEntitlement => task43Available && permissions.Contains("entitlements.bulk");
     public bool CanSendSms => permissions.Contains("sms.send") && navigation.IsAvailable(ShellRoutes.Sms);
     public string GrantEntitlementReason => CanGrantEntitlement ? string.Empty : "Toplu hakediş yetkisi gerekiyor.";
+
+    /// <summary>
+    /// Secili ogrencinin aktif karti yoksa dugme "Kart Ata" der; aksi halde "Kart Degistir".
+    /// Ikisi ayni dugmedir cunku kullanici icin is aynidir: "bu ogrenci artik bu karti kullansin".
+    /// Sunucuda ise iki ayri uc nokta vardir (atama / degistirme); ayrimi ReplaceCardAsync yapar.
+    /// </summary>
+    public string CardActionText => HasActiveCard ? "Kart Değiştir" : "Kart Ata";
+    private bool HasActiveCard => SelectedStudent is not null && SelectedStudent.Id == Details?.Id
+        ? !string.IsNullOrWhiteSpace(SelectedStudent.CardNumber)
+        : true;
 
     public string FormStudentNo { get; set; } = "";
     public string FormFirstName { get; set; } = "";
@@ -198,8 +282,12 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public ICommand CloseDrawersCommand { get; }
     public ICommand NewStudentCommand { get; }
     public ICommand EditStudentCommand { get; }
+    public ICommand CancelEditCommand { get; }
     public ICommand SaveStudentCommand { get; }
     public ICommand DeactivateCommand { get; }
+    public ICommand ActivateCommand { get; }
+    public ICommand DeleteCommand { get; }
+    public ICommand CancelDeleteCommand { get; }
     public ICommand GiveLeaveCommand { get; }
     public ICommand ReplaceCardCommand { get; }
     public ICommand ReadCardCommand { get; }
@@ -209,6 +297,26 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public ICommand GrantEntitlementCommand { get; }
     public ICommand OpenStudentDetailCommand { get; }
     public ICommand OpenSmsCommand { get; }
+
+    /// <summary>
+    /// Dugmelerin etkin/pasif durumu Details, SelectedStudent ve IsFormOpen'a baglidir; WPF
+    /// bir ICommand'i YALNIZCA CanExecuteChanged tetiklenince yeniden sorar. Onceden bu
+    /// olay hic tetiklenmiyordu: ogrenci secilince "Duzenle"/"Pasiflestir"/"Kart Degistir"
+    /// ilk degerlendirmedeki (Details=null) pasif halinde kaliyordu.
+    /// </summary>
+    private void RefreshCommands()
+    {
+        (EditStudentCommand as RelayCommand)?.Refresh();
+        (CancelEditCommand as RelayCommand)?.Refresh();
+        (SaveStudentCommand as AsyncCommand)?.Refresh();
+        (DeactivateCommand as AsyncCommand)?.Refresh();
+        (ActivateCommand as AsyncCommand)?.Refresh();
+        (DeleteCommand as AsyncCommand)?.Refresh();
+        (GiveLeaveCommand as AsyncCommand)?.Refresh();
+        (ReplaceCardCommand as AsyncCommand)?.Refresh();
+        (GrantEntitlementCommand as RelayCommand)?.Refresh();
+        (OpenSmsCommand as RelayCommand)?.Refresh();
+    }
 
     public async Task InitializeAsync() => await LoadAsync(1);
     public void HandleRoute(string route)
@@ -229,6 +337,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     {
         if (!string.IsNullOrWhiteSpace(Search) && Search.Trim().Length < 2) return;
         IsLoading = true; ErrorMessage = null; IsOffline = false;
+        // Liste yenilenirken DataGrid secimi null'a ceker (Clear); ayni ogrenci yeni sayfada
+        // da varsa secim GERI VERILIR. Aksi halde "Yenile"ye her basista form bosaliyordu.
+        var keepId = SelectedStudent?.Id;
         try
         {
             var result = await api.SearchAsync(new StudentQuery(Search: Empty(Search), StudentNo: Empty(StudentNo), CardNumber: Empty(CardNumber),
@@ -236,6 +347,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
                 ClassId: routeClassId, ClassName: Empty(ClassId), SectionName: Empty(SectionId), DepartmentName: Empty(DepartmentId), GroupId: routeGroupId));
             Students.Clear(); foreach (var item in result.Items) Students.Add(item);
             Page = result.Page; TotalCount = result.TotalCount;
+            if (keepId.HasValue) SelectedStudent = Students.FirstOrDefault(x => x.Id == keepId.Value);
         }
         catch (LoginRequiredException) { ErrorMessage = "Öğrencileri görüntülemek için students.read izni olan bir oturum gerekiyor."; }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException)
@@ -247,14 +359,36 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     {
         searchDelay?.Cancel(); searchDelay?.Dispose(); searchDelay = new CancellationTokenSource();
         var token = searchDelay.Token;
-        _ = Task.Run(async () => { try { await Task.Delay(350, token); if (!token.IsCancellationRequested) await LoadAsync(1); } catch (OperationCanceledException) { } }, token);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(350, token);
+                if (token.IsCancellationRequested) return;
+                // Listeyi arayuz is parcaciginda degistir (bkz. uiContext aciklamasi).
+                if (uiContext is null) await LoadAsync(1);
+                else uiContext.Post(_ => { _ = LoadAsync(1); }, null);
+            }
+            catch (OperationCanceledException) { }
+        }, token);
     }
 
     private void OpenQuickDetail(StudentListItem item) { SelectedStudent = item; IsQuickDetailOpen = true; IsDetailOpen = false; }
-    private async Task OpenDetailAsync(StudentListItem item) { SelectedStudent = item; await OpenDetailByIdAsync(item.Id); }
+    // Form once KAPATILIR: acik formla (IsFormOpen) secim degisirse FillFormFromSelection
+    // yazilanlari korumak icin doldurmayi atlar; kullanici baska ogrenciye tikladiysa
+    // niyeti bellidir, form o ogrenciye gecmelidir.
+    private async Task OpenDetailAsync(StudentListItem item) { IsFormOpen = false; SelectedStudent = item; await OpenDetailByIdAsync(item.Id); }
     private async Task OpenDetailByIdAsync(Guid id)
     {
-        Details = await api.GetAsync(id); IsQuickDetailOpen = false; IsDetailOpen = true; IsFormOpen = false;
+        IsFormOpen = false;
+        Details = await api.GetAsync(id); IsQuickDetailOpen = false; IsDetailOpen = true;
+        // Rota ile (orn. Panel'den) acilan detay listede secili olmayabilir; form yine de
+        // bu ogrenciyi gostermeli, onceki secimin adini degil.
+        if (SelectedStudent?.Id != id)
+        {
+            FormStudentNo = Details.StudentNo; FormFirstName = Details.FirstName; FormLastName = Details.LastName;
+            FormNationalId = Details.NationalId; FormAddress = Details.Address; FormNotes = Details.Notes; RaiseForm();
+        }
         Tabs.Clear();
         Tabs.Add(new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
             ([new StudentDetailRow($"No: {Details.StudentNo}  |  Ad Soyad: {Details.FirstName} {Details.LastName}  |  Durum: {(Details.IsActive ? "Aktif" : "Pasif")}")])));
@@ -263,30 +397,139 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         SelectedTab = Tabs[0];
     }
 
-    private void OpenCreate() { Details = null; ClearForm(); IsFormOpen = true; IsDetailOpen = true; IsQuickDetailOpen = false; }
+    /// <summary>
+    /// Yazma isleminden sonra detayi sunucudan taze ceker ve listeyi yeniler. Ogrenci yeni
+    /// sayfada yoksa (yeni kayit son sayfaya duser; pasiflestirilen kayit "Aktif" filtresinden
+    /// cikar) sunucudan numarasiyla cekilip listenin BASINA eklenir ve secili birakilir:
+    /// kullanici az once uzerinde calistigi kaydi ekranda gormeli, "kayit kayboldu" sanmamali.
+    /// Sekme listesi yeniden kurulmaz; degisen sekmeler ayrica ReloadTab ile tazelenir.
+    /// </summary>
+    private async Task RefreshAfterWriteAsync(Guid id)
+    {
+        var fresh = await api.GetAsync(id);
+        await LoadAsync(Page);
+        var listed = Students.FirstOrDefault(x => x.Id == id);
+        if (listed is null)
+        {
+            var exact = await api.SearchAsync(new StudentQuery(StudentNo: fresh.StudentNo, IsActive: null, PageSize: 5));
+            listed = exact.Items.FirstOrDefault(x => x.Id == id);
+            if (listed is not null) Students.Insert(0, listed);
+        }
+        IsFormOpen = false;
+        if (Details?.Id != id || Tabs.Count == 0) await OpenDetailByIdAsync(id);
+        else
+        {
+            Details = fresh;
+            // "Genel" sekmesi Details'ten uretilir; Ad/Durum degistiyse yeniden yazilmali.
+            await ReloadTabAsync("General");
+        }
+        SelectedStudent = listed;
+        FillFormFromSelection(listed);
+        FormNotes = fresh.Notes; Raise(nameof(FormNotes));
+    }
+
+    private async Task ReloadTabAsync(string key)
+    {
+        var index = Tabs.ToList().FindIndex(x => x.Key == key);
+        if (index < 0) return;
+        var id = Details?.Id ?? Guid.Empty;
+        var fresh = key == "General"
+            ? new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
+                ([new StudentDetailRow($"No: {Details?.StudentNo}  |  Ad Soyad: {Details?.FirstName} {Details?.LastName}  |  Durum: {(Details?.IsActive == true ? "Aktif" : "Pasif")}")]))
+            : new StudentDetailTabViewModel(key, () => api.LoadTabAsync(key, id));
+        var old = Tabs[index];
+        var wasSelected = ReferenceEquals(SelectedTab, old);
+        Tabs[index] = fresh;
+        // Secili sekme hemen yuklenir; daha once acilmis ama su an secili olmayan sekme de
+        // yeniden yuklenir ki kullanici geri dondugunde eski listeyi gormesin.
+        if (wasSelected) SelectedTab = fresh; else if (old.IsLoaded) await fresh.LoadAsync();
+    }
+
+    private void OpenCreate() { IsFormOpen = false; Details = null; ClearForm(); IsFormOpen = true; IsDetailOpen = true; IsQuickDetailOpen = false; }
     private void OpenEdit()
     {
         if (Details is null) return;
         FormStudentNo = Details.StudentNo; FormFirstName = Details.FirstName; FormLastName = Details.LastName;
         FormNationalId = Details.NationalId; FormAddress = Details.Address; FormNotes = Details.Notes; IsFormOpen = true; RaiseForm();
     }
+
+    /// <summary>
+    /// Duzenlemeyi ya da yeni kayit formunu KAYDETMEDEN kapatir; alanlar secili ogrencinin
+    /// sunucudaki degerlerine geri doner. Onceden "Iptal" yoktu: yanlis bir seyler yazan
+    /// kullanici ya kaydetmek ya da baska bir ogrenciye tiklayip geri gelmek zorundaydi.
+    /// </summary>
+    private void CancelEdit()
+    {
+        IsFormOpen = false; ErrorMessage = null;
+        if (Details is not null)
+        {
+            FormStudentNo = Details.StudentNo; FormFirstName = Details.FirstName; FormLastName = Details.LastName;
+            FormNationalId = Details.NationalId; FormAddress = Details.Address; FormNotes = Details.Notes; RaiseForm();
+        }
+        else FillFormFromSelection(SelectedStudent);
+    }
+
     private async Task SaveAsync()
     {
         ErrorMessage = ValidateForm(); if (ErrorMessage is not null) return;
         try
         {
-            var saved = await api.SaveAsync(Details?.Id, new SaveStudentRequest(FormStudentNo, FormFirstName, FormLastName,
-                Empty(FormNationalId), Address: Empty(FormAddress), Notes: Empty(FormNotes), IsActive: Details?.IsActive ?? true));
-            IsFormOpen = false; await LoadAsync(Page); await OpenDetailByIdAsync(saved.Id);
+            var saved = await api.SaveAsync(Details?.Id, BuildSaveRequest(Details?.IsActive ?? true));
+            await RefreshAfterWriteAsync(saved.Id);
         }
         // Form ACIK BIRAKILIR: kullanici numarayi duzeltip yeniden deneyebilmelidir.
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci kaydedilemedi."); }
     }
-    private async Task DeactivateAsync()
+
+    /// <summary>
+    /// PUT /api/students/{id} TAM kaydi bekler: gonderilmeyen alanlar sunucuda null'a
+    /// yazilir. Formda yalnizca NO/Ad/Soyad/TC/Adres/Not var; sinif, sube, bolum, dogum
+    /// tarihi, parmak izi, fotograf gibi alanlar Details'ten AYNEN tasinir. Onceden
+    /// tasinmiyordu ve bir ogrencinin adini duzeltmek sinif/subesini SILIYORDU
+    /// (canli API'de dogrulandi: 8B/B -> null/null).
+    /// </summary>
+    private SaveStudentRequest BuildSaveRequest(bool isActive) => new(
+        FormStudentNo, FormFirstName, FormLastName, Empty(FormNationalId),
+        BirthDate: Details?.BirthDate, ClassId: Details?.ClassId, SectionId: Details?.SectionId, DepartmentId: Details?.DepartmentId,
+        JobId: Details?.JobId, FingerprintId: Details?.FingerprintId, Pid: Details?.Pid,
+        Address: Empty(FormAddress), PhotoPath: Details?.PhotoPath, Notes: Empty(FormNotes), IsActive: isActive);
+
+    /// <summary>
+    /// Ogrenciyi pasife alir ya da yeniden aktif eder (bkz. ShowDeactivate aciklamasi).
+    /// Sunucuda ayri bir uc nokta yoktur; kayit IsActive ile (diger alanlar aynen)
+    /// yeniden yazilir. Onceden geri donus yolu hic yoktu.
+    /// </summary>
+    private async Task SetActiveAsync(bool active, string failure)
     {
         if (Details is null) return;
-        try { await api.DeactivateAsync(Details.Id); CloseDrawers(); await LoadAsync(Page); }
-        catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci pasife alınamadı."); }
+        try
+        {
+            FormStudentNo = Details.StudentNo; FormFirstName = Details.FirstName; FormLastName = Details.LastName;
+            FormNationalId = Details.NationalId; FormAddress = Details.Address; FormNotes = Details.Notes;
+            var saved = await api.SaveAsync(Details.Id, BuildSaveRequest(active));
+            await RefreshAfterWriteAsync(saved.Id);
+        }
+        catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, failure); }
+    }
+
+    /// <summary>
+    /// Kaydi SILER (sunucuda IsDeleted; tum listelerden kaybolur, ancak Sicil Aktar ile
+    /// yeniden ice aktarilirsa geri gelir). Ilk cagri yalnizca onay ister.
+    /// </summary>
+    private async Task DeleteAsync()
+    {
+        if (Details is null) return;
+        if (!IsDeleteArmed) { IsDeleteArmed = true; return; }
+        try
+        {
+            var deleted = Details;
+            await api.DeactivateAsync(deleted.Id);
+            IsDeleteArmed = false; IsFormOpen = false; Details = null; Tabs.Clear(); SelectedTab = null;
+            await LoadAsync(Page);
+            SelectedStudent = null; ClearForm(); ErrorMessage = null;
+            InfoMessage = $"{deleted.StudentNo} numaralı öğrenci ({deleted.FirstName} {deleted.LastName}) silindi.";
+        }
+        catch (Exception ex) when (IsWriteFailure(ex)) { IsDeleteArmed = false; ErrorMessage = Describe(ex, "Öğrenci silinemedi."); }
     }
     private async Task GiveLeaveAsync()
     {
@@ -295,19 +538,35 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         {
             await api.GiveLeaveAsync(new CreateLeaveRequest(Details.Id, DateOnly.FromDateTime(LeaveStartsOn), DateOnly.FromDateTime(LeaveEndsOn),
                 LeaveType, null, LeaveBehavior, Guid.Empty));
+            ErrorMessage = null;
             // Key: API kimligi (Ingilizce); Title artik Turkce oldugu icin arama Key uzerinden.
-            var tab = Tabs.FirstOrDefault(x => x.Key == "Leaves");
-            if (tab is not null && !tab.IsLoaded) SelectedTab = tab;
+            // Sekme daha once acilmis olsa bile YENIDEN yuklenir; eski liste yeni izni gostermez.
+            await ReloadTabAsync("Leaves");
+            SelectedTab = Tabs.FirstOrDefault(x => x.Key == "Leaves");
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "İzin kaydedilemedi."); }
     }
+    /// <summary>
+    /// Aktif karti olmayan ogrenciye kart ATAR, olana kartini DEGISTIRIR (eski kart pasife
+    /// duser). Onceden yalnizca "degistir" ucu cagriliyordu; kartsiz ogrenciye ilk kart
+    /// verilemiyor, sunucu "degistirilecek aktif kart bulunamadi" diyordu.
+    /// </summary>
     private async Task ReplaceCardAsync()
     {
         if (Details is null || string.IsNullOrWhiteSpace(NewCardNumber)) { ErrorMessage = "Yeni kart numarası zorunludur."; return; }
         try
         {
-            await api.ReplaceCardAsync(Details.Id, new ReplaceCardRequest(NewCardNumber.Trim(), CardReplacementReason.Trim()));
-            NewCardNumber = "";
+            var id = Details.Id; var number = NewCardNumber.Trim();
+            if (HasActiveCard)
+            {
+                try { await api.ReplaceCardAsync(id, new ReplaceCardRequest(number, CardReplacementReason.Trim())); }
+                // Liste eski kalmis olabilir (kart baska yerden pasiflestirilmis): atama ile devam.
+                catch (ApiRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound) { await api.AssignCardAsync(id, new AssignCardRequest(number)); }
+            }
+            else await api.AssignCardAsync(id, new AssignCardRequest(number));
+            NewCardNumber = ""; Raise(nameof(NewCardNumber)); ErrorMessage = null;
+            await RefreshAfterWriteAsync(id);
+            await ReloadTabAsync("Cards");
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Kart değiştirilemedi."); }
     }

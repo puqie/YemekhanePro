@@ -440,11 +440,11 @@ public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
         var studentId = await InScope(db => db.Students.AsNoTracking()
             .Where(x => x.StudentNo == "2026-9100").Select(x => x.Id).SingleAsync());
 
-        // 2) Ilk kart atanir.
-        // NOT: Masaustu ekraninda ILK kart atama yolu YOK (bkz.
-        // NewStudentCannotBeGivenTheirFirstCardFromTheDesktopScreens). Akisin geri
-        // kalanini test edebilmek icin kart API ucundan atanir.
-        await AssignFirstCardAsync(studentId, "UI-KART-9100");
+        // 2) Ilk kart EKRANDAN atanir (kartsiz ogrencide dugme "Kart Ata" olur ve
+        // atama ucunu cagirir; bkz. NewStudentCanBeGivenTheirFirstCardFromTheDesktopScreen).
+        students.NewCardNumber = "UI-KART-9100";
+        await Execute(students.ReplaceCardCommand);
+        Assert.False(students.HasError, students.ErrorMessage);
 
         var cardCount = await InScope(db => db.StudentCards.AsNoTracking()
             .CountAsync(x => x.StudentId == studentId && x.CardNumber == "UI-KART-9100"));
@@ -579,10 +579,7 @@ public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
         return body!.Decision;
     }
 
-    /// <summary>
-    /// ILK kart atama. Masaustu ekranlari yalnizca "degistir" ucunu kullanir;
-    /// karti olmayan ogrenci icin bu uc hata verir.
-    /// </summary>
+    /// <summary>ILK kart atama (API ucu; ekran akisi ayrica test edilir).</summary>
     private async Task AssignFirstCardAsync(Guid studentId, string cardNumber)
     {
         var response = await client.PostAsJsonAsync(
@@ -591,11 +588,11 @@ public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
-    public async Task NewStudentCannotBeGivenTheirFirstCardFromTheDesktopScreens()
+    public async Task NewStudentCanBeGivenTheirFirstCardFromTheDesktopScreen()
     {
-        // EKSIK OZELLIK: Ekranda yalnizca "Kart Degistir" var. Yeni kaydedilen
-        // ogrencinin aktif karti olmadigi icin bu islem basarisiz olur ve
-        // ogrenciye masaustunden kart TANIMLANAMAZ.
+        // GIDERILEN EKSIKLIK: Ekranda eskiden yalnizca "Kart Degistir" vardi ve yeni
+        // ogrencinin aktif karti olmadigi icin islem basarisiz oluyordu. Artik ayni
+        // dugme kartsiz ogrencide "Kart Ata" olur ve atama ucunu cagirir.
         var students = NewStudentsScreen();
         students.NewStudentCommand.Execute(null);
         students.FormStudentNo = "2026-9110";
@@ -609,14 +606,11 @@ public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
         students.NewCardNumber = "UI-KART-9110";
         await Execute(students.ReplaceCardCommand);
 
-        // Kart olusmaz...
+        // Kart olusur ve ekranda hata yoktur.
         var created = await InScope(db => db.StudentCards.AsNoTracking()
-            .AnyAsync(x => x.StudentId == studentId));
-        Assert.False(created, "İlk kart atanabiliyorsa bu eksiklik giderilmiş demektir; testi güncelleyin.");
-
-        // ...ve kullanici NEDENINI ekranda gormelidir (sessizce kaybolmamalidir).
-        Assert.True(students.HasError,
-            "İlk kart atanamadı ama kullanıcıya hiçbir açıklama gösterilmedi.");
+            .AnyAsync(x => x.StudentId == studentId && x.CardNumber == "UI-KART-9110" && x.IsActive));
+        Assert.True(created, "Kartsız öğrenciye masaüstünden ilk kart atanamadı: " + students.ErrorMessage);
+        Assert.False(students.HasError, students.ErrorMessage);
     }
 
     // ------------------------------------------------- sunucu coktugunde ekranlar

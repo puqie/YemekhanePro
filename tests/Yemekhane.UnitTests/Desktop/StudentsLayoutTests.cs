@@ -218,7 +218,8 @@ public sealed class StudentsLayoutTests
         UiThread.Run(() =>
         {
             var api = new FakeStudentApi();
-            using var vm = MakeViewModel(api, ["students.read", "students.write"]);
+            // Pasiflestir icin students.deactivate, Kart Degistir icin cards.manage gerekir.
+            using var vm = MakeViewModel(api, ["students.read", "students.write", "students.deactivate", "cards.manage"]);
             vm.OpenFullDetailCommand.Execute(SampleItem("Ada", "Katırcı", "1001", "CARD-1"));
 
             var view = new StudentsView { DataContext = vm };
@@ -228,11 +229,24 @@ public sealed class StudentsLayoutTests
             host.Arrange(new Rect(0, 0, 1440, 900));
             host.UpdateLayout();
 
-            var tabControl = Descendants(view).OfType<TabControl>().FirstOrDefault();
-            Assert.NotNull(tabControl);
-            Assert.True(tabControl!.ActualHeight >= 150,
-                $"Detay sekmeleri alani cok kucuk: {tabControl.ActualHeight:F0}px. " +
-                "Form icerigi tab alanini sifira cokertiyor olabilir.");
+            // Sekme seridi (sabit sirali ListBox) ve icerik alani ayri satirlardadir;
+            // ikisi de olculebilir yukseklik almali. TabControl artik kullanilmiyor.
+            var strip = (FrameworkElement)view.FindName("DetailTabStrip")!;
+            var content = (FrameworkElement)view.FindName("DetailTabContent")!;
+            Assert.True(strip.ActualHeight >= 24, $"Sekme seridi olculemedi: {strip.ActualHeight:F0}px.");
+            Assert.True(content.ActualHeight >= 120,
+                $"Detay sekme icerigi alani cok kucuk: {content.ActualHeight:F0}px. " +
+                "Form icerigi sekme alanini sifira cokertiyor olabilir.");
+
+            // Eylem dugmeleri kaymayan satirda: form ne kadar uzun olursa olsun gorunur olmali.
+            foreach (var label in new[] { "Pasifleştir", "İzin Ver", "Kart Değiştir" })
+            {
+                var button = Descendants(view).OfType<Button>().FirstOrDefault(b => (b.Content as string) == label);
+                Assert.NotNull(button);
+                Assert.True(button!.ActualHeight > 0 && button.ActualWidth > 0, $"{label} dugmesi olculemedi.");
+                var top = button.TransformToAncestor(host).Transform(new Point(0, 0)).Y;
+                Assert.True(top + button.ActualHeight <= 900, $"{label} dugmesi pencerenin disinda ({top:F0}px).");
+            }
         });
 
     /// <summary>
@@ -245,7 +259,9 @@ public sealed class StudentsLayoutTests
     public void FormAlanlariKullanilabilirGenislikte() =>
         UiThread.Run(() =>
         {
-            const double usableWidth = 220;
+            // 460px panelde NO | Ad iki sutunda durur (~205px); en uzun Turkce ad/soyad
+            // (HAŞLAMACI, SÖYLEMEZ) 13px yazi tipinde ~85px kaplar -- 180px bol bol yeter.
+            const double usableWidth = 180;
             var api = new FakeStudentApi();
             using var vm = MakeViewModel(api, ["students.read", "students.write"]);
             vm.OpenFullDetailCommand.Execute(SampleItem("Ada", "Katırcı", "1001", "CARD-1"));
@@ -258,7 +274,13 @@ public sealed class StudentsLayoutTests
             host.UpdateLayout();
 
             var formPanel = (FrameworkElement)view.FindName("StudentFormPanel")!;
+            // Salt okunur kisa degerler (Sinif "8B", Sube "B", Kart No, Veli Tel) iki sutunda
+            // durur; kullanici onlara yazmaz, 220px kurali yalnizca yazilabilir kutular icindir.
+            // Yeni kart numarasi kutusu da kasten kisadir (kart no 7-10 hane) ve dugmelerle
+            // ayni satirda durur; 220px kurali ad/soyad/not gibi metin alanlari icindir.
             var narrow = Descendants(formPanel).OfType<TextBox>()
+                .Where(box => box.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path is { } path
+                    && path.StartsWith("Form", StringComparison.Ordinal))
                 .Where(box => box.ActualWidth > 0 && box.ActualWidth < usableWidth)
                 .Select(box => $"{box.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path ?? box.Name}: {box.ActualWidth:F0}px")
                 .ToList();

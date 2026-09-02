@@ -115,7 +115,8 @@ public static class StudentTabFormatter
             new("startsOn", "Başlangıç", FieldKind.Date),
             new("endsOn", "Bitiş", FieldKind.Date),
             new("leaveType", "İzin Türü"),
-            new("entitlementBehavior", "Hakediş"),
+            // Keep/Cancel/NextBusinessDay ham kalmasin: Izinler sekmesinde "Hakediş: Keep" gorunuyordu.
+            new("entitlementBehavior", "Hakediş", Map: "LeaveBehavior"),
             new("description", "Açıklama"),
         ],
 
