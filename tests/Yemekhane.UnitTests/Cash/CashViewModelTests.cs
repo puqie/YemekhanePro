@@ -233,6 +233,27 @@ public sealed class CashViewModelTests
         return directory?.FullName ?? throw new DirectoryNotFoundException();
     }
 
+    /// <summary>
+    /// Sayfalama dugmeleri WPF'e etkinlestiklerini BILDIRMELI. AsyncCommand
+    /// CommandManager.RequerySuggested'e baglanmaz; Page/TotalCount setter'lari Refresh()
+    /// cagirmadigi icin dugmeler donup kaliyor, kullanici sayfalar arasinda gezinemiyordu.
+    /// </summary>
+    [Fact]
+    public async Task SayfalamaDugmeleriEtkinlestiklerini_Bildirir()
+    {
+        var api = new FakeCashApi { TotalCount = 120 };
+        var vm = new CashViewModel(api, ["cash.read"]);
+        await vm.LoadTransactionsAsync(1);
+
+        var previousRaised = 0;
+        vm.PreviousPageCommand.CanExecuteChanged += (_, _) => previousRaised++;
+        await vm.LoadTransactionsAsync(2);
+
+        Assert.Equal(2, vm.Page);
+        Assert.True(vm.PreviousPageCommand.CanExecute(null));
+        Assert.True(previousRaised > 0, "2. sayfada \"Önceki\" yeniden sorgulanmadı: düğme gri kalır");
+    }
+
     private sealed class FakeCashApi : ICashApiClient
     {
         private readonly Guid typeId = Guid.NewGuid();
@@ -256,8 +277,10 @@ public sealed class CashViewModelTests
             var amount = period switch { CashSummaryPeriod.Daily => 10m, CashSummaryPeriod.IsoWeek => 20m, CashSummaryPeriod.Monthly => 30m, _ => 40m };
             return Task.FromResult(new CashSummary(period, startDate ?? anchorDate ?? new DateOnly(2026, 8, 31), endDate ?? anchorDate ?? new DateOnly(2026, 8, 31), DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, amount, 1, 0, 0, [new(typeId, "Nakit", amount, 1)]));
         }
+        /// <summary>Sayfalama testi icin toplam kayit sayisi ayarlanabilir.</summary>
+        public int TotalCount { get; set; } = 1;
         public Task<PagedResult<IncomeTransactionDetails>> TransactionsAsync(IncomeTransactionFilter filter, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new PagedResult<IncomeTransactionDetails>([Transaction()], filter.Page, filter.PageSize, 1));
+            Task.FromResult(new PagedResult<IncomeTransactionDetails>([Transaction()], filter.Page, filter.PageSize, TotalCount));
         public Task<IReadOnlyList<IncomeTypeDetails>> TypesAsync(bool includeInactive, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<IncomeTypeDetails>>([new(typeId, "Nakit", true)]);
         public Task<IncomeTransactionDetails> AddAsync(CreateIncomeTransactionRequest request, CancellationToken cancellationToken = default)

@@ -160,9 +160,17 @@ public sealed class CashViewModel : ObservableObject
     public bool CanWrite => permissions.Contains("cash.write");
     public bool CanManage => permissions.Contains("cash.manage");
     public bool IsExportAvailable { get; }
-    public int Page { get => page; private set { if (Set(ref page, value)) Raise(nameof(PageText)); } }
+    // AsyncCommand CommandManager.RequerySuggested'e baglanmaz: CanExecuteChanged yalnizca
+    // Refresh() ile tetiklenir. Bu cagrilar eksikti; sayfalama dugmeleri donup kaliyordu.
+    public int Page { get => page; private set { if (Set(ref page, value)) { Raise(nameof(PageText)); RefreshPaging(); } } }
     public int PageSize { get => pageSize; set => Set(ref pageSize, value); }
-    public int TotalCount { get => totalCount; private set { if (Set(ref totalCount, value)) { Raise(nameof(PageText)); Raise(nameof(IsEmpty)); } } }
+    public int TotalCount { get => totalCount; private set { if (Set(ref totalCount, value)) { Raise(nameof(PageText)); Raise(nameof(IsEmpty)); RefreshPaging(); } } }
+
+    private void RefreshPaging()
+    {
+        (PreviousPageCommand as AsyncCommand)?.Refresh();
+        (NextPageCommand as AsyncCommand)?.Refresh();
+    }
     public string PageText => $"Sayfa {Page} / {Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize))} • {TotalCount:N0} kayıt";
 
     public ICommand RefreshCommand { get; }

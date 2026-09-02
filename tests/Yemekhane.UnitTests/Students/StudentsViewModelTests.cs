@@ -346,6 +346,36 @@ public sealed class StudentsViewModelTests
             ThreadPool.QueueUserWorkItem(_ => { SetSynchronizationContext(this); d(state); });
     }
 
+    /// <summary>
+    /// Sayfalama dugmeleri WPF'e etkinlestiklerini BILDIRMELI.
+    ///
+    /// AsyncCommand CommandManager.RequerySuggested'e baglanmaz: CanExecuteChanged yalnizca
+    /// Refresh() cagrilinca tetiklenir. Page/TotalCount setter'lari bunu cagirmadigi icin
+    /// dugmeler ilk cizildikleri halde (acilista TotalCount=0 -> "Sonraki" pasif) donuk kaliyor,
+    /// 2. sayfaya gecildiginde "Onceki" gri kalıyor ve kullanici 1. sayfaya donemiyordu.
+    /// MealEntitlementsViewModel bunu bastan beri dogru yapiyor.
+    /// </summary>
+    [Fact]
+    public async Task SayfalamaDugmeleriEtkinlestiklerini_Bildirir()
+    {
+        var api = new FakeApi { SearchResult = Page(1, 120) };
+        using var vm = Create(api);
+        var previousRaised = 0;
+        var nextRaised = 0;
+        vm.PreviousPageCommand.CanExecuteChanged += (_, _) => previousRaised++;
+        vm.NextPageCommand.CanExecuteChanged += (_, _) => nextRaised++;
+
+        await vm.LoadAsync(1);
+        Assert.True(nextRaised > 0, "ilk yuklemede \"Sonraki\" yeniden sorgulanmadi");
+
+        previousRaised = 0;
+        api.SearchResult = Page(2, 120);
+        await vm.LoadAsync(2);
+
+        Assert.True(vm.PreviousPageCommand.CanExecute(null));
+        Assert.True(previousRaised > 0, "2. sayfada \"Onceki\" yeniden sorgulanmadi: dugme gri kalir");
+    }
+
     private static StudentsViewModel Create(FakeApi api, params string[] permissions) =>
         new(api, new ShellNavigationService([ShellRoutes.Students, ShellRoutes.StudentDetail]), permissions);
     private static StudentListItem Row() => new(Guid.NewGuid(), "42", "CARD42", "Ada", "Yılmaz", "5", "A", "Ortaokul", "+905551234567", true, 1, true, DateTimeOffset.UtcNow);

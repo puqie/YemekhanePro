@@ -166,9 +166,19 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public string? SectionId { get => sectionId; set => Set(ref sectionId, value); }
     public string? DepartmentId { get => departmentId; set => Set(ref departmentId, value); }
     public bool? IsActive { get => isActive; set => Set(ref isActive, value); }
-    public int Page { get => page; private set { if (Set(ref page, value)) Raise(nameof(PageText)); } }
+    // AsyncCommand CommandManager.RequerySuggested'e baglanmaz: CanExecuteChanged yalnizca
+    // Refresh() ile tetiklenir. Bu cagrilar eksikti; "Önceki"/"Sonraki" ilk cizildikleri
+    // durumda (acilista TotalCount=0) donup kaliyor, 2. sayfaya gecilince "Önceki" gri
+    // kaldigi icin kullanici 1. sayfaya donemiyordu.
+    public int Page { get => page; private set { if (Set(ref page, value)) { Raise(nameof(PageText)); RefreshPaging(); } } }
     public int PageSize { get => pageSize; set => Set(ref pageSize, value); }
-    public int TotalCount { get => totalCount; private set { if (Set(ref totalCount, value)) { Raise(nameof(PageText)); Raise(nameof(IsEmpty)); } } }
+    public int TotalCount { get => totalCount; private set { if (Set(ref totalCount, value)) { Raise(nameof(PageText)); Raise(nameof(IsEmpty)); RefreshPaging(); } } }
+
+    private void RefreshPaging()
+    {
+        (PreviousPageCommand as AsyncCommand)?.Refresh();
+        (NextPageCommand as AsyncCommand)?.Refresh();
+    }
     public string PageText => $"Sayfa {Page} / {Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize))} • {TotalCount:N0} kayıt";
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) Raise(nameof(ShowGrid)); } }
     public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
