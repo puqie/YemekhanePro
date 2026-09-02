@@ -29,8 +29,11 @@ public sealed class NotificationUnreadCountTests
         realtime.Push(Event(Guid.NewGuid()));
 
         api.Release.SetResult();
-        // Komut tamamlanana kadar beklenir: mevcut kayit okundu isaretlenir, yeni gelen okunmamis kalir.
-        await WaitUntilAsync(() => vm.Items.Any(item => item.ReadAt is not null));
+        // Komutun TAMAMI bitene kadar beklenir. Once yalnizca "okundu isaretlenmis bir kayit
+        // var mi" bekleniyordu; bu kosul komut daha listeyi guncellemeden saglanabiliyor ve
+        // yuklu bir toplu kosuda test rastgele dusuyordu (tek basina hep geciyordu).
+        // Beklenen SON durum: iki kayit, biri okunmus.
+        await WaitUntilAsync(() => vm.Items.Count == 2 && vm.Items.Any(item => item.ReadAt is not null));
 
         // Yeni bildirim okunmamis kalmalidir; aksi halde rozet 0 gosterirken listede okunmamis kayit durur.
         Assert.Equal(1, vm.UnreadCount);
@@ -38,7 +41,7 @@ public sealed class NotificationUnreadCountTests
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
-    { for (var i = 0; i < 100 && !condition(); i++) await Task.Delay(10); Assert.True(condition()); }
+    { for (var i = 0; i < 500 && !condition(); i++) await Task.Delay(10); Assert.True(condition()); }
 
     private static NotificationItem Item(Guid id) => new(id, "Warning", "DeviceError", "Cihaz", "Hata",
         DateTimeOffset.UtcNow, "Device", "device-1", ShellRoutes.Devices, null, 1, DateTimeOffset.UtcNow, null, null);
