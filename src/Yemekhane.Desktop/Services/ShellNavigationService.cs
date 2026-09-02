@@ -18,6 +18,14 @@ public static class ShellRoutes
     public const string Cash = "cash";
     public const string Settings = "settings";
     public const string StudentImport = "student-import";
+    /// <summary>
+    /// AYRILMIS rota: API tarafinda RbacController (users.manage) var ama masaustunde
+    /// kullanici/rol ekrani henuz yazilmadi. Bu rota kasitli olarak HICBIR yerde kayitli
+    /// rotalara eklenmez; boylece Ayarlar'daki "Kullanıcılar / Roller" dugmesi
+    /// (CanNavigateUsers = IsAvailable(...)) gizli kalir ve olmayan bir ekrana gidilemez.
+    /// Sabit silinemez: SettingsViewModel buna basvurur. Ekran yazildiginda View'i ekleyip
+    /// App.xaml.cs ve LiveUiHarness'teki rota listesine "users.manage" kosuluyla eklenmeli.
+    /// </summary>
     public const string UsersRoles = "users-roles";
 }
 

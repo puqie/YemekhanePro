@@ -92,7 +92,18 @@ public sealed class NotificationCenterViewModel : ObservableObject, IDisposable
 
     private async Task OpenAsync(NotificationItem item)
     {
-        if (item.ReadAt is null) { await api.MarkReadAsync(item.Id); UnreadCount = Math.Max(0, UnreadCount - 1); }
+        if (item.ReadAt is null)
+        {
+            await api.MarkReadAsync(item.Id);
+            // Yerel kayit da okundu isaretlenir; aksi halde "Tümünü okundu işaretle" bu
+            // kaydi yeniden okunmamis sayar ve sayac sunucudan sapar.
+            RunOnUi(() =>
+            {
+                var index = Items.IndexOf(item);
+                if (index >= 0) Items[index] = item with { ReadAt = DateTimeOffset.UtcNow };
+                UnreadCount = Math.Max(0, UnreadCount - 1);
+            });
+        }
         if (!string.IsNullOrWhiteSpace(item.RelatedRoute) && navigation.IsAvailable(item.RelatedRoute)) navigation.Navigate(item.RelatedRoute);
         IsOpen = false;
     }

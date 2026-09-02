@@ -80,8 +80,14 @@ public sealed class GlobalSearchRepositoryTests
         Assert.Contains(group.Items, item => item.Title == "Idris Bayramı");
     }
 
+    /// <summary>
+    /// Kart numarasiyla arama ogrenciyi dondurur ve alt satirda o karti GOSTERIR: memur
+    /// elindeki karti okutup "bu kart kimin?" diye bakar; kartin sonucta gorunmesi
+    /// dogru ogrenciyi bulduguna dair tek kanittir. Ogrenci listesi ayni students.read
+    /// izniyle ayni kart numarasini zaten gosterir; burada gizlemek ek guvenlik saglamaz.
+    /// </summary>
     [Fact]
-    public async Task ExactStudentAndNumericCardLookupReturnStudentWithoutCardData()
+    public async Task ExactStudentAndNumericCardLookupReturnStudentWithItsCard()
     {
         await using var fixture = await Fixture.CreateAsync();
         var student = new Student { StudentNo = "7", FirstName = "Ada", LastName = "Yılmaz" };
@@ -93,7 +99,7 @@ public sealed class GlobalSearchRepositoryTests
 
         Assert.Equal(student.Id.ToString(), Assert.Single(Assert.Single(byNumber.Groups).Items).RouteParameters["id"]);
         var cardResult = Assert.Single(Assert.Single(byCard.Groups).Items);
-        Assert.DoesNotContain("123456", cardResult.Subtitle);
+        Assert.Contains("Kart 123456", cardResult.Subtitle);
         Assert.Equal("student", cardResult.Type);
     }
 
@@ -141,6 +147,37 @@ public sealed class GlobalSearchRepositoryTests
     }
 
     private static HashSet<string> Permissions(params string[] values) => values.ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Ayni ad-soyadli ogrenciler (okulda uc ADA, dort ALI var) yalnizca numarayla
+    /// ayirt edilemez: memur numaralari ezbere bilmez, sinif/subeyi ve karti bilir.
+    /// Arama sonucunun alt satiri no + sinif/sube + kart tasimali.
+    /// </summary>
+    [Fact]
+    public async Task IdenticalNamesAreDistinguishedByClassSectionAndCard()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var class5A = new SchoolClass { Name = "5A", IsActive = true };
+        var class7C = new SchoolClass { Name = "7C", IsActive = true };
+        var sectionB = new Section { Name = "B" };
+        fixture.Db.AddRange(class5A, class7C, sectionB);
+        var first = new Student { StudentNo = "9101", FirstName = "Ali", LastName = "Aslan", ClassId = class5A.Id, SectionId = sectionB.Id };
+        var second = new Student { StudentNo = "9102", FirstName = "Ali", LastName = "Aslan", ClassId = class7C.Id };
+        var third = new Student { StudentNo = "9103", FirstName = "Ali", LastName = "Aslan" };
+        fixture.Db.AddRange(first, second, third);
+        fixture.Db.Add(new StudentCard { StudentId = first.Id, CardNumber = "8350101", IsActive = true });
+        fixture.Db.Add(new StudentCard { StudentId = second.Id, CardNumber = "8350999", IsActive = false });
+        await fixture.Db.SaveChangesAsync();
+
+        var response = await fixture.Search.SearchAsync("ali", Permissions("students.read"), default);
+
+        var items = Assert.Single(response.Groups, x => x.Type == "student").Items;
+        var byNo = items.ToDictionary(item => item.RouteParameters["id"]);
+        Assert.Equal("No 9101 • 5A / B • Kart 8350101", byNo[first.Id.ToString()].Subtitle);
+        // Pasif kart gosterilmez: turnikede calismayan bir numara memuru yaniltir.
+        Assert.Equal("No 9102 • 7C • Kart yok", byNo[second.Id.ToString()].Subtitle);
+        Assert.Equal("No 9103 • Sınıf yok • Kart yok", byNo[third.Id.ToString()].Subtitle);
+    }
 
     private sealed class Fixture(SqliteConnection connection, YemekhaneDbContext db) : IAsyncDisposable
     {

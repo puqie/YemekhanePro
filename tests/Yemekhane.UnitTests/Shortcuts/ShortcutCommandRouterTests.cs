@@ -14,6 +14,8 @@ public sealed class ShortcutCommandRouterTests
     [InlineData("E", true, ShortcutCommand.ExportExcel)]
     [InlineData("Escape", false, ShortcutCommand.CloseTopmost)]
     [InlineData("Enter", false, ShortcutCommand.Activate)]
+    // WPF Key.Enter == Key.Return; Key.ToString() "Return" verir. Gercek klavye bu adla gelir.
+    [InlineData("Return", false, ShortcutCommand.Activate)]
     public void MapsKeys(string key, bool control, ShortcutCommand expected) =>
         Assert.Equal(expected, ShortcutCommandRouter.Map(new(key, control)));
 

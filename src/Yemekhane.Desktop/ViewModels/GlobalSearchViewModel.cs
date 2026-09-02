@@ -10,7 +10,20 @@ public sealed record SearchDisplayItem(string GroupTitle, SearchResultItem Resul
 {
     public string Title => Result.Title;
     public string Subtitle => Result.Subtitle;
-    public string Icon => Result.Icon;
+    /// <summary>
+    /// Rozetteki kisa etiket. API'nin Icon alani ("Person", "Calendar") ham Ingilizce
+    /// simge adidir ve 28 px'lik dairede kesilerek gorunuyordu; tur bazli Turkce kisaltma yazilir.
+    /// </summary>
+    public string Icon => Result.Type switch
+    {
+        "student" => "ÖĞR",
+        "class" => "SNF",
+        "group" => "GRP",
+        "date" => "GÜN",
+        "event" => "TTL",
+        "module" => "MOD",
+        _ => "•"
+    };
 }
 
 public sealed class GlobalSearchViewModel : ObservableObject, IDisposable

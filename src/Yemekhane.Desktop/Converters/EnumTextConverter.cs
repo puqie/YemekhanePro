@@ -97,6 +97,15 @@ public sealed class EnumTextConverter : IValueConverter
         ["Offline"] = "Çevrimdışı",
         ["Attention"] = "İnceleme gerekiyor",
     };
+    /// <summary>Bildirim merkezi seviyeleri (NotificationSeverities): rozet ham Ingilizce gosteriyordu.</summary>
+    private static readonly Dictionary<string, string> NotificationSeverity = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Success"] = "Başarılı",
+        ["Info"] = "Bilgi",
+        ["Warning"] = "Uyarı",
+        ["Error"] = "Hata",
+    };
+
 
     /// <summary>
     /// Izin kaydinin yemek hakkina etkisi (LeaveService.Behaviors). Ogrenci detayindaki
@@ -208,6 +217,7 @@ public sealed class EnumTextConverter : IValueConverter
         ["TransferBehavior"] = TransferBehavior,
         ["HolidayType"] = HolidayType,
         ["ExceptionType"] = ExceptionType,
+        ["NotificationSeverity"] = NotificationSeverity,
     };
 
     /// <summary>Kod icinden de kullanilabilsin diye ayri: ViewModel'ler XAML'siz cevirir.</summary>

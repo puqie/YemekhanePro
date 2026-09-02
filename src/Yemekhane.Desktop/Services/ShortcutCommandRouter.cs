@@ -71,7 +71,12 @@ public sealed class ShortcutCommandRouter(IShortcutCommandTarget target)
 
     public static ShortcutCommand? Map(ShortcutGesture gesture)
     {
-        var normalized = new ShortcutGesture(gesture.Key.Trim(), gesture.Control, gesture.Shift, gesture.Alt);
+        // WPF'te Key.Enter, Key.Return'un takma adidir ve Key.ToString() "Return" verir.
+        // Baglama tablosu "Enter" dedigi icin gercek klavyeden gelen Enter hicbir komuta
+        // eslesmiyordu: palet sonucunu Enter ile acmak calismiyordu (canli yolculukta bulundu).
+        var keyName = gesture.Key.Trim();
+        if (string.Equals(keyName, "Return", StringComparison.OrdinalIgnoreCase)) keyName = "Enter";
+        var normalized = new ShortcutGesture(keyName, gesture.Control, gesture.Shift, gesture.Alt);
         foreach (var binding in Bindings)
             if (string.Equals(binding.Gesture.Key, normalized.Key, StringComparison.OrdinalIgnoreCase)
                 && binding.Gesture.Control == normalized.Control
@@ -85,9 +90,27 @@ public sealed class ShortcutCommandRouter(IShortcutCommandTarget target)
         input.IsTextInput && command is ShortcutCommand.ExportPdf or ShortcutCommand.ExportExcel
         || input.IsMultilineInput && command == ShortcutCommand.Activate;
 
+    /// <summary>Rota kimligi ("daily-tracking") kullaniciya gosterilmez; ekranin Turkce adi yazilir.</summary>
+    public static string RouteTitle(string route) => route switch
+    {
+        ShellRoutes.Dashboard => "Dashboard",
+        ShellRoutes.DailyTracking => "Günlük Takip",
+        ShellRoutes.Students or ShellRoutes.StudentDetail or ShellRoutes.StudentsCreate or ShellRoutes.Cards or ShellRoutes.CardReader => "Öğrenciler",
+        ShellRoutes.Entitlements => "Yemek Hakedişleri",
+        ShellRoutes.HolidayTransfer => "Takvim / Tatil",
+        ShellRoutes.StudentImport => "Sicil Aktar",
+        ShellRoutes.Devices => "Cihazlar / Turnikeler",
+        ShellRoutes.DeviceCards => "Kart Yükleme Durumu",
+        ShellRoutes.Sms => "SMS Merkezi",
+        ShellRoutes.Cash => "Kasa",
+        ShellRoutes.Reports => "Raporlar",
+        ShellRoutes.Settings => "Ayarlar",
+        _ => route
+    };
+
     private string ContextStatus(ShortcutCommand command) => command switch
     {
-        ShortcutCommand.Refresh => $"Etkin: {target.CurrentRoute}",
+        ShortcutCommand.Refresh => $"Etkin: {RouteTitle(target.CurrentRoute)}",
         ShortcutCommand.ExportPdf or ShortcutCommand.ExportExcel => "Etkin: Raporlar",
         ShortcutCommand.Activate when !target.IsPaletteOpen => "Odak bağlamına göre",
         _ => "Etkin"
@@ -95,8 +118,8 @@ public sealed class ShortcutCommandRouter(IShortcutCommandTarget target)
 
     private static string UnavailableStatus(ShortcutCommand command) => command switch
     {
-        ShortcutCommand.ExportPdf or ShortcutCommand.ExportExcel => "Yalnızca Raporlar ve reports.export izniyle",
-        ShortcutCommand.CardRead => "Öğrenci/kart yetkisi veya bağlı okuyucu yok",
+        ShortcutCommand.ExportPdf or ShortcutCommand.ExportExcel => "Yalnızca Raporlar ekranında, hazır rapor ve dışa aktarma yetkisiyle",
+        ShortcutCommand.CardRead => "Kart yetkisi yok ya da bağlı kart okuyucu bulunmuyor",
         ShortcutCommand.Refresh => "Bu görünüm yenilemeyi desteklemiyor",
         ShortcutCommand.CloseTopmost => "Açık katman yok",
         ShortcutCommand.Activate => "Uygulanabilir odak yok",
