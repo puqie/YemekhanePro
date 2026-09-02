@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Globalization;
 using System.Windows.Input;
 using Yemekhane.Application.Settings;
+using Yemekhane.Application.Sms;
 using Yemekhane.Desktop.Converters;
 using Yemekhane.Desktop.Services;
 
@@ -47,6 +48,13 @@ public sealed class SettingsViewModel : ObservableObject
     private bool backupEnabled, syncEnabled;
     private string backupFrequency = "Daily", backupTime = "02:00", backupPath = "", syncEndpoint = "", syncDeviceId = "", logLevel = "Information", logPath = "";
     private DayOfWeek backupWeeklyDay = DayOfWeek.Sunday;
+    // Otomatik SMS kurallari ayri uc noktadan gelir/gider ama ayni Kaydet/Iptal akisina baglidir:
+    // kullanici icin tek "Ayarlar" ekrani vardir, iki ayri kaydet dugmesi kafa karistirir.
+    private SmsAutomationStatus? automationOriginal;
+    private bool autoEntitlementEnabled, autoIncomeEnabled, autoCardEnabled;
+    private string autoEntitlementSendAt = "13:10", autoEntitlementDaysText = "2", autoEntitlementTemplate = "";
+    private string autoIncomePhone = "", autoIncomeTemplate = "", autoCardTemplate = "", autoCardPhone = "";
+    private string? entitlementRunText;
 
     public SettingsViewModel(ISettingsApiClient api, IShellNavigationService navigation, IEnumerable<string> permissions,
         IFileDialogService? files = null)
@@ -67,6 +75,9 @@ public sealed class SettingsViewModel : ObservableObject
         RequeueConflictCommand = new AsyncCommand(RequeueConflictAsync,
             () => CanManage && !IsLoading && SelectedConflict is not null);
         RefreshLogsCommand = new AsyncCommand(LoadLogsAsync, () => CanRead && !IsLoading);
+        // Kayitli esik/sablonla kosar; kaydedilmemis degisiklik varken pasif -- aksi halde ekranda
+        // gorunen degil, sunucudaki eski deger uygulanir ve kullanici bunu anlayamaz.
+        RunEntitlementWarningCommand = new AsyncCommand(RunEntitlementWarningAsync, () => CanManage && !IsLoading && !IsDirty);
         NavigateDevicesCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Devices), () => navigation.IsAvailable(ShellRoutes.Devices));
         // "Yemek Türleri" artik Tanimlar ekranina gider: ogun ekleme/duzenleme/ucret orada.
         // Onceden Hakedisler ekranina gidiyordu; orada ogun TANIMLANAMAZ, yalnizca secilir.
@@ -109,8 +120,38 @@ public sealed class SettingsViewModel : ObservableObject
     /// Kaydedilecek bir sey var mi? Gecersiz sayisal girdi de "kirli" sayilir: aksi halde
     /// Kaydet pasif kalir ve kullanici neden kaydedemedigini asla ogrenemez.
     /// </summary>
+    /// <summary>
+    /// Kaydedilecek bir sey var mi? <see cref="saveFailed"/> de "kirli" sayilir: sunucu bir
+    /// kaydi reddettikten sonra kullanici alani ESKI degerine geri yazarsa (ornegin yanlis
+    /// yazdigi telefonu duzeltip kayitli degerin aynisini girerse) form "temiz" gorunuyor,
+    /// Kaydet PASIF kaliyor ve reddedilen istek bir daha hic gonderilemiyordu -- ekranda ise
+    /// hata mesaji asili kaliyordu. Basarili kayitta bayrak dusurulur.
+    /// </summary>
     public bool IsDirty => original is not null && (!BuildRequest().Equals(ToRequest(original)) || HasInvalidInput)
-        || !string.IsNullOrWhiteSpace(SmsSecret) || !string.IsNullOrWhiteSpace(SyncSecret);
+        || !string.IsNullOrWhiteSpace(SmsSecret) || !string.IsNullOrWhiteSpace(SyncSecret) || IsAutomationDirty || saveFailed;
+    public bool IsAutomationDirty => automationOriginal is not null && !BuildAutomation().Equals(automationOriginal.Settings);
+
+    // ---- Otomatik SMS (eski program: "Sms Sistemi Tanımları" sag paneli) ----
+    public bool AutoEntitlementEnabled { get => autoEntitlementEnabled; set => Change(ref autoEntitlementEnabled, value); }
+    public string AutoEntitlementSendAt { get => autoEntitlementSendAt; set => Change(ref autoEntitlementSendAt, value); }
+    public string AutoEntitlementDaysText { get => autoEntitlementDaysText; set => Change(ref autoEntitlementDaysText, value); }
+    public string AutoEntitlementTemplate { get => autoEntitlementTemplate; set => Change(ref autoEntitlementTemplate, value); }
+    public bool AutoIncomeEnabled { get => autoIncomeEnabled; set => Change(ref autoIncomeEnabled, value); }
+    public string AutoIncomePhone { get => autoIncomePhone; set => Change(ref autoIncomePhone, value); }
+    public string AutoIncomeTemplate { get => autoIncomeTemplate; set => Change(ref autoIncomeTemplate, value); }
+    public bool AutoCardEnabled { get => autoCardEnabled; set => Change(ref autoCardEnabled, value); }
+    public string AutoCardTemplate { get => autoCardTemplate; set => Change(ref autoCardTemplate, value); }
+    public string AutoCardPhone { get => autoCardPhone; set => Change(ref autoCardPhone, value); }
+    public static string EntitlementVariablesHint { get; } = "Değişkenler: " + string.Join(" ", SmsAutomationTemplates.EntitlementWarningVariables.Select(x => "{" + x + "}"));
+    public static string IncomeVariablesHint { get; } = "Değişkenler: " + string.Join(" ", SmsAutomationTemplates.IncomeNoticeVariables.Select(x => "{" + x + "}"));
+    public static string CardVariablesHint { get; } = "Değişkenler: " + string.Join(" ", SmsAutomationTemplates.CardReplacementVariables.Select(x => "{" + x + "}"));
+    /// <summary>Eski programdaki "Şimdi Saat" gostergesi: sunucunun Istanbul saati (gonderim saati buna gore).</summary>
+    public string ServerTimeText => automationOriginal is null ? "" : $"Sunucu saati: {automationOriginal.ServerTime:HH:mm}";
+    public string LastEntitlementRunText => automationOriginal?.LastEntitlementRunDate is { } date
+        ? $"Zamanlanmış hak uyarısı en son {date:dd.MM.yyyy} günü çalıştı." : "Zamanlanmış hak uyarısı henüz çalışmadı.";
+    /// <summary>"Şimdi gönder" sonucu: kac SMS kuyruklandi, kac aday telefonsuz/bugun zaten gonderilmis.</summary>
+    public string? EntitlementRunText { get => entitlementRunText; private set => Set(ref entitlementRunText, value); }
+    public ICommand RunEntitlementWarningCommand { get; }
     public bool HasInvalidInput => Validate().Count > 0;
     public string SchoolName { get => schoolName; set => Change(ref schoolName, value); } public string SchoolAddress { get => schoolAddress; set => Change(ref schoolAddress, value); }
     public string SchoolContact { get => schoolContact; set => Change(ref schoolContact, value); } public string LogoPath { get => logoPath; set => Change(ref logoPath, value); }
@@ -181,20 +222,33 @@ public sealed class SettingsViewModel : ObservableObject
     public ICommand SyncNowCommand { get; } public ICommand RefreshLogsCommand { get; } public ICommand NavigateDevicesCommand { get; } public ICommand NavigateMealsCommand { get; } public ICommand NavigateHolidaysCommand { get; } public ICommand NavigateUsersCommand { get; }
 
     public Task InitializeAsync() => LoadAsync();
-    public async Task LoadAsync() => await Run(async () => { Apply(await api.GetAsync()); await LoadLogsCoreAsync(); await LoadConflictsAsync(); StatusMessage = null; });
+    public async Task LoadAsync() => await Run(async () => { saveFailed = false; Apply(await api.GetAsync()); ApplyAutomation(await api.GetSmsAutomationAsync()); await LoadLogsCoreAsync(); await LoadConflictsAsync(); StatusMessage = null; });
     public async Task SaveAsync()
     {
         // Sunucuya gitmeden once yerel dogrulama: hata alan adiyla ve Turkce soylenir.
         var problems = Validate();
         if (problems.Count > 0) { ErrorMessage = string.Join(Environment.NewLine, problems); StatusMessage = null; validationErrorShown = true; return; }
         validationErrorShown = false;
+        // Basarisiz varsayilir; yalnizca her iki kayit da donerse temizlenir. Aksi halde
+        // reddedilen istek, kullanici eski degeri geri yazdiginda tekrar gonderilemezdi.
+        saveFailed = true;
         await Run(async () =>
         {
             var result = await api.SaveAsync(BuildRequest()); Apply(result.Settings);
+            // Otomatik kurallar ayri uc nokta; sunucunun dogrulama mesaji (telefon, sablon) Run() ile ekrana ulasir.
+            if (automationOriginal is not null) ApplyAutomation(await api.SaveSmsAutomationAsync(BuildAutomation()));
+            saveFailed = false;
             StatusMessage = result.RestartRequired ? "Kaydedildi. Servis ayarlarının (SMS, yedekleme, eşitleme, log) uygulanması için uygulama yeniden başlatılmalıdır." : "Ayarlar kaydedildi.";
         });
+        Raise(nameof(IsDirty)); RefreshCommands();
     }
-    public void Cancel() { if (original is not null) Apply(original); ErrorMessage = null; StatusMessage = "Değişiklikler geri alındı."; }
+    public void Cancel() { saveFailed = false; if (original is not null) Apply(original); if (automationOriginal is not null) ApplyAutomation(automationOriginal); ErrorMessage = null; StatusMessage = "Değişiklikler geri alındı."; }
+    private async Task RunEntitlementWarningAsync() => await Run(async () =>
+    {
+        var x = await api.RunEntitlementWarningAsync();
+        EntitlementRunText = $"{x.Date:dd.MM.yyyy}: {x.Queued} SMS kuyruğa alındı ({x.Candidates} aday; {x.SkippedNoPhone} veli telefonu yok; {x.SkippedAlreadySent} bugün zaten gönderilmiş).";
+        StatusMessage = x.Queued > 0 ? "Hak uyarısı SMS'leri kuyruğa alındı; gönderimi SMS Merkezi → Geçmiş'ten izleyebilirsiniz." : "Kuyruğa alınacak yeni hak uyarısı yok.";
+    });
     public void SetSmsSecret(string value) => SmsSecret = value; public void SetSyncSecret(string value) => SyncSecret = value;
     private async Task BackupNowAsync() => await Run(async () => { var x = await api.BackupNowAsync(); LastBackupFile = x.FileName; StatusMessage = $"Yedek oluşturuldu: {x.FileName} ({x.CreatedAt.ToLocalTime():dd.MM.yyyy HH:mm}). Şema sürümü {x.SchemaVersion}, uygulama {x.AppVersion}."; });
     private async Task ValidateBackupAsync() => await Run(async () => { var x = await api.ValidateBackupAsync(RestorePath!); StatusMessage = $"Yedek doğrulandı: {x.CreatedAt.ToLocalTime():dd.MM.yyyy HH:mm} tarihli, şema sürümü {x.SchemaVersion}, uygulama {x.AppVersion}."; });
@@ -247,7 +301,25 @@ public sealed class SettingsViewModel : ObservableObject
         if (!TryParseTime(BackupTime, out _)) problems.Add("Yedekleme saati SS:dd biçiminde olmalıdır (örn. 02:00); saat 0-23, dakika 0-59.");
         if (SyncEnabled && (string.IsNullOrWhiteSpace(SyncEndpoint) || string.IsNullOrWhiteSpace(SyncDeviceId)))
             problems.Add("Eşitleme etkinken sunucu adresi ve cihaz kimliği zorunludur.");
+        if (automationOriginal is not null)
+        {
+            if (!TryParseTime(AutoEntitlementSendAt, out _)) problems.Add("Hak uyarısı gönderim saati SS:dd biçiminde olmalıdır (örn. 13:10).");
+            CheckNumber(problems, AutoEntitlementDaysText, 1, 30, "Hak uyarısı gün eşiği");
+            if (string.IsNullOrWhiteSpace(AutoEntitlementTemplate)) problems.Add("Hak uyarısı mesaj şablonu boş olamaz.");
+            if (AutoIncomeEnabled && !IsPhone(AutoIncomePhone)) problems.Add("Gelir bildirimi için yetkili GSM no 10-11 haneli olmalıdır (örn. 05321234567).");
+            if (!AutoIncomeEnabled && !string.IsNullOrWhiteSpace(AutoIncomePhone) && !IsPhone(AutoIncomePhone)) problems.Add("Gelir bildirimi yetkili GSM no 10-11 haneli olmalıdır.");
+            if (string.IsNullOrWhiteSpace(AutoIncomeTemplate)) problems.Add("Gelir bildirimi mesaj şablonu boş olamaz.");
+            if (string.IsNullOrWhiteSpace(AutoCardTemplate)) problems.Add("Kart yenileme mesaj şablonu boş olamaz.");
+            if (!string.IsNullOrWhiteSpace(AutoCardPhone) && !IsPhone(AutoCardPhone)) problems.Add("Kart yenileme yetkili GSM no 10-11 haneli olmalıdır.");
+        }
         return problems;
+    }
+
+    /// <summary>10-11 hane (0532... / 532...), +90 ile 12 hane de kabul; kesin kural sunucuda (TurkishMobilePhone).</summary>
+    private static bool IsPhone(string? text)
+    {
+        var digits = (text ?? "").Count(char.IsDigit);
+        return digits is >= 10 and <= 12 && (text ?? "").All(c => char.IsDigit(c) || c is ' ' or '+' or '-' or '(' or ')');
     }
 
     private static void CheckNumber(List<string> problems, string text, int min, int max, string name)
@@ -284,11 +356,27 @@ public sealed class SettingsViewModel : ObservableObject
         logLevel = x.Logs.Level; logRetentionText = x.Logs.RetentionDays.ToString(CultureInfo.InvariantCulture); logPath = x.Logs.Path ?? "";
         foreach (var name in GetType().GetProperties().Where(p => p.CanRead).Select(p => p.Name)) Raise(name); RefreshCommands();
     }
+    private void ApplyAutomation(SmsAutomationStatus status)
+    {
+        automationOriginal = status; var s = status.Settings;
+        autoEntitlementEnabled = s.EntitlementWarning.Enabled; autoEntitlementSendAt = s.EntitlementWarning.SendAt.ToString("HH:mm", CultureInfo.InvariantCulture);
+        autoEntitlementDaysText = s.EntitlementWarning.DaysThreshold.ToString(CultureInfo.InvariantCulture); autoEntitlementTemplate = s.EntitlementWarning.Template;
+        autoIncomeEnabled = s.IncomeNotice.Enabled; autoIncomePhone = s.IncomeNotice.AdminPhone ?? ""; autoIncomeTemplate = s.IncomeNotice.Template;
+        autoCardEnabled = s.CardReplacement.Enabled; autoCardTemplate = s.CardReplacement.Template; autoCardPhone = s.CardReplacement.AdminPhone ?? "";
+        foreach (var name in GetType().GetProperties().Where(p => p.CanRead).Select(p => p.Name)) Raise(name); RefreshCommands();
+    }
+    private SmsAutomationSettings BuildAutomation() => new(
+        new EntitlementWarningRule(AutoEntitlementEnabled, TryParseTime(AutoEntitlementSendAt, out var at) ? at : automationOriginal?.Settings.EntitlementWarning.SendAt ?? new TimeOnly(13, 10),
+            ParseOr(AutoEntitlementDaysText, automationOriginal?.Settings.EntitlementWarning.DaysThreshold ?? 2), AutoEntitlementTemplate?.Trim() ?? ""),
+        new IncomeNoticeRule(AutoIncomeEnabled, EmptyToNull(AutoIncomePhone), AutoIncomeTemplate?.Trim() ?? ""),
+        new CardReplacementRule(AutoCardEnabled, AutoCardTemplate?.Trim() ?? "", EmptyToNull(AutoCardPhone)));
     private SaveSettingsRequest BuildRequest() => new(new(SchoolName, EmptyToNull(SchoolAddress), EmptyToNull(SchoolContact), EmptyToNull(LogoPath)), new(EmptyToNull(SmsEndpoint), SmsAuthType, EmptyToNull(SmsUsername), EmptyToNull(SmsSender), SmsTimeoutSeconds, EmptyToNull(SmsSecret)), new(BackupEnabled, BackupFrequency, BackupWeeklyDay, TryParseTime(BackupTime, out var time) ? time : original?.Backup.Time ?? TimeOnly.MinValue, BackupRetentionCount, EmptyToNull(BackupPath)), new(EmptyToNull(SyncEndpoint), EmptyToNull(SyncDeviceId), SyncIntervalMinutes, SyncEnabled, EmptyToNull(SyncSecret)), new(LogLevel, LogRetentionDays, EmptyToNull(LogPath)));
     private static SaveSettingsRequest ToRequest(SettingsDocument x) => new(new(x.School.Name, x.School.Address, x.School.Contact, x.School.LogoPath), new(x.Sms.Endpoint, x.Sms.AuthType, x.Sms.Username, x.Sms.Sender, x.Sms.TimeoutSeconds, null), new(x.Backup.Enabled, x.Backup.Frequency, x.Backup.WeeklyDay, x.Backup.Time, x.Backup.RetentionCount, x.Backup.Path), new(x.Sync.Endpoint, x.Sync.DeviceId, x.Sync.IntervalMinutes, x.Sync.Enabled, null), new(x.Logs.Level, x.Logs.RetentionDays, x.Logs.Path));
     // Yerel dogrulama hatasi gosterildikten sonra kullanici alani duzeltirse mesaj kalkar;
     // aksi halde "abc" uyarisi, kutu "2" yazarken bile ekranda asili kaliyordu.
     private bool validationErrorShown;
+    /// <summary>Son kayit denemesi sunucuda basarisiz oldu mu? Bkz. <see cref="IsDirty"/>.</summary>
+    private bool saveFailed;
     private void Change<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
     {
         if (!Set(ref field, value, name)) return;
@@ -296,5 +384,5 @@ public sealed class SettingsViewModel : ObservableObject
         Raise(nameof(IsDirty)); Raise(nameof(HasInvalidInput)); RefreshCommands();
     }
     private static string? EmptyToNull(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-    private void RefreshCommands() { foreach (var c in new[] { SaveCommand, CancelCommand, RefreshCommand, BackupNowCommand, ChooseRestoreCommand, ValidateBackupCommand, RestoreCommand, SyncNowCommand, RefreshConflictsCommand, RequeueConflictCommand, RefreshLogsCommand }) if (c is AsyncCommand a) a.Refresh(); else if (c is RelayCommand r) r.Refresh(); }
+    private void RefreshCommands() { foreach (var c in new[] { SaveCommand, CancelCommand, RefreshCommand, BackupNowCommand, ChooseRestoreCommand, ValidateBackupCommand, RestoreCommand, SyncNowCommand, RefreshConflictsCommand, RequeueConflictCommand, RefreshLogsCommand, RunEntitlementWarningCommand }) if (c is AsyncCommand a) a.Refresh(); else if (c is RelayCommand r) r.Refresh(); }
 }

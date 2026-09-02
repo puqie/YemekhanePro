@@ -55,6 +55,13 @@ public sealed class EfSmsLogRepository(YemekhaneDbContext dbContext, TimeProvide
               AND ({{filter.To}} IS NULL OR CreatedAt <= {{filter.To}})
               AND ({{filter.StudentId}} IS NULL OR StudentId = {{filter.StudentId}})
               AND ({{filter.Provider}} IS NULL OR Provider = {{filter.Provider}})
+              AND ({{filter.Source}} IS NULL
+                   OR ({{filter.Source}} = 'AutoEntitlement' AND IdempotencyKey LIKE 'oto:hak:%')
+                   OR ({{filter.Source}} = 'AutoIncome' AND IdempotencyKey LIKE 'oto:gelir:%')
+                   OR ({{filter.Source}} = 'AutoCard' AND IdempotencyKey LIKE 'oto:kart:%')
+                   OR ({{filter.Source}} = 'Bulk' AND length(IdempotencyKey) = 64 AND IdempotencyKey NOT GLOB '*[^0-9A-Fa-f]*')
+                   OR ({{filter.Source}} = 'Manual' AND IdempotencyKey NOT LIKE 'oto:%'
+                       AND NOT (length(IdempotencyKey) = 64 AND IdempotencyKey NOT GLOB '*[^0-9A-Fa-f]*')))
               AND ({{filter.Student}} IS NULL OR EXISTS (
                   SELECT 1 FROM students s WHERE s.Id = sms_logs.StudentId AND s.IsDeleted = 0
                     AND (s.student_no LIKE '%' || {{filter.Student}} || '%'
@@ -71,6 +78,13 @@ public sealed class EfSmsLogRepository(YemekhaneDbContext dbContext, TimeProvide
               AND ({{filter.To}} IS NULL OR CreatedAt <= {{filter.To}})
               AND ({{filter.StudentId}} IS NULL OR StudentId = {{filter.StudentId}})
               AND ({{filter.Provider}} IS NULL OR Provider = {{filter.Provider}})
+              AND ({{filter.Source}} IS NULL
+                   OR ({{filter.Source}} = 'AutoEntitlement' AND IdempotencyKey LIKE 'oto:hak:%')
+                   OR ({{filter.Source}} = 'AutoIncome' AND IdempotencyKey LIKE 'oto:gelir:%')
+                   OR ({{filter.Source}} = 'AutoCard' AND IdempotencyKey LIKE 'oto:kart:%')
+                   OR ({{filter.Source}} = 'Bulk' AND length(IdempotencyKey) = 64 AND IdempotencyKey NOT GLOB '*[^0-9A-Fa-f]*')
+                   OR ({{filter.Source}} = 'Manual' AND IdempotencyKey NOT LIKE 'oto:%'
+                       AND NOT (length(IdempotencyKey) = 64 AND IdempotencyKey NOT GLOB '*[^0-9A-Fa-f]*')))
               AND ({{filter.Student}} IS NULL OR EXISTS (
                   SELECT 1 FROM students s WHERE s.Id = sms_logs.StudentId AND s.IsDeleted = 0
                     AND (s.student_no LIKE '%' || {{filter.Student}} || '%'

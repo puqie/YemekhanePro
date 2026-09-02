@@ -95,6 +95,11 @@ public static class InfrastructureRegistration
         services.AddScoped<EfSmsLogRepository>();
         services.AddScoped<ISmsLogRepository>(provider => provider.GetRequiredService<EfSmsLogRepository>());
         services.AddScoped<IBulkSmsRepository, EfBulkSmsRepository>();
+        // Otomatik SMS kurallari: gelir/kart servisleri ISmsAutomationTrigger'i istege bagli alir.
+        services.AddScoped<ISmsAutomationStore, EfSmsAutomationStore>();
+        services.AddScoped<ISmsAutomationRepository, EfSmsAutomationRepository>();
+        services.AddScoped<SmsAutomationService>();
+        services.AddScoped<ISmsAutomationTrigger>(provider => provider.GetRequiredService<SmsAutomationService>());
         services.AddScoped<IIncomeRepository, EfIncomeRepository>();
         services.AddScoped<ICashRepository, EfCashRepository>();
         services.AddScoped<IReportRepository, EfReportRepository>();

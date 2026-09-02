@@ -20,6 +20,8 @@ public static class SmsRegistration
         services.AddSingleton<SmsDispatchRunLock>();
         services.AddScoped<SmsDispatcher>();
         services.AddHostedService<SmsBackgroundDispatcher>();
+        // Gunluk hak uyarisi zamanlayicisi: dispatcher ile ayni kayit noktasi (Program.cs'e dokunulmaz).
+        services.AddHostedService<SmsAutomationWorker>();
 
         var provider = section[nameof(SmsProviderOptions.Provider)];
         if (provider?.Equals("Mock", StringComparison.OrdinalIgnoreCase) == true)

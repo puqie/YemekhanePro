@@ -2,6 +2,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="clr-namespace:Yemekhane.Desktop"
+    xmlns:vm="clr-namespace:Yemekhane.Desktop.ViewModels"
     xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
     xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
     FontFamily="Segoe UI" FontSize="12">
@@ -74,6 +75,46 @@
                             <TextBlock Style="{StaticResource Label}" Text="Gizli bilgi: şifre / jeton / API anahtarı (boş bırakırsanız değişmez)"/><PasswordBox x:Name="SmsSecretBox" Height="30" Margin="0,3,0,3" PasswordChanged="SmsSecretChanged"/>
                             <TextBlock Text="Gizli bilgi yapılandırıldı" Foreground="{StaticResource AccentBrush}" Visibility="{Binding SmsSecretConfigured, Converter={StaticResource Bool}}"/>
                             <TextBlock Text="Sağlayıcı değişiklikleri uygulama yeniden başlatıldığında uygulanır." Foreground="{StaticResource WarningBrush}" Margin="0,12,0,0"/>
+                        </StackPanel></Border>
+                        <!-- Otomatik SMS kurallari (eski programdaki "Sms Sistemi Tanımları" sag paneli): uc kural
+                             yan yana; her biri onay kutusu + alanlar + sablon. Kaydet/Iptal sayfanin ortak
+                             dugmeleridir (kirli izleme otomasyonu da kapsar). -->
+                        <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                            <Grid><TextBlock Text="Otomatik SMS" FontSize="16" FontWeight="SemiBold"/><TextBlock Text="{Binding ServerTimeText}" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" AutomationProperties.Name="Sunucu saati"/></Grid>
+                            <TextBlock Text="Kurallar sunucuda çalışır; SMS'ler kuyruğa alınır ve sağlayıcı üzerinden gönderilir. Geçmişi SMS Merkezi → Geçmiş'te 'Kaynak' sütunundan izleyebilirsiniz." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Veliye yemek hakkı uyarısı" FontWeight="SemiBold"/>
+                                    <CheckBox Content="Her gün belirlenen saatte gönder" IsChecked="{Binding AutoEntitlementEnabled}" Margin="0,6,0,4" IsEnabled="{Binding CanManage}"/>
+                                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel><TextBlock Style="{StaticResource Label}" Text="Gönderim saati (SS:dd)"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding AutoEntitlementSendAt, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}" AutomationProperties.Name="Hak uyarısı gönderim saati"/></StackPanel>
+                                        <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Kaç gün hak kaldığında (1-30)"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding AutoEntitlementDaysText, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}" AutomationProperties.Name="Hak uyarısı gün eşiği"/></StackPanel>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource Label}" Text="Mesaj şablonu"/>
+                                    <TextBox Style="{StaticResource Field}" Height="86" Margin="0,3,0,3" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" Text="{Binding AutoEntitlementTemplate, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}" AutomationProperties.Name="Hak uyarısı mesaj şablonu"/>
+                                    <TextBlock Text="{x:Static vm:SettingsViewModel.EntitlementVariablesHint}" Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap"/>
+                                    <WrapPanel Margin="0,8,0,0"><Button Content="Şimdi gönder (hak uyarısı)" Command="{Binding RunEntitlementWarningCommand}" Style="{StaticResource Action}"/></WrapPanel>
+                                    <TextBlock Text="Kayıtlı eşik ve şablonla çalışır; önce kaydedin. Aynı gün aynı öğrenciye ikinci SMS gitmez." Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding EntitlementRunText}" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding LastEntitlementRunText}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Gelir girişinde yetkiliye bildirim" FontWeight="SemiBold"/>
+                                    <CheckBox Content="Kasaya gelir girildiğinde SMS gönder" IsChecked="{Binding AutoIncomeEnabled}" Margin="0,6,0,4" IsEnabled="{Binding CanManage}"/>
+                                    <TextBlock Style="{StaticResource Label}" Text="Yetkili GSM no"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding AutoIncomePhone, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}" AutomationProperties.Name="Gelir bildirimi yetkili GSM no"/>
+                                    <TextBlock Style="{StaticResource Label}" Text="Mesaj şablonu"/>
+                                    <TextBox Style="{StaticResource Field}" Height="86" Margin="0,3,0,3" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" Text="{Binding AutoIncomeTemplate, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}" AutomationProperties.Name="Gelir bildirimi mesaj şablonu"/>
+                                    <TextBlock Text="{x:Static vm:SettingsViewModel.IncomeVariablesHint}" Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="Kart yenileme" FontWeight="SemiBold"/>
+                                    <CheckBox Content="Kart atanınca/değişince veliye SMS gönder" IsChecked="{Binding AutoCardEnabled}" Margin="0,6,0,4" IsEnabled="{Binding CanManage}"/>
+                                    <TextBlock Style="{StaticResource Label}" Text="Yetkiliye de gönder (GSM no, isteğe bağlı)"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding AutoCardPhone, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}" AutomationProperties.Name="Kart yenileme yetkili GSM no"/>
+                                    <TextBlock Style="{StaticResource Label}" Text="Mesaj şablonu"/>
+                                    <TextBox Style="{StaticResource Field}" Height="86" Margin="0,3,0,3" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" Text="{Binding AutoCardTemplate, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}" AutomationProperties.Name="Kart yenileme mesaj şablonu"/>
+                                    <TextBlock Text="{x:Static vm:SettingsViewModel.CardVariablesHint}" Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel></Border>
                     </StackPanel></ScrollViewer>
                 </TabItem>

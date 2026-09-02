@@ -61,12 +61,16 @@ public sealed record SmsLogDetails(
     Guid Id, Guid? StudentId, Guid? TemplateId, string Phone, string Message,
     string? Provider, string Status, string IdempotencyKey, int AttemptCount,
     DateTimeOffset? NextAttemptAt, DateTimeOffset? SendingStartedAt, DateTimeOffset? SentAt,
-    string? ProviderMessageId, string? Error, DateTimeOffset CreatedAt);
+    string? ProviderMessageId, string? Error, DateTimeOffset CreatedAt)
+{
+    /// <summary>Kaynak (Elle/Toplu/Otomatik...), anahtardan turetilir; bkz. <see cref="SmsSources"/>.</summary>
+    public string Source => SmsSources.FromKey(IdempotencyKey);
+}
 
 public sealed record SmsHistoryFilter(
     string? Status = null, string? Phone = null, DateTimeOffset? From = null,
     DateTimeOffset? To = null, int Page = 1, int PageSize = 50, Guid? StudentId = null,
-    string? Provider = null, string? Student = null);
+    string? Provider = null, string? Student = null, string? Source = null);
 
 public sealed record BulkSmsScope(
     string Type, Guid? ScopeId = null, IReadOnlyCollection<Guid>? StudentIds = null,

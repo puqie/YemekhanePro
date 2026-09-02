@@ -151,6 +151,16 @@ public sealed class EnumTextConverter : IValueConverter
         ["RetryScheduled"] = "Yeniden denenecek",
     };
 
+    // SMS kaydinin kaynagi (SmsSources): gecmis tablosunda "Elle / Toplu / Otomatik: ..." ayrimi.
+    private static readonly Dictionary<string, string> SmsSource = new(Codes)
+    {
+        ["Manual"] = "Elle",
+        ["Bulk"] = "Toplu",
+        ["AutoEntitlement"] = "Otomatik: hak uyarısı",
+        ["AutoIncome"] = "Otomatik: gelir bildirimi",
+        ["AutoCard"] = "Otomatik: kart yenileme",
+    };
+
     // Sicil Aktar onizleme satir durumu (StudentImportService: New/Update/Error).
     private static readonly Dictionary<string, string> ImportStatus = new(Codes)
     {
@@ -212,6 +222,7 @@ public sealed class EnumTextConverter : IValueConverter
         ["SyncState"] = SyncState,
         ["LeaveBehavior"] = LeaveBehavior,
         ["SmsStatus"] = SmsStatus,
+        ["SmsSource"] = SmsSource,
         ["ImportStatus"] = ImportStatus,
         ["BulkOperation"] = BulkOperation,
         ["TransferBehavior"] = TransferBehavior,
