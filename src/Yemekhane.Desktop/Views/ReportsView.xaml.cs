@@ -46,7 +46,16 @@ public partial class ReportsView : UserControl
                 Width = item.Width > 0 ? new DataGridLength(item.Width)
                     : item.Width < 0 ? DataGridLength.Auto
                     : new DataGridLength(1, DataGridLengthUnitType.Star),
-                MinWidth = item.Width > 0 ? 20 : item.Width < 0 ? 120 : 110,
+                // Auto sutunun alt siniri 120px'ti: "SINIF"/"KARAR" gibi kisa sutunlar
+                // gereksiz yer kapliyor, 11 sutunlu Gunluk Gecis 1440px'e sigmayip yatay
+                // kaydirmaya dusuyordu. Auto zaten icerigi olcer; alt sinir yalnizca
+                // basligin okunacagi kadar (56px).
+                MinWidth = item.Width > 0 ? 20 : item.Width < 0 ? 56 : 110,
+                // Yildiz sutun (ad soyad, neden) KALAN alanin tamamini yutuyordu: 12 sutunlu
+                // Sicil Listesi'nde "AD SOYAD" 476px aliyor, geri kalan sutunlar 56px alt
+                // sinira EZILIYOR ve icerikleri kesiliyordu. Ust sinir, uzun bir ad soyada
+                // yetecek kadar (320px); artan alan diger sutunlara kalir.
+                MaxWidth = item.Width == 0 ? 320 : double.PositiveInfinity,
                 CanUserSort = item.SortKey is not null, SortMemberPath = item.SortKey ?? ""
             };
             column.SetValue(FrameworkElement.TagProperty, item.Key);
@@ -96,7 +105,13 @@ public partial class ReportsView : UserControl
         {
             Key = (string?)column.GetValue(FrameworkElement.TagProperty), Index = column.DisplayIndex,
             // Yildiz sutun piksel olarak kaydedilirse bir sonraki acilista sabitlenir ve tablo yine tasar.
-            Width = column.Width.IsStar ? ReportsViewModel.Star : column.Width.IsAuto ? ReportsViewModel.Auto : column.ActualWidth
+            // Tablo pencereye sigmadiginda WPF sutunlari MinWidth'e kadar EZER; o anki ActualWidth
+            // (20-56px) kaydedilirse bozulma KALICI olur ve surumle gelen yeni sutunlar bir daha
+            // duzgun olculmez. Ezilmis olcu kaydedilmez: sutun tanimli genisligiyle geri yuklenir.
+            Width = column.Width.IsStar ? ReportsViewModel.Star
+                : column.Width.IsAuto ? ReportsViewModel.Auto
+                : column.ActualWidth <= column.MinWidth + 0.5 ? column.Width.Value
+                : column.ActualWidth
         }).Where(x => x.Key is not null).ToDictionary(x => x.Key!, StringComparer.Ordinal);
         var layouts = viewModel.Columns.Select(column => displayed.TryGetValue(column.Key, out var value)
             ? new ReportColumnLayout(column.Key, value.Index, value.Width, column.IsVisible)

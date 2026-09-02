@@ -150,8 +150,18 @@ public class CashJourney
         ui.Note("Dogrulama metni: " + vm.LookupStudentText);
         ui.Shot("cash-11-ekle-dogrulandi");
 
-        // Kart no ile dogrulama.
-        vm.StudentNumber = null; vm.LookupCardNumber = "8350001"; Execute(ui, vm.LookupStudentCommand);
+        // Kart no ile dogrulama. Kart numarasi SABIT YAZILMAZ: ayni veritabaninda kosan
+        // otomatik SMS yolculugu kart yenileme akisini surdugu icin 5001'in karti degisebilir;
+        // sabit "8350001" o durumda pasif kart olur ve dogrulama bos doner (kosu sirasina
+        // bagli hata, urun hatasi degil). Ogrencinin O ANKI aktif karti okunur.
+        using (var cardDb = LiveDb.Open())
+        {
+            var activeCard = cardDb.Text(
+                "SELECT c.card_number FROM student_cards c JOIN students s ON s.Id = c.StudentId " +
+                "WHERE s.student_no = '5001' AND c.IsActive = 1");
+            Assert.False(string.IsNullOrWhiteSpace(activeCard), "5001 icin aktif kart yok");
+            vm.StudentNumber = null; vm.LookupCardNumber = activeCard; Execute(ui, vm.LookupStudentCommand);
+        }
         Assert.NotNull(vm.LookupStudent); Assert.Equal("5001", vm.LookupStudent!.StudentNo);
 
         // Olmayan no -> Turkce hata.

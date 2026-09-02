@@ -41,9 +41,19 @@ public class ImportJourney
         csv.Append($"{No(3)};IMPK{stamp}-3;Işıl;Öztürk;6A;\r\n");
         csv.Append($"{No(4)};IMPK{stamp}-4;Ümit;İnceoğlu;;05321112204\r\n");
         csv.Append($"{No(5)};IMPK{stamp}-5;Gökçe;Ağaoğlu;7C;05321112205\r\n");
-        // Mevcut ogrenciler (tohum: 5001/5002, kartlari 8350001/8350002) guncellenir.
-        csv.Append("5001;8350001;GÜNCEL;ÖĞRENCİ BİR;5A;\r\n");
-        csv.Append("5002;8350002;GÜNCEL;ÖĞRENCİ İKİ;5B;\r\n");
+        // Mevcut ogrenciler (tohum: 5001/5002) guncellenir. Kart numaralari SABIT YAZILMAZ:
+        // ayni veritabaninda kosan diger yolculuklar (otomatik SMS'in kart yenileme akisi)
+        // bu ogrencinin kartini degistirebiliyor. Sabit "8350001" o durumda PASIF bir kart
+        // olur, satir GUNCELLEME yerine HATA sayilir ve bu yolculuk yalnizca kosu sirasina
+        // bagli olarak duserdi (urun hatasi degil). Ogrencinin O ANKI aktif karti okunur.
+        using var seedDb = LiveDb.Open();
+        string ActiveCard(string studentNo) => seedDb.Text(
+            "SELECT c.card_number FROM student_cards c JOIN students s ON s.Id = c.StudentId " +
+            $"WHERE s.student_no = '{studentNo}' AND c.IsActive = 1")
+            ?? throw new InvalidOperationException($"{studentNo} icin aktif kart bulunamadi");
+        var card5001 = ActiveCard("5001");
+        csv.Append($"5001;{card5001};GÜNCEL;ÖĞRENCİ BİR;5A;\r\n");
+        csv.Append($"5002;{ActiveCard("5002")};GÜNCEL;ÖĞRENCİ İKİ;5B;\r\n");
         // Hatali satirlar: bos ad (satir 9), olmayan sinif (satir 10), baskasinin karti (satir 11).
         csv.Append($"{No(6)};IMPK{stamp}-6;;Adsız;5A;\r\n");
         csv.Append($"{No(7)};IMPK{stamp}-7;Sınıfsız;Öğrenci;13Z;\r\n");
@@ -108,7 +118,8 @@ public class ImportJourney
         var s5001 = updated.Items.Single(s => s.StudentNo == "5001");
         Assert.Equal("GÜNCEL", s5001.FirstName);
         Assert.Equal("ÖĞRENCİ BİR", s5001.LastName);
-        Assert.Equal("8350001", s5001.CardNumber);
+        // CSV'ye YAZILAN kartla karsilastirilir; sabit "8350001" degil (bkz. ActiveCard notu).
+        Assert.Equal(card5001, s5001.CardNumber);
         Assert.Equal(0, LiveApi.Get<PagedResult<StudentListItem>>(ui, $"api/students?search={No(6)}").TotalCount);
 
         // Bastan basla -> temiz ekran

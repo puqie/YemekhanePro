@@ -180,7 +180,9 @@ public class ReportsJourney
         Assert.True(Journey.IsPrimary(ui, apply), "Uygula düğmesi turuncu (Primary) değil");
 
         // 2) Filtreler tek tek (Gunluk Gecis, Eylul) -- SQLite ile ayni sayi.
-        vm.SelectedReport = vm.ReportTypes[0];
+        // Rapor TURUYLE secilir, sirayla DEGIL: "Sicil Listesi" ilk siraya eklenince
+        // ReportTypes[0] artik Gunluk Gecis degildi ve filtreler yanlis rapora uygulaniyordu.
+        vm.SelectedReport = vm.ReportTypes.Single(x => x.Type == ReportType.DailyAccess);
         Journey.Until(ui, () => !vm.IsLoading, "Günlük Geçiş");
         var range = LiveDb.Range("a.Timestamp", "2026-09-01", "2026-09-30");
         var from = "FROM access_logs a JOIN devices d ON d.Id = a.DeviceId LEFT JOIN students s ON s.Id = a.StudentId AND s.IsDeleted = 0 " +
@@ -202,11 +204,22 @@ public class ReportsJourney
         };
         foreach (var (name, set, sql) in cases)
         {
+            // ResetCommand ASENKRONdur ve kendi ApplyAsync'ini calistirir; Execute hemen doner.
+            // Yalnizca alanlarin temizlenmesi beklenirse sifirlamanin YUKLEMESI filtre
+            // uygulamasindan SONRA tamamlanip ozeti filtresiz sonuca dondurur (SQLite 2, ekran 1).
             vm.ResetCommand.Execute(null);
-            Journey.Until(ui, () => !vm.IsLoading && vm.StudentNo is null && vm.Status is null, "sıfırla");
+            Journey.Until(ui, () => vm.StudentNo is null && vm.Status is null, "sıfırla alanları");
+            Assert.Equal(ReportType.DailyAccess, vm.SelectedReport.Type);
+            Journey.Until(ui, () => !vm.IsLoading, "sıfırla yüklemesi");
+            ui.Delay(150); ui.Pump(2);
+            Journey.Until(ui, () => !vm.IsLoading, "sıfırla yüklemesi (son)");
             vm.StartDate = SeptemberStart; vm.EndDate = SeptemberEnd;
             set();
             Journey.Run(ui, vm.ApplyAsync(), "filtre " + name);
+            // ResetCommand kendi yuklemesini baslatir; bu yukleme ApplyAsync'ten SONRA
+            // tamamlanirsa ozet FILTRESIZ sonuca doner ve olcum yanlis olur (SQLite 2,
+            // ekran 1 gibi). Ekranin son yuklemesi bitene kadar beklenir.
+            Journey.Until(ui, () => !vm.IsLoading, "filtre " + name + " yuklemesi");
             var expected = db.Count($"SELECT COUNT(*) {from} AND {sql}");
             Assert.True(expected == vm.Summary.TotalRecords, $"filtre {name}: SQLite {expected}, ekran {vm.Summary.TotalRecords}");
             ui.Note($"filtre {name}: {expected} kayıt");
@@ -388,6 +401,15 @@ public class ReportsJourney
                 var holidays = db.Count($"SELECT COUNT(*) FROM holidays WHERE Date >= '{start}' AND Date <= '{end}'");
                 var transfers = $"FROM meal_transfers mt JOIN students s ON s.Id = mt.StudentId AND s.IsDeleted = 0 JOIN meal_types m ON m.Id = mt.MealTypeId WHERE mt.OriginalDate >= '{start}' AND mt.OriginalDate <= '{end}'";
                 return (holidays + db.Count("SELECT COUNT(*) " + transfers), 0, 0, db.Count("SELECT COALESCE(SUM(mt.Quantity), 0) " + transfers), 0m);
+            }
+            case ReportType.StudentList:
+            {
+                // Sicil Listesi olay degil OGRENCI listeler ve tarih filtresi UYGULAMAZ
+                // (EfReportRepository: Start/End null'a cekilir) -- kayit tarihine uygulansaydi
+                // varsayilan "bugun" araliginda liste her acilista bos gelirdi.
+                // Ozet: Toplam = tum silinmemis ogrenciler, TotalMeals = aktif olanlar.
+                const string where = "FROM students s WHERE s.IsDeleted = 0";
+                return (db.Count("SELECT COUNT(*) " + where), 0, 0, db.Count($"SELECT COUNT(*) {where} AND s.IsActive = 1"), 0m);
             }
             default: throw new ArgumentOutOfRangeException(nameof(type));
         }
