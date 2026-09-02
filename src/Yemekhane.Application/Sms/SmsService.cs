@@ -44,7 +44,10 @@ public sealed class SmsService(ISmsLogRepository repository, ISmsTemplateReposit
         if (filter.From > filter.To)
             throw new RequestValidationException("Başlangıç tarihi bitiş tarihinden sonra olamaz.");
         var phone = string.IsNullOrWhiteSpace(filter.Phone) ? null : TurkishMobilePhone.Normalize(filter.Phone);
-        return repository.ListAsync(filter with { Phone = phone }, cancellationToken);
+        var source = string.IsNullOrWhiteSpace(filter.Source) ? null : filter.Source.Trim();
+        if (source is not null && !SmsSources.All.Contains(source, StringComparer.Ordinal))
+            throw new RequestValidationException("SMS kaynak filtresi geçersiz.");
+        return repository.ListAsync(filter with { Phone = phone, Source = source }, cancellationToken);
     }
 
     public async Task RetryAsync(Guid id, CancellationToken cancellationToken = default)

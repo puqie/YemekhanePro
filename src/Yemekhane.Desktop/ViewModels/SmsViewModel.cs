@@ -96,6 +96,13 @@ public sealed class SmsViewModel : ObservableObject, IDisposable
         new("Gönderildi", SmsLogStatuses.Sent), new("Başarısız", SmsLogStatuses.Failed),
         new("Yeniden denenecek", SmsLogStatuses.RetryScheduled)
     ];
+    // Kaynak filtresi: SmsSources kodlari sunucuya gider, ekranda Turkce ad. Bos = "Tümü".
+    public IReadOnlyList<SmsChoiceOption> HistorySources { get; } =
+    [
+        new("Tümü", ""), new("Elle", SmsSources.Manual), new("Toplu", SmsSources.Bulk),
+        new("Otomatik: hak uyarısı", SmsSources.AutoEntitlement), new("Otomatik: gelir bildirimi", SmsSources.AutoIncome),
+        new("Otomatik: kart yenileme", SmsSources.AutoCard)
+    ];
     // SmsTemplateRenderer.AllowedVariables ile ayni jetonlar; kullaniciya Turkce anlamiyla sunulur.
     public static IReadOnlyList<SmsTemplateVariable> TemplateVariables { get; } =
     [
@@ -172,6 +179,8 @@ public sealed class SmsViewModel : ObservableObject, IDisposable
     public string HistoryPhone { get => historyPhone; set => Set(ref historyPhone, value); }
     public string HistoryProvider { get => historyProvider; set => Set(ref historyProvider, value); }
     public string HistoryStudent { get => historyStudent; set => Set(ref historyStudent, value); }
+    public string HistorySource { get => historySource; set => Set(ref historySource, value); }
+    private string historySource = "";
     public DateTime? HistoryFrom { get; set; }
     public DateTime? HistoryTo { get; set; }
     public int HistoryPage { get => historyPage; private set { Set(ref historyPage, value); RefreshPaging(); Raise(nameof(HistoryPageText)); } }
@@ -364,7 +373,7 @@ public sealed class SmsViewModel : ObservableObject, IDisposable
             var result = await api.HistoryAsync(new(Empty(HistoryStatus), Empty(HistoryPhone),
                 HistoryFrom.HasValue ? new DateTimeOffset(HistoryFrom.Value) : null,
                 HistoryTo.HasValue ? new DateTimeOffset(HistoryTo.Value.Date.AddDays(1).AddTicks(-1)) : null,
-                page, 50, Provider: Empty(HistoryProvider), Student: Empty(HistoryStudent)), lifetime.Token);
+                page, 50, Provider: Empty(HistoryProvider), Student: Empty(HistoryStudent), Source: Empty(HistorySource)), lifetime.Token);
             History.Clear(); foreach (var item in result.Items) History.Add(item); HistoryPage = result.Page; HistoryTotal = result.TotalCount;
         }
         catch (Exception ex) when (Handle(ex, value => HistoryError = value)) { }

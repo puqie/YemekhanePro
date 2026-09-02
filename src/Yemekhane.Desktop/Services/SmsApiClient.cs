@@ -43,7 +43,7 @@ public sealed class SmsApiClient(HttpClient client, IJwtSession session) : ISmsA
             ["status"] = filter.Status, ["phone"] = filter.Phone, ["provider"] = filter.Provider,
             ["student"] = filter.Student, ["from"] = filter.From?.ToString("O"), ["to"] = filter.To?.ToString("O"),
             ["page"] = filter.Page.ToString(CultureInfo.InvariantCulture), ["pageSize"] = filter.PageSize.ToString(CultureInfo.InvariantCulture),
-            ["studentId"] = filter.StudentId?.ToString("D")
+            ["studentId"] = filter.StudentId?.ToString("D"), ["source"] = filter.Source
         };
         return GetAsync<PagedResult<SmsLogDetails>>("api/sms?" + string.Join("&", values.Where(x => x.Value is not null)
             .Select(x => $"{x.Key}={Uri.EscapeDataString(x.Value!)}")), cancellationToken);

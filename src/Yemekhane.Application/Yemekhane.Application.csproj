@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Yemekhane.Domain\Yemekhane.Domain.csproj" />
+    <!-- Otomatik SMS kancasi hatayi yutar; sessiz kalmamasi icin yalnizca soyutlama (Abstractions) gerekir. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
   </ItemGroup>
 
   <PropertyGroup>

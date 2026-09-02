@@ -2,7 +2,9 @@ using Yemekhane.Application.Common;
 
 namespace Yemekhane.Application.Income;
 
-public sealed class IncomeService(IIncomeRepository repository)
+// Otomatik SMS kancasi istege baglidir: dogrudan `new IncomeService(repo)` kuran testler ve
+// SMS kaydi olmayan barindiricilar (DI'de ISmsAutomationTrigger yoksa null gelir) etkilenmez.
+public sealed class IncomeService(IIncomeRepository repository, Yemekhane.Application.Sms.ISmsAutomationTrigger? smsAutomation = null)
 {
     public Task<IReadOnlyList<IncomeTypeDetails>> ListTypesAsync(bool includeInactive = false,
         CancellationToken cancellationToken = default) => repository.ListTypesAsync(includeInactive, cancellationToken);
@@ -35,7 +37,7 @@ public sealed class IncomeService(IIncomeRepository repository)
             throw new EntityNotFoundException("Aktif gelir türü bulunamadı.");
     }
 
-    public Task<IncomeTransactionDetails> RecordAsync(CreateIncomeTransactionRequest request, Guid actorId,
+    public async Task<IncomeTransactionDetails> RecordAsync(CreateIncomeTransactionRequest request, Guid actorId,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -46,8 +48,11 @@ public sealed class IncomeService(IIncomeRepository repository)
             throw new RequestValidationException("Tutar sıfırdan büyük ve en fazla iki ondalık basamaklı olmalıdır.");
         var cardNumber = NormalizeOptional(request.CardNumber, 128, "Kart numarası");
         var description = NormalizeOptional(request.Description, 500, "Açıklama");
-        return repository.CreateTransactionAsync(request with { CardNumber = cardNumber, Description = description },
+        var created = await repository.CreateTransactionAsync(request with { CardNumber = cardNumber, Description = description },
             actorId, cancellationToken);
+        // Kayit basarisindan SONRA: SMS kuyruklama hatasi gelir islemini geri almaz (kanca kendi icinde yutar).
+        if (smsAutomation is not null) await smsAutomation.IncomeRecordedAsync(created, cancellationToken);
+        return created;
     }
 
     public async Task<IncomeTransactionDetails> VoidAsync(Guid id, string reason, Guid actorId,

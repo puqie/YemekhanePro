@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Settings;
+using Yemekhane.Application.Sms;
 using Yemekhane.Infrastructure.Backup;
 using Yemekhane.Sync;
 
@@ -21,6 +22,9 @@ public interface ISettingsApiClient
     Task<IReadOnlyList<SyncConflictItem>> SyncConflictsAsync(CancellationToken cancellationToken = default);
     Task RequeueConflictAsync(Guid operationId, CancellationToken cancellationToken = default);
     Task<PagedResult<ApplicationLogItem>> LogsAsync(int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<SmsAutomationStatus> GetSmsAutomationAsync(CancellationToken cancellationToken = default);
+    Task<SmsAutomationStatus> SaveSmsAutomationAsync(SmsAutomationSettings settings, CancellationToken cancellationToken = default);
+    Task<EntitlementWarningRunResult> RunEntitlementWarningAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : ISettingsApiClient
@@ -46,6 +50,12 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
     }
     public Task<PagedResult<ApplicationLogItem>> LogsAsync(int page, int pageSize, CancellationToken cancellationToken = default) =>
         SendAsync<PagedResult<ApplicationLogItem>>(HttpMethod.Get, $"api/settings/logs?page={page}&pageSize={pageSize}", null, cancellationToken);
+    public Task<SmsAutomationStatus> GetSmsAutomationAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<SmsAutomationStatus>(HttpMethod.Get, "api/settings/sms-automation", null, cancellationToken);
+    public Task<SmsAutomationStatus> SaveSmsAutomationAsync(SmsAutomationSettings settings, CancellationToken cancellationToken = default) =>
+        SendAsync<SmsAutomationStatus>(HttpMethod.Put, "api/settings/sms-automation", JsonContent.Create(settings), cancellationToken);
+    public Task<EntitlementWarningRunResult> RunEntitlementWarningAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<EntitlementWarningRunResult>(HttpMethod.Post, "api/settings/sms-automation/run-entitlement-warning", null, cancellationToken);
     public Task<BackupValidationResult> ValidateBackupAsync(string path, CancellationToken cancellationToken = default) =>
         UploadAsync<BackupValidationResult>("api/settings/backup/validate", path, null, cancellationToken);
     public Task<RestoreResult> RestoreAsync(string path, string confirmation, CancellationToken cancellationToken = default) =>

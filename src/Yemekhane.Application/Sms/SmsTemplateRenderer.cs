@@ -86,6 +86,38 @@ public sealed partial class SmsTemplateRenderer
         _ => value
     };
 
+    /// <summary>
+    /// Otomatik SMS kurallarinin tek suslu, kucuk harfli degiskenleri: <c>{ad} {soyad} {kalan_gun}</c>.
+    /// Elle sablonlardaki <c>{{StudentName}}</c> sozdiziminden AYRI tutulur: eski programin
+    /// kullanicisi bu kisa Turkce adlari biliyor; iki sozdizimi birbirini bozmaz
+    /// (buyuk harfle baslayan ad bu desene uymaz).
+    /// </summary>
+    public static IReadOnlyList<string> NamedPlaceholders(string template) =>
+        NamedPlaceholderRegex().Matches(template ?? string.Empty).Select(m => m.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal).ToArray();
+
+    /// <summary>
+    /// Adli degiskenleri degerle degistirir. Sozlukte olmayan degisken oldugu gibi birakilir
+    /// (kayit aninda dogrulandigi icin buraya ulasmaz); null deger bos metin olur, cunku
+    /// otomatik gonderimde eksik alan (sinifsiz ogrenci, aciklamasiz gelir) olagan bir durumdur
+    /// ve SMS'i dusurmemelidir. Ardisik bosluklar tek bosluga indirilir ki artik bosluk kalmasin.
+    /// </summary>
+    public static string RenderNamed(string template, IReadOnlyDictionary<string, string?> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        var rendered = NamedPlaceholderRegex().Replace(template ?? string.Empty, match =>
+            values.TryGetValue(match.Groups[1].Value, out var value) ? (value ?? string.Empty).Trim() : match.Value);
+        rendered = MultiSpaceRegex().Replace(rendered, " ").Trim();
+        if (rendered.Length > 1600) rendered = rendered[..1600];
+        return rendered;
+    }
+
+    [GeneratedRegex(@"\{([a-z][a-z0-9_]*)\}", RegexOptions.CultureInvariant)]
+    private static partial Regex NamedPlaceholderRegex();
+
+    [GeneratedRegex(@"[ \t]{2,}", RegexOptions.CultureInvariant)]
+    private static partial Regex MultiSpaceRegex();
+
     [GeneratedRegex(@"\{\{([A-Za-z][A-Za-z0-9]*)\}\}", RegexOptions.CultureInvariant)]
     private static partial Regex PlaceholderRegex();
 }

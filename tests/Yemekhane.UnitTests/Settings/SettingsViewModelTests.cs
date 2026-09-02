@@ -68,6 +68,10 @@ public sealed class SettingsViewModelTests
         public Task<RestoreResult> RestoreAsync(string path, string confirmation, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<SyncRunResult> RunSyncAsync(CancellationToken cancellationToken = default) => Task.FromResult(new SyncRunResult(0, 0, 0, 0, 0, 0));
         public Task<PagedResult<ApplicationLogItem>> LogsAsync(int page, int pageSize, CancellationToken cancellationToken = default) => Task.FromResult(new PagedResult<ApplicationLogItem>([], page, pageSize, 0));
+        private Yemekhane.Application.Sms.SmsAutomationSettings automation = Yemekhane.Application.Sms.SmsAutomationSettings.Default;
+        public Task<Yemekhane.Application.Sms.SmsAutomationStatus> GetSmsAutomationAsync(CancellationToken cancellationToken = default) => Task.FromResult(new Yemekhane.Application.Sms.SmsAutomationStatus(automation, DateTimeOffset.UtcNow, null));
+        public Task<Yemekhane.Application.Sms.SmsAutomationStatus> SaveSmsAutomationAsync(Yemekhane.Application.Sms.SmsAutomationSettings settings, CancellationToken cancellationToken = default) { automation = settings; return GetSmsAutomationAsync(cancellationToken); }
+        public Task<Yemekhane.Application.Sms.EntitlementWarningRunResult> RunEntitlementWarningAsync(CancellationToken cancellationToken = default) => Task.FromResult(new Yemekhane.Application.Sms.EntitlementWarningRunResult(DateOnly.FromDateTime(DateTime.Today), 0, 0, 0, 0));
         private static SettingsDocument Document() => new(new("Okul", null, null, null), new(null, "None", null, null, 30, false), new(false, "Daily", DayOfWeek.Sunday, new TimeOnly(2, 0), 14, null), new("https://sync.example/", "device", 5, true, false, new("Ready", 0, 0, null, null)), new("Information", 30, null), new(0, [], 0, []), false);
     }
 }

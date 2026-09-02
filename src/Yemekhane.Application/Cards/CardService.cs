@@ -2,15 +2,23 @@ using Yemekhane.Application.Common;
 
 namespace Yemekhane.Application.Cards;
 
-public sealed class CardService(ICardRepository repository, TimeProvider timeProvider)
+// Otomatik SMS kancasi istege baglidir: `new CardService(repo, clock)` kuran testler etkilenmez.
+public sealed class CardService(ICardRepository repository, TimeProvider timeProvider, Yemekhane.Application.Sms.ISmsAutomationTrigger? smsAutomation = null)
 {
-    public Task<CardDetails> AssignAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default) =>
-        repository.AssignAsync(studentId, NormalizeCardNumber(request.CardNumber), timeProvider.GetUtcNow(), cancellationToken);
+    public async Task<CardDetails> AssignAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default)
+    {
+        var card = await repository.AssignAsync(studentId, NormalizeCardNumber(request.CardNumber), timeProvider.GetUtcNow(), cancellationToken);
+        // Kayit basarisindan SONRA; kanca hata yutar, kart islemi geri alinmaz.
+        if (smsAutomation is not null) await smsAutomation.CardChangedAsync(card, replaced: false, cancellationToken);
+        return card;
+    }
 
-    public Task<CardDetails> ReplaceAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
+    public async Task<CardDetails> ReplaceAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Reason)) throw new RequestValidationException("Kart değiştirme nedeni zorunludur.");
-        return repository.ReplaceAsync(studentId, NormalizeCardNumber(request.CardNumber), request.Reason.Trim(), timeProvider.GetUtcNow(), cancellationToken);
+        var card = await repository.ReplaceAsync(studentId, NormalizeCardNumber(request.CardNumber), request.Reason.Trim(), timeProvider.GetUtcNow(), cancellationToken);
+        if (smsAutomation is not null) await smsAutomation.CardChangedAsync(card, replaced: true, cancellationToken);
+        return card;
     }
 
     public async Task<CardDetails> FindAsync(string cardNumber, CancellationToken cancellationToken = default) =>

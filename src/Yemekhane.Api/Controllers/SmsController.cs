@@ -28,10 +28,11 @@ public sealed class SmsController(SmsService service, BulkSmsService bulkService
         [FromQuery] Guid? studentId,
         [FromQuery] string? provider,
         [FromQuery] string? student,
+        [FromQuery] string? source,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
         CancellationToken cancellationToken = default) =>
-        service.ListAsync(new SmsHistoryFilter(status, phone, from, to, page, pageSize, studentId, provider, student), cancellationToken);
+        service.ListAsync(new SmsHistoryFilter(status, phone, from, to, page, pageSize, studentId, provider, student, source), cancellationToken);
 
     [HttpGet("targets")]
     [PermissionAuthorize(Permissions.SmsSend)]
