@@ -93,6 +93,15 @@ public sealed class EnumTextConverter : IValueConverter
         ["Offline"] = "Çevrimdışı",
         ["Attention"] = "İnceleme gerekiyor",
     };
+    /// <summary>Bildirim merkezi seviyeleri (NotificationSeverities): rozet ham Ingilizce gosteriyordu.</summary>
+    private static readonly Dictionary<string, string> NotificationSeverity = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Success"] = "Başarılı",
+        ["Info"] = "Bilgi",
+        ["Warning"] = "Uyarı",
+        ["Error"] = "Hata",
+    };
+
 
     private static readonly Dictionary<string, Dictionary<string, string>> Maps = new(Codes)
     {
@@ -102,6 +111,7 @@ public sealed class EnumTextConverter : IValueConverter
         ["LogLevel"] = LogLevel,
         ["DeviceStatus"] = DeviceStatus,
         ["SyncState"] = SyncState,
+        ["NotificationSeverity"] = NotificationSeverity,
     };
 
     /// <summary>Kod icinden de kullanilabilsin diye ayri: ViewModel'ler XAML'siz cevirir.</summary>

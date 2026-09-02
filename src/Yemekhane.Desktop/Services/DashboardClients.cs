@@ -130,13 +130,23 @@ public interface INotificationRealtimeClient
 public sealed class DashboardRealtimeClient : IDashboardRealtimeClient, INotificationRealtimeClient, IAsyncDisposable
 {
     private readonly HubConnection connection;
+    private readonly IJwtSession session;
+    private readonly TimeSpan retryInterval;
+    private readonly CancellationTokenSource disposal = new();
+    private int retryLoopRunning;
     public event EventHandler<AccessDecisionCommittedEvent>? AccessReceived;
     public event EventHandler<DeviceStatusChangedEvent>? DeviceStatusChanged;
     public event EventHandler<NotificationEvent>? NotificationReceived;
     public event EventHandler<RealtimeConnectionState>? StateChanged;
 
-    public DashboardRealtimeClient(Uri baseUri, IJwtSession session)
+    /// <param name="retryInterval">
+    /// Otomatik yeniden baglanma (0 s, 2 s, 10 s) pes ettikten sonra kac saniyede bir
+    /// yeniden denenecegi. Varsayilan 10 s; testler kisaltir.
+    /// </param>
+    public DashboardRealtimeClient(Uri baseUri, IJwtSession session, TimeSpan? retryInterval = null)
     {
+        this.session = session;
+        this.retryInterval = retryInterval ?? TimeSpan.FromSeconds(10);
         connection = new HubConnectionBuilder()
             .WithUrl(new Uri(baseUri, "hubs/realtime"), options =>
                 options.AccessTokenProvider = () => Task.FromResult(session.AccessToken))
@@ -147,10 +157,25 @@ public sealed class DashboardRealtimeClient : IDashboardRealtimeClient, INotific
         connection.On<NotificationEvent>("Notification", value => NotificationReceived?.Invoke(this, value));
         connection.Reconnecting += _ => { StateChanged?.Invoke(this, RealtimeConnectionState.Reconnecting); return Task.CompletedTask; };
         connection.Reconnected += async _ => { await SubscribeAsync(); StateChanged?.Invoke(this, RealtimeConnectionState.Connected); };
-        connection.Closed += _ => { StateChanged?.Invoke(this, RealtimeConnectionState.Disconnected); return Task.CompletedTask; };
+        // WithAutomaticReconnect uc denemeden (~12 s) sonra PES EDER ve Closed'i tetikler;
+        // SignalR bundan sonra kendiliginden bir daha denemez. Yerel API yeniden
+        // basladiginda (guncelleme, cokme) ust bardaki "Çevrimdışı" rozeti uygulama
+        // kapatilip acilana kadar oyle kaliyor, canli gecisler ve bildirimler gelmiyordu.
+        // Closed'da kalici bir yeniden deneme dongusu baslatilir.
+        connection.Closed += error =>
+        {
+            StateChanged?.Invoke(this, RealtimeConnectionState.Disconnected);
+            RetryUntilConnectedAsync().ContinueWith(static _ => { }, TaskScheduler.Default);
+            return Task.CompletedTask;
+        };
     }
 
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await TryConnectAsync(cancellationToken)) _ = RetryUntilConnectedAsync();
+    }
+
+    private async Task<bool> TryConnectAsync(CancellationToken cancellationToken)
     {
         StateChanged?.Invoke(this, RealtimeConnectionState.Connecting);
         try
@@ -158,11 +183,34 @@ public sealed class DashboardRealtimeClient : IDashboardRealtimeClient, INotific
             await connection.StartAsync(cancellationToken);
             await SubscribeAsync(cancellationToken);
             StateChanged?.Invoke(this, RealtimeConnectionState.Connected);
+            return true;
         }
         catch
         {
             StateChanged?.Invoke(this, RealtimeConnectionState.Disconnected);
+            return false;
         }
+    }
+
+    private async Task RetryUntilConnectedAsync()
+    {
+        // Ayni anda tek dongu: Closed + basarisiz ConnectAsync ust uste gelirse
+        // iki dongu birbirinin StartAsync'ini "already started" ile dusurur.
+        if (Interlocked.Exchange(ref retryLoopRunning, 1) == 1) return;
+        try
+        {
+            while (!disposal.IsCancellationRequested)
+            {
+                try { await Task.Delay(retryInterval, disposal.Token); }
+                catch (OperationCanceledException) { return; }
+                if (connection.State == HubConnectionState.Connected) return;
+                // Belirtec suresi dolduysa baglanmak 401 ile dusecektir; oturum
+                // yenilenene kadar beklenir (SessionMonitor yeniden giris ister).
+                if (!session.IsAuthenticated) continue;
+                if (connection.State == HubConnectionState.Disconnected && await TryConnectAsync(disposal.Token)) return;
+            }
+        }
+        finally { Interlocked.Exchange(ref retryLoopRunning, 0); }
     }
 
     private async Task SubscribeAsync(CancellationToken cancellationToken = default)
@@ -172,5 +220,11 @@ public sealed class DashboardRealtimeClient : IDashboardRealtimeClient, INotific
         await connection.InvokeAsync("Subscribe", RealtimeChannels.Notifications, cancellationToken);
     }
 
-    public ValueTask DisposeAsync() => connection.DisposeAsync();
+    public ValueTask DisposeAsync()
+    {
+        // Once dongu durdurulur; DisposeAsync de Closed'i tetikler ve yeni bir
+        // dongu baslatmaya calisirdi.
+        disposal.Cancel();
+        return connection.DisposeAsync();
+    }
 }

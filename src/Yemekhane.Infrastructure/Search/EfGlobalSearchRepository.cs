@@ -53,11 +53,33 @@ public sealed class EfGlobalSearchRepository(YemekhaneDbContext db, TimeProvider
             .OrderBy(student => student.StudentNo == term ? 0 : 1)
             .ThenBy(student => student.LastName).ThenBy(student => student.FirstName)
             .Take(GroupLimit)
-            .Select(student => new { student.Id, student.FirstName, student.LastName, student.StudentNo })
+            // Alt satir icin sinif/sube ve AKTIF kart ayni sorguda cekilir. Okulda ayni
+            // ad-soyadli ogrenciler var (uc ADA, dort ALI); memur numarayi ezbere bilmez,
+            // sinif/subeyi ve elindeki karti bilir. Yalnizca "Ogrenci no" ile dort ayni
+            // isimli satir birbirinden ayirt edilemiyordu.
+            .Select(student => new
+            {
+                student.Id, student.FirstName, student.LastName, student.StudentNo,
+                ClassName = db.Set<SchoolClass>().Where(value => value.Id == student.ClassId).Select(value => value.Name).FirstOrDefault(),
+                SectionName = db.Set<Section>().Where(value => value.Id == student.SectionId).Select(value => value.Name).FirstOrDefault(),
+                // Ogrenci basina tek aktif kart kurali var; SQLite DateTimeOffset ile
+                // siralayamadigi icin (NotSupportedException) burada siralama yapilmaz.
+                CardNumber = db.StudentCards.Where(card => card.StudentId == student.Id && card.IsActive)
+                    .Select(card => card.CardNumber).FirstOrDefault(),
+            })
             .ToListAsync(token);
         return values.Select(student => new SearchResultItem("student", student.FirstName + " " + student.LastName,
-            "Öğrenci no: " + student.StudentNo, "student-detail",
+            StudentSubtitle(student.StudentNo, student.ClassName, student.SectionName, student.CardNumber), "student-detail",
             new Dictionary<string, string> { ["id"] = student.Id.ToString() }, "Person")).ToArray();
+    }
+
+    /// <summary>"No 5394 • 5A / B • Kart 8350394" -- eksik parcalar acikca "yok" diye yazilir, bos birakilmaz.</summary>
+    public static string StudentSubtitle(string studentNo, string? className, string? sectionName, string? cardNumber)
+    {
+        var classPart = string.IsNullOrWhiteSpace(className) ? "Sınıf yok"
+            : string.IsNullOrWhiteSpace(sectionName) ? className : className + " / " + sectionName;
+        var cardPart = string.IsNullOrWhiteSpace(cardNumber) ? "Kart yok" : "Kart " + cardNumber;
+        return $"No {studentNo} • {classPart} • {cardPart}";
     }
 
     private async Task<IReadOnlyList<SearchResultItem>> SearchClassesAsync(string term, CancellationToken token)

@@ -46,6 +46,13 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         set { NotificationHost.DataContext = value; NotificationButton.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible; }
     }
 
+    /// <summary>Sol alt kosede gosterilen oturum sahibi (giris yapan kullanici adi).</summary>
+    public string SessionUser
+    {
+        get => SessionUserText.Text;
+        set => SessionUserText.Text = string.IsNullOrWhiteSpace(value) ? "Güvenli yerel bağlantı" : value + " • güvenli yerel bağlantı";
+    }
+
     public object? DailyTrackingDataContext
     {
         get => DailyTrackingHost.DataContext;
@@ -122,7 +129,11 @@ public partial class MainWindow : Window, IShortcutCommandTarget
             || route.StartsWith(Services.ShellRoutes.StudentDetail + "/", StringComparison.Ordinal);
         var entitlements = route == Services.ShellRoutes.Entitlements || route.StartsWith(Services.ShellRoutes.Entitlements + "/", StringComparison.Ordinal);
         var calendar = route == Services.ShellRoutes.HolidayTransfer || route.StartsWith(Services.ShellRoutes.HolidayTransfer + "/", StringComparison.Ordinal);
-        var devices = route == Services.ShellRoutes.Devices;
+        // Bildirim merkezi cihaz hatalarini "devices/{id}" rotasiyla gonderir (API:
+        // TurnstileService/DeviceStatus bildirimleri). Yalnizca tam esitlik bakilinca bu
+        // rota hicbir ekrana uymuyor, kullanici bildirime tikladiginda Dashboard'a
+        // dusuyordu ve hicbir menu ogesi secili gorunmuyordu.
+        var devices = route == Services.ShellRoutes.Devices || route.StartsWith(Services.ShellRoutes.Devices + "/", StringComparison.Ordinal);
         var deviceCards = route == Services.ShellRoutes.DeviceCards;
         var sms = route == Services.ShellRoutes.Sms || route.StartsWith(Services.ShellRoutes.Sms + "/", StringComparison.Ordinal);
         var cash = route == Services.ShellRoutes.Cash;
@@ -187,13 +198,15 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         }
         if (shortcuts is null) return;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        // Key.Enter == Key.Return; ToString() "Return" dondurur, tablo "Enter" bekler.
+        var keyName = key == Key.Enter ? "Enter" : key.ToString();
         var control = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
         var shift = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
         var alt = (Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt;
         var source = e.OriginalSource;
         var isText = source is TextBoxBase or PasswordBox;
         var multiline = source is TextBox { AcceptsReturn: true };
-        e.Handled = shortcuts.TryExecute(new ShortcutGesture(key.ToString(), control, shift, alt),
+        e.Handled = shortcuts.TryExecute(new ShortcutGesture(keyName, control, shift, alt),
             new ShortcutInputContext(e.IsRepeat, isText, multiline));
     }
 
@@ -346,7 +359,23 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         : route.StartsWith(ShellRoutes.Students + "/", StringComparison.Ordinal) ? ShellRoutes.Students
         : route is ShellRoutes.Cards or ShellRoutes.CardReader ? ShellRoutes.Students
         : route.StartsWith(ShellRoutes.Entitlements + "/", StringComparison.Ordinal) ? ShellRoutes.Entitlements
-        : route.StartsWith(ShellRoutes.HolidayTransfer + "/", StringComparison.Ordinal) ? ShellRoutes.HolidayTransfer : route;
+        : route.StartsWith(ShellRoutes.HolidayTransfer + "/", StringComparison.Ordinal) ? ShellRoutes.HolidayTransfer
+        : route.StartsWith(ShellRoutes.Devices + "/", StringComparison.Ordinal) ? ShellRoutes.Devices : route;
+
+    /// <summary>Kullanici "Yeniden giriş yap" dedi; App giris penceresini acar.</summary>
+    public event EventHandler? ReloginRequested;
+
+    /// <summary>
+    /// Oturum suresi doldugunda TUM ekranlarin ustune cikan kalici katman. Ekranlar
+    /// kapatilmaz, formlardaki veri korunur: kullanici yeniden giris yapinca kaldigi
+    /// yerden devam eder. Onceden tek yol uygulamayi kapatip acmakti (15 dk'lik token
+    /// her seferinde yarim kalan formu sildiriyordu).
+    /// </summary>
+    public bool IsSessionExpiredVisible => SessionExpiredHost.Visibility == Visibility.Visible;
+    public void ShowSessionExpired() => SessionExpiredHost.Visibility = Visibility.Visible;
+    public void HideSessionExpired() => SessionExpiredHost.Visibility = Visibility.Collapsed;
+    private void RequestRelogin(object sender, RoutedEventArgs e) => ReloginRequested?.Invoke(this, EventArgs.Empty);
+    private void CloseApplication(object sender, RoutedEventArgs e) => Close();
 
     private void OpenShortcutHelp(object sender, RoutedEventArgs e) => ShowShortcutHelp();
     private void CloseShortcutHelp(object sender, RoutedEventArgs e) => ShortcutHelpHost.Visibility = Visibility.Collapsed;

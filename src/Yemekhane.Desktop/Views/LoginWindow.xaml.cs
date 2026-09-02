@@ -8,19 +8,32 @@ namespace Yemekhane.Desktop.Views;
 
 public partial class LoginWindow : Window, INotifyPropertyChanged
 {
+    /// <summary>API'nin kilit esigi (Authentication:Lockout:MaxFailedAttempts varsayilani).</summary>
+    public const int LockoutThreshold = 5;
+    public const string LockoutHint = "Üst üste 5 hatalı deneme yapıldı; hesap 15 dakika süreyle kilitlenmiş olabilir. " +
+        "Bu süre içinde doğru parola bile kabul edilmez. Lütfen 15 dakika bekleyip yeniden deneyin.";
+    public const string ReloginMessage = "Oturum süresi doldu. Devam etmek için parolanızı yeniden girin; açık ekranlar ve formlar korunur.";
+
     private readonly AuthenticationClient client;
     private bool isBusy;
     private string? errorMessage;
     private string username = string.Empty;
+    private int consecutiveFailures;
 
     public LoginWindow(AuthenticationClient client, InitialAdminCredentials? initialAdmin = null,
-        bool hasExistingDatabase = false)
+        bool hasExistingDatabase = false, string? reloginUsername = null)
     {
         this.client = client;
         InitializeComponent();
         DataContext = this;
-        SetupMessage = BuildSetupMessage(initialAdmin, hasExistingDatabase);
-        if (initialAdmin is not null)
+        SetupMessage = reloginUsername is not null ? ReloginMessage : BuildSetupMessage(initialAdmin, hasExistingDatabase);
+        if (reloginUsername is not null)
+        {
+            // Yeniden giris: kullanici adi bellidir, imlec dogrudan parolaya gider.
+            Username = reloginUsername;
+            Loaded += (_, _) => PasswordBox.Focus();
+        }
+        else if (initialAdmin is not null)
         {
             Username = initialAdmin.Username;
             PasswordBox.Password = initialAdmin.Password;
@@ -73,7 +86,16 @@ public partial class LoginWindow : Window, INotifyPropertyChanged
             client.Session.Set(result.AccessToken, result.ExpiresAt);
             DialogResult = true;
         }
-        catch (AuthenticationException exception) { ErrorMessage = exception.Message; PasswordBox.Clear(); PasswordBox.Focus(); }
+        catch (AuthenticationException exception)
+        {
+            // API guvenlik geregi kilitli hesaba da "parola gecersiz" der (bkz.
+            // AuthenticationTests.RepeatedFailuresTemporarilyLockAccount). Kullanici
+            // dogru parolayi yazip yine reddedilince nedenini bilemiyordu; esik asilinca
+            // olasi kilidi burada acikca soyleriz.
+            consecutiveFailures++;
+            ErrorMessage = consecutiveFailures >= LockoutThreshold ? exception.Message + " " + LockoutHint : exception.Message;
+            PasswordBox.Clear(); PasswordBox.Focus();
+        }
         // Son savunma: bu bir "async void" isleyicidir. Buradan disari sizan herhangi bir
         // exception WPF tarafindan yakalanamaz ve uygulama HICBIR MESAJ GOSTERMEDEN kapanir --
         // kullanici "giris tusuna bastim, program kayboldu" der. Beklenmeyen hata da olsa

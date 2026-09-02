@@ -17,6 +17,8 @@
         <!-- Cihaz durumlari API'den ham Ingilizce gelir (Error, Reconnecting, Offline).
              Cihazlar ve Ayarlar ekranlarinda cevriliyordu, Dashboard'da kalmisti. -->
         <converters:EnumTextConverter x:Key="EnumText" />
+        <!-- Bildirim zamanlari API'den UTC gelir; StringFormat ofseti cevirmez ve 06:09 yerine 03:09 gosterirdi. -->
+        <converters:LocalTimeConverter x:Key="LocalTime" />
         <!-- DesignSystem.xaml'in implicit DataGrid stilini GENISLETIR (BasedOn),
              yerine gecmez: implicit stiller birbirini genisletmez, degistirir.
              Once bu stil temayi tumden degistiriyordu ve dashboard'daki
@@ -115,8 +117,9 @@
                 <Border Grid.Row="3" BorderBrush="{StaticResource NavyLiftBrush}" BorderThickness="0,1,0,0" Padding="4,14,0,0">
                     <StackPanel>
                         <Button Content="Kısayollar  F1" Click="OpenShortcutHelp" Foreground="{StaticResource SidebarTextBrush}" Background="Transparent" BorderBrush="{StaticResource NavyLiftBrush}" Padding="8,5" Margin="0,0,0,12" Cursor="Hand" AutomationProperties.Name="Klavye kısayollarını göster"/>
-                        <TextBlock Text="API OTURUMU" Foreground="{StaticResource FaintBrush}" FontSize="10" FontWeight="SemiBold" />
-                        <TextBlock Text="JWT ile güvenli bağlantı" Foreground="{StaticResource SidebarTextBrush}" Margin="0,5,0,0" />
+                        <TextBlock Text="OTURUM" Foreground="{StaticResource FaintBrush}" FontSize="10" FontWeight="SemiBold" />
+                        <!-- Memur "JWT" bilmez; kim giris yapmis onu gormek ister. -->
+                        <TextBlock x:Name="SessionUserText" Text="Güvenli yerel bağlantı" Foreground="{StaticResource SidebarTextBrush}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -283,8 +286,8 @@
                     <Grid Grid.Row="2"><ListBox ItemsSource="{Binding Items}" BorderThickness="0" MaxHeight="520">
                         <ListBox.ItemTemplate><DataTemplate><Button Command="{Binding DataContext.OpenCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Padding="0" HorizontalContentAlignment="Stretch">
                             <Grid Margin="2,8"><Grid.ColumnDefinitions><ColumnDefinition Width="54"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <Border Background="{StaticResource HoverBrush}" CornerRadius="11" Padding="6,3" VerticalAlignment="Top"><TextBlock Text="{Binding Severity}" FontSize="9" TextAlignment="Center"/></Border>
-                                <StackPanel Grid.Column="1" Margin="9,0"><TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Message}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/><TextBlock Text="{Binding LatestAt, StringFormat={}{0:dd.MM HH:mm}}" Foreground="{StaticResource FaintBrush}" FontSize="10" Margin="0,4,0,0"/></StackPanel>
+                                <Border Background="{StaticResource HoverBrush}" CornerRadius="11" Padding="6,3" VerticalAlignment="Top"><TextBlock Text="{Binding Severity, Converter={StaticResource EnumText}, ConverterParameter=NotificationSeverity}" FontSize="9" TextAlignment="Center"/></Border>
+                                <StackPanel Grid.Column="1" Margin="9,0"><TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Message}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,0"/><TextBlock Text="{Binding LatestAt, Converter={StaticResource LocalTime}, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Foreground="{StaticResource FaintBrush}" FontSize="10" Margin="0,4,0,0"/></StackPanel>
                                 <TextBlock Grid.Column="2" Text="{Binding Count, StringFormat={}×{0}}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold" Visibility="{Binding Count, Converter={x:Static desktop:RepeatCountToVisibilityConverter.Instance}}"/>
                             </Grid></Button></DataTemplate></ListBox.ItemTemplate>
                     </ListBox><TextBlock Text="Henüz bildirim yok." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,35" Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibilityConverter}}"/></Grid>
@@ -329,15 +332,32 @@
         </Grid>
         <Grid x:Name="ShortcutHelpHost" Grid.ColumnSpan="2" Panel.ZIndex="200" Visibility="Collapsed">
             <Border Background="{StaticResource ScrimStrongBrush}" MouseLeftButtonDown="CloseShortcutHelp"/>
-            <Border Width="610" MaxHeight="650" Background="White" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="10" Padding="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <!-- Durum sutunu 190 px'te "Yalnızca Raporlar ve ..." gibi metinleri kesiyordu; genisletildi ve sarmalanir. -->
+            <Border Width="700" MaxHeight="680" Background="White" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="10" Padding="22" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Grid><StackPanel><TextBlock Text="Klavye Kısayolları" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Durumlar geçerli ekran ve oturum yetkilerine göre güncellenir." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/></StackPanel><Button Content="Kapat" Click="CloseShortcutHelp" Style="{StaticResource Action}" HorizontalAlignment="Right"/></Grid>
                     <ItemsControl x:Name="ShortcutHelpList" Grid.Row="1" Margin="0,16,0,10">
-                        <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/><ColumnDefinition Width="190"/></Grid.ColumnDefinitions><Border Background="{StaticResource HoverBrush}" CornerRadius="4" Padding="7,4" HorizontalAlignment="Left"><TextBlock Text="{Binding Gesture}" FontFamily="Consolas" FontWeight="SemiBold"/></Border><TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextAlignment="Right"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions><Border Background="{StaticResource HoverBrush}" CornerRadius="4" Padding="7,4" HorizontalAlignment="Left" VerticalAlignment="Center"><TextBlock Text="{Binding Gesture}" FontFamily="Consolas" FontWeight="SemiBold"/></Border><TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextAlignment="Right" TextWrapping="Wrap"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid></DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <TextBlock Grid.Row="2" Text="Enter, çok satırlı metin alanlarında satır eklemeyi korur." Foreground="{StaticResource MutedBrush}"/>
                 </Grid>
+            </Border>
+        </Grid>
+        <!-- Oturum suresi dolunca ekranin ustune cikar; alttaki ekranlar ve formlar
+             oldugu gibi kalir. Kisayol katmanlarindan (200) ustte: Esc bunu kapatamaz,
+             cunku kapatmanin tek yolu yeniden giris ya da uygulamadan cikistir. -->
+        <Grid x:Name="SessionExpiredHost" Grid.ColumnSpan="2" Panel.ZIndex="300" Visibility="Collapsed">
+            <Border Background="{StaticResource ScrimStrongBrush}"/>
+            <Border Width="480" Background="White" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="10" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Oturum süresi doldu" FontSize="21" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
+                    <TextBlock Text="Güvenlik için oturumunuz kapatıldı. Yeniden giriş yaptığınızda açık ekranlar ve doldurduğunuz formlar kaldığı yerden devam eder." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" LineHeight="19" Margin="0,10,0,20"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Uygulamayı kapat" Click="CloseApplication" Style="{StaticResource Action}" Margin="0,0,10,0" AutomationProperties.Name="Uygulamayı kapat"/>
+                        <Button x:Name="ReloginButton" Content="Yeniden giriş yap" Click="RequestRelogin" Style="{StaticResource Primary}" IsDefault="True" AutomationProperties.Name="Yeniden giriş yap"/>
+                    </StackPanel>
+                </StackPanel>
             </Border>
         </Grid>
     </Grid>

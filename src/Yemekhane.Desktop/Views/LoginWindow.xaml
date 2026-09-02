@@ -1,11 +1,22 @@
 <Window x:Class="Yemekhane.Desktop.Views.LoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="YemekhanePro • Giriş" Icon="pack://application:,,,/Yemekhane.Desktop;component/Assets/logo-256.png" Width="920" Height="570" MinWidth="760" MinHeight="500"
+        Title="YemekhanePro • Giriş" Icon="pack://application:,,,/Yemekhane.Desktop;component/Assets/logo-256.png" Width="920" Height="640" MinWidth="760" MinHeight="560"
         WindowStartupLocation="CenterScreen" ResizeMode="CanResize" Language="tr-TR"
-        Background="{StaticResource CanvasBrush}" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
         UseLayoutRounding="True" SnapsToDevicePixels="True" AutomationProperties.Name="YemekhanePro giriş ekranı">
-    <Grid>
+    <!-- Tema pencerenin KENDI sozlugunde tasinir (MainWindow ile ayni desen): pencere
+         App.xaml olmadan da (testler, ileride ayri surec) kurulabilsin. Arka plan Window
+         yerine ic Grid'e verildi; kok oznitelikler Window.Resources'tan once cozumlenir. -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid Background="{StaticResource CanvasBrush}">
         <Grid.ColumnDefinitions><ColumnDefinition Width="0.9*"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
         <Border Background="{StaticResource NavyDeepBrush}" Padding="46">
             <StackPanel VerticalAlignment="Center">
@@ -17,8 +28,11 @@
                 <TextBlock Text="Yerel API bağlantısı • Europe/Istanbul" Foreground="{StaticResource FaintBrush}" Margin="0,30,0,0"/>
             </StackPanel>
         </Border>
-        <Grid Grid.Column="1" Margin="64,42">
+        <Grid Grid.Column="1" Margin="64,28,64,20">
             <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <!-- Iki uyari seridi birden gorununce icerik satiri asiyordu ve "Giriş yap"
+                 dugmesi gorunmez alana itiliyordu (canli denetimde bulundu). Kaydirilabilir. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel VerticalAlignment="Center" MaxWidth="340">
                 <TextBlock Text="Oturum açın" FontSize="27" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
                 <TextBlock Text="Yetkili kullanıcı bilgilerinizle devam edin." Foreground="{StaticResource MutedBrush}" Margin="0,7,0,24"/>
@@ -45,7 +59,8 @@
                         AutomationProperties.Name="Giriş yap"/>
                 <TextBlock Text="Bağlantı kurulamazsa bilgileriniz gönderilmez; yeniden deneyebilirsiniz." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,14,0,0"/>
             </StackPanel>
-            <TextBlock Grid.Row="1" Text="Esc: çıkış" Foreground="{StaticResource FaintBrush}" HorizontalAlignment="Right"/>
+            </ScrollViewer>
+            <TextBlock Grid.Row="1" Text="Esc: çıkış" Margin="0,6,0,0" Foreground="{StaticResource FaintBrush}" HorizontalAlignment="Right"/>
         </Grid>
     </Grid>
 </Window>

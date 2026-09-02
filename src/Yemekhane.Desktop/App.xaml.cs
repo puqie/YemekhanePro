@@ -28,6 +28,7 @@ public partial class App : System.Windows.Application, IDisposable
     private StudentImportViewModel? studentImport;
     private GlobalSearchViewModel? globalSearch;
     private NotificationCenterViewModel? notifications;
+    private SessionMonitor? sessionMonitor;
 
     /// <summary>
     /// Cokme kaydi. Dispatcher disinda olusan bir hata (arka plan gorevi, async void isleyici)
@@ -189,6 +190,24 @@ public partial class App : System.Windows.Application, IDisposable
         MainWindow = window;
         // Artik kapanma acik: ana pencere kapandiginda uygulama da kapanmalidir.
         window.Closed += (_, _) => Shutdown();
+        // Belirtec 15 dakikada dolar; dolunca uygulamayi kapatmak yerine ekranin ustune
+        // "yeniden giris" katmani acilir. Ekranlar ve formlar yerinde kalir.
+        var loginUsername = login.Username.Trim();
+        window.SessionUser = loginUsername;
+        sessionMonitor = new SessionMonitor(session);
+        sessionMonitor.SessionExpired += (_, _) => window.ShowSessionExpired();
+        window.ReloginRequested += (_, _) =>
+        {
+            var relogin = new LoginWindow(new AuthenticationClient(httpClient, session), reloginUsername: loginUsername) { Owner = window };
+            if (relogin.ShowDialog() == true)
+            {
+                window.HideSessionExpired();
+                // Yeni belirtecle canli baglanti tazelenir; ekranlar bir sonraki
+                // isteklerinde yeni belirteci kendiliginden kullanir.
+                _ = realtimeClient.ConnectAsync();
+            }
+        };
+        sessionMonitor.Start();
         window.Show();
         // Ekranlar paralel baslatilir ama sonuclari tek tek toplanir. Task.WhenAll kullanilsaydi
         // yalnizca ILK hata firlar, kalanlar yutulur ve bu hata baslangic try blogunda
@@ -253,6 +272,7 @@ public partial class App : System.Windows.Application, IDisposable
         reports?.Dispose();
         globalSearch?.Dispose();
         notifications?.Dispose();
+        sessionMonitor?.Dispose();
         if (localApi is not null) await localApi.DisposeAsync();
         if (singleInstanceMutex is not null)
         {
