@@ -56,10 +56,20 @@
 
                             <!-- Footer: FooterLeft (hata) solda, FooterRight (sayfalama) saginda;
                                  her ekranda ayni konumda. -->
+                            <!-- Iki AYRI sutun: onceden iki ContentPresenter da AYNI hucredeydi,
+                                 yani ust uste cizilebiliyorlardi. Soldaki hata/durum metni 900px'e
+                                 kadar uzayabildigi icin (bkz. SettingsView FooterLeft MaxWidth=900)
+                                 uzun bir sunucu hatasi sagdaki "Kaydet" dugmesinin uzerine binebilir
+                                 ve dugme tiklanamaz hale gelebilirdi. Sag sutun Auto: once kendi
+                                 genisligini alir, kalan sol tarafa duser. -->
                             <Grid Grid.Row="3" Margin="0,9,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
                                 <ContentPresenter Content="{TemplateBinding FooterLeft}"
                                                    HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                <ContentPresenter Content="{TemplateBinding FooterRight}"
+                                <ContentPresenter Grid.Column="1" Content="{TemplateBinding FooterRight}"
                                                    HorizontalAlignment="Right" VerticalAlignment="Center"/>
                             </Grid>
                         </Grid>

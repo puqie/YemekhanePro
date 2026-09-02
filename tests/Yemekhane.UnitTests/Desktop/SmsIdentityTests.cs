@@ -165,14 +165,15 @@ public sealed class SmsIdentityTests
             var grid = Descendants(view).OfType<DataGrid>()
                 .First(g => g.Columns.Any(c => Header(c) == "Öğrenci"));
 
-            Assert.Contains(grid.Columns, c => Header(c) == "SINIF");
-            Assert.Contains(grid.Columns, c => Header(c) == "ŞUBE");
+            // Baslik duzeni ayni tablodaki Seç/No/Öğrenci ile hizalandi (once BUYUK HARFTI).
+            Assert.Contains(grid.Columns, c => Header(c) == "Sınıf");
+            Assert.Contains(grid.Columns, c => Header(c) == "Şube");
 
             // Secim mantigini bozan bir sutun sirasi olmadigini da dogrula.
             Assert.Contains(grid.Columns, c => Header(c) == "Seç");
 
             grid.UpdateLayout();
-            foreach (var baslik in new[] { "SINIF", "ŞUBE" })
+            foreach (var baslik in new[] { "Sınıf", "Şube" })
             {
                 var column = grid.Columns.First(c => Header(c) == baslik);
                 Assert.True(column.ActualWidth > 0, baslik + " sutunu yerlesmedi.");
