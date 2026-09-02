@@ -4,6 +4,7 @@ using System.IO;
 using System.Net.Http;
 using System.Windows.Input;
 using Yemekhane.Application.Calendar;
+using Yemekhane.Desktop.Converters;
 using Yemekhane.Desktop.Services;
 
 namespace Yemekhane.Desktop.ViewModels;
@@ -27,6 +28,13 @@ public sealed class CalendarDayViewModel(CalendarDaySummary value, bool currentM
     public string TransferText => Value.TransferInCount + Value.TransferOutCount == 0 ? "" : $"Aktarım +{Value.TransferInCount} / -{Value.TransferOutCount}";
 }
 
+/// <summary>
+/// Gun cekmecesindeki "Olaylar ve Islemler" satiri. API <see cref="CalendarOperation"/>
+/// icinde ham kod tasir (Title="Trip", Detail="Delete"); ekranda Turkce ad ve
+/// anlasilir aciklama gosterilir.
+/// </summary>
+public sealed record CalendarOperationDisplay(string Title, string? Detail);
+
 public sealed class CalendarViewModel : ObservableObject
 {
     private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
@@ -35,7 +43,7 @@ public sealed class CalendarViewModel : ObservableObject
     private CalendarScopeOption? selectedScope, holidayScope, exceptionScope;
     private CalendarDayDetails? selectedDetails;
     private bool isLoading, isOffline, isDrawerOpen, isHolidayFormOpen, isExceptionFormOpen;
-    private string? errorMessage, formMessage;
+    private string? errorMessage, formMessage, infoMessage, pendingBehavior;
     private string holidayName = "", holidayType = "Official", transferBehavior = "Delete";
     private string exceptionType = "Special", exceptionBehavior = "Keep", exceptionDescription = "";
 
@@ -51,19 +59,22 @@ public sealed class CalendarViewModel : ObservableObject
         ApplyScopeCommand = new AsyncCommand(LoadAsync, () => CanManage);
         SelectDayCommand = new RelayCommand<CalendarDayViewModel>(item => _ = SelectDayAsync(item.Date));
         CloseDrawerCommand = new RelayCommand(CloseDrawer);
-        OpenHolidayFormCommand = new RelayCommand(() => { HolidayScope = ScopeForForm(); IsHolidayFormOpen = true; FormMessage = null; }, () => CanManage);
+        OpenHolidayFormCommand = new RelayCommand(() => { HolidayScope = ScopeForForm(); IsHolidayFormOpen = true; FormMessage = null; InfoMessage = null; }, () => CanManage);
         CloseHolidayFormCommand = new RelayCommand(() => IsHolidayFormOpen = false);
         CreateHolidayCommand = new AsyncCommand(CreateHolidayAsync, () => CanManage);
-        OpenExceptionFormCommand = new RelayCommand(() => { ExceptionScope = ScopeForForm(); IsExceptionFormOpen = true; FormMessage = null; }, () => CanManage);
+        OpenExceptionFormCommand = new RelayCommand(() => { ExceptionScope = ScopeForForm(); IsExceptionFormOpen = true; FormMessage = null; InfoMessage = null; }, () => CanManage);
         CloseExceptionFormCommand = new RelayCommand(() => IsExceptionFormOpen = false);
         CreateExceptionCommand = new AsyncCommand(CreateExceptionAsync, () => CanManage);
         OpenBulkCommand = new RelayCommand(OpenBulk, () => BulkWizard?.CanBulk == true);
+        // Sihirbaz bir islem uygulayinca/geri alinca gun rozetleri ve acik cekmece ESKI kalmasin.
+        if (BulkWizard is not null && CanManage) BulkWizard.Changed += (_, _) => _ = RefreshAfterCreateAsync();
     }
 
     public DateOnly Today { get; }
     public ObservableCollection<CalendarDayViewModel> Days { get; } = [];
     public ObservableCollection<CalendarScopeOption> Scopes { get; } = [];
     public IReadOnlyList<string> DayNames { get; } = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+    // Kodlar API sozlesmesidir (HolidayService/CalendarService dogrular); ekranda EnumTextConverter ile Turkcelesir.
     public IReadOnlyList<string> HolidayTypes { get; } = ["Official", "Administrative", "Trip", "Other"];
     public IReadOnlyList<string> TransferBehaviors { get; } = ["Delete", "NextBusinessDay", "SpecifiedDate", "Forfeit"];
     public IReadOnlyList<string> ExceptionTypes { get; } = ["Trip", "Special", "ScheduleChange"];
@@ -76,8 +87,12 @@ public sealed class CalendarViewModel : ObservableObject
     public CalendarScopeOption? ExceptionScope { get => exceptionScope; set => Set(ref exceptionScope, value); }
     public DateOnly SelectedDate { get => selectedDate; private set { if (Set(ref selectedDate, value)) Raise(nameof(SelectedDateTitle)); } }
     public string SelectedDateTitle => SelectedDate.ToDateTime(TimeOnly.MinValue).ToString("d MMMM yyyy, dddd", Turkish);
-    public CalendarDayDetails? SelectedDetails { get => selectedDetails; private set { if (Set(ref selectedDetails, value)) Raise(nameof(HasDayDetails)); } }
+    public CalendarDayDetails? SelectedDetails { get => selectedDetails; private set { if (Set(ref selectedDetails, value)) { Raise(nameof(HasDayDetails)); Raise(nameof(SelectedOperations)); Raise(nameof(HasNoOperations)); } } }
     public bool HasDayDetails => SelectedDetails is not null;
+    /// <summary>Gunun olaylari Turkce baslik/aciklamayla.</summary>
+    public IReadOnlyList<CalendarOperationDisplay> SelectedOperations =>
+        (SelectedDetails?.Operations ?? []).Select(Describe).ToArray();
+    public bool HasNoOperations => SelectedDetails is not null && SelectedDetails.Operations.Count == 0;
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) Raise(nameof(IsEmpty)); } }
     public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
     public string? ErrorMessage { get => errorMessage; private set { if (Set(ref errorMessage, value)) { Raise(nameof(HasError)); Raise(nameof(IsEmpty)); } } }
@@ -92,7 +107,14 @@ public sealed class CalendarViewModel : ObservableObject
     public string ExceptionType { get => exceptionType; set => Set(ref exceptionType, value); }
     public string ExceptionBehavior { get => exceptionBehavior; set => Set(ref exceptionBehavior, value); }
     public string ExceptionDescription { get => exceptionDescription; set => Set(ref exceptionDescription, value); }
+    /// <summary>Form hatasi (kirmizi).</summary>
     public string? FormMessage { get => formMessage; private set => Set(ref formMessage, value); }
+    /// <summary>
+    /// Basari/bilgi metni (mavi). Tatil kaydi haklari KENDISI degistirmez; kullaniciya
+    /// bunun bir sonraki adim oldugu soylenmezse "tatil ekledim ama haklar duruyor" olur.
+    /// </summary>
+    public string? InfoMessage { get => infoMessage; private set { if (Set(ref infoMessage, value)) Raise(nameof(HasInfo)); } }
+    public bool HasInfo => !string.IsNullOrWhiteSpace(InfoMessage);
     public ICommand PreviousMonthCommand { get; }
     public ICommand NextMonthCommand { get; }
     public ICommand TodayCommand { get; }
@@ -143,7 +165,7 @@ public sealed class CalendarViewModel : ObservableObject
     public async Task SelectDayAsync(DateOnly date)
     {
         SelectedDate = date; foreach (var item in Days) item.IsSelected = item.Date == date;
-        IsDrawerOpen = true; FormMessage = null;
+        IsDrawerOpen = true; FormMessage = null; InfoMessage = null; pendingBehavior = null;
         try { SelectedDetails = await api.GetDayAsync(date, FilterScope()); }
         catch (Exception ex) { SelectedDetails = null; HandleError(ex); }
     }
@@ -161,38 +183,75 @@ public sealed class CalendarViewModel : ObservableObject
         await LoadAsync(); await SelectDayAsync(date);
     }
 
-    public void CloseDrawer() { IsDrawerOpen = false; IsHolidayFormOpen = false; IsExceptionFormOpen = false; }
+    public void CloseDrawer() { IsDrawerOpen = false; IsHolidayFormOpen = false; IsExceptionFormOpen = false; InfoMessage = null; }
 
     private async Task ChangeMonthAsync(int months) { month = month.AddMonths(months); SelectedDate = month; Raise(nameof(MonthTitle)); await LoadAsync(); }
     private async Task GoTodayAsync() { month = new DateOnly(Today.Year, Today.Month, 1); SelectedDate = Today; Raise(nameof(MonthTitle)); await LoadAsync(); }
     private async Task CreateHolidayAsync()
     {
-        FormMessage = null;
+        FormMessage = null; InfoMessage = null;
         try
         {
+            // Sunucu da dogrular; ama bos ad icin yolculuk sunucuya gitmeden de anlasilir olsun.
+            if (string.IsNullOrWhiteSpace(HolidayName)) throw new InvalidOperationException("Tatil adı zorunludur (2-200 karakter).");
             var scope = HolidayScope ?? Scopes.FirstOrDefault() ?? new("AllSchool", null, "Tüm okul");
             await api.CreateHolidayAsync(new CreateHolidayRequest(SelectedDate, HolidayName, HolidayType, null, TransferBehavior,
                 [new HolidayScopeRequest(scope.ScopeType, scope.ScopeId)]));
+            var behavior = TransferBehavior;
             IsHolidayFormOpen = false; HolidayName = ""; await RefreshAfterCreateAsync();
+            pendingBehavior = behavior;
+            InfoMessage = AfterCreateMessage("Tatil kaydedildi.", behavior);
         }
         catch (Exception ex) { FormMessage = Friendly(ex, "Tatil oluşturulamadı."); }
     }
     private async Task CreateExceptionAsync()
     {
-        FormMessage = null;
+        FormMessage = null; InfoMessage = null;
         try
         {
             var scope = ExceptionScope ?? Scopes.FirstOrDefault() ?? new("AllSchool", null, "Tüm okul");
             await api.CreateExceptionAsync(new CreateScheduleExceptionRequest(SelectedDate, ExceptionType, scope.ScopeType,
                 scope.ScopeId, null, ExceptionBehavior, null, string.IsNullOrWhiteSpace(ExceptionDescription) ? null : ExceptionDescription, Guid.Empty));
+            // Istisna davranisi "Keep" ise hak degismez; "Cancel" sihirbazdaki "Delete"ye karsilik gelir.
+            var behavior = ExceptionBehavior == "Cancel" ? "Delete" : ExceptionBehavior;
             IsExceptionFormOpen = false; ExceptionDescription = ""; await RefreshAfterCreateAsync();
+            // "Koru" hak degistirmez; daha once bir tatil davranisi bekliyorsa o korunur.
+            if (behavior != "Keep") pendingBehavior = behavior;
+            InfoMessage = behavior == "Keep" ? "Özel istisna kaydedildi; haklar korunur." : AfterCreateMessage("Özel istisna kaydedildi.", behavior);
         }
         catch (Exception ex) { FormMessage = Friendly(ex, "Özel istisna oluşturulamadı."); }
     }
-    private async Task RefreshAfterCreateAsync() { await LoadAsync(); await SelectDayAsync(SelectedDate); }
-    private void OpenBulk() { BulkWizard?.Preset(SelectedDate); BulkWizard?.OpenCommand.Execute(null); }
+    private string AfterCreateMessage(string prefix, string behavior)
+    {
+        var active = SelectedDetails?.Entitlements.Quantity ?? 0;
+        return active == 0 ? prefix + " Bu güne ait aktif hak yok."
+            : $"{prefix} Bu güne ait {active:N0} aktif hak henüz değişmedi; \"{EnumTextConverter.Translate(behavior, "TransferBehavior")}\" davranışını uygulamak için \"Hakediş etkilerini toplu uygula\" düğmesini kullanın.";
+    }
+    private async Task RefreshAfterCreateAsync()
+    {
+        await LoadAsync();
+        if (IsDrawerOpen)
+        {
+            // SelectDayAsync bilgi metnini temizler; yenileme sirasinda korunur.
+            var info = InfoMessage; var behavior = pendingBehavior;
+            await SelectDayAsync(SelectedDate);
+            InfoMessage = info; pendingBehavior = behavior;
+        }
+    }
+    private void OpenBulk() { BulkWizard?.Preset(SelectedDate, transferBehavior: pendingBehavior); BulkWizard?.OpenCommand.Execute(null); }
     private CalendarScopeOption? FilterScope() => SelectedScope?.ScopeType == "AllSchool" ? null : SelectedScope;
     private CalendarScopeOption ScopeForForm() => SelectedScope ?? Scopes.FirstOrDefault() ?? new("AllSchool", null, "Tüm okul");
     private void HandleError(Exception ex) { IsOffline = ex is HttpRequestException or TaskCanceledException or InvalidDataException; ErrorMessage = Friendly(ex, "Takvim verisi alınamadı."); }
-    private static string Friendly(Exception ex, string fallback) => ex is LoginRequiredException ? "Takvim için calendar.manage yetkili oturum gerekiyor." : ex is InvalidOperationException ? ex.Message : fallback;
+    // ApiRequestException sunucunun Turkce ProblemDetails basligini tasir; oldugu gibi gosterilir.
+    private static string Friendly(Exception ex, string fallback) => ex is LoginRequiredException ? "Takvim için calendar.manage yetkili oturum gerekiyor."
+        : ex is InvalidOperationException or ApiRequestException ? ex.Message : fallback;
+
+    private static CalendarOperationDisplay Describe(CalendarOperation operation) => operation.Kind switch
+    {
+        "Holiday" => new($"Tatil · {operation.Title}", "Hak davranışı: " + EnumTextConverter.Translate(operation.Detail, "TransferBehavior")),
+        "Exception" => new($"İstisna · {EnumTextConverter.Translate(operation.Title, "ExceptionType")}", operation.Detail),
+        "Leave" => new($"İzin · {operation.Title}", operation.Detail),
+        "TransferIn" or "TransferOut" => new(operation.Title, operation.Quantity > 0 ? $"{operation.Quantity:N0} hak · {operation.Detail}" : operation.Detail),
+        _ => new(operation.Title, operation.Detail)
+    };
 }
