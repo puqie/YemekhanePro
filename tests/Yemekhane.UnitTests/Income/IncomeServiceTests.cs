@@ -123,6 +123,29 @@ public sealed class IncomeServiceTests
         Assert.Equal(10m, filtered.Items[0].Amount);
     }
 
+    /// <summary>
+    /// Liste ve tekil kayit ogrenci NUMARASINI tasir: ad soyad ayni olan ogrenciler (veride uc ADA AKGUN)
+    /// yalnizca adla ayirt edilemez; kartsiz ogrencide numara tek ayirt edici alandir.
+    /// </summary>
+    [Fact]
+    public async Task TransactionsCarryStudentNumberForIdentity()
+    {
+        await using var fixture = await IncomeFixture.CreateAsync();
+        var cash = await fixture.Service.CreateTypeAsync(new SaveIncomeTypeRequest("Nakit"), ActorId);
+        var student = new Student { StudentNo = "5016", FirstName = "ADA", LastName = "AKGÜN" };
+        fixture.Context.Students.Add(student); await fixture.Context.SaveChangesAsync();
+        var at = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.FromHours(3));
+
+        var created = await fixture.Service.RecordAsync(new CreateIncomeTransactionRequest(Guid.NewGuid(), student.Id, null, at, cash.Id, 10m), ActorId);
+        var studentless = await fixture.Service.RecordAsync(new CreateIncomeTransactionRequest(Guid.NewGuid(), null, null, at, cash.Id, 5m), ActorId);
+        var listed = await fixture.Service.ListAsync(new IncomeTransactionFilter());
+
+        Assert.Equal("5016", created.StudentNo);
+        Assert.Null(studentless.StudentNo);
+        Assert.Equal("5016", listed.Items.Single(x => x.Id == created.Id).StudentNo);
+        Assert.Null(listed.Items.Single(x => x.Id == studentless.Id).StudentNo);
+    }
+
     private sealed class IncomeFixture(SqliteConnection connection, YemekhaneDbContext context) : IAsyncDisposable
     {
         public YemekhaneDbContext Context { get; } = context;

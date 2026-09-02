@@ -24,7 +24,8 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="12" Padding="9,4" Margin="0,0,10,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Çevrimdışı" Foreground="{StaticResource WarningBrush}"/></Border>
                 <Button Style="{StaticResource Action}" Content="Rapor Merkezine Aktar" Command="{Binding OpenReportsCommand}" IsEnabled="{Binding IsExportAvailable}" ToolTip="Günlük kasa ve gelir raporlarını aç" AutomationProperties.Name="Rapor merkezini aç"/>
-                <Button Style="{StaticResource Action}" Content="Gelir Ekle" Command="{Binding OpenAddCommand}" IsEnabled="{Binding IsVoidOpen, Converter={StaticResource InverseBool}}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Yeni gelir kaydı aç"/>
+                <!-- Sayfanin birincil eylemi: marka rengi (Primary). Notr Action stiliyle Yenile'den ayirt edilemiyordu. -->
+                <Button Style="{StaticResource Primary}" Margin="0,0,7,0" Content="Gelir Ekle" Command="{Binding OpenAddCommand}" IsEnabled="{Binding IsVoidOpen, Converter={StaticResource InverseBool}}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Yeni gelir kaydı aç"/>
                 <Button Style="{StaticResource Action}" Content="Yenile" Command="{Binding RefreshCommand}"/>
             </StackPanel>
         </Grid>
@@ -39,13 +40,13 @@
             <TabItem Header="İşlemler">
                 <Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,7">
-                        <StackPanel Width="125" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Başlangıç" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding FilterFrom}" AutomationProperties.Name="İşlem başlangıç tarihi"/></StackPanel>
-                        <StackPanel Width="125" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Bitiş" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding FilterTo}" AutomationProperties.Name="İşlem bitiş tarihi"/></StackPanel>
-                        <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Gelir türü" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding IncomeTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedFilterType}" ToolTip="Gelir türü"/></StackPanel>
+                        <StackPanel Width="150" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Başlangıç" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding FilterFrom}" AutomationProperties.Name="İşlem başlangıç tarihi"/></StackPanel>
+                        <StackPanel Width="150" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Bitiş" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding FilterTo}" AutomationProperties.Name="İşlem bitiş tarihi"/></StackPanel>
+                        <StackPanel Width="165" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Gelir türü" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding FilterTypeOptions}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedFilterType}" ToolTip="Gelir türü (Tümü, aktif ve pasif türler)"/></StackPanel>
                         <StackPanel Width="105" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding FilterStudentNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam öğrenci numarası" AutomationProperties.Name="Öğrenci filtresi"/></StackPanel>
 
                         <StackPanel Width="115" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding FilterCardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam kart numarası" AutomationProperties.Name="Kart filtresi"/></StackPanel>
-                        <StackPanel Width="95" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="İptal durumu" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding VoidStatuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding FilterIsVoided}" ToolTip="İptal durumu"/></StackPanel>
+                        <StackPanel Width="135" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="İptal durumu" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding VoidStatuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding FilterIsVoided}" ToolTip="İptal durumu"/></StackPanel>
                         <Button Style="{StaticResource Action}" VerticalAlignment="Bottom" Margin="0,0,0,4" Content="Öğrenciyi Bul" Command="{Binding LookupFilterStudentCommand}"/><Button Style="{StaticResource Action}" VerticalAlignment="Bottom" Margin="0,0,0,4" Content="Filtrele" Command="{Binding ApplyFiltersCommand}" IsDefault="True"/>
                     </WrapPanel>
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
@@ -54,14 +55,16 @@
                     <DataGrid Grid.Row="2" x:Name="TransactionsGrid" IsEnabled="{Binding IsAddOpen, Converter={StaticResource InverseBool}}" ItemsSource="{Binding Transactions}" SelectedItem="{Binding SelectedTransaction}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Kasa işlem listesi">
                         <DataGrid.InputBindings><KeyBinding Key="Delete" Command="{Binding OpenVoidCommand}"/><KeyBinding Key="Enter" Command="{Binding OpenVoidCommand}"/></DataGrid.InputBindings>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="TARİH" Binding="{Binding TransactionAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="125"/>
+                            <DataGridTextColumn Header="TARİH" Binding="{Binding TransactionAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="Auto" MinWidth="130"/>
                             <DataGridTextColumn Header="ÖĞRENCİ" Binding="{Binding StudentName}" Width="*" MinWidth="145"/>
-                            <DataGridTextColumn Header="KART" Binding="{Binding CardNumber}" Width="105"/>
+                            <!-- Ayni adli ogrenciler (uc ADA AKGUN gibi) yalnizca adla ayirt edilemez; numara her satirda gorunur. -->
+                            <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="70"/>
+                            <DataGridTextColumn Header="KART" Binding="{Binding CardNumber}" Width="Auto" MinWidth="105"/>
                             <DataGridTextColumn Header="TÜR" Binding="{Binding IncomeTypeName}" Width="Auto" MinWidth="130"/>
-                            <DataGridTextColumn Header="TUTAR" Binding="{Binding Amount, StringFormat={}{0:C2}}" Width="100"/>
+                            <DataGridTextColumn Header="TUTAR" Binding="{Binding Amount, StringFormat={}{0:C2}}" Width="Auto" MinWidth="100"/>
                             <DataGridTextColumn Header="AÇIKLAMA" Binding="{Binding Description}" Width="*" MinWidth="130"/>
-                            <DataGridCheckBoxColumn Header="İPTAL" Binding="{Binding IsVoided}" Width="55"/>
-                            <DataGridTextColumn Header="İPTAL NEDENİ" Binding="{Binding VoidReason}" Width="140"/>
+                            <DataGridCheckBoxColumn Header="İPTAL" Binding="{Binding IsVoided}" Width="Auto" MinWidth="60"/>
+                            <DataGridTextColumn Header="İPTAL NEDENİ" Binding="{Binding VoidReason}" Width="Auto" MinWidth="140"/>
                         </DataGrid.Columns>
                     </DataGrid>
                     <Grid Grid.Row="3" Margin="0,8,0,0">
@@ -72,14 +75,14 @@
             </TabItem>
             <TabItem Header="Günlük Kasa">
                 <Grid Margin="14"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <StackPanel Margin="0,0,16,0"><TextBlock Text="Günlük kasa" FontSize="16" FontWeight="SemiBold"/><WrapPanel Margin="0,10"><DatePicker Width="140" SelectedDate="{Binding DailyDate}"/><Button Style="{StaticResource Action}" Content="Göster" Command="{Binding LoadDailyCommand}" Margin="8,0,0,0"/></WrapPanel><TextBlock Text="{Binding Daily.TotalAmount, StringFormat=Net toplam: {0:C2}}" FontSize="20"/><TextBlock Text="{Binding Daily.VoidedAmount, StringFormat=İptal toplamı: {0:C2}}" Foreground="{StaticResource DangerBrush}"/><ItemsControl ItemsSource="{Binding Daily.ByIncomeType}" Margin="0,12,0,0"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,3"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding IncomeTypeName}"/><TextBlock Grid.Column="1" Text="{Binding Amount, StringFormat={}{0:C2}}" FontWeight="SemiBold"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
+                    <StackPanel Margin="0,0,16,0"><TextBlock Text="Günlük kasa" FontSize="16" FontWeight="SemiBold"/><WrapPanel Margin="0,10"><DatePicker Width="140" SelectedDate="{Binding DailyDate}"/><Button Style="{StaticResource Action}" Content="Göster" Command="{Binding LoadDailyCommand}" Margin="8,0,0,0"/></WrapPanel><TextBlock Text="{Binding DailyReport.TotalAmount, StringFormat=Net toplam: {0:C2}}" FontSize="20"/><TextBlock Text="{Binding DailyReport.VoidedAmount, StringFormat=İptal toplamı: {0:C2}}" Foreground="{StaticResource DangerBrush}"/><ItemsControl ItemsSource="{Binding DailyReport.ByIncomeType}" Margin="0,12,0,0"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,3"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding IncomeTypeName}"/><TextBlock Grid.Column="1" Text="{Binding Amount, StringFormat={}{0:C2}}" FontWeight="SemiBold"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
                     <StackPanel Grid.Column="1"><TextBlock Text="Özel tarih aralığı" FontSize="16" FontWeight="SemiBold"/><WrapPanel Margin="0,10"><DatePicker Width="130" SelectedDate="{Binding CustomFrom}"/><DatePicker Width="130" SelectedDate="{Binding CustomTo}" Margin="7,0"/><Button Style="{StaticResource Action}" Content="Hesapla" Command="{Binding LoadCustomCommand}"/></WrapPanel><TextBlock Text="{Binding Custom.TotalAmount, StringFormat=Net toplam: {0:C2}}" FontSize="20"/><TextBlock Text="{Binding Custom.TransactionCount, StringFormat={}{0:N0} aktif işlem}" Foreground="{StaticResource MutedBrush}"/><ItemsControl ItemsSource="{Binding Custom.ByIncomeType}" Margin="0,12,0,0"><ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,3"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding IncomeTypeName}"/><TextBlock Grid.Column="1" Text="{Binding Amount, StringFormat={}{0:C2}}" FontWeight="SemiBold"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
                 </Grid>
             </TabItem>
             <TabItem Header="Gelir Türleri" Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibility}}">
                 <Grid Margin="14"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <DataGrid ItemsSource="{Binding ManagedTypes}" SelectedItem="{Binding SelectedManagedType}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"><DataGrid.Columns><DataGridTextColumn Header="AD" Binding="{Binding Name}" Width="*"/><DataGridCheckBoxColumn Header="AKTİF" Binding="{Binding IsActive}" Width="70"/></DataGrid.Columns></DataGrid>
-                    <StackPanel Grid.Column="1" Margin="18,0,0,0"><TextBlock Text="Gelir türü" FontSize="16" FontWeight="SemiBold"/><TextBlock Text="Ad" Style="{StaticResource Label}"/><TextBox Text="{Binding TypeName, UpdateSourceTrigger=PropertyChanged}"/><CheckBox Content="Aktif" IsChecked="{Binding TypeIsActive}" Margin="0,10"/><WrapPanel><Button Style="{StaticResource Action}" Content="Yeni" Command="{Binding NewTypeCommand}"/><Button Style="{StaticResource Action}" Content="Seçileni Düzenle" Command="{Binding EditTypeCommand}"/><Button Style="{StaticResource Action}" Content="Kaydet" Command="{Binding SaveTypeCommand}"/><Button Style="{StaticResource Action}" Content="Pasifleştir" Command="{Binding DeactivateTypeCommand}"/></WrapPanel></StackPanel>
+                    <StackPanel Grid.Column="1" Margin="18,0,0,0"><TextBlock Text="{Binding TypeFormTitle}" FontSize="16" FontWeight="SemiBold"/><TextBlock Text="Ad" Style="{StaticResource Label}"/><TextBox Text="{Binding TypeName, UpdateSourceTrigger=PropertyChanged}"/><CheckBox Content="Aktif" IsChecked="{Binding TypeIsActive}" Margin="0,10"/><WrapPanel><Button Style="{StaticResource Action}" Content="Yeni" Command="{Binding NewTypeCommand}"/><Button Style="{StaticResource Action}" Content="Seçileni Düzenle" Command="{Binding EditTypeCommand}"/><Button Style="{StaticResource Action}" Content="Kaydet" Command="{Binding SaveTypeCommand}"/><Button Style="{StaticResource Action}" Content="Pasifleştir" Command="{Binding DeactivateTypeCommand}"/></WrapPanel></StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>
@@ -87,7 +90,7 @@
         <Grid Grid.Row="3" Margin="0,8,0,0"><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"/><TextBlock Text="Filtrelerle eşleşen kasa işlemi bulunamadı." HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/></Grid>
         <Border Grid.RowSpan="4" Background="{StaticResource SurfaceBrush}" Opacity="0.97" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Kasa verileri yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel></Border>
 
-        <controls:Drawer Grid.RowSpan="4" IsOpen="{Binding IsAddOpen}" DrawerWidth="400" Title="Gelir Ekle" CloseCommand="{Binding CloseAddCommand}">
+        <controls:Drawer x:Name="AddPanel" Grid.RowSpan="4" IsOpen="{Binding IsAddOpen}" DrawerWidth="400" Title="Gelir Ekle" CloseCommand="{Binding CloseAddCommand}">
             <StackPanel>
                 <!-- Once TEK etiket ("Tam ogrenci no veya kart no") IKI kutuyu kapsiyordu:
                      kullanici hangisine ogrenci no hangisine kart no girecegini bilemiyordu.
@@ -97,7 +100,21 @@
                     <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Text="{Binding LookupCardNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam kart numarası" ToolTip="Tam kart numarası"/></StackPanel>
                     <Button Style="{StaticResource Action}" Content="Doğrula" Command="{Binding LookupStudentCommand}" VerticalAlignment="Bottom"/>
                 </WrapPanel>
-                <TextBlock Text="{Binding LookupStudentText}" Foreground="{StaticResource AccentBrush}" Margin="0,8" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding LookupStudentText}" Margin="0,8" TextWrapping="Wrap" AutomationProperties.Name="Doğrulanan öğrenci">
+                    <TextBlock.Style>
+                        <!-- Dogrulama oncesi yonlendirme metni soluk; dogrulanan kimlik (ad, no, sinif/sube, kart) koyu ve kalin.
+                             Onceden bos formda bile turuncu "dogrulanmadi" uyarisi vardi. -->
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource IdentityText}">
+                            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasLookupStudent}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
                 <TextBlock Text="Gelir türü" Style="{StaticResource Label}"/>
                 <ComboBox ItemsSource="{Binding IncomeTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedAddType}"/>
                 <TextBlock Text="Tarih ve saat" Style="{StaticResource Label}"/>
@@ -134,6 +151,7 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
+                        <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" Text="{Binding SelectedTransaction.StudentNo, StringFormat=No {0}, TargetNullValue=No -}"/>
                         <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Text="{Binding SelectedTransaction.CardNumber, StringFormat=Kart: {0}, TargetNullValue=Kart: -}"/>
                         <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" Text="{Binding SelectedTransaction.TransactionAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}"/>
                     </StackPanel>

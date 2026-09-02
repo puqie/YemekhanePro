@@ -110,6 +110,8 @@ public sealed class CashIdentityTests
             // Ayni isimli baska bir ogrenciyle karistirilmamasi icin isim de
             // ayni blokta gorunmeli.
             Assert.Contains(texts, t => t!.Contains("Ada Katırcı", StringComparison.Ordinal));
+            // Kartsiz ogrencide tek ayirt edici alan numaradir; panel numarayi da gostermeli.
+            Assert.Contains(texts, t => t!.Contains("No 1001", StringComparison.Ordinal));
         });
 
     /// <summary>
@@ -181,15 +183,13 @@ public sealed class CashIdentityTests
     }
 
     /// <summary>
-    /// ViewModel gercegi: OpenAdd (satir 188-193) ve OpenVoid (satir 252-256)
-    /// birbirinin bayragina DOKUNMAZ -- IsAddOpen ve IsVoidOpen'in setter'lari
-    /// private ve View bunlari VIEWMODEL DEGISTIRMEDEN birbirine baglayamaz.
-    /// Bu test, ikisinin GERCEKTEN ayni anda true olabildigini (View'in bunu
-    /// engellemesi gerektigini) belgeler -- ViewModel bunu KENDI BASINA
-    /// engellemiyor.
+    /// Ekleme ve iptal cekmeceleri birbirini DISLAR: OpenAdd iptali, OpenVoid eklemeyi kapatir.
+    /// Onceden ViewModel ikisini ayni anda acik birakabiliyordu ve yalnizca View'deki
+    /// IsEnabled baglari kullaniciyi koruyordu (klavye kisayolu / komut paletinden
+    /// gelen ikinci acilis bu korumayi asabilirdi).
     /// </summary>
     [Fact]
-    public async Task ViewModelIkiCekmeceyiKendiBasinaAyniAndaAcikBirakabilir()
+    public async Task ViewModelIkiCekmeceyiAyniAndaAcikBirakmaz()
     {
         var api = new FakeCashApi();
         var vm = new CashViewModel(api, ["cash.read", "cash.write"]);
@@ -198,9 +198,12 @@ public sealed class CashIdentityTests
         vm.OpenAddCommand.Execute(null);
         vm.SelectedTransaction = vm.Transactions[0];
         vm.OpenVoidCommand.Execute(null);
-
-        Assert.True(vm.IsAddOpen);
+        Assert.False(vm.IsAddOpen);
         Assert.True(vm.IsVoidOpen);
+
+        vm.OpenAddCommand.Execute(null);
+        Assert.True(vm.IsAddOpen);
+        Assert.False(vm.IsVoidOpen);
     }
 
     /// <summary>
@@ -300,22 +303,55 @@ public sealed class CashIdentityTests
             var api = new FakeCashApi();
             var vm = new CashViewModel(api, ["cash.read", "cash.write"]);
             vm.InitializeAsync().GetAwaiter().GetResult();
-            vm.OpenAddCommand.Execute(null);
-            vm.SelectedTransaction = vm.Transactions[0];
-            vm.OpenVoidCommand.Execute(null);
+            var view = new CashView { DataContext = vm };
+            var host = Host(view);
 
+            // Cekmeceler birbirini disladigi icin (biri acilinca oteki kapanir) ikisi sirayla acilir;
+            // kapali cekmecenin sablonu uygulanmadigindan dugmesi gorsel agacta bulunmaz.
+            vm.OpenAddCommand.Execute(null); host.UpdateLayout();
+            var addButton = Descendants(view).OfType<Button>()
+                .FirstOrDefault(b => ReferenceEquals(b.Command, vm.AddCommand));
+            Assert.NotNull(addButton);
+            Assert.False(addButton!.IsEnabled, "AddConfirmed isaretlenmeden Kaydet etkin gorunuyor.");
+
+            vm.SelectedTransaction = vm.Transactions[0];
+            vm.OpenVoidCommand.Execute(null); host.UpdateLayout();
+            var voidButton = Descendants(view).OfType<Button>()
+                .FirstOrDefault(b => ReferenceEquals(b.Command, vm.VoidCommand));
+            Assert.NotNull(voidButton);
+            Assert.False(voidButton!.IsEnabled, "VoidConfirmed/VoidReason bossa Iptal Et etkin gorunuyor.");
+        });
+
+    /// <summary>Gelir turu filtresi bosken "Tümü" yazmali; onceden kutu bos gorunuyordu.</summary>
+    [Fact]
+    public void GelirTuruFiltresiTumuMetniyleBaslar() =>
+        UiThread.Run(() =>
+        {
+            var api = new FakeCashApi();
+            var vm = new CashViewModel(api, ["cash.read"]);
+            vm.InitializeAsync().GetAwaiter().GetResult();
             var view = new CashView { DataContext = vm };
             Host(view);
 
-            var addButton = Descendants(view).OfType<Button>()
-                .FirstOrDefault(b => ReferenceEquals(b.Command, vm.AddCommand));
-            var voidButton = Descendants(view).OfType<Button>()
-                .FirstOrDefault(b => ReferenceEquals(b.Command, vm.VoidCommand));
+            var combo = Descendants(view).OfType<ComboBox>()
+                .Single(c => c.GetBindingExpression(Selector.SelectedItemProperty)?.ParentBinding.Path.Path == "SelectedFilterType");
+            Assert.Equal("Tümü", combo.Text);
+            Assert.Contains("Nakit", combo.Items.OfType<IncomeTypeOption>().Select(o => o.Name));
+        });
 
-            Assert.NotNull(addButton);
-            Assert.NotNull(voidButton);
-            Assert.False(addButton!.IsEnabled, "AddConfirmed isaretlenmeden Kaydet etkin gorunuyor.");
-            Assert.False(voidButton!.IsEnabled, "VoidConfirmed/VoidReason bossa Iptal Et etkin gorunuyor.");
+    /// <summary>Sayfanin birincil eylemi "Gelir Ekle" marka renginde (Primary) olmali; notr Action ile Yenile'den ayrilmiyordu.</summary>
+    [Fact]
+    public void GelirEkleBirincilStildedir() =>
+        UiThread.Run(() =>
+        {
+            var api = new FakeCashApi();
+            var vm = new CashViewModel(api, ["cash.read", "cash.write"]);
+            vm.InitializeAsync().GetAwaiter().GetResult();
+            var view = new CashView { DataContext = vm };
+            Host(view);
+
+            var addButton = Descendants(view).OfType<Button>().First(b => ReferenceEquals(b.Command, vm.OpenAddCommand));
+            Assert.Same((Style)view.TryFindResource("Primary")!, addButton.Style);
         });
 
     private static bool IsWarningSoft(System.Windows.Media.SolidColorBrush brush) =>
@@ -399,7 +435,7 @@ public sealed class CashIdentityTests
             Task.FromResult(new PagedResult<StudentListItem>([new(studentId, "1001", "CARD-7788", "Ada", "Katırcı", null, null, null, null, true, 0, false, null)], 1, 2, 1));
 
         private IncomeTransactionDetails Transaction() => StudentlessTransaction
-            ? new(Guid.NewGuid(), Guid.NewGuid(), null, null, null, DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), false, null, null, null)
-            : new(Guid.NewGuid(), Guid.NewGuid(), studentId, "Ada Katırcı", "CARD-7788", DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), false, null, null, null);
+            ? new(Guid.NewGuid(), Guid.NewGuid(), null, null, null, null, DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), false, null, null, null)
+            : new(Guid.NewGuid(), Guid.NewGuid(), studentId, "Ada Katırcı", "1001", "CARD-7788", DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), false, null, null, null);
     }
 }
