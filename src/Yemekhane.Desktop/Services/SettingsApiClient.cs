@@ -42,7 +42,7 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
         // 204 NoContent doner; govde okumaya calisan genel SendAsync<T> burada kullanilamaz.
         using var request = Authorized(HttpMethod.Post, $"api/settings/sync/conflicts/{operationId:D}/requeue");
         using var response = await client.SendAsync(request, cancellationToken);
-        Ensure(response);
+        await EnsureAsync(response, cancellationToken);
     }
     public Task<PagedResult<ApplicationLogItem>> LogsAsync(int page, int pageSize, CancellationToken cancellationToken = default) =>
         SendAsync<PagedResult<ApplicationLogItem>>(HttpMethod.Get, $"api/settings/logs?page={page}&pageSize={pageSize}", null, cancellationToken);
@@ -54,7 +54,7 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
     private async Task<T> SendAsync<T>(HttpMethod method, string url, HttpContent? content, CancellationToken cancellationToken)
     {
         using var request = Authorized(method, url); request.Content = content;
-        using var response = await client.SendAsync(request, cancellationToken); Ensure(response);
+        using var response = await client.SendAsync(request, cancellationToken); await EnsureAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Ayarlar API yanıtı boş döndü.");
     }
@@ -74,9 +74,15 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
         var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken); return request;
     }
-    private static void Ensure(HttpResponseMessage response)
+    /// <summary>
+    /// Sunucunun dogrulama mesajini ("Yedek saklama sayısı 1 ile 365 arasında olmalıdır." gibi)
+    /// ApiRequestException ile ViewModel'e tasir. Once EnsureSuccessStatusCode her 4xx'i
+    /// "Ayarlar servisine ulaşılamadı" + Cevrimdisi rozetine ceviriyordu; kullanici hangi
+    /// alani duzeltecegini goremiyordu.
+    /// </summary>
+    private static async Task EnsureAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode) throw await ApiErrors.ReadAsync(response, cancellationToken);
     }
 }

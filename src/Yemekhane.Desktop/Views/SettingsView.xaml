@@ -15,6 +15,11 @@
         <local:InverseBooleanConverter x:Key="InverseBool"/>
         <!-- Ham API kodlarini (Information, Error...) ekranda Turkce gosterir. -->
         <converters:EnumTextConverter x:Key="EnumText"/>
+        <!-- Sekme icerigi: sabit 760px yerine genis ekranda 1100px'e kadar esner, kucuk
+             ekranda daralir. Once sag taraf bos kaliyor, Yedekleme sekmesi dikey
+             kaydiriyordu; iki sutunlu kart yerlesimiyle icerik tek ekrana sigar. -->
+        <Style x:Key="TabBody" TargetType="StackPanel"><Setter Property="Margin" Value="18"/><Setter Property="MaxWidth" Value="1100"/><Setter Property="HorizontalAlignment" Value="Left"/></Style>
+        <Style x:Key="SettingsCard" TargetType="Border" BasedOn="{StaticResource Card}"><Setter Property="Padding" Value="16"/><Setter Property="Margin" Value="0,0,0,12"/></Style>
             </ResourceDictionary>
 </UserControl.Resources>
     <controls:PageShell Title="Sistem Ayarları" Subtitle="Okul, sağlayıcı, yedekleme, senkronizasyon ve günlük yapılandırması">
@@ -26,7 +31,7 @@
         </controls:PageShell.Actions>
 
         <controls:PageShell.FooterLeft>
-            <StackPanel><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"/><TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/></StackPanel>
+            <StackPanel><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left"/><TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Margin="0,4,0,0"/></StackPanel>
         </controls:PageShell.FooterLeft>
         <controls:PageShell.FooterRight>
             <StackPanel Orientation="Horizontal" Visibility="{Binding CanManage, Converter={StaticResource Bool}}"><TextBlock Text="Kaydedilmemiş değişiklikler" Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" Margin="0,0,12,0" Visibility="{Binding IsDirty, Converter={StaticResource Bool}}"/><Button Content="İptal" Command="{Binding CancelCommand}"/><Button Content="Kaydet" Command="{Binding SaveCommand}" Style="{StaticResource Primary}"/></StackPanel>
@@ -35,58 +40,131 @@
         <Grid>
             <TabControl IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}">
                 <TabItem Header="Okul">
-                    <ScrollViewer><StackPanel Margin="18" Width="760" HorizontalAlignment="Left">
-                        <TextBlock Text="Okul bilgileri" FontSize="16" FontWeight="SemiBold"/><TextBlock Style="{StaticResource Label}" Text="Okul adı"/><TextBox Style="{StaticResource Field}" Text="{Binding SchoolName, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/>
-                        <TextBlock Style="{StaticResource Label}" Text="Adres"/><TextBox Style="{StaticResource Field}" Height="70" Margin="0,3,0,9" TextWrapping="Wrap" AcceptsReturn="True" Text="{Binding SchoolAddress, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/>
-                        <TextBlock Style="{StaticResource Label}" Text="İletişim"/><TextBox Style="{StaticResource Field}" Text="{Binding SchoolContact, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/>
-                        <TextBlock Style="{StaticResource Label}" Text="Logo dosya yolu"/><TextBox Style="{StaticResource Field}" Text="{Binding LogoPath, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Style="{StaticResource TabBody}">
+                        <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                            <TextBlock Text="Okul bilgileri" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="Raporların ve fişlerin başlığında görünür." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,6"/>
+                            <TextBlock Style="{StaticResource Label}" Text="Okul adı"/><TextBox Style="{StaticResource Field}" Text="{Binding SchoolName, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/>
+                            <TextBlock Style="{StaticResource Label}" Text="Adres"/><TextBox Style="{StaticResource Field}" Height="70" Margin="0,3,0,9" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Text="{Binding SchoolAddress, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Style="{StaticResource Label}" Text="İletişim (telefon / e-posta)"/><TextBox Style="{StaticResource Field}" Text="{Binding SchoolContact, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Logo dosya yolu"/><TextBox Style="{StaticResource Field}" Text="{Binding LogoPath, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/></StackPanel>
+                            </Grid>
+                        </StackPanel></Border>
                     </StackPanel></ScrollViewer>
                 </TabItem>
                 <TabItem Header="Bağlantılar">
-                    <StackPanel Margin="18"><TextBlock Text="Yönetim ekranları" FontSize="16" FontWeight="SemiBold"/><WrapPanel Margin="0,14,0,0"><Button Command="{Binding NavigateDevicesCommand}" Content="Cihazlar / Kart Okuyucular"/><TextBlock Text="{Binding DeviceCount, StringFormat={}  {0} kayıt}" VerticalAlignment="Center"/></WrapPanel><ItemsControl ItemsSource="{Binding DeviceSummaries}" Margin="12,0,0,8"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="{StaticResource MutedBrush}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><WrapPanel Margin="0,10,0,0"><Button Command="{Binding NavigateMealsCommand}" Content="Yemek Türleri"/><TextBlock Text="{Binding MealTypeCount, StringFormat={}  {0} aktif tür}" VerticalAlignment="Center"/></WrapPanel><ItemsControl ItemsSource="{Binding MealTypes}" Margin="12,0,0,8"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="{StaticResource MutedBrush}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><Button Command="{Binding NavigateHolidaysCommand}" Content="Tatiller / Takvim" HorizontalAlignment="Left" Margin="0,10,0,0"/><Button Command="{Binding NavigateUsersCommand}" Content="Kullanıcılar / Roller" HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="{Binding CanNavigateUsers, Converter={StaticResource Bool}}"/><TextBlock Text="Cihaz yapılandırması ilgili yönetim ekranında yapılır." Foreground="{StaticResource MutedBrush}" Margin="0,16,0,0"/></StackPanel>
+                    <StackPanel Style="{StaticResource TabBody}"><TextBlock Text="Yönetim ekranları" FontSize="16" FontWeight="SemiBold"/><WrapPanel Margin="0,14,0,0"><Button Command="{Binding NavigateDevicesCommand}" Content="Cihazlar / Kart Okuyucular"/><TextBlock Text="{Binding DeviceCount, StringFormat={}  {0} kayıt}" VerticalAlignment="Center"/></WrapPanel><ItemsControl ItemsSource="{Binding DeviceSummaries}" Margin="12,0,0,8"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="{StaticResource MutedBrush}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><WrapPanel Margin="0,10,0,0"><Button Command="{Binding NavigateMealsCommand}" Content="Yemek Türleri"/><TextBlock Text="{Binding MealTypeCount, StringFormat={}  {0} aktif tür}" VerticalAlignment="Center"/></WrapPanel><ItemsControl ItemsSource="{Binding MealTypes}" Margin="12,0,0,8"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" Foreground="{StaticResource MutedBrush}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><Button Command="{Binding NavigateHolidaysCommand}" Content="Tatiller / Takvim" HorizontalAlignment="Left" Margin="0,10,0,0"/><Button Command="{Binding NavigateUsersCommand}" Content="Kullanıcılar / Roller" HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="{Binding CanNavigateUsers, Converter={StaticResource Bool}}"/><TextBlock Text="Cihaz yapılandırması ilgili yönetim ekranında yapılır." Foreground="{StaticResource MutedBrush}" Margin="0,16,0,0"/></StackPanel>
                 </TabItem>
                 <TabItem Header="SMS">
-                    <StackPanel Margin="18" Width="760" HorizontalAlignment="Left"><TextBlock Text="SMS sağlayıcısı" FontSize="16" FontWeight="SemiBold"/><TextBlock Style="{StaticResource Label}" Text="Sunucu adresi"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsEndpoint, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Style="{StaticResource Label}" Text="Kimlik doğrulama"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding SmsAuthTypes}" SelectedItem="{Binding SmsAuthType}"/><TextBlock Style="{StaticResource Label}" Text="Kullanıcı adı"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsUsername, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Style="{StaticResource Label}" Text="Gönderici"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsSender, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Style="{StaticResource Label}" Text="Zaman aşımı (saniye)"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsTimeoutSeconds}"/><TextBlock Style="{StaticResource Label}" Text="Gizli bilgi (boş bırakırsanız değişmez)"/><PasswordBox x:Name="SmsSecretBox" Height="30" Margin="0,3,0,3" PasswordChanged="SmsSecretChanged"/><TextBlock Text="Gizli bilgi yapılandırıldı" Foreground="{StaticResource AccentBrush}" Visibility="{Binding SmsSecretConfigured, Converter={StaticResource Bool}}"/><TextBlock Text="Sağlayıcı değişiklikleri API yeniden başlatıldığında uygulanır." Foreground="{StaticResource WarningBrush}" Margin="0,12,0,0"/></StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Style="{StaticResource TabBody}">
+                        <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                            <TextBlock Text="SMS sağlayıcısı" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="Veli bildirimlerinin gönderileceği HTTP SMS servisi. Boş bırakılırsa SMS gönderilmez." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,6" TextWrapping="Wrap"/>
+                            <TextBlock Style="{StaticResource Label}" Text="Sunucu adresi (https://...)"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsEndpoint, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <!-- Kimlik dogrulama: ekranda Turkce ad, API'ye "None/Basic/Bearer/ApiKey". Once ham kod gorunuyordu. -->
+                                <StackPanel><TextBlock Style="{StaticResource Label}" Text="Kimlik doğrulama"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding SmsAuthTypes}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding SmsAuthType}"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Kullanıcı adı"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsUsername, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                            </Grid>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Style="{StaticResource Label}" Text="Gönderici adı (başlık)"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsSender, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Zaman aşımı (saniye, 1-300)"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsTimeoutText, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                            </Grid>
+                            <TextBlock Style="{StaticResource Label}" Text="Gizli bilgi: şifre / jeton / API anahtarı (boş bırakırsanız değişmez)"/><PasswordBox x:Name="SmsSecretBox" Height="30" Margin="0,3,0,3" PasswordChanged="SmsSecretChanged"/>
+                            <TextBlock Text="Gizli bilgi yapılandırıldı" Foreground="{StaticResource AccentBrush}" Visibility="{Binding SmsSecretConfigured, Converter={StaticResource Bool}}"/>
+                            <TextBlock Text="Sağlayıcı değişiklikleri uygulama yeniden başlatıldığında uygulanır." Foreground="{StaticResource WarningBrush}" Margin="0,12,0,0"/>
+                        </StackPanel></Border>
+                    </StackPanel></ScrollViewer>
                 </TabItem>
                 <TabItem Header="Yedekleme">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="18" Width="760" HorizontalAlignment="Left">
-                        <TextBlock Text="Zamanlama" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="Otomatik yedekleme burada ayarlanır; alttaki elle işlemler her zaman kullanılabilir." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
-                        <CheckBox Content="Otomatik yedeklemeyi etkinleştir" IsChecked="{Binding BackupEnabled}"/>
-                        <WrapPanel Margin="0,10,0,0">
-                            <StackPanel Width="180"><TextBlock Style="{StaticResource Label}" Text="Sıklık"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding BackupFrequencies}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding BackupFrequency}"/></StackPanel>
-                            <StackPanel Width="180" Margin="10,0"><TextBlock Style="{StaticResource Label}" Text="Haftanın günü"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding WeekDays}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding BackupWeeklyDay}"/></StackPanel>
-                            <StackPanel Width="120"><TextBlock Style="{StaticResource Label}" Text="Saat (HH:mm)"/><TextBox Style="{StaticResource Field}" Text="{Binding BackupTime}"/></StackPanel>
-                        </WrapPanel>
-                        <TextBlock Style="{StaticResource Label}" Text="Saklanacak yedek sayısı"/>
-                        <TextBox Style="{StaticResource Field}" Width="140" HorizontalAlignment="Left" Text="{Binding BackupRetentionCount}"/>
-                        <TextBlock Text="Bu sayıyı aşan en eski DÜZENLİ yedekler otomatik silinir. Geri yükleme öncesi alınan güvenlik yedekleri AYRI bir kotada tutulur (son 3), bu sayacı tüketmez." Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap" Margin="0,4,0,10"/>
-                        <TextBlock Style="{StaticResource Label}" Text="Yedek klasörü"/>
-                        <TextBox Style="{StaticResource Field}" Text="{Binding BackupPath}"/>
-
-                        <Separator Margin="0,18,0,14"/>
-
-                        <TextBlock Text="Elle işlemler" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="Anlık yedek alın, bir yedek dosyasını doğrulayın veya geri yükleyin." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
-                        <WrapPanel Margin="0,0,0,10"><Button Content="Şimdi Yedekle" Command="{Binding BackupNowCommand}"/><Button Content="Yedek Dosyası Seç" Command="{Binding ChooseRestoreCommand}"/><Button Content="Yedeği Doğrula" Command="{Binding ValidateBackupCommand}"/></WrapPanel>
-                        <TextBlock Text="{Binding RestorePath}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
-                        <TextBlock Style="{StaticResource Label}" Text="Geri yükleme onayı: GERI YUKLE"/>
-                        <TextBox Style="{StaticResource Field}" Text="{Binding RestoreConfirmation, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Content="Geri Yükle" Command="{Binding RestoreCommand}" Style="{StaticResource Destructive}" HorizontalAlignment="Left" Margin="0,4,0,0"/>
-                        <TextBlock Text="Geri yükleme önce güvenlik yedeği alır ve uygulamanın yeniden başlatılmasını gerektirir." Foreground="{StaticResource WarningBrush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Style="{StaticResource TabBody}">
+                        <!-- Iki kart yan yana: Zamanlama (sol) ve Elle islemler (sag). Tek sutunda
+                             1366x768 ekranda dikey kaydirma cikiyordu. -->
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                                <TextBlock Text="Zamanlama" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Otomatik yedekleme burada ayarlanır; sağdaki elle işlemler her zaman kullanılabilir." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
+                                <CheckBox Content="Otomatik yedeklemeyi etkinleştir" IsChecked="{Binding BackupEnabled}"/>
+                                <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Style="{StaticResource Label}" Text="Sıklık"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding BackupFrequencies}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding BackupFrequency}"/></StackPanel>
+                                    <StackPanel Grid.Column="2" IsEnabled="{Binding IsWeeklyBackup}"><TextBlock Style="{StaticResource Label}" Text="Haftanın günü (haftalıkta)"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding WeekDays}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding BackupWeeklyDay}"/></StackPanel>
+                                </Grid>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Style="{StaticResource Label}" Text="Saat (SS:dd)"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding BackupTime, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Saklanacak yedek sayısı (1-365)"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding BackupRetentionText, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                </Grid>
+                                <TextBlock Text="Bu sayıyı aşan en eski DÜZENLİ yedekler otomatik silinir. Geri yükleme öncesi alınan güvenlik yedekleri AYRI bir kotada tutulur (son 3), bu sayacı tüketmez." Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                <TextBlock Style="{StaticResource Label}" Text="Yedek klasörü (boşsa veritabanının yanındaki Backups klasörü)"/>
+                                <TextBox Style="{StaticResource Field}" Text="{Binding BackupPath, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="Zamanlama değişiklikleri uygulama yeniden başlatıldığında uygulanır." Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel></Border>
+                            <Border Grid.Column="2" Style="{StaticResource SettingsCard}"><StackPanel>
+                                <TextBlock Text="Elle işlemler" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Anlık yedek alın, bir yedek dosyasını doğrulayın veya geri yükleyin." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
+                                <Button Content="Şimdi Yedekle" Command="{Binding BackupNowCommand}" Style="{StaticResource Primary}" HorizontalAlignment="Left"/>
+                                <TextBlock Text="{Binding LastBackupFile, StringFormat=Son alınan yedek: {0}}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                <Separator Margin="0,12,0,10"/>
+                                <TextBlock Text="Geri yükleme" FontWeight="SemiBold"/>
+                                <WrapPanel Margin="0,8,0,6"><Button Content="Yedek Dosyası Seç" Command="{Binding ChooseRestoreCommand}"/><Button Content="Yedeği Doğrula" Command="{Binding ValidateBackupCommand}"/></WrapPanel>
+                                <TextBlock Text="{Binding RestoreFileText}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                                <!-- Onay metni ASCII "GERI YUKLE" (Turkce harf YOK); kasitli: klavye
+                                     duzeni ve buyuk/kucuk I/ı farki onayi engellemesin. Ipucu metni
+                                     bunu acikca soyler; yanlis yazimda dugme pasif kalir. -->
+                                <TextBlock Style="{StaticResource Label}" Text="Geri yükleme onayı"/>
+                                <TextBox Style="{StaticResource Field}" Text="{Binding RestoreConfirmation, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Geri yükleme onayı"/>
+                                <TextBlock Text="{Binding RestoreConfirmationHint}" Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <Button Content="Geri Yükle" Command="{Binding RestoreCommand}" Style="{StaticResource Destructive}" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                                <TextBlock Text="Geri yükleme önce güvenlik yedeği alır ve uygulamanın yeniden başlatılmasını gerektirir." Foreground="{StaticResource WarningBrush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                            </StackPanel></Border>
+                        </Grid>
                     </StackPanel></ScrollViewer>
                 </TabItem>
                 <TabItem Header="Senkronizasyon">
-                    <StackPanel Margin="18" Width="760" HorizontalAlignment="Left"><CheckBox Content="Senkronizasyonu etkinleştir" IsChecked="{Binding SyncEnabled}"/><TextBlock Style="{StaticResource Label}" Text="Sunucu adresi"/><TextBox Style="{StaticResource Field}" Text="{Binding SyncEndpoint, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Style="{StaticResource Label}" Text="Cihaz kimliği"/><TextBox Style="{StaticResource Field}" Text="{Binding SyncDeviceId, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Style="{StaticResource Label}" Text="Çalışma aralığı (dakika)"/><TextBox Style="{StaticResource Field}" Text="{Binding SyncIntervalMinutes}"/><TextBlock Style="{StaticResource Label}" Text="Erişim gizlisi (boş bırakırsanız değişmez)"/><PasswordBox x:Name="SyncSecretBox" Height="30" Margin="0,3,0,3" PasswordChanged="SyncSecretChanged"/><TextBlock Text="Gizli bilgi yapılandırıldı" Foreground="{StaticResource AccentBrush}" Visibility="{Binding SyncSecretConfigured, Converter={StaticResource Bool}}"/><TextBlock Text="{Binding SyncStatusText}" Margin="0,14,0,8"/><StackPanel Orientation="Horizontal"><Button Content="Şimdi Senkronize Et" Command="{Binding SyncNowCommand}"/><Button Content="Çakışmaları Yenile" Command="{Binding RefreshConflictsCommand}" Margin="7,0,0,0"/></StackPanel><TextBlock Text="Zamanlama değişiklikleri servis yeniden başlatıldığında uygulanır; elle çalıştırma kaydedilmiş endpoint'i hemen kullanır." Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/><StackPanel Margin="0,16,0,0" Visibility="{Binding HasConflicts, Converter={StaticResource Bool}}"><TextBlock Text="Çözüm bekleyen çakışmalar" FontWeight="SemiBold"/><TextBlock Text="Sunucudaki kayıt bu işlemden sonra değişmiş. Yeniden kuyruğa alırsanız işlem tekrar gönderilir." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,7"/><DataGrid ItemsSource="{Binding Conflicts}" SelectedItem="{Binding SelectedConflict}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" MaxHeight="200" RowHeight="24" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="130"/><DataGridTextColumn Header="Kayıt" Binding="{Binding EntityName}" Width="110"/><DataGridTextColumn Header="İşlem" Binding="{Binding OperationType}" Width="150"/><DataGridTextColumn Header="Deneme" Binding="{Binding AttemptCount}" Width="70"/><DataGridTextColumn Header="Neden" Binding="{Binding LastError}" Width="*"/></DataGrid.Columns></DataGrid><Button Content="Seçileni Yeniden Kuyruğa Al" Command="{Binding RequeueConflictCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/></StackPanel></StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Style="{StaticResource TabBody}">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                                <TextBlock Text="Merkez sunucu eşitlemesi" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Yerel işlemler belirlenen aralıkla merkez sunucuya gönderilir. Etkinken sunucu adresi ve cihaz kimliği zorunludur." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
+                                <CheckBox Content="Senkronizasyonu etkinleştir" IsChecked="{Binding SyncEnabled}"/>
+                                <TextBlock Style="{StaticResource Label}" Text="Sunucu adresi (https://...)"/><TextBox Style="{StaticResource Field}" Text="{Binding SyncEndpoint, UpdateSourceTrigger=PropertyChanged}"/>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Style="{StaticResource Label}" Text="Cihaz kimliği"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding SyncDeviceId, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Çalışma aralığı (dakika, 1-1440)"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding SyncIntervalText, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                </Grid>
+                                <TextBlock Style="{StaticResource Label}" Text="Erişim gizlisi (boş bırakırsanız değişmez)"/><PasswordBox x:Name="SyncSecretBox" Height="30" Margin="0,3,0,3" PasswordChanged="SyncSecretChanged"/>
+                                <TextBlock Text="Gizli bilgi yapılandırıldı" Foreground="{StaticResource AccentBrush}" Visibility="{Binding SyncSecretConfigured, Converter={StaticResource Bool}}"/>
+                                <TextBlock Text="Zamanlama değişiklikleri uygulama yeniden başlatıldığında uygulanır; elle çalıştırma kaydedilmiş sunucu adresini hemen kullanır." Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                            </StackPanel></Border>
+                            <Border Grid.Column="2" Style="{StaticResource SettingsCard}"><StackPanel>
+                                <TextBlock Text="Durum" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding SyncStatusText}" Margin="0,8,0,2"/>
+                                <TextBlock Text="{Binding SyncLastRunText}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,10"/>
+                                <StackPanel Orientation="Horizontal"><Button Content="Şimdi Senkronize Et" Command="{Binding SyncNowCommand}" Style="{StaticResource Primary}"/><Button Content="Çakışmaları Yenile" Command="{Binding RefreshConflictsCommand}" Margin="7,0,0,0"/></StackPanel>
+                                <TextBlock Text="Eşitleme kapalıyken 'Şimdi Senkronize Et' pasiftir; önce eşitlemeyi etkinleştirip kaydedin." Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                                <StackPanel Margin="0,16,0,0" Visibility="{Binding HasConflicts, Converter={StaticResource Bool}}"><TextBlock Text="Çözüm bekleyen çakışmalar" FontWeight="SemiBold"/><TextBlock Text="Sunucudaki kayıt bu işlemden sonra değişmiş. Yeniden kuyruğa alırsanız işlem tekrar gönderilir." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,7"/><DataGrid ItemsSource="{Binding Conflicts}" SelectedItem="{Binding SelectedConflict}" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" MaxHeight="200" RowHeight="24" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="Auto" MinWidth="120"/><DataGridTextColumn Header="Kayıt" Binding="{Binding EntityName}" Width="Auto" MinWidth="90"/><DataGridTextColumn Header="İşlem" Binding="{Binding OperationType}" Width="Auto" MinWidth="110"/><DataGridTextColumn Header="Deneme" Binding="{Binding AttemptCount}" Width="Auto" MinWidth="70"/><DataGridTextColumn Header="Neden" Binding="{Binding LastError}" Width="*"/></DataGrid.Columns></DataGrid><Button Content="Seçileni Yeniden Kuyruğa Al" Command="{Binding RequeueConflictCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/></StackPanel>
+                                <TextBlock Text="Çözüm bekleyen çakışma yok." Foreground="{StaticResource FaintBrush}" Margin="0,12,0,0" Visibility="{Binding HasConflicts, Converter={x:Static local:InverseBooleanToVisibilityConverter.Instance}}"/>
+                            </StackPanel></Border>
+                        </Grid>
+                    </StackPanel></ScrollViewer>
                 </TabItem>
                 <TabItem Header="Loglar">
-                    <Grid Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><WrapPanel><TextBlock Text="Seviye" VerticalAlignment="Center" Margin="0,0,8,0"/><ComboBox Width="150" ItemsSource="{Binding LogLevels}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding LogLevel}"/><TextBlock Text="Saklama günü" VerticalAlignment="Center" Margin="16,0,8,0"/><TextBox Width="70" Text="{Binding LogRetentionDays}"/><TextBlock Text="Dosya yolu" VerticalAlignment="Center" Margin="16,0,8,0"/><TextBox Width="220" Text="{Binding LogPath}"/><Button Content="Logları Yenile" Command="{Binding RefreshLogsCommand}" Margin="12,0,0,0"/></WrapPanel><!-- Genislikler Auto: hucre basina 22px dolgu (DesignSystem.xaml Padding 11,0)
+                    <Grid Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <WrapPanel>
+                            <StackPanel Width="180" Margin="0,0,12,0"><TextBlock Style="{StaticResource Label}" Text="Seviye"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding LogLevels}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding LogLevel}"/></StackPanel>
+                            <StackPanel Width="190" Margin="0,0,12,0"><TextBlock Style="{StaticResource Label}" Text="Saklama süresi (gün, 1-3650)"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding LogRetentionText, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                            <StackPanel Width="360" Margin="0,0,12,0"><TextBlock Style="{StaticResource Label}" Text="Dosya yolu (boşsa varsayılan klasör)"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding LogPath, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                            <Button Content="Logları Yenile" Command="{Binding RefreshLogsCommand}" VerticalAlignment="Bottom" Margin="0,0,0,9"/>
+                        </WrapPanel>
+                        <!-- Genislikler Auto: hucre basina 22px dolgu (DesignSystem.xaml Padding 11,0)
                              sabit piksellerden calindigi icin "Information" -> "Informatic",
                              "Device/Yemekhane Giris" -> "Device/Yemekhane Gir" olarak kesiliyordu.
                              Ozellikler sutunundaki JSON ise ekran disina tasip yatay kaydirma
                              cubugu da olmadigi icin HIC okunamiyordu: artik Mesaj ile alani
                              paylasir, ToolTip'te tam metin durur. -->
-                        <DataGrid Grid.Row="1" ItemsSource="{Binding Logs}" AutoGenerateColumns="False" IsReadOnly="True" Margin="0,12,0,0" Padding="0,0,0,14"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" Width="Auto" MinWidth="145"/><DataGridTextColumn Header="Seviye" Binding="{Binding Level, Converter={StaticResource EnumText}, ConverterParameter=LogLevel}" Width="Auto" MinWidth="70"/><DataGridTextColumn Header="Kaynak" Binding="{Binding Source}" Width="Auto" MinWidth="160"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="2*"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="ToolTip" Value="{Binding Message}"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn><DataGridTextColumn Header="Özellikler" Binding="{Binding Properties}" Width="*"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="ToolTip" Value="{Binding Properties}"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn></DataGrid.Columns></DataGrid></Grid>
+                        <Grid Grid.Row="1"><DataGrid ItemsSource="{Binding Logs}" AutoGenerateColumns="False" IsReadOnly="True" Margin="0,12,0,0" Padding="0,0,0,14"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" Width="Auto" MinWidth="145"/><DataGridTextColumn Header="Seviye" Binding="{Binding Level, Converter={StaticResource EnumText}, ConverterParameter=LogLevel}" Width="Auto" MinWidth="70"/><DataGridTextColumn Header="Kaynak" Binding="{Binding Source}" Width="Auto" MinWidth="160"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="2*"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="ToolTip" Value="{Binding Message}"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn><DataGridTextColumn Header="Özellikler" Binding="{Binding Properties}" Width="*"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="ToolTip" Value="{Binding Properties}"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn></DataGrid.Columns></DataGrid>
+                        <TextBlock Text="Henüz log kaydı yok. 'Logları Yenile' ile tekrar deneyin." Foreground="{StaticResource FaintBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasLogs, Converter={x:Static local:InverseBooleanToVisibilityConverter.Instance}}"/></Grid>
+                    </Grid>
                 </TabItem>
             </TabControl>
             <ProgressBar IsIndeterminate="True" Width="220" Height="3" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource Bool}}"/>
