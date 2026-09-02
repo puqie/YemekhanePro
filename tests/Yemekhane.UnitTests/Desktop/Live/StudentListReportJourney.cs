@@ -78,8 +78,12 @@ public class StudentListReportJourney
         ui.Note($"Sicil Listesi: {total} öğrenci, {active} aktif");
 
         // 3) Sutunlar ve 1440px yerlesimi: yatay kaydirma yok, kesik hucre yok.
-        Assert.Equal(["NO", "AD SOYAD", "SINIF", "ŞUBE", "KART NO", "VELİ", "VELİ TEL", "DURUM", "KAYIT"],
+        // VELİ (ad) varsayilan GIZLI: dokuz sutun 1440px'e sigmiyor, veli adi sutunu
+        // eklendiginde diger sutunlar alt sinira ezilip metinleri kesiliyordu. Veli
+        // telefonu gorunur kalir; veli adi Kolonlar menusunden acilabilir.
+        Assert.Equal(["NO", "AD SOYAD", "SINIF", "ŞUBE", "KART NO", "VELİ TEL", "DURUM", "KAYIT"],
             grid.Columns.Select(x => (string)x.Header));
+        Assert.Contains(vm.Columns, c => c.Header == "VELİ" && !c.IsVisible);
         var scroll = ui.FindAll<ScrollViewer>(grid).FirstOrDefault();
         Assert.False(scroll?.ComputedHorizontalScrollBarVisibility == Visibility.Visible,
             $"Sicil Listesi: 1440px'te yatay kaydırma (sütun toplamı {grid.Columns.Sum(c => c.ActualWidth):0}px, tablo {grid.ActualWidth:0}px)");
