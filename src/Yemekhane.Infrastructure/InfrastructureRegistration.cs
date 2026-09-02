@@ -110,6 +110,10 @@ public static class InfrastructureRegistration
         services.AddSingleton<StudentImportPreviewStore>();
         services.AddScoped<IStudentImportService, StudentImportService>();
         services.AddScoped<IDeviceCardSyncService, DeviceCardSyncService>();
+        // Fotograflar veritabaninin YANINDAKI photos/ klasorune yazilir: yedek/geri yukleme
+        // ve veri klasoru gocu ayni koku paylasir. Program.cs'e dokunmadan baglanti dizgisinden turetilir.
+        services.AddSingleton<IStudentPhotoStore>(new FileStudentPhotoStore(FileStudentPhotoStore.ResolveRoot(connectionString)));
+        services.AddScoped<StudentPhotoService>();
         return services;
     }
 

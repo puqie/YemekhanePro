@@ -8,6 +8,7 @@ using System.Text.Json;
 using Yemekhane.Application.Cards;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Leaves;
+using Yemekhane.Application.Organization;
 using Yemekhane.Application.Students;
 using Yemekhane.Devices.Abstractions;
 
@@ -30,6 +31,23 @@ public interface IStudentApiClient
     /// </summary>
     Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Bu istemci kart atamayı desteklemiyor.");
+
+    /// <summary>
+    /// Sicil karti icin tanim listeleri (sinif/sube/bolum/gorev) ve "+" ile hizli ekleme,
+    /// fotograf yukle/indir/sil. Varsayilan govdeler: yalnizca arama icin kullanilan sahte
+    /// istemciler (SMS ekrani gibi) bu uclari uygulamak zorunda kalmasin.
+    /// </summary>
+    Task<IReadOnlyList<LookupRecord>> GetLookupsAsync(LookupKind kind, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<LookupRecord>>([]);
+    Task<LookupRecord> CreateLookupAsync(LookupKind kind, string name, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci tanım eklemeyi desteklemiyor.");
+    Task<StudentDetails> UploadPhotoAsync(Guid studentId, string fileName, byte[] content, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci fotoğraf yüklemeyi desteklemiyor.");
+    /// <summary>Fotograf yoksa (404) null.</summary>
+    Task<byte[]?> DownloadPhotoAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<byte[]?>(null);
+    Task DeletePhotoAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci fotoğraf silmeyi desteklemiyor.");
 }
 
 public sealed class StudentApiClient(HttpClient client, IJwtSession session) : IStudentApiClient
@@ -104,6 +122,60 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         using var response = await client.SendAsync(message, cancellationToken);
         await EnsureAsync(response, cancellationToken);
     }
+
+    public Task<IReadOnlyList<LookupRecord>> GetLookupsAsync(LookupKind kind, CancellationToken cancellationToken = default) =>
+        GetAsync<IReadOnlyList<LookupRecord>>($"api/organization/{Segment(kind)}/lookups", cancellationToken);
+
+    /// <summary>
+    /// Sinif ucu (POST classes) govde olarak DUZ JSON dizge bekler ve ClassRecord dondurur;
+    /// diger uc tur {"name":...} alip LookupRecord dondurur. Tanimlar API'si baska bir
+    /// ekranin alanidir, burada yalnizca tuketilir.
+    /// </summary>
+    public async Task<LookupRecord> CreateLookupAsync(LookupKind kind, string name, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Post, $"api/organization/{Segment(kind)}");
+        if (kind == LookupKind.Class)
+        {
+            message.Content = JsonContent.Create(name);
+            var created = await SendAsync<ClassRecord>(message, cancellationToken);
+            return new LookupRecord(created.Id, created.Name, 0);
+        }
+        message.Content = JsonContent.Create(new SaveLookupRequest(name));
+        return await SendAsync<LookupRecord>(message, cancellationToken);
+    }
+
+    public async Task<StudentDetails> UploadPhotoAsync(Guid studentId, string fileName, byte[] content, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Post, $"api/students/{studentId:D}/photo");
+        using var multipart = new MultipartFormDataContent();
+        var part = new ByteArrayContent(content);
+        part.Headers.ContentType = new MediaTypeHeaderValue(fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg");
+        multipart.Add(part, "file", Path.GetFileName(fileName));
+        message.Content = multipart;
+        return await SendAsync<StudentDetails>(message, cancellationToken);
+    }
+
+    public async Task<byte[]?> DownloadPhotoAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Get, $"api/students/{studentId:D}/photo");
+        using var response = await client.SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        await EnsureAsync(response, cancellationToken);
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+    }
+
+    public async Task DeletePhotoAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Delete, $"api/students/{studentId:D}/photo");
+        using var response = await client.SendAsync(message, cancellationToken);
+        await EnsureAsync(response, cancellationToken);
+    }
+
+    private static string Segment(LookupKind kind) => kind switch
+    {
+        LookupKind.Class => "classes", LookupKind.Section => "sections", LookupKind.Department => "departments", LookupKind.Job => "jobs",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
 
     private async Task<T> GetAsync<T>(string url, CancellationToken cancellationToken)
     {

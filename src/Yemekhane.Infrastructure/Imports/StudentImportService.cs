@@ -77,6 +77,10 @@ internal sealed class StudentImportRow
     public DateOnly? BirthDate { get; set; }
     public string? ClassName { get; set; }
     public Guid? ClassId { get; set; }
+    public string? DepartmentName { get; set; }
+    public Guid? DepartmentId { get; set; }
+    public string? JobName { get; set; }
+    public Guid? JobId { get; set; }
     public string? Phone { get; set; }
     public string Status { get; set; } = "New";
     public List<ImportRowError> Errors { get; } = [];
@@ -108,6 +112,9 @@ public sealed class StudentImportService(
         ["TC"] = "nationalId", ["TC KIMLIK NO"] = "nationalId", ["TCKN"] = "nationalId",
         ["DOGUM TARIHI"] = "birthDate", ["DOGUM TARİHİ"] = "birthDate", ["BIRTH DATE"] = "birthDate",
         ["SINIF"] = "className", ["SINIF ADI"] = "className", ["CLASS"] = "className",
+        // Eski programin Sicil Karti'ndaki Bolum / Gorev: aktarim dosyasinda da tanininir.
+        ["BOLUM"] = "departmentName", ["BOLUM ADI"] = "departmentName", ["DEPARTMAN"] = "departmentName", ["DEPARTMENT"] = "departmentName",
+        ["GOREV"] = "jobName", ["GOREVI"] = "jobName", ["GOREV ADI"] = "jobName", ["JOB"] = "jobName",
         ["TELEFON"] = "phone", ["TELEFON NO"] = "phone", ["CEP TELEFONU"] = "phone", ["PHONE"] = "phone"
     };
 
@@ -131,7 +138,7 @@ public sealed class StudentImportService(
         var normalizedHash = Hash(JsonSerializer.Serialize(rows.Select(x => new
         {
             x.RowNumber, x.StudentNo, x.CardNumber, x.FirstName, x.LastName, x.NationalId,
-            x.BirthDate, x.ClassName, x.ClassId, x.Phone, x.Status,
+            x.BirthDate, x.ClassName, x.ClassId, x.DepartmentName, x.DepartmentId, x.JobName, x.JobId, x.Phone, x.Status,
             Errors = x.Errors.Select(e => new { e.Code, e.Message })
         })));
         var snapshotHash = Hash(fileHash + ":" + normalizedHash + ":" + databaseHash);
@@ -188,6 +195,10 @@ public sealed class StudentImportService(
                 student.NationalId = row.NationalId;
                 student.BirthDate = row.BirthDate;
                 student.ClassId = row.ClassId;
+                // Bolum/Gorev yalnizca dosyada DOLUYSA yazilir: eski dosya bicimleri bu sutunlari
+                // tasimaz, bos sutun yuzunden mevcut atama silinmemeli.
+                if (row.DepartmentName is not null) student.DepartmentId = row.DepartmentId;
+                if (row.JobName is not null) student.JobId = row.JobId;
                 student.IsActive = true;
                 student.IsDeleted = false;
                 student.UpdatedAt = now;
@@ -264,6 +275,12 @@ public sealed class StudentImportService(
         var cards = await dbContext.StudentCards.AsNoTracking().Where(x => rows.Select(r => r.CardNumber).Contains(x.CardNumber)).ToDictionaryAsync(x => x.CardNumber, StringComparer.OrdinalIgnoreCase, cancellationToken);
         var classes = await dbContext.Set<SchoolClass>().AsNoTracking().Where(x => x.IsActive).ToListAsync(cancellationToken);
         var classLookup = classes.GroupBy(x => x.Name.Trim(), StringComparer.Create(new CultureInfo("tr-TR"), true)).ToDictionary(x => x.Key, x => x.Single(), StringComparer.Create(new CultureInfo("tr-TR"), true));
+        // Bolum/Gorev sinifla ayni kuralla cozulur: ad Turkce buyuk/kucuk harf duyarsiz eslesir,
+        // bulunamazsa satir hatali (sessizce atlanmaz; operator dosyadaki yazim hatasini gorur).
+        var departmentLookup = (await dbContext.Set<Department>().AsNoTracking().ToListAsync(cancellationToken))
+            .GroupBy(x => x.Name.Trim(), StringComparer.Create(new CultureInfo("tr-TR"), true)).ToDictionary(x => x.Key, x => x.First().Id, StringComparer.Create(new CultureInfo("tr-TR"), true));
+        var jobLookup = (await dbContext.Set<Job>().AsNoTracking().ToListAsync(cancellationToken))
+            .GroupBy(x => x.Name.Trim(), StringComparer.Create(new CultureInfo("tr-TR"), true)).ToDictionary(x => x.Key, x => x.First().Id, StringComparer.Create(new CultureInfo("tr-TR"), true));
 
         foreach (var row in rows)
         {
@@ -271,6 +288,16 @@ public sealed class StudentImportService(
             {
                 if (classLookup.TryGetValue(row.ClassName, out var schoolClass)) row.ClassId = schoolClass.Id;
                 else Error(row, "ClassNotFound", $"'{row.ClassName}' adlı aktif sınıf bulunamadı.");
+            }
+            if (row.DepartmentName is not null)
+            {
+                if (departmentLookup.TryGetValue(row.DepartmentName, out var departmentId)) row.DepartmentId = departmentId;
+                else Error(row, "DepartmentNotFound", $"'{row.DepartmentName}' adlı bölüm bulunamadı.");
+            }
+            if (row.JobName is not null)
+            {
+                if (jobLookup.TryGetValue(row.JobName, out var jobId)) row.JobId = jobId;
+                else Error(row, "JobNotFound", $"'{row.JobName}' adlı görev bulunamadı.");
             }
             students.TryGetValue(row.StudentNo, out var student);
             row.Status = student is null ? "New" : "Update";
@@ -291,7 +318,15 @@ public sealed class StudentImportService(
             .OrderBy(x => x.CardNumber).Select(x => new { x.Id, x.StudentId, x.CardNumber, x.IsActive, x.ValidFrom, x.ValidTo, x.UpdatedAt }).ToListAsync(cancellationToken);
         var classes = await dbContext.Set<SchoolClass>().AsNoTracking().Where(x => classNames.Contains(x.Name)).OrderBy(x => x.Name)
             .Select(x => new { x.Id, x.Name, x.IsActive, x.UpdatedAt }).ToListAsync(cancellationToken);
-        return Hash(JsonSerializer.Serialize(new { students, cards, classes }));
+        // Bolum/Gorev tanimlari onizleme ile uygulama arasinda degisirse (silinen bolum) hash
+        // degisir ve uygulama "yeniden onizle" der; siniflarla ayni koruma.
+        var departmentNames = rows.Where(x => x.DepartmentName is not null).Select(x => x.DepartmentName!).Distinct().Order().ToArray();
+        var jobNames = rows.Where(x => x.JobName is not null).Select(x => x.JobName!).Distinct().Order().ToArray();
+        var departments = await dbContext.Set<Department>().AsNoTracking().Where(x => departmentNames.Contains(x.Name)).OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name, x.UpdatedAt }).ToListAsync(cancellationToken);
+        var jobs = await dbContext.Set<Job>().AsNoTracking().Where(x => jobNames.Contains(x.Name)).OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name, x.UpdatedAt }).ToListAsync(cancellationToken);
+        return Hash(JsonSerializer.Serialize(new { students, cards, classes, departments, jobs }));
     }
 
     private static List<StudentImportRow> BuildRows(List<string[]> records)
@@ -316,8 +351,11 @@ public sealed class StudentImportService(
             {
                 RowNumber = index + 1,
                 StudentNo = Value("studentNo"), CardNumber = Value("cardNumber"), FirstName = Value("firstName"), LastName = Value("lastName"),
-                NationalId = Optional("nationalId"), ClassName = Optional("className"), Phone = Optional("phone")
+                NationalId = Optional("nationalId"), ClassName = Optional("className"), Phone = Optional("phone"),
+                DepartmentName = Optional("departmentName"), JobName = Optional("jobName")
             };
+            if (row.DepartmentName?.Length > 100) Error(row, "CellTooLong", "BOLUM en fazla 100 karakter olabilir.");
+            if (row.JobName?.Length > 100) Error(row, "CellTooLong", "GOREV en fazla 100 karakter olabilir.");
             ValidateLength(row, row.StudentNo, "NO", 1, 32);
             ValidateLength(row, row.CardNumber, "KART NO", 1, 128);
             ValidateLength(row, row.FirstName, "AD", 1, 100);

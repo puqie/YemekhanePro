@@ -146,6 +146,17 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         await dbContext.SaveChangesAsync(cancellationToken); return true;
     }
 
+    public async Task<bool> SetPhotoPathAsync(Guid id, string? photoPath, CancellationToken cancellationToken)
+    {
+        var student = await dbContext.Students.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (student is null) return false;
+        var before = Snapshot(student);
+        student.PhotoPath = photoPath; student.UpdatedAt = DateTimeOffset.UtcNow;
+        auditService.Record(new AuditEntry(photoPath is null ? "StudentPhotoRemoved" : "StudentPhotoChanged", nameof(Student), id.ToString(),
+            photoPath is null ? "Öğrenci fotoğrafı kaldırıldı." : "Öğrenci fotoğrafı güncellendi.", Before: before, After: student));
+        await dbContext.SaveChangesAsync(cancellationToken); return true;
+    }
+
     private static void Apply(Student student, SaveStudentRequest r)
     {
         student.StudentNo = r.StudentNo; student.FirstName = r.FirstName; student.LastName = r.LastName; student.NationalId = r.NationalId;

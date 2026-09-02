@@ -7,7 +7,7 @@ namespace Yemekhane.Api.Controllers;
 
 [ApiController]
 [Route("api/students")]
-public sealed class StudentsController(StudentService service) : ControllerBase
+public sealed class StudentsController(StudentService service, StudentPhotoService photos) : ControllerBase
 {
     [HttpGet]
     [PermissionAuthorize(Permissions.StudentsRead)]
@@ -48,6 +48,39 @@ public sealed class StudentsController(StudentService service) : ControllerBase
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
         await service.DeactivateAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Sicil karti fotografi (eski programdaki "Resim Sec"). multipart "file", en fazla 2 MB,
+    /// JPG/PNG; dosya veri klasorundeki photos/ altina yazilir, kayitta goreli yol tutulur.
+    /// </summary>
+    [HttpPost("{id:guid}/photo")]
+    [PermissionAuthorize(Permissions.StudentsWrite)]
+    [RequestSizeLimit(2_500_000)]
+    public async Task<StudentDetails> UploadPhoto(Guid id, IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null) throw new RequestValidationException("Fotoğraf dosyası gönderilmedi.");
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, cancellationToken);
+        stream.Position = 0;
+        var updated = await photos.UploadAsync(id, file.FileName, file.Length, stream, cancellationToken);
+        return CanReadSensitive() ? updated : StudentSensitiveMasker.Mask(updated);
+    }
+
+    [HttpGet("{id:guid}/photo")]
+    [PermissionAuthorize(Permissions.StudentsRead)]
+    public async Task<IActionResult> GetPhoto(Guid id, CancellationToken cancellationToken)
+    {
+        var photo = await photos.GetAsync(id, cancellationToken);
+        return File(photo.Content, photo.ContentType);
+    }
+
+    [HttpDelete("{id:guid}/photo")]
+    [PermissionAuthorize(Permissions.StudentsWrite)]
+    public async Task<IActionResult> DeletePhoto(Guid id, CancellationToken cancellationToken)
+    {
+        await photos.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
 
