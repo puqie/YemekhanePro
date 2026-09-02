@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Yemekhane.Infrastructure.Persistence;
 
@@ -10,9 +11,11 @@ using Yemekhane.Infrastructure.Persistence;
 namespace Yemekhane.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(YemekhaneDbContext))]
-    partial class YemekhaneDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902112841_MealTypePrices")]
+    partial class MealTypePrices
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
