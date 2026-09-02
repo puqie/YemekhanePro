@@ -218,6 +218,10 @@ public sealed class CashViewModel : ObservableObject
 
     public async Task LoadTransactionsAsync(int targetPage)
     {
+        // Tarih araligi kullanici hatasidir, ag hatasi degil. Once burada yakalanir: asagidaki
+        // catch InvalidDataException'i cevrimdisi sayip "Çevrimdışı" rozetini yakiyor ve gercek
+        // nedeni "Kasa işlemleri alınamadı." ile eziyordu (LoadCustomAsync bunu zaten dogru yapiyor).
+        if (FilterFrom.Date > FilterTo.Date) { ErrorMessage = "Filtre başlangıcı bitişten sonra olamaz."; return; }
         IsLoading = true; ErrorMessage = null; IsOffline = false;
         try { await LoadTransactionsCoreAsync(targetPage); }
         catch (ApiRequestException ex) { ErrorMessage = ex.Message; }

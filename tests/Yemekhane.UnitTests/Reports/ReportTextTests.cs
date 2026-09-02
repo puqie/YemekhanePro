@@ -30,6 +30,19 @@ public sealed class ReportTextTests
         Assert.Equal("Kart pasif", ReportText.Status(Row(ReportType.DeniedAccess, status: "Kart pasif")));
     }
 
+    /// <summary>
+    /// On odemeli bakiye nedenleri ekranda (EnumTextConverter) Turkce gorunurken disa aktarilan
+    /// dosyada ham "BalanceUsed" / "InsufficientBalance" kodu basiliyordu: bakiye ozelligi
+    /// ReportText'ten sonra eklenmis ve bu sozluk guncellenmemisti.
+    /// </summary>
+    [Fact]
+    public void BakiyeNedenleriDosyadaDaTurkcelesir()
+    {
+        Assert.Equal("Bakiyeden düşüldü", ReportText.Status(Row(ReportType.DailyAccess, status: "BalanceUsed")));
+        Assert.Equal("Yemek hakkı yok; bakiye yetersiz",
+            ReportText.Status(Row(ReportType.DeniedAccess, status: "InsufficientBalance")));
+    }
+
     [Fact]
     public void TaninmayanKodAynenKalirBosDegerBosKalir()
     {

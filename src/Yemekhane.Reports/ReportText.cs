@@ -30,6 +30,11 @@ public static class ReportText
     private static readonly Dictionary<string, string> ReasonMap = new(Codes)
     {
         ["OK"] = "Geçiş onaylandı",
+        // On odemeli bakiye yolu (BalanceAccessReasons). Ekrandaki EnumTextConverter bunlari
+        // cevirdigi halde burada eksikti: rapor ekranda "Bakiyeden düşüldü" yazarken ayni
+        // raporun PDF/Excel/CSV ciktisinda ham "BalanceUsed" kodu basiliyordu.
+        ["BalanceUsed"] = "Bakiyeden düşüldü",
+        ["InsufficientBalance"] = "Yemek hakkı yok; bakiye yetersiz",
     };
 
     private static readonly Dictionary<string, string> TurnstileMap = new(Codes)
@@ -37,6 +42,15 @@ public static class ReportText
         ["OK"] = "Başarılı", ["TIMEOUT"] = "Zaman aşımı", ["ERROR"] = "Hata", ["SKIPPED"] = "Atlandı",
         ["FAILED"] = "Başarısız", ["COMPENSATED_RETRY_REQUIRED"] = "Hak iade edildi, yeniden geçiş gerekli",
         ["OPEN"] = "Aç", ["DENY"] = "Reddet",
+    };
+
+    /// <summary>
+    /// Bakiye defteri satir turleri (StudentBalanceEntryKinds); Bakiye Hareketleri raporunda
+    /// "Hareket" sutunu. Ekrandaki EnumTextConverter "BalanceKind" sozluguyle ayni.
+    /// </summary>
+    private static readonly Dictionary<string, string> BalanceKindMap = new(Codes)
+    {
+        ["TopUp"] = "Yükleme", ["Deduction"] = "Düşüm", ["Refund"] = "İade", ["Adjustment"] = "Düzeltme",
     };
 
     public static string Decision(string? value) => Translate(DecisionMap, value);
@@ -49,6 +63,8 @@ public static class ReportText
     {
         ReportType.Turnstile => Translate(TurnstileMap, row.Status),
         ReportType.DailyAccess or ReportType.DeniedAccess => Translate(ReasonMap, row.Status),
+        // Bakiye Hareketleri'nde "Status" defter satir turudur (TopUp/Deduction/Refund/Adjustment).
+        ReportType.Balance => Translate(BalanceKindMap, row.Status),
         _ => Translate(StatusMap, row.Status)
     };
 
