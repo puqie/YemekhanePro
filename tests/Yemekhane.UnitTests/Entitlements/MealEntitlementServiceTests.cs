@@ -139,6 +139,53 @@ public sealed class MealEntitlementServiceTests
         Assert.Equal(1, cancelled.CancelledCount);
     }
 
+    /// <summary>
+    /// Manuel hedefte okul numarasi kabul edilir (kullanici GUID bilmez); bilinmeyen numara
+    /// sessizce atlanmaz, adiyla reddedilir.
+    /// </summary>
+    [Fact]
+    public async Task ManualTargetResolvesStudentNosAndRejectsUnknownOnes()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
+        await using var context = CreateContext(connection); await context.Database.MigrateAsync();
+        var ada = new Student { StudentNo = "100", FirstName = "Ada", LastName = "A" };
+        var ali = new Student { StudentNo = "101", FirstName = "Ali", LastName = "B" };
+        var passive = new Student { StudentNo = "102", FirstName = "Pasif", LastName = "C", IsActive = false };
+        context.AddRange(ada, ali, passive); await context.SaveChangesAsync();
+        var repository = new EfMealEntitlementRepository(context);
+
+        var ids = await repository.ResolveTargetAsync(new EntitlementTarget("Manual", [ada.Id], StudentNos: [" 101 ", "101"]), default);
+        Assert.Equal(new[] { ada.Id, ali.Id }.Order(), ids.Order());
+
+        var error = await Assert.ThrowsAsync<RequestValidationException>(() =>
+            repository.ResolveTargetAsync(new EntitlementTarget("Manual", StudentNos: ["100", "999", "102"]), default));
+        Assert.Contains("999", error.Message); Assert.Contains("102", error.Message); Assert.DoesNotContain("100", error.Message);
+        await Assert.ThrowsAsync<RequestValidationException>(() =>
+            repository.ResolveTargetAsync(new EntitlementTarget("Manual", [], StudentNos: []), default));
+    }
+
+    /// <summary>
+    /// "Kalan" yalnizca AKTIF haklar icin anlamlidir: iptal satiri KALAN 0 gosterir ve ozet
+    /// karti iptalleri kullanilabilir saymaz; toplam/kullanilan tum satirlari kapsar.
+    /// </summary>
+    [Fact]
+    public async Task SearchRemainingExcludesCancelledRows()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
+        await using var context = CreateContext(connection); await context.Database.MigrateAsync();
+        var student = new Student { StudentNo = "100", FirstName = "Ada", LastName = "A" }; var meal = new MealType { Name = "Öğle" };
+        context.AddRange(student, meal,
+            new MealEntitlement { StudentId = student.Id, MealTypeId = meal.Id, EntitlementDate = new DateOnly(2026, 9, 1), Quantity = 3, ConsumedQuantity = 1, Status = "Active" },
+            new MealEntitlement { StudentId = student.Id, MealTypeId = meal.Id, EntitlementDate = new DateOnly(2026, 9, 2), Quantity = 9, Status = "Cancelled" });
+        await context.SaveChangesAsync();
+
+        var page = await CreateService(context).SearchAsync(new MealEntitlementQuery(new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30)));
+
+        Assert.Equal(new MealEntitlementSummary(12, 1, 2), page.Summary);
+        Assert.Equal(0, page.Items.Single(x => x.Status == "Cancelled").RemainingQuantity);
+        Assert.Equal(2, page.Items.Single(x => x.Status == "Active").RemainingQuantity);
+    }
+
     private sealed class FixedClosureProvider(params DateOnly[] closed) : ICalendarClosureProvider
     {
         public Task<bool> IsClosedAsync(DateOnly calendarDate, CalendarScope scope, CancellationToken cancellationToken) =>

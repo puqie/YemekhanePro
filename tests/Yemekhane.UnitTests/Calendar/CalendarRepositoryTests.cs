@@ -58,6 +58,23 @@ public sealed class CalendarRepositoryTests
         Assert.Contains(result.Operations, x => x.Kind == "TransferOut");
     }
 
+    /// <summary>Iptal edilmis hak o gun yemek hakki degildir: ay rozeti ve gun ozeti yalnizca aktif haklari sayar.</summary>
+    [Fact]
+    public async Task CancelledEntitlementsAreNotCountedInMonthOrDay()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
+        await using var db = Context(connection); await db.Database.EnsureCreatedAsync();
+        var a = Student("100", null); var b = Student("200", null); var meal = new MealType { Name = "Öğle" }; var date = new DateOnly(2026, 9, 8);
+        var cancelled = Right(b.Id, meal.Id, date, 5, 0); cancelled.Status = "Cancelled";
+        db.AddRange(a, b, meal, Right(a.Id, meal.Id, date, 2, 1), cancelled); await db.SaveChangesAsync();
+
+        var month = await new EfCalendarRepository(db).GetMonthAsync(new DateOnly(2026, 9, 1), null, default);
+        Assert.Equal(new CalendarEntitlementSummary(1, 1, 2, 1), month.Days.Single(x => x.Date == date).Entitlements);
+        var day = await new EfCalendarRepository(db).GetDayAsync(date, null, default);
+        Assert.Equal(new CalendarEntitlementSummary(1, 1, 2, 1), day.Entitlements);
+        Assert.Equal(2, Assert.Single(day.Meals).Quantity);
+    }
+
     private static YemekhaneDbContext Context(SqliteConnection connection) => new(new DbContextOptionsBuilder<YemekhaneDbContext>().UseSqlite(connection).Options);
     private static Student Student(string no, Guid? classId) => new() { StudentNo = no, FirstName = "Ada", LastName = no, ClassId = classId };
     private static MealEntitlement Right(Guid studentId, Guid mealId, DateOnly date, int quantity, int used) => new()

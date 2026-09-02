@@ -28,9 +28,27 @@ public sealed class EfBulkOperationRepository(YemekhaneDbContext db, IAuditServi
             rights.AddRange(await query.ToListAsync(cancellationToken));
         }
         var affected = rights.Where(x => x.Quantity > x.ConsumedQuantity).ToArray();
+        // Onizleme tablosu ogrenciyi GUID ile degil no + ad + sinif ile gostersin diye
+        // etkilenen ogrencilerin kimligi tek sorguyla cekilir (ayni adli ogrenciler
+        // ancak numara ve sinifla ayirt edilebilir). Durum ozetine (StateHash) girmez.
+        var affectedStudentIds = affected.Select(x => x.StudentId).Distinct().ToArray();
+        var identity = new Dictionary<Guid, (string No, string Name, string? Class)>();
+        foreach (var chunk in affectedStudentIds.Chunk(400))
+        {
+            var found = await db.Students.AsNoTracking().Where(s => chunk.Contains(s.Id))
+                .Select(s => new { s.Id, s.StudentNo, s.FirstName, s.LastName,
+                    ClassName = db.Set<SchoolClass>().Where(c => c.Id == s.ClassId).Select(c => c.Name).FirstOrDefault() })
+                .ToListAsync(cancellationToken);
+            foreach (var s in found) identity[s.Id] = (s.StudentNo, s.FirstName + " " + s.LastName, s.ClassName);
+        }
         var rows = affected.OrderBy(x => x.StudentId).ThenBy(x => x.EntitlementDate).ThenBy(x => x.MealTypeId)
-            .Select(x => new BulkAffectedEntitlement(x.Id, x.StudentId, x.MealTypeId, x.EntitlementDate,
-                x.Quantity, x.ConsumedQuantity, x.Quantity - x.ConsumedQuantity, x.Version, null)).ToArray();
+            .Select(x =>
+            {
+                identity.TryGetValue(x.StudentId, out var who);
+                return new BulkAffectedEntitlement(x.Id, x.StudentId, x.MealTypeId, x.EntitlementDate,
+                    x.Quantity, x.ConsumedQuantity, x.Quantity - x.ConsumedQuantity, x.Version, null,
+                    who.No ?? "", who.Name ?? "", who.Class);
+            }).ToArray();
         var hashRows = rights.OrderBy(x => x.StudentId).ThenBy(x => x.EntitlementDate).ThenBy(x => x.MealTypeId)
             .Select(x => new BulkAffectedEntitlement(x.Id, x.StudentId, x.MealTypeId, x.EntitlementDate,
                 x.Quantity, x.ConsumedQuantity, Math.Max(0, x.Quantity - x.ConsumedQuantity), x.Version, null)).ToArray();
@@ -160,7 +178,11 @@ public sealed class EfBulkOperationRepository(YemekhaneDbContext db, IAuditServi
     {
         var query = db.BulkOperations.AsNoTracking();
         var total = await query.CountAsync(cancellationToken);
-        var entities = await query.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+        // SQLite DateTimeOffset'i ORDER BY'da desteklemez (NotSupportedException -> 500):
+        // "Gecmis" dugmesi ve uygulama sonrasi gecmis yenileme her seferinde patliyor,
+        // sihirbaz da bunu "uygulanamadi" diye gosteriyordu. Projenin yerlesik cozumu
+        // JulianDay sayisal cevirisiyle siralamaktir (bkz. SettingsService, EfReportRepository).
+        var entities = await query.OrderByDescending(x => YemekhaneDbContext.JulianDay(x.CreatedAt)).ThenByDescending(x => x.Id)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
         var items = entities.Select(x =>
         {
@@ -206,12 +228,27 @@ public sealed class EfBulkOperationRepository(YemekhaneDbContext db, IAuditServi
     private async Task<IReadOnlyList<Guid>> ResolveStudentsAsync(BulkOperationScope scope, CancellationToken cancellationToken)
     {
         var query = db.Students.AsNoTracking().Where(x => x.IsActive);
+        if (scope.Type == "Manual")
+        {
+            var ids = (scope.StudentIds ?? Array.Empty<Guid>()).Distinct().ToArray();
+            var studentNos = (scope.StudentNos ?? []).Select(x => x.Trim()).Where(x => x.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+            if (studentNos.Length > 0)
+            {
+                // Numara ile verilen ogrenci bulunamazsa istek reddedilir; sessiz atlama
+                // kullanicinin "N ogrenci" beklentisini bozar ve fark edilmez.
+                var found = await db.Students.AsNoTracking().Where(x => x.IsActive && studentNos.Contains(x.StudentNo))
+                    .Select(x => new { x.Id, x.StudentNo }).ToListAsync(cancellationToken);
+                var missing = studentNos.Except(found.Select(x => x.StudentNo), StringComparer.Ordinal).ToArray();
+                if (missing.Length > 0) throw new RequestValidationException($"Aktif öğrenci bulunamadı: {string.Join(", ", missing)}");
+                ids = ids.Concat(found.Select(x => x.Id)).Distinct().ToArray();
+            }
+            return await query.Where(x => ids.Contains(x.Id)).OrderBy(x => x.Id).Select(x => x.Id).ToArrayAsync(cancellationToken);
+        }
         query = scope.Type switch
         {
             "AllSchool" => query,
             "Class" => query.Where(x => x.ClassId == scope.ScopeId),
             "Group" => query.Where(x => db.Set<StudentGroupMember>().Any(m => m.GroupId == scope.ScopeId && m.StudentId == x.Id)),
-            "Manual" => query.Where(x => (scope.StudentIds ?? Array.Empty<Guid>()).Contains(x.Id)),
             _ => throw new RequestValidationException("Kapsam türü geçersiz.")
         };
         return await query.OrderBy(x => x.Id).Select(x => x.Id).ToArrayAsync(cancellationToken);

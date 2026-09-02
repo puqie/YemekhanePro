@@ -51,7 +51,9 @@ public sealed class CalendarApiClient(HttpClient client, IJwtSession session) : 
     {
         using var response = await client.SendAsync(request, cancellationToken);
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        if (!response.IsSuccessStatusCode) throw new HttpRequestException(await response.Content.ReadAsStringAsync(cancellationToken), null, response.StatusCode);
+        // Sunucu mesaji ("Tatil adi 2-200 karakter olmalidir.") kullaniciya ulassin:
+        // HttpRequestException "cevrimdisi" sayiliyor ve mesaj yutuluyordu.
+        if (!response.IsSuccessStatusCode) throw await ApiErrors.ReadAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Takvim API yanıtı boş döndü.");
     }

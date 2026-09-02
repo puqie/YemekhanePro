@@ -87,6 +87,53 @@ public sealed class BulkOperationServiceTests
         await Assert.ThrowsAsync<EntityConflictException>(() => fixture.Service.ApplyAsync(new(changed, preview.PreviewToken), fixture.UserId));
     }
 
+    /// <summary>
+    /// Manuel kapsam okul numarasi kabul eder; onizleme satirlari ogrenciyi no/ad/sinif ile
+    /// tasir ve aktarim olmayan islemde hedef tarih null'dur (once 0001-01-01 geliyordu).
+    /// </summary>
+    [Fact]
+    public async Task ManualScopeResolvesStudentNosAndPreviewCarriesIdentity()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var request = fixture.Request("CancelEntitlements", "Delete", new BulkOperationScope("Manual", null, null, ["A"]));
+        var preview = await fixture.Service.PreviewAsync(request);
+        var row = Assert.Single(preview.Entitlements);
+        Assert.Equal(fixture.StudentA.Id, row.StudentId);
+        Assert.Equal("A", row.StudentNo); Assert.Equal("Ada A", row.StudentName); Assert.Equal("5A", row.ClassName);
+        Assert.Null(row.TargetDate);
+        var applied = await fixture.Service.ApplyAsync(new(request, preview.PreviewToken), fixture.UserId);
+        Assert.Equal(1, applied.CancelledCount);
+
+        var unknown = fixture.Request("CancelEntitlements", "Delete", new BulkOperationScope("Manual", null, null, ["A", "ZZZ"]));
+        var error = await Assert.ThrowsAsync<RequestValidationException>(() => fixture.Service.PreviewAsync(unknown));
+        Assert.Contains("ZZZ", error.Message);
+        await Assert.ThrowsAsync<RequestValidationException>(() => fixture.Service.PreviewAsync(
+            fixture.Request("CancelEntitlements", "Delete", new BulkOperationScope("Manual", null, [], []))));
+    }
+
+    /// <summary>
+    /// Gecmis listesi SQLite uzerinde CALISMALI ve en yeni islem en ustte gelmeli.
+    /// Onceden OrderByDescending(CreatedAt) DateTimeOffset oldugu icin SQLite tarafinda
+    /// NotSupportedException firlatiyor, API 500 donuyor ve sihirbaz "Gecmis"i hic acamiyordu.
+    /// </summary>
+    [Fact]
+    public async Task HistoryWorksOnSqliteAndListsNewestFirst()
+    {
+        await using var fixture = await Fixture.CreateAsync(includeThreeDays: true);
+        var first = fixture.Request("CancelEntitlements", "Delete", starts: new DateOnly(2026, 9, 11), ends: new DateOnly(2026, 9, 11));
+        var firstResult = await fixture.Service.ApplyAsync(new(first, (await fixture.Service.PreviewAsync(first)).PreviewToken), fixture.UserId);
+        await Task.Delay(5); // JulianDay milisaniye cozunurlugunde; ayni milisaniyede iki kayit siralamayi belirsiz kilar
+        var second = fixture.Request("CancelEntitlements", "Forfeit", starts: new DateOnly(2026, 9, 12), ends: new DateOnly(2026, 9, 12));
+        var secondResult = await fixture.Service.ApplyAsync(new(second, (await fixture.Service.PreviewAsync(second)).PreviewToken), fixture.UserId);
+
+        var page = await fixture.Service.HistoryAsync(1, 30);
+
+        Assert.Equal(2, page.TotalCount);
+        Assert.Equal(secondResult.OperationId, page.Items[0].Id);
+        Assert.Equal(firstResult.OperationId, page.Items[1].Id);
+        Assert.True(page.Items[0].CanUndo);
+    }
+
     [Fact]
     public async Task UndoRestoresUntouchedOperationAndReportsChangedRecordConflict()
     {

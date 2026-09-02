@@ -23,8 +23,11 @@ public sealed class EfCalendarRepository(YemekhaneDbContext db, IAuditService au
     public async Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScope? scope, CancellationToken cancellationToken)
     {
         var first = new DateOnly(month.Year, month.Month, 1); var end = first.AddMonths(1);
+        // Yalnizca AKTIF haklar sayilir: iptal edilmis/aktarilmis/yakilmis bir hak o gun
+        // yemek hakki degildir. Onceden iptal sonrasi gun rozeti "395 ogrenci" demeye
+        // devam ediyor, Hakedisler ekranindaki sayiyla celisiyordu.
         var entitlements = ScopeStudents(db.MealEntitlements.AsNoTracking(), scope)
-            .Where(x => x.EntitlementDate >= first && x.EntitlementDate < end);
+            .Where(x => x.EntitlementDate >= first && x.EntitlementDate < end && x.Status == "Active");
         var entitlementRows = await entitlements.GroupBy(x => x.EntitlementDate).Select(x => new
         {
             Date = x.Key, Students = x.Select(y => y.StudentId).Distinct().Count(), Count = x.Count(),
@@ -55,7 +58,8 @@ public sealed class EfCalendarRepository(YemekhaneDbContext db, IAuditService au
     public async Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScope? scope, CancellationToken cancellationToken)
     {
         var date = calendarDate;
-        var rights = ScopeStudents(db.MealEntitlements.AsNoTracking(), scope).Where(x => x.EntitlementDate == date);
+        // Ay gorunumuyle ayni kural: yalnizca aktif haklar (bkz. GetMonthAsync).
+        var rights = ScopeStudents(db.MealEntitlements.AsNoTracking(), scope).Where(x => x.EntitlementDate == date && x.Status == "Active");
         var summary = await rights.GroupBy(_ => 1).Select(x => new CalendarEntitlementSummary(
             x.Select(y => y.StudentId).Distinct().Count(), x.Count(), x.Sum(y => y.Quantity), x.Sum(y => y.ConsumedQuantity)))
             .SingleOrDefaultAsync(cancellationToken) ?? new(0, 0, 0, 0);

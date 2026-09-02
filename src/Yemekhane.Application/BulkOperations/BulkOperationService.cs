@@ -49,7 +49,9 @@ public sealed class BulkOperationService(IBulkOperationRepository repository, Bu
         var state = await repository.PreviewAsync(request, cancellationToken);
         if (state.ScopeStudentIds.Count == 0) throw new RequestValidationException("Kapsamda aktif öğrenci bulunamadı.");
         var targets = await ResolveTargetsAsync(request, state.Entitlements, cancellationToken);
-        var enriched = state.Entitlements.Select(x => x with { TargetDate = targets.GetValueOrDefault(x.EntitlementId) }).ToArray();
+        // Aktarim olmayan islemde hedef tarih YOKTUR (null). GetValueOrDefault DateOnly.MinValue
+        // donduruyor, onizleme tablosunda "01.01.0001" gorunuyordu.
+        var enriched = state.Entitlements.Select(x => x with { TargetDate = targets.TryGetValue(x.EntitlementId, out var target) ? target : null }).ToArray();
         var warnings = new List<string>();
         var used = state.UsedEntitlementCount;
         if (used > 0) warnings.Add($"{used:N0} hak kaydında kullanılmış hak vardır; yalnızca kalan miktar etkilenir ve işlem geri alınamaz.");
@@ -121,7 +123,8 @@ public sealed class BulkOperationService(IBulkOperationRepository repository, Bu
             throw new RequestValidationException("IdempotencyKey zorunludur ve en fazla 128 karakter olabilir.");
         if (!Scopes.Contains(request.Scope.Type)) throw new RequestValidationException("Kapsam türü geçersiz.");
         if (request.Scope.Type is "Class" or "Group" && !request.Scope.ScopeId.HasValue) throw new RequestValidationException("Kapsam kimliği zorunludur.");
-        if (request.Scope.Type == "Manual" && (request.Scope.StudentIds is null || request.Scope.StudentIds.Count == 0)) throw new RequestValidationException("Manuel kapsamda öğrenci seçilmelidir.");
+        if (request.Scope.Type == "Manual" && (request.Scope.StudentIds is null || request.Scope.StudentIds.Count == 0)
+            && (request.Scope.StudentNos is null || request.Scope.StudentNos.Count == 0)) throw new RequestValidationException("Manuel kapsamda öğrenci seçilmelidir.");
         if (!Operations.Contains(request.Operation)) throw new RequestValidationException("İşlem türü geçersiz.");
         if (!Behaviors.Contains(request.TransferBehavior)) throw new RequestValidationException("Hak davranışı geçersiz.");
         if (request.TransferBehavior == "SpecifiedDate" && !request.TargetDate.HasValue) throw new RequestValidationException("Hedef tarih zorunludur.");
@@ -149,7 +152,11 @@ public sealed class BulkOperationService(IBulkOperationRepository repository, Bu
         var canonical = JsonSerializer.Serialize(new
         {
             Scope = request.Scope.Type, request.Scope.ScopeId,
-            Students = (request.Scope.StudentIds ?? []).Distinct().Order(), Dates = Dates(request), request.MealTypeId,
+            Students = (request.Scope.StudentIds ?? []).Distinct().Order(),
+            // Numara listesi de istegin parcasidir: ayni idempotency anahtariyla farkli
+            // numaralar gonderilirse bu "ayni istek" sayilmamali.
+            StudentNos = (request.Scope.StudentNos ?? []).Select(x => x.Trim()).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal),
+            Dates = Dates(request), request.MealTypeId,
             request.Operation, request.TransferBehavior, request.TargetDate, Description = request.Description?.Trim(),
             Targets = targets?.OrderBy(x => x.Key)
         });

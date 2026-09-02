@@ -58,14 +58,19 @@
                      vardi: dokuz bos kutu yan yana duruyor, kullanici fareyi uzerine
                      getirip beklemeden hangisinin ne oldugunu bilemiyordu. Ogrenciler
                      ekranindaki etiketli desenin aynisi. -->
-                <StackPanel Width="125" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Başlangıç" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding StartsOn}" ToolTip="Başlangıç tarihi"/></StackPanel>
-                <StackPanel Width="125" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Bitiş" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding EndsOn}" ToolTip="Bitiş tarihi"/></StackPanel>
+                <!-- 125px'te "26.08.2026" metni takvim simgesini kesiyordu; 140 ikisine yeter. -->
+                <StackPanel Width="140" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Başlangıç" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding StartsOn}" ToolTip="Başlangıç tarihi"/></StackPanel>
+                <StackPanel Width="140" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Bitiş" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding EndsOn}" ToolTip="Bitiş tarihi"/></StackPanel>
                 <StackPanel Width="95" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding StudentNo}" ToolTip="Öğrenci NO"/></StackPanel>
                 <StackPanel Width="105" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding CardNumber}" ToolTip="Kart no"/></StackPanel>
-                <StackPanel Width="150" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Ad soyad" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding StudentName}" ToolTip="Ad soyad"/></StackPanel>
-                <StackPanel Width="105" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding ClassName}" ToolTip="Sınıf"/></StackPanel>
-                <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Grup" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroup}" ToolTip="Grup"/></StackPanel>
-                <StackPanel Width="110" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMeal}" ToolTip="Öğün"/></StackPanel>
+                <StackPanel Width="140" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Ad soyad" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding StudentName}" ToolTip="Ad soyad"/></StackPanel>
+                <!-- Sinif adi en fazla 3 karakter ("12C"); 90px yeter ve dokuz filtre tek satirda kalir. -->
+                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding ClassName}" ToolTip="Sınıf"/></StackPanel>
+                <!-- Grup ve Ogun kutulari "Tümü" ogesiyle baslar: bos bir acilir kutu kullaniciya
+                     "secilmemis" gibi gorunuyordu ve bir kez secim yapinca filtreyi geri
+                     kaldirmanin yolu yoktu (WPF ComboBox'ta secim UI'dan sifirlanamaz). -->
+                <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Grup" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding GroupFilters}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroupFilter}" ToolTip="Grup"/></StackPanel>
+                <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding MealFilters}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMealFilter}" ToolTip="Öğün"/></StackPanel>
                 <StackPanel Width="95" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Durum" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding Status}" ToolTip="Durum"/></StackPanel>
                 <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" IsDefault="True" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
             </WrapPanel>
@@ -117,37 +122,54 @@
                         <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="58"/>
                         <DataGridTextColumn Header="ADET" Binding="{Binding Quantity}" Width="52"/>
                         <DataGridTextColumn Header="KULL." Binding="{Binding ConsumedQuantity}" Width="52"/>
-                        <DataGridTextColumn Header="KALAN" Binding="{Binding RemainingQuantity}" Width="55"/>
+                        <DataGridTextColumn Header="KALAN" Binding="{Binding RemainingQuantity}" Width="Auto" MinWidth="64"/>
                         <DataGridTextColumn Header="DURUM" Binding="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=Status}" Width="76"/>
-                        <DataGridTextColumn Header="KAYNAK" Binding="{Binding Source, Converter={StaticResource EnumText}, ConverterParameter=Source}" Width="80"/>
+                        <!-- Auto: "Hızlı Hakediş" 80px'te "WPF Quic" gibi kesiliyordu. -->
+                        <DataGridTextColumn Header="KAYNAK" Binding="{Binding Source, Converter={StaticResource EnumText}, ConverterParameter=Source}" Width="Auto" MinWidth="90"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <StackPanel Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Hakedişler yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel>
                 <TextBlock Grid.RowSpan="2" Text="Filtrelerle eşleşen hakediş bulunamadı." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
             </Grid>
         </Border>
-        <Grid Grid.Row="4" Margin="0,9,0,0"><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PageText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel></Grid>
+        <Grid Grid.Row="4" Margin="0,9,0,0">
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" MaxWidth="760" HorizontalAlignment="Left"/>
+                <!-- Basari geri bildirimi: "135 hak olusturuldu" gibi. Cekmece kapandigi icin
+                     onceden bu bilgi hicbir yerde gorunmuyordu. -->
+                <TextBlock x:Name="StatusMessageText" Text="{Binding StatusMessage}" Foreground="{StaticResource SuccessBrush}" TextWrapping="Wrap" MaxWidth="760" HorizontalAlignment="Left"
+                           Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibility}}"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PageText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel></Grid>
 
         <controls:Drawer Grid.RowSpan="5" IsOpen="{Binding IsGrantOpen}" DrawerWidth="400" Title="Hızlı Hakediş" CloseCommand="{Binding CloseGrantCommand}">
             <StackPanel>
                 <TextBlock Text="Hedef" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding TargetTypes}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding TargetType}"/>
                 <StackPanel Visibility="{Binding IsManualTarget, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="Öğrenciler" Style="{StaticResource Label}"/>
+                    <TextBlock Text="Öğrenci numaraları" Style="{StaticResource Label}"/>
                     <Border Background="{StaticResource InfoSoftBrush}" Padding="10,8" x:Name="SelectionSummaryPanel"
                             Visibility="{Binding SelectedItems.Count, Converter={x:Static local:SelectionCountToVisibilityConverter.Instance}}">
                         <TextBlock x:Name="SelectionSummaryText" TextWrapping="Wrap"
                                    Text="{Binding SelectedItems.Count, StringFormat=Seçili {0} öğrenciye verilecek.}"/>
                     </Border>
+                    <!-- Kullanicinin elinde ogrenci KIMLIGI (GUID) yoktur, NUMARASI vardir. Kutu
+                         numara kabul eder (5012, 5013); sunucu numarayi cozer, bilinmeyen numarayi
+                         adiyla reddeder. Kimlik girisi (derin baglanti) da calismaya devam eder. -->
                     <TextBox x:Name="ManualStudentIdsBox" Text="{Binding ManualStudentIds, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="58"
-                             ToolTip="Listeden öğrenci seçerek Hızlı Hakediş'i açın veya kimlikleri virgülle girin."
+                             ToolTip="Öğrenci numaralarını virgülle ayırarak girin (örn. 5012, 5013)."
+                             AutomationProperties.Name="Öğrenci numaraları"
                              Visibility="{Binding SelectedItems.Count, Converter={x:Static local:SelectionCountToVisibilityConverter.Instance}, ConverterParameter=Invert}"/>
+                    <TextBlock x:Name="ManualStudentIdsHint" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Text="Virgülle ayırarak öğrenci numarası girin (örn. 5012, 5013) ya da listeden satır seçip Hızlı Hakediş'i açın."
+                               Visibility="{Binding SelectedItems.Count, Converter={x:Static local:SelectionCountToVisibilityConverter.Instance}, ConverterParameter=Invert}"/>
                 </StackPanel>
                 <StackPanel Visibility="{Binding IsClassTarget, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Sınıf" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedItem="{Binding GrantClass}"/></StackPanel>
                 <StackPanel Visibility="{Binding IsGradeTarget, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Kademe / sınıf seviyesi" Style="{StaticResource Label}"/><TextBox Text="{Binding Grade}" ToolTip="Örnek: 5"/></StackPanel>
                 <StackPanel Visibility="{Binding IsGroupTarget, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Grup" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding Groups}" DisplayMemberPath="Name" SelectedItem="{Binding GrantGroup}"/></StackPanel>
                 <TextBlock Text="Öğün" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding GrantMeal}"/>
                 <TextBlock Text="Tarih aralığı" Style="{StaticResource Label}"/><StackPanel Orientation="Horizontal"><DatePicker Width="150" SelectedDate="{Binding GrantStartsOn}" Margin="0,0,8,0"/><DatePicker Width="150" SelectedDate="{Binding GrantEndsOn}"/></StackPanel>
-                <TextBlock Text="Günlük adet (1-10)" Style="{StaticResource Label}"/><TextBox Width="90" HorizontalAlignment="Left" Text="{Binding Quantity}"/>
+                <!-- Metin olarak baglanir: int baglamada "abc" sessizce reddedilip ESKI adet kalirdi. -->
+                <TextBlock Text="Günlük adet (1-10)" Style="{StaticResource Label}"/><TextBox x:Name="QuantityBox" Width="90" HorizontalAlignment="Left" Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Günlük adet"/>
                 <WrapPanel Margin="0,10,0,0"><CheckBox Content="Cumartesi dahil" IsChecked="{Binding IncludeSaturday}" Margin="0,0,18,0"/><CheckBox Content="Pazar dahil" IsChecked="{Binding IncludeSunday}"/></WrapPanel>
                 <Separator Margin="0,16"/>
                 <Button Content="Etkileri Önizle" Command="{Binding PreviewCommand}" Style="{StaticResource Primary}" HorizontalAlignment="Left"

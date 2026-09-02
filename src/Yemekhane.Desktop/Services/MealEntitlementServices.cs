@@ -76,8 +76,11 @@ public sealed class MealEntitlementApiClient(HttpClient client, IJwtSession sess
     {
         using var response = await client.SendAsync(request, cancellationToken);
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(await response.Content.ReadAsStringAsync(cancellationToken), null, response.StatusCode);
+        // Sunucunun Turkce dogrulama mesaji ("Gunluk ogun hakki 1-10 arasinda olmalidir.")
+        // ProblemDetails govdesindedir. Onceden HttpRequestException firlatiliyor, ViewModel
+        // bunu "cevrimdisi" sanip yalnizca "Onizleme olusturulamadi." diyordu -- kullanici
+        // neyi duzelteceğini bilemiyordu. ApiRequestException mesaji oldugu gibi tasir.
+        if (!response.IsSuccessStatusCode) throw await ApiErrors.ReadAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Hakediş API yanıtı boş döndü.");
     }

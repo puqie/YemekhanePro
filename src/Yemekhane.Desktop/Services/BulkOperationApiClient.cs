@@ -52,7 +52,9 @@ public sealed class BulkOperationApiClient(HttpClient client, IJwtSession sessio
     {
         using var response = await client.SendAsync(request, cancellationToken);
         if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        if (!response.IsSuccessStatusCode) throw new InvalidOperationException(await response.Content.ReadAsStringAsync(cancellationToken));
+        // Onceden ham JSON govde ({"type":...,"title":...}) oldugu gibi InvalidOperationException
+        // mesaji olarak ekrana basiliyordu. Yalnizca ProblemDetails basligi gosterilir.
+        if (!response.IsSuccessStatusCode) throw await ApiErrors.ReadAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Toplu işlem API yanıtı boş döndü.");
     }

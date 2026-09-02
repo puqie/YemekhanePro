@@ -69,7 +69,20 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
         {
             case "manual":
                 var ids = (target.StudentIds ?? []).Distinct().ToArray();
-                if (ids.Length == 0) throw new RequestValidationException("Manuel hedef için öğrenci seçilmelidir.");
+                var studentNos = (target.StudentNos ?? []).Select(x => x.Trim()).Where(x => x.Length > 0).Distinct(StringComparer.Ordinal).ToArray();
+                if (ids.Length == 0 && studentNos.Length == 0) throw new RequestValidationException("Manuel hedef için öğrenci seçilmelidir.");
+                if (studentNos.Length > 0)
+                {
+                    // Numara ile verilen ogrenciler: hepsi AKTIF bir ogrenciye karsilik gelmeli.
+                    // Yanlis yazilan numara sessizce atlanirsa kullanici "3 ogrenci" beklerken
+                    // 2'sine hak tanimlar ve farkina varmaz; bu yuzden eksikler adiyla reddedilir.
+                    var found = await dbContext.Students.AsNoTracking().Where(x => x.IsActive && studentNos.Contains(x.StudentNo))
+                        .Select(x => new { x.Id, x.StudentNo }).ToListAsync(cancellationToken);
+                    var missing = studentNos.Except(found.Select(x => x.StudentNo), StringComparer.Ordinal).ToArray();
+                    if (missing.Length > 0)
+                        throw new RequestValidationException($"Aktif öğrenci bulunamadı: {string.Join(", ", missing)}");
+                    ids = ids.Concat(found.Select(x => x.Id)).Distinct().ToArray();
+                }
                 students = students.Where(x => ids.Contains(x.Id));
                 break;
             case "class":
@@ -161,12 +174,19 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
                        dbContext.StudentCards.Where(c => c.StudentId == x.Student.Id && c.IsActive)
                            .Select(c => c.CardNumber).FirstOrDefault(),
                        x.MealName, x.Student.FirstName + " " + x.Student.LastName, x.ClassName,
-                       x.Right.Quantity, x.Right.ConsumedQuantity, x.Right.Quantity - x.Right.ConsumedQuantity,
+                       x.Right.Quantity, x.Right.ConsumedQuantity,
+                       // "Kalan" yalnizca AKTIF hak icin anlamlidir: iptal edilmis / aktarilmis /
+                       // yakilmis bir hakkin kullanilabilir kalani yoktur. Onceden iptal satiri
+                       // "KALAN 1" gosteriyor ve ozet karti iptalleri kullanilabilir sayiyordu.
+                       x.Right.Status == "Active" ? x.Right.Quantity - x.Right.ConsumedQuantity : 0,
                        x.Right.Status, x.Right.Source, x.Right.Version));
 
         var total = await rows.CountAsync(cancellationToken);
+        // Toplam ve kullanilan tum satirlari kapsar (ADET/KULL. sutunlarinin toplamiyla
+        // birebir); kalan ise yalnizca aktif satirlardan gelir.
         var totals = await rights.GroupBy(_ => 1).Select(x => new MealEntitlementSummary(
-            x.Sum(v => v.Quantity), x.Sum(v => v.ConsumedQuantity), x.Sum(v => v.Quantity - v.ConsumedQuantity)))
+            x.Sum(v => v.Quantity), x.Sum(v => v.ConsumedQuantity),
+            x.Sum(v => v.Status == "Active" ? v.Quantity - v.ConsumedQuantity : 0)))
             .SingleOrDefaultAsync(cancellationToken) ?? new MealEntitlementSummary(0, 0, 0);
         var items = await rows.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
         return new MealEntitlementPage(items, query.Page, query.PageSize, total, totals);

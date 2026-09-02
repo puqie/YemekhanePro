@@ -49,6 +49,87 @@ public sealed class MealEntitlementsViewModelTests
         Assert.False(vm.IsCancelConfirmationOpen);
     }
 
+    /// <summary>
+    /// Harf girilen adet sunucuya gitmeden reddedilir. int baglamada "abc" WPF tarafinda
+    /// sessizce yutulup ESKI adetle onizleme aliniyordu.
+    /// </summary>
+    [Fact]
+    public async Task HarfliAdetSunucuyaGitmedenReddedilir()
+    {
+        var api = new FakeApi(); var vm = Create(api); await vm.InitializeAsync();
+        vm.OpenGrantCommand.Execute(null); vm.ManualStudentIds = "5012";
+        vm.QuantityText = "abc"; vm.PreviewCommand.Execute(null); await Until(() => vm.PreviewMessage is not null);
+        Assert.Contains("1-10", vm.PreviewMessage); Assert.Null(api.LastPreview); Assert.False(vm.HasPreview);
+        vm.QuantityText = "11"; vm.PreviewCommand.Execute(null); await Until(() => vm.PreviewMessage is not null);
+        Assert.Contains("1-10", vm.PreviewMessage); Assert.Null(api.LastPreview);
+        Assert.Equal(11, vm.Quantity);
+    }
+
+    /// <summary>Kullanici GUID bilmez: manuel hedefte okul numarasi StudentNos olarak sunucuya gider, kimlikler StudentIds olarak.</summary>
+    [Fact]
+    public async Task OgrenciNumarasiManuelHedefeTasinir()
+    {
+        var api = new FakeApi(); var vm = Create(api); await vm.InitializeAsync(); var id = Guid.NewGuid();
+        vm.OpenGrantCommand.Execute(null);
+        vm.ManualStudentIds = $"5012, 5013;{id:D}\n5012";
+        vm.PreviewCommand.Execute(null); await Until(() => vm.HasPreview);
+        Assert.Equal(["5012", "5013"], api.LastPreview!.Target.StudentNos!);
+        Assert.Equal([id], api.LastPreview.Target.StudentIds!);
+
+        vm.ManualStudentIds = "   "; vm.PreviewCommand.Execute(null); await Until(() => vm.PreviewMessage is not null);
+        Assert.Contains("numara", vm.PreviewMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Uygulama sonrasi: cekmece kapanir ama sonuc metni listede kalir ve filtre araligi
+    /// verilen gunleri kapsayacak sekilde genisler -- yoksa kullanici yeni satirlari goremez.
+    /// </summary>
+    [Fact]
+    public async Task UygulamaSonrasiDurumMetniGorunurVeFiltreAraligiGenisler()
+    {
+        var api = new FakeApi(); var vm = Create(api); await vm.InitializeAsync();
+        vm.OpenGrantCommand.Execute(null); vm.ManualStudentIds = "5012";
+        vm.GrantStartsOn = DateTime.Today.AddDays(20); vm.GrantEndsOn = DateTime.Today.AddDays(24);
+        vm.PreviewCommand.Execute(null); await Until(() => vm.HasPreview);
+        vm.ApplyCommand.Execute(null); await Until(() => api.ApplyCount == 1 && vm.HasStatus);
+        Assert.False(vm.IsGrantOpen);
+        Assert.Contains("hak oluşturuldu", vm.StatusMessage);
+        Assert.True(vm.EndsOn >= DateTime.Today.AddDays(24));
+        Assert.True(vm.StartsOn <= DateTime.Today.AddDays(-7));
+    }
+
+    /// <summary>Sunucunun Turkce dogrulama basligi (ApiRequestException) oldugu gibi kullaniciya ulasir; "cevrimdisi" sayilmaz.</summary>
+    [Fact]
+    public async Task SunucuDogrulamaMesajiKullaniciyaUlasir()
+    {
+        var api = new FakeApi { PreviewError = new ApiRequestException("Aktif öğrenci bulunamadı: 5999", System.Net.HttpStatusCode.BadRequest) };
+        var vm = Create(api); await vm.InitializeAsync();
+        vm.OpenGrantCommand.Execute(null); vm.ManualStudentIds = "5999";
+        vm.PreviewCommand.Execute(null); await Until(() => vm.PreviewMessage is not null);
+        Assert.Equal("Aktif öğrenci bulunamadı: 5999", vm.PreviewMessage); Assert.False(vm.IsOffline);
+    }
+
+    /// <summary>Grup ve ogun filtre kutulari "Tümü" ile baslar; secim sorguya kimlik olarak gider, "Tümü" geri secilince kalkar.</summary>
+    [Fact]
+    public async Task OgunVeGrupFiltreleriTumuIleBaslar()
+    {
+        var api = new FakeApi(); var vm = Create(api); await vm.InitializeAsync();
+        Assert.Equal("Tümü", vm.MealFilters[0].Name); Assert.Same(vm.MealFilters[0], vm.SelectedMealFilter); Assert.Null(vm.SelectedMeal);
+        Assert.Equal("Tümü", vm.GroupFilters[0].Name); Assert.Same(vm.GroupFilters[0], vm.SelectedGroupFilter);
+        Assert.Equal(2, vm.MealFilters.Count); Assert.Equal(2, vm.GroupFilters.Count);
+        Assert.Null(api.LastQuery!.MealTypeId);
+
+        vm.SelectedMealFilter = vm.MealFilters[1]; vm.SelectedGroupFilter = vm.GroupFilters[1];
+        Assert.Equal(vm.MealTypes[0], vm.SelectedMeal); Assert.Equal(vm.Groups[0], vm.SelectedGroup);
+        await vm.LoadAsync(1);
+        Assert.Equal(vm.MealTypes[0].Id, api.LastQuery!.MealTypeId); Assert.Equal(vm.Groups[0].Id, api.LastQuery.GroupId);
+
+        vm.SelectedMeal = null; vm.SelectedGroup = null;
+        Assert.Same(vm.MealFilters[0], vm.SelectedMealFilter); Assert.Same(vm.GroupFilters[0], vm.SelectedGroupFilter);
+        await vm.LoadAsync(1);
+        Assert.Null(api.LastQuery!.MealTypeId); Assert.Null(api.LastQuery.GroupId);
+    }
+
     [Fact]
     public void RbacControlsReadAndBulkActions()
     {
@@ -72,14 +153,22 @@ public sealed class MealEntitlementsViewModelTests
     {
         private readonly MealTypeDetails meal = new(Guid.NewGuid(), "Öğle", null, null, true);
         public EntitlementGrantRequest? LastPreview;
-        public int ApplyCount, CancelCount;
-        public Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new MealEntitlementPage([Row()], query.Page, query.PageSize, 75, new MealEntitlementSummary(8, 3, 5)));
+        public MealEntitlementQuery? LastQuery;
+        public Exception? PreviewError;
+        public int ApplyCount, CancelCount, SearchCount;
+        public Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default)
+        {
+            SearchCount++; LastQuery = query;
+            return Task.FromResult(new MealEntitlementPage([Row()], query.Page, query.PageSize, 75, new MealEntitlementSummary(8, 3, 5)));
+        }
         public Task<IReadOnlyList<MealTypeDetails>> MealTypesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<MealTypeDetails>>([meal]);
         public Task<IReadOnlyList<ClassRecord>> ClassesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<ClassRecord>>([new(Guid.NewGuid(), "5A", true)]);
         public Task<IReadOnlyList<GroupRecord>> GroupsAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<GroupRecord>>([new(Guid.NewGuid(), "Sporcular", "Manual", null, true, 1)]);
         public Task<EntitlementPreview> PreviewAsync(EntitlementGrantRequest request, CancellationToken cancellationToken = default)
-        { LastPreview = request; return Task.FromResult(new EntitlementPreview(1, 1, 1, 1, 0, "TOKEN")); }
+        {
+            if (PreviewError is not null) throw PreviewError;
+            LastPreview = request; return Task.FromResult(new EntitlementPreview(1, 1, 1, 1, 0, "TOKEN"));
+        }
         public Task<BulkEntitlementResult> ApplyAsync(ApplyEntitlementGrantRequest request, CancellationToken cancellationToken = default)
         { ApplyCount++; return Task.FromResult(new BulkEntitlementResult(1, 1, 1, 0)); }
         public Task<CancelEntitlementsResult> CancelAsync(CancelEntitlementsRequest request, CancellationToken cancellationToken = default)

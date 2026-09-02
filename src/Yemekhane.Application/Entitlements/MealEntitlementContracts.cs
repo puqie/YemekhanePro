@@ -19,8 +19,14 @@ public sealed record MealEntitlementSummary(int TotalQuantity, int ConsumedQuant
 public sealed record MealEntitlementPage(IReadOnlyList<MealEntitlementListItem> Items, int Page, int PageSize,
     int TotalCount, MealEntitlementSummary Summary);
 
+/// <summary>
+/// Hakedis hedefi. Manuel hedefte ogrenciler kimlik (<see cref="StudentIds"/>) VEYA
+/// okul numarasi (<see cref="StudentNos"/>) ile verilebilir: masaustunde kullanici
+/// GUID bilemez, listeden secmedigi ogrenci icin elinde yalnizca numara vardir.
+/// Iki liste birlestirilir; eslesmeyen numara istegi reddeder (sessizce atlanmaz).
+/// </summary>
 public sealed record EntitlementTarget(string Type, IReadOnlyCollection<Guid>? StudentIds = null,
-    Guid? ClassId = null, string? Grade = null, Guid? GroupId = null);
+    Guid? ClassId = null, string? Grade = null, Guid? GroupId = null, IReadOnlyCollection<string>? StudentNos = null);
 public sealed record EntitlementGrantRequest(EntitlementTarget Target, Guid MealTypeId, DateOnly StartsOn,
     DateOnly EndsOn, int Quantity = 1, bool IncludeSaturday = false, bool IncludeSunday = false,
     string Source = "Manual");

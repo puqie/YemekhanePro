@@ -60,6 +60,10 @@ public sealed class EnumTextConverter : IValueConverter
         ["LeaveTransfer"] = "İzin Aktarımı",
         ["Import"] = "İçe Aktarım",
         ["Criteria"] = "Kriter",
+        // Masaustu "Hizli Hakedis" cekmecesinin gonderdigi kaynak etiketi (MealEntitlementsViewModel.BuildGrant).
+        // Ham haliyle "WPF Quick Grant" olarak gorunuyor ve sutunda kesiliyordu.
+        ["WPF Quick Grant"] = "Hızlı Hakediş",
+        ["QuickGrant"] = "Hızlı Hakediş",
     };
 
     private static readonly Dictionary<string, string> LogLevel = new(Codes)
@@ -94,6 +98,47 @@ public sealed class EnumTextConverter : IValueConverter
         ["Attention"] = "İnceleme gerekiyor",
     };
 
+    // Toplu takvim islemi turleri (BulkOperationService.Operations). Sihirbazin
+    // 1. adimindaki acilir kutu ve Gecmis tablosu bu kodlari ham gosteriyordu.
+    private static readonly Dictionary<string, string> BulkOperation = new(Codes)
+    {
+        ["CancelEntitlements"] = "Hak iptali / aktarımı",
+        ["Holiday"] = "Tatil",
+        ["Trip"] = "Gezi",
+        ["Leave"] = "İzin",
+        ["Transfer"] = "Aktarım",
+    };
+
+    // Hak davranislari: tatil/istisna/toplu islem hepsinde ayni kod kumesi kullanilir
+    // (HolidayService, CalendarService, BulkOperationService). Ekranda ne yapacagi
+    // acikca yazilmali; "Delete" kelimesi hakkin silinecegini ima eder, oysa kayit
+    // iptal durumuna cekilir.
+    private static readonly Dictionary<string, string> TransferBehavior = new(Codes)
+    {
+        ["Keep"] = "Hakları koru",
+        ["Delete"] = "Hakları iptal et",
+        ["Cancel"] = "Hakları iptal et",
+        ["Forfeit"] = "Hakları yak (iade yok)",
+        ["NextBusinessDay"] = "Sonraki iş gününe aktar",
+        ["SpecifiedDate"] = "Belirli bir tarihe aktar",
+    };
+
+    private static readonly Dictionary<string, string> HolidayType = new(Codes)
+    {
+        ["Official"] = "Resmî tatil",
+        ["Administrative"] = "İdari tatil",
+        ["Trip"] = "Gezi",
+        ["Other"] = "Diğer",
+        ["Bulk"] = "Toplu işlem tatili",
+    };
+
+    private static readonly Dictionary<string, string> ExceptionType = new(Codes)
+    {
+        ["Trip"] = "Gezi",
+        ["Special"] = "Özel gün",
+        ["ScheduleChange"] = "Program değişikliği",
+    };
+
     private static readonly Dictionary<string, Dictionary<string, string>> Maps = new(Codes)
     {
         ["Decision"] = Decision,
@@ -102,6 +147,10 @@ public sealed class EnumTextConverter : IValueConverter
         ["LogLevel"] = LogLevel,
         ["DeviceStatus"] = DeviceStatus,
         ["SyncState"] = SyncState,
+        ["BulkOperation"] = BulkOperation,
+        ["TransferBehavior"] = TransferBehavior,
+        ["HolidayType"] = HolidayType,
+        ["ExceptionType"] = ExceptionType,
     };
 
     /// <summary>Kod icinden de kullanilabilsin diye ayri: ViewModel'ler XAML'siz cevirir.</summary>
