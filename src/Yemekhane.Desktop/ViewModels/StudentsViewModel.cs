@@ -454,7 +454,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         Tabs.Clear();
         Tabs.Add(new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
             ([new StudentDetailRow($"No: {Details.StudentNo}  |  Ad Soyad: {Details.FirstName} {Details.LastName}  |  Durum: {(Details.IsActive ? "Aktif" : "Pasif")}")])));
-        foreach (var name in new[] { "Cards", "Parents", "Entitlements", "Access History", "Leaves", "Holiday/Transfer", "Payments", "SMS History", "Audit" })
+        foreach (var name in new[] { "Cards", "Parents", "Entitlements", "Access History", "Leaves", "Holiday/Transfer", "Payments", "Balance", "SMS History", "Audit" })
             Tabs.Add(new StudentDetailTabViewModel(name, () => api.LoadTabAsync(name, id)));
         SelectedTab = Tabs[0];
     }

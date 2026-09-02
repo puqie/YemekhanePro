@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Yemekhane.Application.Balances;
 using Yemekhane.Application.Cash;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Income;
@@ -21,6 +22,8 @@ public interface ICashApiClient
     Task<IncomeTypeDetails> SaveTypeAsync(Guid? id, SaveIncomeTypeRequest request, CancellationToken cancellationToken = default);
     Task DeactivateTypeAsync(Guid id, CancellationToken cancellationToken = default);
     Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default);
+    /// <summary>Kasa > Bakiye Yukle: "Bakiye Yükleme" gelir islemi + defter satiri (sunucuda tek transaction).</summary>
+    Task<BalanceTopUpResult> TopUpBalanceAsync(BalanceTopUpRequest request, CancellationToken cancellationToken = default);
 }
 
 public sealed class CashApiClient(HttpClient client, IJwtSession session) : ICashApiClient
@@ -59,6 +62,8 @@ public sealed class CashApiClient(HttpClient client, IJwtSession session) : ICas
             id.HasValue ? $"api/income/types/{id:D}" : "api/income/types", request, cancellationToken);
     public Task DeactivateTypeAsync(Guid id, CancellationToken cancellationToken = default) =>
         SendNoContentAsync(HttpMethod.Delete, $"api/income/types/{id:D}", cancellationToken);
+    public Task<BalanceTopUpResult> TopUpBalanceAsync(BalanceTopUpRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync<BalanceTopUpResult>(HttpMethod.Post, "api/cash/balance-top-ups", request, cancellationToken);
 
     public Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default)
     {

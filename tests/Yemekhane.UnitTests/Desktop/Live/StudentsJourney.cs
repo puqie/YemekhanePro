@@ -109,9 +109,12 @@ public class StudentsJourney
             "Payments" => ($"api/income/transactions?studentId={id:D}&pageSize=100", "items"),
             "SMS History" => ($"api/sms?studentId={id:D}&pageSize=100", "items"),
             "Audit" => ($"api/audit-logs?entity=Student&entityId={id:D}&pageSize=100", "items"),
+            "Balance" => ($"api/students/{id:D}/balance?pageSize=100", "entries"),
             _ => throw new ArgumentOutOfRangeException(nameof(key)),
         };
         var json = ApiJson(ui, url);
+        // Bakiye yaniti sayfali bir nesnedir: hareketler entries.items altindadir.
+        if (key == "Balance") return json.GetProperty("entries").GetProperty("items").GetArrayLength();
         return (array is null ? json : json.GetProperty(array)).GetArrayLength();
     }
 
@@ -260,7 +263,7 @@ public class StudentsJourney
         Assert.Equal("5009", vm.FormStudentNo); Assert.Equal("ALİ", vm.FormFirstName); Assert.Equal("ÖZTÜRK", vm.FormLastName);
         // Sinif sabit yazilmaz (tohum sirasi degisince "5C" rastgele dusuyordu); secimde sinifin dolu gelmesi yeterli.
         Assert.False(string.IsNullOrWhiteSpace(vm.SelectedStudent!.ClassName), "secilen ogrencinin sinifi bos");
-        Assert.Equal(10, vm.Tabs.Count);
+        Assert.Equal(11, vm.Tabs.Count);   // Genel + 10 veri sekmesi (Bakiye dahil)
         ui.Shot("students-10-secim-5009");
 
         // Duzenle dugmesi secimden sonra ETKIN olmali (CanExecuteChanged tetiklenmeli).
@@ -273,12 +276,24 @@ public class StudentsJourney
         {
             LoadTab(ui, tab.Key);
             Assert.Null(tab.Error);
-            var expected = tab.Key == "General" ? 1 : ApiTabCount(ui, tab.Key, id);
-            Assert.True(expected == tab.Items.Count, $"{tab.Title}: ekran {tab.Items.Count} satir, API {expected}");
-            if (tab.Items.Count == 0) Assert.True(tab.IsEmpty, $"{tab.Title}: bos sekmede 'Kayıt yok.' gorunmeli");
-            ui.Note($"sekme {tab.Title}: {tab.Items.Count} satir" + (tab.Items.Count > 0 ? " | " + ((Yemekhane.Desktop.Services.StudentDetailRow)tab.Items[0]).Summary : ""));
+            // Bakiye sekmesi tek bir listeye degil ozet+hareket yapisina sahiptir: ilk satir
+            // guncel bakiye basligidir, hareket yoksa yerine aciklama satiri konur.
+            if (tab.Key == "Balance")
+            {
+                var headline = Assert.IsType<Yemekhane.Desktop.Services.StudentBalanceHeadline>(tab.Items[0]);
+                var movements = ApiTabCount(ui, tab.Key, id);
+                Assert.Equal(Math.Max(1, movements) + 1, tab.Items.Count);
+                ui.Note($"sekme {tab.Title}: bakiye {headline.BalanceText}, {movements} hareket");
+            }
+            else
+            {
+                var expected = tab.Key == "General" ? 1 : ApiTabCount(ui, tab.Key, id);
+                Assert.True(expected == tab.Items.Count, $"{tab.Title}: ekran {tab.Items.Count} satir, API {expected}");
+                if (tab.Items.Count == 0) Assert.True(tab.IsEmpty, $"{tab.Title}: bos sekmede 'Kayıt yok.' gorunmeli");
+                ui.Note($"sekme {tab.Title}: {tab.Items.Count} satir" + (tab.Items.Count > 0 ? " | " + ((Yemekhane.Desktop.Services.StudentDetailRow)tab.Items[0]).Summary : ""));
+            }
             // Sekme icerigi ham Ingilizce deger tasimamali.
-            foreach (var row in tab.Items.Cast<Yemekhane.Desktop.Services.StudentDetailRow>())
+            foreach (var row in tab.Items.OfType<Yemekhane.Desktop.Services.StudentDetailRow>())
                 foreach (var raw in new[] { "ALLOW", "DENY", "Active", "Manual", "True", "False" })
                     Assert.DoesNotContain(raw, row.Summary);
         }

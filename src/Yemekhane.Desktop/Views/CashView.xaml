@@ -26,6 +26,8 @@
                 <Button Style="{StaticResource Action}" Content="Rapor Merkezine Aktar" Command="{Binding OpenReportsCommand}" IsEnabled="{Binding IsExportAvailable}" ToolTip="Günlük kasa ve gelir raporlarını aç" AutomationProperties.Name="Rapor merkezini aç"/>
                 <!-- Sayfanin birincil eylemi: marka rengi (Primary). Notr Action stiliyle Yenile'den ayirt edilemiyordu. -->
                 <Button Style="{StaticResource Primary}" Margin="0,0,7,0" Content="Gelir Ekle" Command="{Binding OpenAddCommand}" IsEnabled="{Binding IsVoidOpen, Converter={StaticResource InverseBool}}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Yeni gelir kaydı aç"/>
+                <!-- Eski programdaki "TL Bakiye Yukleme": on odemeli bakiye; hakki olmayan gunde ogun ucreti buradan duser. -->
+                <Button Style="{StaticResource Action}" Margin="0,0,7,0" Content="Bakiye Yükle" Command="{Binding OpenTopUpCommand}" IsEnabled="{Binding IsVoidOpen, Converter={StaticResource InverseBool}}" Visibility="{Binding CanWrite, Converter={StaticResource BoolToVisibility}}" ToolTip="Öğrenciye ön ödemeli TL bakiyesi yükle" AutomationProperties.Name="Bakiye yükleme çekmecesini aç"/>
                 <Button Style="{StaticResource Action}" Content="Yenile" Command="{Binding RefreshCommand}"/>
             </StackPanel>
         </Grid>
@@ -87,7 +89,14 @@
             </TabItem>
         </TabControl>
 
-        <Grid Grid.Row="3" Margin="0,8,0,0"><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"/><TextBlock Text="Filtrelerle eşleşen kasa işlemi bulunamadı." HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/></Grid>
+        <Grid Grid.Row="3" Margin="0,8,0,0">
+            <StackPanel>
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"/>
+                <!-- Hata olmayan sonuc bildirimi: basarili bakiye yuklemesi, iptal sonrasi eksi bakiye uyarisi. -->
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource InfoBrush}" FontWeight="SemiBold" TextWrapping="Wrap" Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Kasa durum bildirimi"/>
+            </StackPanel>
+            <TextBlock Text="Filtrelerle eşleşen kasa işlemi bulunamadı." HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+        </Grid>
         <Border Grid.RowSpan="4" Background="{StaticResource SurfaceBrush}" Opacity="0.97" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Kasa verileri yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel></Border>
 
         <controls:Drawer x:Name="AddPanel" Grid.RowSpan="4" IsOpen="{Binding IsAddOpen}" DrawerWidth="400" Title="Gelir Ekle" CloseCommand="{Binding CloseAddCommand}">
@@ -130,6 +139,44 @@
                 <Button Content="Onayla ve Kaydet" Command="{Binding AddCommand}"
                         Style="{StaticResource Primary}" HorizontalAlignment="Left" Margin="0,8,0,0"
                         IsEnabled="{Binding AddConfirmed}"/>
+            </StackPanel>
+        </controls:Drawer>
+
+        <controls:Drawer x:Name="TopUpPanel" Grid.RowSpan="4" IsOpen="{Binding IsTopUpOpen}" DrawerWidth="400" Title="Bakiye Yükle" CloseCommand="{Binding CloseTopUpCommand}">
+            <StackPanel>
+                <TextBlock Text="Para yükle: tüm öğünler için geçerlidir. Günlük hakkı olmayan öğrenci, öğün ücreti bakiyesinden düşülerek geçer." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12"/>
+                <WrapPanel>
+                    <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Text="{Binding StudentNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Bakiye: tam öğrenci numarası" ToolTip="Tam öğrenci numarası"/></StackPanel>
+                    <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Text="{Binding LookupCardNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Bakiye: tam kart numarası" ToolTip="Tam kart numarası"/></StackPanel>
+                    <Button Style="{StaticResource Action}" Content="Doğrula" Command="{Binding LookupStudentCommand}" VerticalAlignment="Bottom"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding LookupStudentText}" Margin="0,8" TextWrapping="Wrap" AutomationProperties.Name="Bakiye: doğrulanan öğrenci">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource IdentityText}">
+                            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasLookupStudent}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="TL tutarı" Style="{StaticResource Label}"/>
+                <TextBox Text="{Binding TopUpAmountText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Yüklenecek Türk lirası tutarı" ToolTip="Örnek: 500 veya 1.250,50 ₺"/>
+                <TextBlock Text="Bitiş tarihi (isteğe bağlı)" Style="{StaticResource Label}"/>
+                <DatePicker SelectedDate="{Binding TopUpExpiresOn}" AutomationProperties.Name="Bakiye bitiş tarihi"/>
+                <TextBlock Style="{StaticResource Caption}" Text="Boş bırakılırsa süresiz. Doluysa bu tarihten sonra kalan tutar geçişte kullanılmaz." TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock Text="Açıklama" Style="{StaticResource Label}"/>
+                <TextBox Text="{Binding TopUpNote, UpdateSourceTrigger=PropertyChanged}" MaxLength="500" AcceptsReturn="True" Height="62"/>
+                <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="4" Padding="10,8" Margin="0,14,0,0">
+                    <CheckBox IsChecked="{Binding TopUpConfirmed}" AutomationProperties.Name="Bakiye yüklemesini onayla"><TextBlock Text="Öğrenci ve tutarı kontrol ederek yüklemeyi onaylıyorum; kasaya “Bakiye Yükleme” geliri işlenecek." TextWrapping="Wrap"/></CheckBox>
+                </Border>
+                <TextBlock Text="{Binding TopUpError}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,8"/>
+                <Button Content="Onayla ve Yükle" Command="{Binding TopUpCommand}"
+                        Style="{StaticResource Primary}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                        IsEnabled="{Binding TopUpConfirmed}" AutomationProperties.Name="Bakiyeyi yükle"/>
             </StackPanel>
         </controls:Drawer>
 

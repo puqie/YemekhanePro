@@ -44,7 +44,20 @@ public sealed class AccessDecisionService(
         if (snapshot.GroupHoliday) return await DenyAndLog("Bugün tatil");
         if (!await businessDayService.IsBusinessDayAsync(localDate, new CalendarScope("Class", snapshot.ClassId), cancellationToken)) return await DenyAndLog("Bugün tatil");
         if (snapshot.IsOnLeave) return await DenyAndLog("Öğrenci bugün izinli");
-        if (!snapshot.EntitlementId.HasValue || snapshot.EntitlementStatus != "Active") return await DenyAndLog("Bugün yemek hakkı bulunmuyor");
+        if (!snapshot.EntitlementId.HasValue || snapshot.EntitlementStatus != "Active")
+        {
+            // Hakedis yoksa on odemeli bakiye devreye girer (eski programdaki "TL Bakiye Yukleme").
+            // Ucreti 0 olan ogunde bakiye kurali yoktur: bedelsiz ogun icin para dusulmez, hak aranir.
+            if (snapshot.MealPriceCents <= 0) return await DenyAndLog("Bugün yemek hakkı bulunmuyor");
+            if (snapshot.AvailableBalanceCents < snapshot.MealPriceCents) return await DenyAndLog(Balances.BalanceAccessReasons.InsufficientBalance);
+            var paid = new AccessDecision("ALLOW", Balances.BalanceAccessReasons.BalanceUsed, snapshot.StudentId, snapshot.StudentName,
+                request.DeviceId, request.MealTypeId, request.Timestamp, operationId);
+            // Anlik goruntu onbellekten gelmis olabilir; depo bakiyeyi kilit altinda yeniden sayar.
+            if (!await repository.TryDeductBalanceAndLogAsync(snapshot.MealPriceCents, request, paid, cancellationToken))
+                return await DenyAndLog(Balances.BalanceAccessReasons.InsufficientBalance);
+            await PublishAsync(paid);
+            return paid;
+        }
         if (snapshot.ConsumedQuantity >= snapshot.Quantity) return await DenyAndLog("Bu öğün daha önce kullanılmış");
         var allowed = new AccessDecision("ALLOW", "Geçiş onaylandı", snapshot.StudentId, snapshot.StudentName,
             request.DeviceId, request.MealTypeId, request.Timestamp, operationId);

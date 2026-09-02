@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Audit;
+using Yemekhane.Application.Balances;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Income;
 using Yemekhane.Domain.Entities;
+using Yemekhane.Infrastructure.Balances;
 using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.Infrastructure.Sync;
 
@@ -126,9 +128,42 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
         item.IsVoided = true; item.VoidedAt = timeProvider.GetUtcNow(); item.VoidedBy = actorId; item.VoidReason = reason;
         Record(actorId, "IncomeVoided", nameof(IncomeTransaction), item.Id, "Gelir işlemi iptal edildi.", before,
             new { item.IsVoided, item.VoidedAt, item.VoidedBy, item.VoidReason });
+        var warning = await RefundBalanceTopUpAsync(item, actorId, reason, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return await GetTransactionAsync(id, cancellationToken);
+        var voided = await GetTransactionAsync(id, cancellationToken);
+        return warning is null ? voided : voided! with { Warning = warning };
+    }
+
+    /// <summary>
+    /// Iptal edilen islem bir bakiye yuklemesiyse defterine negatif iade yazilir; bakiye zaten
+    /// harcanmissa eksiye duser ve kasiyere uyari doner (para gitti, yukleme geri alindi).
+    /// Ayni iade iki kez yazilmaz (ayni ReferenceId ile Refund varsa atlanir).
+    /// </summary>
+    private async Task<string?> RefundBalanceTopUpAsync(IncomeTransaction item, Guid actorId, string reason, CancellationToken cancellationToken)
+    {
+        var topUp = await dbContext.StudentBalanceEntries.AsNoTracking().SingleOrDefaultAsync(
+            x => x.ReferenceType == StudentBalanceReferenceTypes.IncomeTransaction && x.ReferenceId == item.Id && x.Kind == StudentBalanceEntryKinds.TopUp,
+            cancellationToken);
+        if (topUp is null) return null;
+        if (await dbContext.StudentBalanceEntries.AnyAsync(
+                x => x.ReferenceId == item.Id && x.Kind == StudentBalanceEntryKinds.Refund, cancellationToken))
+            return null;
+        var now = timeProvider.GetUtcNow();
+        var refund = new StudentBalanceEntry
+        {
+            StudentId = topUp.StudentId, AmountCents = -topUp.AmountCents, Kind = StudentBalanceEntryKinds.Refund,
+            ReferenceType = StudentBalanceReferenceTypes.IncomeTransaction, ReferenceId = item.Id,
+            Note = "Yükleme iptal edildi: " + reason, OccurredAt = now, CreatedBy = actorId, CreatedAt = now
+        };
+        dbContext.Add(refund);
+        Record(actorId, "BalanceRefund", nameof(StudentBalanceEntry), refund.Id, "Bakiye yüklemesi iptal nedeniyle geri alındı.", null, refund);
+        // Toplam, henuz kaydedilmemis iade dahil hesaplanir; defter satirlari sorguyla okunur.
+        var totals = await BalanceLedgerQueries.TotalsAsync(dbContext, topUp.StudentId, StudentBalanceService.IstanbulDate(now), cancellationToken);
+        var after = totals.TotalCents - topUp.AmountCents;
+        return after < 0
+            ? $"Bakiye yüklemesi geri alındı; öğrencinin bakiyesi {StudentBalanceService.ToLira(after):N2} ₺ ile EKSİYE düştü (para daha önce harcanmış)."
+            : null;
     }
 
     public async Task<PagedResult<IncomeTransactionDetails>> ListTransactionsAsync(IncomeTransactionFilter filter,

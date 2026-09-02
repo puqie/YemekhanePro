@@ -80,6 +80,81 @@ public sealed class CashViewModelTests
         Assert.Equal("Hatalı tahsilat", api.LastVoidReason);
     }
 
+    /// <summary>
+    /// Bakiye Yukle cekmecesi: dogrulama sirasi, Turkce tutar okumasi, onay zorunlulugu,
+    /// basari bildirimi ve cekmecelerin birbirini dislamasi.
+    /// </summary>
+    [Fact]
+    public async Task TopUpValidatesStudentAmountAndConfirmationThenReportsNewBalance()
+    {
+        var api = new FakeCashApi();
+        var vm = new CashViewModel(api, ["cash.read", "cash.write"]);
+        await vm.InitializeAsync();
+
+        vm.OpenAddCommand.Execute(null);
+        vm.OpenTopUpCommand.Execute(null);
+        Assert.True(vm.IsTopUpOpen);
+        Assert.False(vm.IsAddOpen); // iki cekmece ayni anda acik kalamaz
+
+        Assert.Equal("Öğrenci veya kart doğrulaması zorunludur.", vm.ValidateTopUp());
+        vm.StudentNumber = "1001";
+        vm.LookupStudentCommand.Execute(null); await UntilAsync(() => vm.LookupStudent is not null);
+        vm.TopUpAmountText = "1.250,50";
+        Assert.Equal("Yükleme bilgilerini onaylayın.", vm.ValidateTopUp());
+        Assert.False(vm.TopUpCommand.CanExecute(null));
+        vm.TopUpConfirmed = true;
+        vm.TopUpCommand.Execute(null);
+        await UntilAsync(() => api.TopUpAttempts == 1);
+
+        Assert.Equal(1250.50m, api.LastTopUp!.Amount);
+        Assert.Null(api.LastTopUp.ExpiresOn);
+        Assert.False(vm.IsTopUpOpen);
+        Assert.NotNull(vm.StatusMessage);
+        Assert.Contains("1.250,50", vm.StatusMessage!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TopUpRejectsPastExpiryAndSurfacesServerMessage()
+    {
+        var vm = new CashViewModel(new FakeCashApi(), ["cash.read", "cash.write"]);
+        await vm.InitializeAsync();
+        vm.OpenTopUpCommand.Execute(null);
+        vm.StudentNumber = "1001";
+        vm.LookupStudentCommand.Execute(null); await UntilAsync(() => vm.LookupStudent is not null);
+        vm.TopUpAmountText = "100"; vm.TopUpConfirmed = true;
+        vm.TopUpExpiresOn = DateTime.Today.AddDays(-1);
+        Assert.Equal("Bitiş tarihi bugünden önce olamaz.", vm.ValidateTopUp());
+
+        // Sunucu reddi kullaniciya AYNEN ulasmali (sessiz basarisizlik yok).
+        var failing = new CashViewModel(new FakeCashApi { FailTopUp = true }, ["cash.read", "cash.write"]);
+        await failing.InitializeAsync();
+        failing.OpenTopUpCommand.Execute(null);
+        failing.StudentNumber = "1001";
+        failing.LookupStudentCommand.Execute(null); await UntilAsync(() => failing.LookupStudent is not null);
+        failing.TopUpAmountText = "100"; failing.TopUpConfirmed = true;
+        failing.TopUpCommand.Execute(null);
+        await UntilAsync(() => failing.TopUpError is not null);
+        Assert.Equal("Bitiş tarihi bugünden önce olamaz.", failing.TopUpError);
+        Assert.True(failing.IsTopUpOpen); // hata sonrasi cekmece acik kalir
+    }
+
+    /// <summary>Bakiye yuklemesi iptalinde sunucunun eksi bakiye uyarisi yutulmamali.</summary>
+    [Fact]
+    public async Task VoidSurfacesServerWarningAboutNegativeBalance()
+    {
+        var api = new FakeCashApi { VoidWarning = "Bakiye EKSİYE düştü." };
+        var vm = new CashViewModel(api, ["cash.read", "cash.write"]);
+        await vm.InitializeAsync();
+        vm.SelectedTransaction = vm.Transactions[0];
+        vm.OpenVoidCommand.Execute(null);
+        vm.VoidReason = "Yanlış öğrenci"; vm.VoidConfirmed = true;
+        vm.VoidCommand.Execute(null);
+        await UntilAsync(() => api.VoidCount == 1 && vm.StatusMessage is not null);
+
+        Assert.Equal("Bakiye EKSİYE düştü.", vm.StatusMessage);
+        Assert.True(vm.HasStatus);
+    }
+
     [Fact]
     public async Task TypeCrudRequiresManagePermission()
     {
@@ -192,10 +267,21 @@ public sealed class CashViewModelTests
             return Task.FromResult(Transaction());
         }
         public Task<IncomeTransactionDetails> VoidAsync(Guid id, string reason, CancellationToken cancellationToken = default)
-        { VoidCount++; LastVoidReason = reason; return Task.FromResult(Transaction() with { IsVoided = true, VoidReason = reason }); }
+        { VoidCount++; LastVoidReason = reason; return Task.FromResult(Transaction() with { IsVoided = true, VoidReason = reason, Warning = VoidWarning }); }
+        public string? VoidWarning { get; init; }
         public Task<IncomeTypeDetails> SaveTypeAsync(Guid? id, SaveIncomeTypeRequest request, CancellationToken cancellationToken = default)
         { TypeSaveCount++; return Task.FromResult(new IncomeTypeDetails(id ?? Guid.NewGuid(), request.Name, request.IsActive)); }
         public Task DeactivateTypeAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Yemekhane.Application.Balances.BalanceTopUpRequest? LastTopUp { get; private set; }
+        public int TopUpAttempts { get; private set; }
+        public bool FailTopUp { get; init; }
+        public Task<Yemekhane.Application.Balances.BalanceTopUpResult> TopUpBalanceAsync(Yemekhane.Application.Balances.BalanceTopUpRequest request, CancellationToken cancellationToken = default)
+        {
+            TopUpAttempts++; LastTopUp = request;
+            if (FailTopUp) throw new ApiRequestException("Bitiş tarihi bugünden önce olamaz.", System.Net.HttpStatusCode.BadRequest);
+            var entry = new Yemekhane.Application.Balances.StudentBalanceEntryDetails(Guid.NewGuid(), DateTimeOffset.UtcNow, "TopUp", request.Amount, request.Note, "IncomeTransaction", Guid.NewGuid(), request.ExpiresOn, Guid.NewGuid());
+            return Task.FromResult(new Yemekhane.Application.Balances.BalanceTopUpResult(Transaction() with { IncomeTypeName = "Bakiye Yükleme", Amount = request.Amount }, entry, request.Amount + 100m, request.Amount + 100m));
+        }
         public Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default) =>
             Task.FromResult(new PagedResult<StudentListItem>([new(studentId, "1001", "CARD1", "Ada", "Yılmaz", null, null, null, null, true, 0, false, null)], 1, 2, 1));
         private IncomeTransactionDetails Transaction() => new(Guid.NewGuid(), Guid.NewGuid(), studentId, "Ada Yılmaz", "1001", "CARD1", DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), false, null, null, null);

@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Access;
+using Yemekhane.Application.Balances;
 using Yemekhane.Domain.Entities;
+using Yemekhane.Infrastructure.Balances;
 using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.Infrastructure.Sync;
 
@@ -60,6 +62,18 @@ public sealed class EfAccessDecisionRepository(
                             member.GroupId == scope.ScopeId && member.StudentId == card.StudentId)))))
             .SingleOrDefaultAsync(cancellationToken)
             ?? new AccessSnapshot(false, false, null, null, null, false, false, null, 0, 0, null, false, false);
+        // Aktif hakedis yoksa bakiye yolu icin ogun ucreti ve kullanilabilir bakiye eklenir.
+        // Hakedis varken bu iki sorgu hic acilmaz: turnike sicak yolu degismez.
+        if (snapshot.StudentId is { } studentId && (snapshot.EntitlementId is null || snapshot.EntitlementStatus != "Active"))
+        {
+            var price = await dbContext.Set<MealTypePrice>().AsNoTracking().Where(x => x.MealTypeId == mealTypeId)
+                .Select(x => (long?)x.PriceCents).FirstOrDefaultAsync(cancellationToken) ?? 0;
+            if (price > 0)
+            {
+                var totals = await BalanceLedgerQueries.TotalsAsync(dbContext, studentId, calendarDate, cancellationToken);
+                snapshot = snapshot with { MealPriceCents = price, AvailableBalanceCents = totals.AvailableCents };
+            }
+        }
         cache.Set(cardNumber, deviceId, mealTypeId, calendarDate, snapshot);
         metrics.RecordLookup(System.Diagnostics.Stopwatch.GetElapsedTime(started), false);
         return snapshot;
@@ -104,6 +118,61 @@ public sealed class EfAccessDecisionRepository(
         catch (DbUpdateException)
         {
             dbContext.ChangeTracker.Clear();
+            if (await dbContext.AccessLogs.AsNoTracking().AnyAsync(
+                    x => x.OperationId == decision.OperationId && x.Decision == "ALLOW", cancellationToken))
+                return true;
+            throw;
+        }
+    }
+
+    public async Task<bool> TryDeductBalanceAndLogAsync(long priceCents, AccessCheckRequest request, AccessDecision decision, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SqliteBusyRetry.ExecuteAsync(async () =>
+            {
+                // Ayni OperationId ile tekrar: ilk ALLOW yazildiysa ikinci dusum OLMAZ.
+                if (await dbContext.AccessLogs.AsNoTracking().AnyAsync(
+                        x => x.OperationId == decision.OperationId && x.Decision == "ALLOW", cancellationToken))
+                    return true;
+
+                // Transaction SQLite'ta BEGIN IMMEDIATE ile acilir: bakiye yazma kilidi altinda
+                // yeniden sayilir, iki es zamanli okutma ayni parayi iki kez harcayamaz.
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+                var studentId = decision.StudentId!.Value;
+                var localDate = StudentBalanceService.IstanbulDate(request.Timestamp);
+                var totals = await BalanceLedgerQueries.TotalsAsync(dbContext, studentId, localDate, cancellationToken);
+                if (totals.AvailableCents < priceCents)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    return false;
+                }
+                var mealName = await dbContext.Set<MealType>().AsNoTracking().Where(x => x.Id == request.MealTypeId)
+                    .Select(x => x.Name).FirstOrDefaultAsync(cancellationToken);
+                var log = CreateLog(request, decision);
+                dbContext.Add(log);
+                dbContext.Add(new StudentBalanceEntry
+                {
+                    StudentId = studentId, AmountCents = -priceCents, Kind = StudentBalanceEntryKinds.Deduction,
+                    ReferenceType = StudentBalanceReferenceTypes.AccessLog, ReferenceId = log.Id,
+                    Note = mealName is null ? "Öğün ücreti" : $"Öğün ücreti: {mealName}",
+                    OccurredAt = request.Timestamp, CreatedBy = request.OperatorId
+                });
+                LocalOutbox.Enqueue(dbContext, log, LocalOutbox.CreateAccessLog, new
+                {
+                    AccessLog = log,
+                    BalanceDeductionCents = priceCents
+                }, decision.OperationId, request.Timestamp, request.DeviceId.ToString("D"));
+                await dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                invalidationSink.Publish(new(StudentId: studentId));
+                return true;
+            }, dbContext.ChangeTracker.Clear, cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            dbContext.ChangeTracker.Clear();
+            // Benzersiz OperationId indeksi: yarisi kaybeden dal, kazananin ALLOW kaydini gorur ve ayni yaniti verir.
             if (await dbContext.AccessLogs.AsNoTracking().AnyAsync(
                     x => x.OperationId == decision.OperationId && x.Decision == "ALLOW", cancellationToken))
                 return true;

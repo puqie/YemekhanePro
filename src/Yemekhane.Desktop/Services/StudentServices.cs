@@ -75,6 +75,7 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
 
     public async Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default)
     {
+        if (tab == "Balance") return await LoadBalanceTabAsync(studentId, cancellationToken);
         var today = DateOnly.FromDateTime(DateTime.Today);
         var (url, arrayProperty) = tab switch
         {
@@ -97,6 +98,26 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
             // Turkce etiketle gosterecegi StudentTabFormatter'da tanimlidir.
             return root.EnumerateArray().Select(x => (object)new StudentDetailRow(StudentTabFormatter.Summarize(tab, x))).ToArray();
         }
+    }
+
+    /// <summary>
+    /// Bakiye sekmesi: yanit bir liste degil, ozet + sayfali hareket listesidir. Ilk satir
+    /// buyuk yazilan guncel bakiye (StudentBalanceHeadline), ardindan hareketler gelir.
+    /// Hic hareket yoksa bile baslik gosterilir; "Kayıt yok" yerine acik bir aciklama satiri eklenir.
+    /// </summary>
+    private async Task<IReadOnlyList<object>> LoadBalanceTabAsync(Guid studentId, CancellationToken cancellationToken)
+    {
+        using var document = await GetAsync<JsonDocument>($"api/students/{studentId:D}/balance?pageSize=100", cancellationToken);
+        var root = document.RootElement;
+        var rows = new List<object>
+        {
+            new StudentBalanceHeadline(root.GetProperty("balance").GetDecimal(),
+                root.GetProperty("available").GetDecimal(), root.GetProperty("expired").GetDecimal())
+        };
+        var items = root.GetProperty("entries").GetProperty("items").EnumerateArray()
+            .Select(x => (object)new StudentDetailRow(StudentTabFormatter.Summarize("Balance", x))).ToList();
+        rows.AddRange(items.Count > 0 ? items : [new StudentDetailRow("Henüz bakiye hareketi yok. Kasa > Bakiye Yükle ile yükleme yapılabilir.")]);
+        return rows;
     }
 
     public async Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default)
@@ -229,6 +250,19 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
 }
 
 public sealed record StudentDetailRow(string Summary);
+
+/// <summary>
+/// Bakiye sekmesinin ilk satiri: guncel bakiye buyuk, altinda kullanilabilir/yanmis ayrimi.
+/// Ayri tip: StudentsView bu tipe kendi (buyuk yazili) sablonunu uygular.
+/// </summary>
+public sealed record StudentBalanceHeadline(decimal Balance, decimal Available, decimal Expired)
+{
+    private static readonly System.Globalization.CultureInfo Turkish = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    public string BalanceText => Balance.ToString("C2", Turkish);
+    public string DetailText => Expired > 0
+        ? $"Kullanılabilir: {Available.ToString("C2", Turkish)} · Süresi dolan: {Expired.ToString("C2", Turkish)}"
+        : Balance < 0 ? "Bakiye ekside: iptal edilen bir yükleme daha önce harcanmış." : $"Kullanılabilir: {Available.ToString("C2", Turkish)}";
+}
 
 public interface ICardReadEventSource
 {

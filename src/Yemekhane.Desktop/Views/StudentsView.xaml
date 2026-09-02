@@ -5,6 +5,7 @@
     xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
     xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
     xmlns:vm="clr-namespace:Yemekhane.Desktop.ViewModels"
+    xmlns:services="clr-namespace:Yemekhane.Desktop.Services"
     FontFamily="Segoe UI" FontSize="12">
 
     <UserControl.Resources>
@@ -342,9 +343,20 @@
                             <DataTemplate>
                                 <Grid>
                                     <ListBox ItemsSource="{Binding Items}" BorderThickness="0" ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate><TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="4"/></DataTemplate>
-                                        </ListBox.ItemTemplate>
+                                        <!-- Sablon tipe gore secilir: sekmelerin ortak satiri (StudentDetailRow) tek metin,
+                                             Bakiye sekmesinin ilk satiri (StudentBalanceHeadline) buyuk yazili bakiye. -->
+                                        <ListBox.Resources>
+                                            <DataTemplate DataType="{x:Type services:StudentDetailRow}">
+                                                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="4"/>
+                                            </DataTemplate>
+                                            <DataTemplate DataType="{x:Type services:StudentBalanceHeadline}">
+                                                <StackPanel Margin="4,4,4,10" AutomationProperties.Name="Güncel bakiye">
+                                                    <TextBlock Text="GÜNCEL BAKİYE" FontSize="10" Foreground="{StaticResource MutedBrush}"/>
+                                                    <TextBlock Text="{Binding BalanceText}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                                    <TextBlock Text="{Binding DetailText}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.Resources>
                                     </ListBox>
                                     <!-- FallbackValue: secili sekme yokken (ilk acilis, silme sonrasi) DataContext
                                          null'dur; baglanti cozulemeyince Visibility varsayilan Visible kalir ve

@@ -48,6 +48,7 @@ public sealed class YemekhaneDbContext(DbContextOptions<YemekhaneDbContext> opti
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<BulkOperation> BulkOperations => Set<BulkOperation>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<StudentBalanceEntry> StudentBalanceEntries => Set<StudentBalanceEntry>();
     public DbSet<NotificationReceipt> NotificationReceipts => Set<NotificationReceipt>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -121,6 +122,18 @@ public sealed class YemekhaneDbContext(DbContextOptions<YemekhaneDbContext> opti
         b.Entity<MealType>().HasIndex(x => x.Name).IsUnique();
         // Ogun ucreti 1:1 yan tablo (bkz. MealTypePrice); ogun silinirse ucret de gider.
         b.Entity<MealTypePrice>(e => { e.ToTable("meal_type_prices"); e.HasKey(x => x.MealTypeId); e.HasOne<MealType>().WithOne().HasForeignKey<MealTypePrice>(x => x.MealTypeId).OnDelete(DeleteBehavior.Cascade); });
+        // On odemeli TL bakiye defteri (bkz. StudentBalanceEntry). Ogrenci silinemez (Restrict):
+        // para hareketi olan bir kaydin sessizce yok olmasi kasa denetimini bozar.
+        b.Entity<StudentBalanceEntry>(e =>
+        {
+            e.ToTable("student_balance_entries");
+            e.HasIndex(x => new { x.StudentId, x.OccurredAt }).HasDatabaseName("ix_student_balance_entries_student_occurred");
+            e.HasIndex(x => new { x.ReferenceType, x.ReferenceId }).HasDatabaseName("ix_student_balance_entries_reference");
+            e.Property(x => x.Kind).HasMaxLength(20);
+            e.Property(x => x.ReferenceType).HasMaxLength(50);
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
+        });
         b.Entity<MealEntitlement>(e => { e.HasIndex(x => new { x.StudentId, x.EntitlementDate, x.MealTypeId }).IsUnique().HasDatabaseName("ux_meal_entitlements_student_date_meal"); e.HasIndex(x => x.StudentId).HasDatabaseName("ix_meal_entitlements_student_id"); e.HasIndex(x => x.EntitlementDate).HasDatabaseName("ix_meal_entitlements_date"); e.Property(x => x.Version).IsConcurrencyToken(); e.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict); e.HasOne<MealType>().WithMany().HasForeignKey(x => x.MealTypeId).OnDelete(DeleteBehavior.Restrict); e.ToTable(t => { t.HasCheckConstraint("ck_meal_entitlement_quantity", "Quantity > 0"); t.HasCheckConstraint("ck_meal_entitlement_consumed", "ConsumedQuantity >= 0 AND ConsumedQuantity <= Quantity"); }); });
         b.Entity<MealUsage>(e => { e.HasIndex(x => x.AccessLogId).IsUnique(); e.HasIndex(x => new { x.StudentId, x.UsedAt }); e.HasOne<MealEntitlement>().WithMany().HasForeignKey(x => x.EntitlementId).OnDelete(DeleteBehavior.Restrict); e.HasOne<AccessLog>().WithOne().HasForeignKey<MealUsage>(x => x.AccessLogId).OnDelete(DeleteBehavior.Restrict); });
         b.Entity<Holiday>(e => { e.HasIndex(x => x.Date); e.HasIndex(x => x.Name).HasDatabaseName("ix_holidays_name"); }); b.Entity<HolidayScope>(e => { e.HasIndex(x => new { x.HolidayId, x.ScopeType, x.ScopeId }).IsUnique(); e.HasOne<Holiday>().WithMany().HasForeignKey(x => x.HolidayId).OnDelete(DeleteBehavior.Cascade); });
