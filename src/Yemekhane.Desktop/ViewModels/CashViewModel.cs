@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Windows.Input;
+using Yemekhane.Application.Balances;
 using Yemekhane.Application.Cash;
 using Yemekhane.Application.Income;
 using Yemekhane.Application.Students;
@@ -23,13 +24,18 @@ public sealed class CashViewModel : ObservableObject
     private IncomeTypeDetails? selectedAddType, selectedManagedType;
     private StudentListItem? lookupStudent, filterStudent;
     private string? studentNumber, lookupCardNumber, filterStudentNumber, filterCardNumber, errorMessage, addError, voidReason, typeName;
+    private string? topUpNote, topUpError, statusMessage;
     private string amountText = "";
+    private string topUpAmountText = "";
     private string transactionTime = "";
     private bool? filterIsVoided;
     private DateTime filterFrom, filterTo, dailyDate, customFrom, customTo, addDate;
-    private bool isLoading, isOffline, isAddOpen, isVoidOpen, addConfirmed, voidConfirmed, typeIsActive = true;
+    private DateTime? topUpExpiresOn;
+    private bool isLoading, isOffline, isAddOpen, isVoidOpen, isTopUpOpen, addConfirmed, voidConfirmed, topUpConfirmed, typeIsActive = true;
     private int page = 1, pageSize = 50, totalCount;
     private Guid operationId = Guid.NewGuid();
+    // Bakiye yuklemesinin kendi islem kimligi: cekmece her acilista yenilenir, basarisiz denemede korunur.
+    private Guid topUpOperationId = Guid.NewGuid();
     // Yalnizca "Secileni Duzenle" ile dolar: listede bir satirin SECILI olmasi, kullanicinin onu
     // duzenlemek istedigi anlamina gelmez. Onceden Kaydet, secili satir varsa onu sessizce yeniden
     // adlandiriyordu; kullanici "Yeni" demeyi unutunca mevcut tur kayboluyordu.
@@ -60,6 +66,9 @@ public sealed class CashViewModel : ObservableObject
         OpenVoidCommand = new RelayCommand(OpenVoid, () => CanWrite && SelectedTransaction is { IsVoided: false });
         CloseVoidCommand = new RelayCommand(() => IsVoidOpen = false);
         VoidCommand = new AsyncCommand(VoidAsync, () => CanWrite && VoidConfirmed && !string.IsNullOrWhiteSpace(VoidReason));
+        OpenTopUpCommand = new RelayCommand(OpenTopUp, () => CanWrite);
+        CloseTopUpCommand = new RelayCommand(() => IsTopUpOpen = false);
+        TopUpCommand = new AsyncCommand(TopUpAsync, () => CanWrite && TopUpConfirmed);
         NewTypeCommand = new RelayCommand(NewType, () => CanManage);
         EditTypeCommand = new RelayCommand(EditType, () => CanManage && SelectedManagedType is not null);
         SaveTypeCommand = new AsyncCommand(SaveTypeAsync, () => CanManage);
@@ -128,6 +137,18 @@ public sealed class CashViewModel : ObservableObject
     public bool VoidConfirmed { get => voidConfirmed; set { if (Set(ref voidConfirmed, value)) RefreshCommands(); } }
     public bool IsAddOpen { get => isAddOpen; private set => Set(ref isAddOpen, value); }
     public bool IsVoidOpen { get => isVoidOpen; private set => Set(ref isVoidOpen, value); }
+    // Bakiye Yukle cekmecesi (eski programdaki "TL Bakiye Yukleme"): ogrenci dogrulama alanlari
+    // Gelir Ekle ile paylasilir (ayni anda yalnizca bir cekmece acik olabilir).
+    public bool IsTopUpOpen { get => isTopUpOpen; private set => Set(ref isTopUpOpen, value); }
+    public string TopUpAmountText { get => topUpAmountText; set => Set(ref topUpAmountText, value); }
+    public string? TopUpNote { get => topUpNote; set => Set(ref topUpNote, value); }
+    /// <summary>Bos = suresiz. Doluysa o tarihten sonra yuklemenin harcanmamis kalani gecis kararinda kullanilmaz.</summary>
+    public DateTime? TopUpExpiresOn { get => topUpExpiresOn; set => Set(ref topUpExpiresOn, value); }
+    public bool TopUpConfirmed { get => topUpConfirmed; set { if (Set(ref topUpConfirmed, value)) RefreshCommands(); } }
+    public string? TopUpError { get => topUpError; private set => Set(ref topUpError, value); }
+    /// <summary>Basarili yukleme ve iptal uyarisi gibi hata olmayan sonuc bildirimleri (alt bilgi satiri).</summary>
+    public string? StatusMessage { get => statusMessage; private set { if (Set(ref statusMessage, value)) Raise(nameof(HasStatus)); } }
+    public bool HasStatus => !string.IsNullOrWhiteSpace(StatusMessage);
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) { Raise(nameof(IsEmpty)); Raise(nameof(ShowContent)); } } }
     public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
     public string? ErrorMessage { get => errorMessage; private set { if (Set(ref errorMessage, value)) Raise(nameof(HasError)); } }
@@ -158,6 +179,9 @@ public sealed class CashViewModel : ObservableObject
     public ICommand OpenVoidCommand { get; }
     public ICommand CloseVoidCommand { get; }
     public ICommand VoidCommand { get; }
+    public ICommand OpenTopUpCommand { get; }
+    public ICommand CloseTopUpCommand { get; }
+    public ICommand TopUpCommand { get; }
     public ICommand NewTypeCommand { get; }
     public ICommand EditTypeCommand { get; }
     public ICommand SaveTypeCommand { get; }
@@ -234,8 +258,50 @@ public sealed class CashViewModel : ObservableObject
     private void OpenAdd()
     {
         ResetAddForm();
-        // Iki cekmece ayni anda acik kalamaz: ekleme ve iptal birbirini disliyor.
-        IsVoidOpen = false; IsAddOpen = true;
+        // Iki cekmece ayni anda acik kalamaz: ekleme, iptal ve bakiye yukleme birbirini disliyor.
+        IsVoidOpen = false; IsTopUpOpen = false; IsAddOpen = true;
+    }
+
+    private void OpenTopUp()
+    {
+        ResetTopUpForm();
+        IsVoidOpen = false; IsAddOpen = false; IsTopUpOpen = true;
+    }
+
+    private void ResetTopUpForm()
+    {
+        StudentNumber = LookupCardNumber = null; LookupStudent = null;
+        TopUpAmountText = ""; TopUpNote = null; TopUpExpiresOn = null; TopUpConfirmed = false; TopUpError = null;
+        topUpOperationId = Guid.NewGuid();
+    }
+
+    public string? ValidateTopUp()
+    {
+        if (LookupStudent is null) return "Öğrenci veya kart doğrulaması zorunludur.";
+        if (!TryParseAmount(TopUpAmountText, out var amount))
+            return "Tutar sıfırdan büyük ve en fazla iki ondalıklı olmalıdır (örn. 500 veya 1.250,50).";
+        if (amount > StudentBalanceService.MaxTopUpAmount) return $"Tek seferde en fazla {StudentBalanceService.MaxTopUpAmount:N0} ₺ yüklenebilir.";
+        if (TopUpNote?.Trim().Length > 500) return "Açıklama en fazla 500 karakter olmalıdır.";
+        if (TopUpExpiresOn is { } expires && expires.Date < IstanbulNow().Date) return "Bitiş tarihi bugünden önce olamaz.";
+        if (!TopUpConfirmed) return "Yükleme bilgilerini onaylayın.";
+        return null;
+    }
+
+    private async Task TopUpAsync()
+    {
+        TopUpError = ValidateTopUp(); if (TopUpError is not null) return;
+        TryParseAmount(TopUpAmountText, out var amount);
+        var student = LookupStudent!;
+        try
+        {
+            var result = await api.TopUpBalanceAsync(new BalanceTopUpRequest(student.Id, null, amount, Empty(TopUpNote),
+                TopUpExpiresOn is { } expires ? DateOnly.FromDateTime(expires) : null, topUpOperationId));
+            StatusMessage = $"{amount.ToString("C2", Turkish)} yüklendi · {Identity(student)} · yeni bakiye {result.Balance.ToString("C2", Turkish)}";
+            IsTopUpOpen = false; ResetTopUpForm(); await RefreshAsync();
+        }
+        catch (ApiRequestException ex) { TopUpError = ex.Message; }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException or LoginRequiredException)
+        { TopUpError = "Bakiye yüklenemedi. Aynı işlem kimliğiyle güvenle tekrar deneyebilirsiniz."; }
     }
 
     private void ResetAddForm()
@@ -247,16 +313,22 @@ public sealed class CashViewModel : ObservableObject
 
     private async Task LookupStudentAsync()
     {
-        AddError = null; LookupStudent = null;
+        SetLookupError(null); LookupStudent = null;
         if (string.IsNullOrWhiteSpace(StudentNumber) == string.IsNullOrWhiteSpace(LookupCardNumber))
-        { AddError = "Tam öğrenci numarası veya tam kart numarasından yalnızca birini girin."; return; }
+        { SetLookupError("Tam öğrenci numarası veya tam kart numarasından yalnızca birini girin."); return; }
         try
         {
             var result = await api.FindStudentAsync(Empty(StudentNumber), Empty(LookupCardNumber));
             LookupStudent = result.Items.Count == 1 ? result.Items[0] : null;
-            if (LookupStudent is null) AddError = "Girilen tam değerle eşleşen tek bir aktif öğrenci bulunamadı.";
+            if (LookupStudent is null) SetLookupError("Girilen tam değerle eşleşen tek bir aktif öğrenci bulunamadı.");
         }
-        catch (Exception ex) when (IsApiFailure(ex)) { AddError = Describe(ex, "Öğrenci doğrulanamadı."); }
+        catch (Exception ex) when (IsApiFailure(ex)) { SetLookupError(Describe(ex, "Öğrenci doğrulanamadı.")); }
+    }
+
+    /// <summary>Dogrulama hatasi ACIK olan cekmecede gorunur; Bakiye Yukle acikken Gelir Ekle'nin metnine yazilsa kullanici gormezdi.</summary>
+    private void SetLookupError(string? message)
+    {
+        if (IsTopUpOpen) TopUpError = message; else AddError = message;
     }
 
     private async Task LookupFilterStudentAsync()
@@ -354,13 +426,19 @@ public sealed class CashViewModel : ObservableObject
     {
         if (SelectedTransaction is null) return;
         VoidReason = ""; VoidConfirmed = false; Raise(nameof(VoidConfirmationText));
-        IsAddOpen = false; IsVoidOpen = true;
+        IsAddOpen = false; IsTopUpOpen = false; IsVoidOpen = true;
     }
 
     private async Task VoidAsync()
     {
         if (SelectedTransaction is null || string.IsNullOrWhiteSpace(VoidReason) || !VoidConfirmed) return;
-        try { await api.VoidAsync(SelectedTransaction.Id, VoidReason.Trim()); IsVoidOpen = false; await RefreshAsync(); }
+        try
+        {
+            var voided = await api.VoidAsync(SelectedTransaction.Id, VoidReason.Trim());
+            // Bakiye yuklemesi iptalinde sunucu bakiyenin eksiye dustugunu bildirebilir; sessizce yutulmaz.
+            StatusMessage = voided.Warning;
+            IsVoidOpen = false; await RefreshAsync();
+        }
         catch (Exception ex) when (IsApiFailure(ex)) { ErrorMessage = Describe(ex, "İşlem iptal edilemedi."); }
     }
 
@@ -402,7 +480,7 @@ public sealed class CashViewModel : ObservableObject
     }
     private void RefreshCommands()
     {
-        (AddCommand as AsyncCommand)?.Refresh(); (VoidCommand as AsyncCommand)?.Refresh();
+        (AddCommand as AsyncCommand)?.Refresh(); (VoidCommand as AsyncCommand)?.Refresh(); (TopUpCommand as AsyncCommand)?.Refresh();
         (OpenVoidCommand as RelayCommand)?.Refresh(); (EditTypeCommand as RelayCommand)?.Refresh();
         (DeactivateTypeCommand as AsyncCommand)?.Refresh();
     }

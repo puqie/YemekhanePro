@@ -56,6 +56,10 @@ public sealed class AccessCacheInvalidationInterceptor(IAccessCacheInvalidationS
                 case MealEntitlement entitlement: invalidations.Add(new(StudentId: entitlement.StudentId)); break;
                 case StudentLeave leave: invalidations.Add(new(StudentId: leave.StudentId)); break;
                 case MealTransfer transfer: invalidations.Add(new(StudentId: transfer.StudentId)); break;
+                // Bakiye yuklemesi/iadesi gecis kararini degistirir (hakedissiz gunde bakiye yolu).
+                case StudentBalanceEntry balance: invalidations.Add(new(StudentId: balance.StudentId)); break;
+                // Ogun ucreti degisince onbellekteki fiyat eskir; ucret nadiren degisir, tumunu temizlemek ucuzdur.
+                case MealTypePrice: invalidations.Add(new(ClearAll: true)); break;
                 case Holiday or HolidayScope or ScheduleOverride or Device: invalidations.Add(new(ClearAll: true)); break;
             }
         }

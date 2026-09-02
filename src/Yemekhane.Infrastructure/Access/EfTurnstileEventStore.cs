@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Access;
+using Yemekhane.Application.Balances;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
 
@@ -40,6 +41,20 @@ public sealed class EfTurnstileEventStore(YemekhaneDbContext dbContext) : ITurns
                     compensated = true;
                 }
             }
+            else if (await FindUnrefundedDeductionAsync(accessLog.Id, cancellationToken) is { } deduction)
+            {
+                // Gecis bakiyeden odenmisti (hakedis yok, MealUsage yok): para iade edilir.
+                // Aksi halde turnike acilmadigi halde ogrencinin bakiyesi eksilmis kalir.
+                dbContext.StudentBalanceEntries.Add(new StudentBalanceEntry
+                {
+                    StudentId = deduction.StudentId, AmountCents = -deduction.AmountCents, Kind = StudentBalanceEntryKinds.Refund,
+                    ReferenceType = StudentBalanceReferenceTypes.AccessLog, ReferenceId = accessLog.Id,
+                    Note = "Turnike komutu başarısız; öğün ücreti iade edildi", OccurredAt = turnstileEvent.Timestamp
+                });
+                accessLog.Decision = "ERROR";
+                accessLog.Reason = "Turnike komutu başarısız; bakiye iade edildi";
+                compensated = true;
+            }
         }
 
         dbContext.TurnstileEvents.Add(new TurnstileEvent
@@ -58,5 +73,16 @@ public sealed class EfTurnstileEventStore(YemekhaneDbContext dbContext) : ITurns
         }
 
         return new TurnstileEventWriteResult(compensated);
+    }
+
+    private async Task<StudentBalanceEntry?> FindUnrefundedDeductionAsync(Guid accessLogId, CancellationToken cancellationToken)
+    {
+        var deduction = await dbContext.StudentBalanceEntries.AsNoTracking().SingleOrDefaultAsync(
+            x => x.ReferenceType == StudentBalanceReferenceTypes.AccessLog && x.ReferenceId == accessLogId && x.Kind == StudentBalanceEntryKinds.Deduction,
+            cancellationToken);
+        if (deduction is null) return null;
+        var refunded = await dbContext.StudentBalanceEntries.AnyAsync(
+            x => x.ReferenceId == accessLogId && x.Kind == StudentBalanceEntryKinds.Refund, cancellationToken);
+        return refunded ? null : deduction;
     }
 }

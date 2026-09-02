@@ -34,7 +34,10 @@ public sealed record IncomeTransactionDetails(
     bool IsVoided,
     DateTimeOffset? VoidedAt,
     Guid? VoidedBy,
-    string? VoidReason);
+    string? VoidReason,
+    // Yalnizca iptal yanitinda dolar: bir bakiye yuklemesi iptal edilip ogrencinin bakiyesi
+    // eksiye dustuyse kasiyer bunu hemen gormeli (para zaten harcanmis olabilir).
+    string? Warning = null);
 
 public sealed record IncomeTransactionFilter(
     DateTimeOffset? From = null,

@@ -52,7 +52,7 @@ public sealed class StudentsViewModelTests
 
         vm.OpenFullDetailCommand.Execute(row);
         await Until(() => vm.IsDetailOpen);
-        Assert.Equal(10, vm.Tabs.Count);
+        Assert.Equal(11, vm.Tabs.Count);   // Genel + 10 veri sekmesi (Bakiye dahil)
         Assert.Equal(0, api.TabCount);
         vm.SelectedTab = vm.Tabs[1];
         await Until(() => api.TabCount == 1);
@@ -280,7 +280,7 @@ public sealed class StudentsViewModelTests
     {
         var api = new FakeApi(); using var vm = Create(api, "students.write");
         vm.OpenFullDetailCommand.Execute(Row());
-        await Until(() => vm.Tabs.Count == 10);
+        await Until(() => vm.Tabs.Count == 11);
         vm.SelectedTab = vm.Tabs.First(t => t.Key == "Leaves");
         await Until(() => api.TabCount == 1);
 
@@ -310,7 +310,7 @@ public sealed class StudentsViewModelTests
         Assert.Equal("42", vm.FormStudentNo);
         Assert.Equal("Ada", vm.FormFirstName);
         Assert.Equal("not", vm.FormNotes);
-        Assert.Equal(10, vm.Tabs.Count);
+        Assert.Equal(11, vm.Tabs.Count);   // Genel + 10 veri sekmesi (Bakiye dahil)
     }
 
     /// <summary>

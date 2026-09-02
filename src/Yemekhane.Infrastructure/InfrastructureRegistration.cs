@@ -28,6 +28,8 @@ using Yemekhane.Application.Income;
 using Yemekhane.Infrastructure.Income;
 using Yemekhane.Application.Cash;
 using Yemekhane.Infrastructure.Cash;
+using Yemekhane.Application.Balances;
+using Yemekhane.Infrastructure.Balances;
 using Yemekhane.Application.Reports;
 using Yemekhane.Infrastructure.Reports;
 using Yemekhane.Application.StudentImports;
@@ -97,6 +99,10 @@ public static class InfrastructureRegistration
         services.AddScoped<IBulkSmsRepository, EfBulkSmsRepository>();
         services.AddScoped<IIncomeRepository, EfIncomeRepository>();
         services.AddScoped<ICashRepository, EfCashRepository>();
+        // Bakiye servisi burada kayitli: uygulama servisleri normalde Program.cs'te eklenir ama o
+        // dosya kullanicinin uzerinde calistigi dosyadir; depo ile birlikte tek yerde toplandi.
+        services.AddScoped<IStudentBalanceRepository, EfStudentBalanceRepository>();
+        services.AddScoped<StudentBalanceService>();
         services.AddScoped<IReportRepository, EfReportRepository>();
         services.AddScoped<IDashboardRepository, EfDashboardRepository>();
         services.AddScoped<IDailyTrackingRepository, EfDailyTrackingRepository>();

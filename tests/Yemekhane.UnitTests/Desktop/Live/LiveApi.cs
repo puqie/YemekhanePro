@@ -21,6 +21,9 @@ internal static class LiveApi
     public static T Post<T>(LiveUiHarness ui, string url, object body) =>
         Send<T>(ui, HttpMethod.Post, url, body);
 
+    public static T Put<T>(LiveUiHarness ui, string url, object body) =>
+        Send<T>(ui, HttpMethod.Put, url, body);
+
     public static HttpResponseMessage Delete(LiveUiHarness ui, string url) =>
         SendRaw(ui, HttpMethod.Delete, url, null);
 

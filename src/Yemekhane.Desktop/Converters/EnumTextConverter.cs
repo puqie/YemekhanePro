@@ -124,6 +124,19 @@ public sealed class EnumTextConverter : IValueConverter
     private static readonly Dictionary<string, string> Reason = new(Codes)
     {
         ["OK"] = "Geçiş onaylandı",
+        // On odemeli bakiye yolu (AccessDecisionService, BalanceAccessReasons): hakedis yokken
+        // ogun ucreti bakiyeden dusuldu / bakiye ucrete yetmedi.
+        ["BalanceUsed"] = "Bakiyeden düşüldü",
+        ["InsufficientBalance"] = "Yemek hakkı yok; bakiye yetersiz",
+    };
+
+    // Bakiye defteri satir turleri (StudentBalanceEntryKinds); Ogrenciler > Bakiye sekmesi.
+    private static readonly Dictionary<string, string> BalanceKind = new(Codes)
+    {
+        ["TopUp"] = "Yükleme",
+        ["Deduction"] = "Düşüm",
+        ["Refund"] = "İade",
+        ["Adjustment"] = "Düzeltme",
     };
 
     // Turnike olay sonucu (TurnstileEvent.Result) ve komutu; Turnike raporunda gorunur.
@@ -205,6 +218,7 @@ public sealed class EnumTextConverter : IValueConverter
         ["Decision"] = Decision,
         ["Status"] = Status,
         ["Reason"] = Reason,
+        ["BalanceKind"] = BalanceKind,
         ["TurnstileResult"] = TurnstileResult,
         ["Source"] = Source,
         ["LogLevel"] = LogLevel,

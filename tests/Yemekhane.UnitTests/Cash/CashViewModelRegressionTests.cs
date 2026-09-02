@@ -303,6 +303,8 @@ public sealed class CashViewModelRegressionTests
             return Task.FromResult(new IncomeTypeDetails(id ?? Guid.NewGuid(), request.Name, request.IsActive));
         }
         public Task DeactivateTypeAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<Yemekhane.Application.Balances.BalanceTopUpResult> TopUpBalanceAsync(Yemekhane.Application.Balances.BalanceTopUpRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
         public Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default) =>
             Task.FromResult(new PagedResult<StudentListItem>([new(studentId, "5016", "8350016", "ADA", "AKGÜN", "8B", "B", null, null, true, 0, false, null)], 1, 2, 1));
         private IncomeTransactionDetails Transaction() => new(transactionId, Guid.NewGuid(), studentId, "ADA AKGÜN", "5016", "8350016", DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), voided, null, null, voided ? "Hatalı" : null);

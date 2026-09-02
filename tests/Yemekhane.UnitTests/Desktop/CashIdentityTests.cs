@@ -431,6 +431,8 @@ public sealed class CashIdentityTests
 
         public Task DeactivateTypeAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+        public Task<Yemekhane.Application.Balances.BalanceTopUpResult> TopUpBalanceAsync(Yemekhane.Application.Balances.BalanceTopUpRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
         public Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default) =>
             Task.FromResult(new PagedResult<StudentListItem>([new(studentId, "1001", "CARD-7788", "Ada", "Katırcı", null, null, null, null, true, 0, false, null)], 1, 2, 1));
 

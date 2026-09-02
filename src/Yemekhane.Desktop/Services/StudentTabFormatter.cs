@@ -106,7 +106,8 @@ public static class StudentTabFormatter
             new("mealType", "Öğün"),
             new("deviceName", "Cihaz"),
             new("cardNumber", "Kart No"),
-            new("reason", "Sebep"),
+            // Bakiye yolu kod yazar (BalanceUsed); Turkce nedenler sozlukte olmadigi icin aynen gecer.
+            new("reason", "Sebep", Map: "Reason"),
         ],
 
         // LeaveDetails
@@ -139,6 +140,17 @@ public static class StudentTabFormatter
             new("description", "Açıklama"),
             new("isVoided", "İptal edildi", FieldKind.YesNo),
             new("voidReason", "İptal Nedeni"),
+        ],
+
+        // StudentBalanceEntryDetails: on odemeli bakiye defteri. Tarih, tur, tutar, aciklama;
+        // bitis tarihi yalnizca yuklemede dolu olur ve suresi biten parayi aciklar.
+        ["Balance"] =
+        [
+            new("occurredAt", "Tarih", FieldKind.DateTime),
+            new("kind", "Tür", Map: "BalanceKind"),
+            new("amount", "Tutar", FieldKind.Money),
+            new("note", "Açıklama"),
+            new("expiresOn", "Bitiş", FieldKind.Date),
         ],
 
         // SmsLogDetails: gonderim durumu ve hata mesaji.
@@ -174,6 +186,7 @@ public static class StudentTabFormatter
         ["Leaves"] = "İzinler",
         ["Holiday/Transfer"] = "Tatil/Aktarım",
         ["Payments"] = "Ödemeler",
+        ["Balance"] = "Bakiye",
         ["SMS History"] = "SMS Geçmişi",
         ["Audit"] = "Denetim",
     };
