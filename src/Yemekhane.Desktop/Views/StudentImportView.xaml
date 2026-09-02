@@ -3,6 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:desktop="clr-namespace:Yemekhane.Desktop"
     xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
+    xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
     FontFamily="Segoe UI" FontSize="12">
 
     <UserControl.Resources>
@@ -11,6 +12,8 @@
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+            <!-- Satir durumu (New/Update/Error) ekranda Turkce gosterilir. -->
+            <converters:EnumTextConverter x:Key="EnumText"/>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -126,7 +129,12 @@
                         <DataGridTextColumn Header="Kart No" Binding="{Binding CardNumber}" Width="130"/>
                         <DataGridTextColumn Header="Ad" Binding="{Binding FirstName}" Width="140"/>
                         <DataGridTextColumn Header="Soyad" Binding="{Binding LastName}" Width="140"/>
-                        <DataGridTextColumn Header="Durum" Binding="{Binding Status}" Width="110"/>
+                        <!-- Dosyadan okunan sinif ve veli telefonu: operator uygulamadan once
+                             dogru okunduklarini gorur (once bu sutunlar hic gosterilmiyordu). -->
+                        <DataGridTextColumn Header="Sınıf" Binding="{Binding ClassName}" Width="Auto" MinWidth="70"/>
+                        <DataGridTextColumn Header="Veli telefonu" Binding="{Binding Phone}" Width="Auto" MinWidth="120"/>
+                        <!-- Sunucu New/Update/Error kodu yollar; ekranda Turkce gorunur. -->
+                        <DataGridTextColumn Header="Durum" Binding="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=ImportStatus}" Width="Auto" MinWidth="110"/>
                         <DataGridTemplateColumn Header="Açıklama" Width="*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>

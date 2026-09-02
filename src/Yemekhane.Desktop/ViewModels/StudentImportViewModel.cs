@@ -183,6 +183,9 @@ public sealed class StudentImportViewModel : ObservableObject
     /// <summary>Sunucunun anlamli mesaji varsa gosterilir; yoksa baglama uygun bir aciklama.</summary>
     private static string Friendly(Exception exception, string fallback) => exception switch
     {
+        // Sunucunun reddi ("Zorunlu başlıklar eksik: NO, KART NO, AD, SOYAD." gibi) aynen
+        // gosterilir: kullanici dosyada neyi duzeltecegini ancak boyle ogrenir.
+        ApiRequestException => exception.Message,
         InvalidDataException => exception.Message,
         FileNotFoundException => exception.Message,
         InvalidOperationException => exception.Message,

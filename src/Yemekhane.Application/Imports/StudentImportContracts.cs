@@ -2,6 +2,9 @@ namespace Yemekhane.Application.StudentImports;
 
 public sealed record ImportRowError(int RowNumber, string Code, string Message);
 
+// ClassName/Phone: dosyada okunan ama once onizlemede GOSTERILMEYEN alanlar. Operator
+// sinif atamasinin ve veli telefonunun dogru okundugunu uygulamadan once goremiyordu.
+// Varsayilan degerli eklendi: mevcut cagri yerleri ve JSON sozlesmesi bozulmaz.
 public sealed record ImportPreviewRow(
     int RowNumber,
     string StudentNo,
@@ -9,7 +12,9 @@ public sealed record ImportPreviewRow(
     string FirstName,
     string LastName,
     string Status,
-    IReadOnlyList<ImportRowError> Errors);
+    IReadOnlyList<ImportRowError> Errors,
+    string? ClassName = null,
+    string? Phone = null);
 
 public sealed record ImportPreviewResult(
     string Token,
