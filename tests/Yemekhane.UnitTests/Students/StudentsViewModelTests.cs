@@ -329,15 +329,21 @@ public sealed class StudentsViewModelTests
             var api = new FakeApi(); using var vm = Create(api);
             vm.Search = "Ada";
             await Until(() => api.SearchCount > 0);
-            Assert.True(context.Posted > 0, "arama havuz is parcaciginda calisti, arayuz baglamina gonderilmedi");
+            // Arama, VM'in kurulusta yakaladigi baglam UZERINDEN calismali. Salt "Post
+            // cagrildi mi" yetmez: testin kendi await'leri de bu baglama post eder.
+            Assert.Same(context, api.LastSearchContext);
         }
         finally { SynchronizationContext.SetSynchronizationContext(previous); }
     }
 
+    /// <summary>
+    /// Post edilen isi, Current'i kendisi olan bir is parcaciginda calistirir -- WPF
+    /// Dispatcher'in yaptigi gibi. Boylece "hangi baglamda calisti" sorusu sorulabilir.
+    /// </summary>
     private sealed class RecordingContext : SynchronizationContext
     {
-        public int Posted;
-        public override void Post(SendOrPostCallback d, object? state) { Interlocked.Increment(ref Posted); d(state); }
+        public override void Post(SendOrPostCallback d, object? state) =>
+            ThreadPool.QueueUserWorkItem(_ => { SetSynchronizationContext(this); d(state); });
     }
 
     private static StudentsViewModel Create(FakeApi api, params string[] permissions) =>
@@ -359,7 +365,9 @@ public sealed class StudentsViewModelTests
         public Guid? LastSavedId, DeactivatedId;
         public PagedResult<StudentListItem> SearchResult { get; set; } = Page(1, 1);
         public StudentDetails Details { get; private set; } = StudentsViewModelTests.Details();
-        public Task<PagedResult<StudentListItem>> SearchAsync(StudentQuery query, CancellationToken cancellationToken = default) { SearchCount++; LastQuery = query; return Task.FromResult(SearchResult); }
+        public SynchronizationContext? LastSearchContext;
+        public Task<PagedResult<StudentListItem>> SearchAsync(StudentQuery query, CancellationToken cancellationToken = default)
+        { LastSearchContext = SynchronizationContext.Current; SearchCount++; LastQuery = query; return Task.FromResult(SearchResult); }
         public Task<StudentDetails> GetAsync(Guid id, CancellationToken cancellationToken = default) { DetailCount++; Details = Details with { Id = id }; return Task.FromResult(Details); }
         public void SetDetails(StudentDetails value) => Details = value;
         public Task<StudentDetails> SaveAsync(Guid? id, SaveStudentRequest request, CancellationToken cancellationToken = default)
