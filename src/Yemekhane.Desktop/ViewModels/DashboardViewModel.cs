@@ -69,6 +69,9 @@ public sealed class DashboardViewModel : ObservableObject
         CanNavigateReports = navigation.IsAvailable(ShellRoutes.Reports);
         CanNavigateSettings = navigation.IsAvailable(ShellRoutes.Settings);
         CanNavigateStudentImport = navigation.IsAvailable(ShellRoutes.StudentImport);
+        NavigateDefinitionsCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Definitions),
+            () => navigation.IsAvailable(ShellRoutes.Definitions));
+        CanNavigateDefinitions = navigation.IsAvailable(ShellRoutes.Definitions);
         realtimeClient.AccessReceived += OnAccessReceived;
         realtimeClient.DeviceStatusChanged += OnDeviceStatusChanged;
         realtimeClient.StateChanged += (_, state) => RunOnUi(() => RealtimeState = state);
@@ -116,6 +119,8 @@ public sealed class DashboardViewModel : ObservableObject
     public bool CanNavigateReports { get; }
     public bool CanNavigateSettings { get; }
     public bool CanNavigateStudentImport { get; }
+    public ICommand NavigateDefinitionsCommand { get; }
+    public bool CanNavigateDefinitions { get; }
 
     public async Task InitializeAsync()
     {

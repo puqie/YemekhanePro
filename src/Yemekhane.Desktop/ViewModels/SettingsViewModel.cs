@@ -68,7 +68,9 @@ public sealed class SettingsViewModel : ObservableObject
             () => CanManage && !IsLoading && SelectedConflict is not null);
         RefreshLogsCommand = new AsyncCommand(LoadLogsAsync, () => CanRead && !IsLoading);
         NavigateDevicesCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Devices), () => navigation.IsAvailable(ShellRoutes.Devices));
-        NavigateMealsCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Entitlements), () => navigation.IsAvailable(ShellRoutes.Entitlements));
+        // "Yemek Türleri" artik Tanimlar ekranina gider: ogun ekleme/duzenleme/ucret orada.
+        // Onceden Hakedisler ekranina gidiyordu; orada ogun TANIMLANAMAZ, yalnizca secilir.
+        NavigateMealsCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Definitions), () => navigation.IsAvailable(ShellRoutes.Definitions));
         NavigateHolidaysCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.HolidayTransfer), () => navigation.IsAvailable(ShellRoutes.HolidayTransfer));
         NavigateUsersCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.UsersRoles), () => navigation.IsAvailable(ShellRoutes.UsersRoles));
         CanNavigateUsers = navigation.IsAvailable(ShellRoutes.UsersRoles) && set.Contains("users.manage");

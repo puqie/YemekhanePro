@@ -1,0 +1,144 @@
+<UserControl x:Class="Yemekhane.Desktop.Views.DefinitionsView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
+    xmlns:local="clr-namespace:Yemekhane.Desktop"
+    Language="tr-TR" FontFamily="Segoe UI" FontSize="12">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Drawer.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="Bool"/>
+            <local:InverseBooleanConverter x:Key="InverseBool"/>
+
+            <!-- Sinif / Sube / Bolum / Gorev sekmeleri AYNI sablonu paylasir (DataContext:
+                 LookupTabViewModel). Eski programdaki dort ayri "Tanim" formu tek kaliptir:
+                 satir ici ekleme kutusu + Ekle, secili satirda Yeniden Adlandir ve iki adimli Sil. -->
+            <DataTemplate x:Key="LookupTab">
+                <Grid Margin="14">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <WrapPanel>
+                        <StackPanel Width="280" Margin="0,0,8,0">
+                            <TextBlock Style="{StaticResource Label}" Text="{Binding NewLabel}" Margin="0,0,0,4"/>
+                            <TextBox Style="{StaticResource FieldCompact}" Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding NewPlaceholder}" ToolTip="Enter ile de eklenir">
+                                <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding AddCommand}"/></TextBox.InputBindings>
+                            </TextBox>
+                        </StackPanel>
+                        <Button Style="{StaticResource Primary}" Content="Ekle" Command="{Binding AddCommand}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding SummaryText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Bottom" Margin="12,0,0,9"/>
+                    </WrapPanel>
+                    <StackPanel Grid.Row="1" Margin="0,10,0,6">
+                        <WrapPanel>
+                            <Button Style="{StaticResource Action}" Content="Yeniden Adlandır" Command="{Binding OpenRenameCommand}" Margin="0,0,7,6"/>
+                            <!-- Silme iki adimli: "Sil" -> "Silmeyi Onayla" + "Vazgeç" (Ogrenciler ekranindaki desen). -->
+                            <Button Style="{StaticResource Destructive}" Content="{Binding DeleteButtonText}" Command="{Binding DeleteCommand}" Margin="0,0,7,6" ToolTip="Öğrencide kullanılan tanım silinemez; önce öğrencileri başka bir tanıma taşıyın"/>
+                            <Button Style="{StaticResource Action}" Content="Vazgeç" Command="{Binding CancelDeleteCommand}" Margin="0,0,7,6" Visibility="{Binding IsDeleteArmed, Converter={StaticResource Bool}}"/>
+                        </WrapPanel>
+                        <Border Style="{StaticResource Panel}" Padding="12,10" Margin="0,4,0,0" HorizontalAlignment="Left" Visibility="{Binding IsRenameOpen, Converter={StaticResource Bool}}">
+                            <WrapPanel>
+                                <StackPanel Width="280" Margin="0,0,8,0">
+                                    <TextBlock Style="{StaticResource Label}" Text="Yeni ad" Margin="0,0,0,4"/>
+                                    <TextBox Style="{StaticResource FieldCompact}" Text="{Binding RenameName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Yeni ad">
+                                        <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SaveRenameCommand}"/></TextBox.InputBindings>
+                                    </TextBox>
+                                </StackPanel>
+                                <Button Style="{StaticResource Primary}" Content="Kaydet" Command="{Binding SaveRenameCommand}" VerticalAlignment="Bottom" Margin="0,0,7,4"/>
+                                <Button Style="{StaticResource Action}" Content="İptal" Command="{Binding CloseRenameCommand}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                            </WrapPanel>
+                        </Border>
+                    </StackPanel>
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" AutomationProperties.Name="{Binding Title}">
+                        <DataGrid.InputBindings><KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/><KeyBinding Key="F2" Command="{Binding OpenRenameCommand}"/></DataGrid.InputBindings>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="AD" Binding="{Binding Name}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="ÖĞRENCİ SAYISI" Binding="{Binding StudentCount, StringFormat={}{0:N0}}" Width="Auto" MinWidth="150"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="2" Text="{Binding EmptyText}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Visibility="{Binding IsEmpty, Converter={StaticResource Bool}}"/>
+                    <StackPanel Grid.Row="3" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Visibility="{Binding HasError, Converter={StaticResource Bool}}"/>
+                        <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource SuccessBrush}" TextWrapping="Wrap" Visibility="{Binding HasStatus, Converter={StaticResource Bool}}"/>
+                    </StackPanel>
+                </Grid>
+            </DataTemplate>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <controls:PageShell Title="Tanımlar" Subtitle="Öğün, sınıf, şube, bölüm ve görev tanımları">
+            <controls:PageShell.Actions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="12" Padding="9,4" Margin="0,0,8,0" Visibility="{Binding IsOffline, Converter={StaticResource Bool}}"><TextBlock Text="Çevrimdışı" Foreground="{StaticResource WarningBrush}"/></Border>
+                    <Button Style="{StaticResource Action}" Content="Yenile" Command="{Binding RefreshCommand}"/>
+                </StackPanel>
+            </controls:PageShell.Actions>
+            <controls:PageShell.FooterLeft>
+                <StackPanel>
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Visibility="{Binding HasError, Converter={StaticResource Bool}}"/>
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left" Visibility="{Binding HasStatus, Converter={StaticResource Bool}}"/>
+                </StackPanel>
+            </controls:PageShell.FooterLeft>
+
+            <TabControl SelectedIndex="{Binding SelectedTabIndex}" IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBool}}">
+                <TabItem Header="Öğünler" Visibility="{Binding CanManageMeals, Converter={StaticResource Bool}}">
+                    <Grid Margin="14">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <WrapPanel Margin="0,0,0,8">
+                            <!-- Sayfanin birincil eylemi marka rengiyle (Primary) ayrisir. -->
+                            <Button Style="{StaticResource Primary}" Content="Yeni Öğün" Command="{Binding OpenNewMealCommand}" Margin="0,0,7,6"/>
+                            <Button Style="{StaticResource Action}" Content="Düzenle" Command="{Binding OpenEditMealCommand}" Margin="0,0,7,6"/>
+                            <Button Style="{StaticResource Action}" Content="Pasifleştir" Command="{Binding DeactivateMealCommand}" Margin="0,0,7,6" ToolTip="Öğün listelerde kalır ama yeni hakediş verilemez"/>
+                            <TextBlock Text="{Binding MealsSummary}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="8,0,0,6"/>
+                        </WrapPanel>
+                        <DataGrid Grid.Row="1" x:Name="MealsGrid" ItemsSource="{Binding Meals}" SelectedItem="{Binding SelectedMeal}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" AutomationProperties.Name="Öğün listesi">
+                            <DataGrid.InputBindings><KeyBinding Key="Enter" Command="{Binding OpenEditMealCommand}"/><KeyBinding Key="F2" Command="{Binding OpenEditMealCommand}"/></DataGrid.InputBindings>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="AD" Binding="{Binding Name}" Width="*" MinWidth="200"/>
+                                <DataGridTextColumn Header="BAŞLANGIÇ" Binding="{Binding StartsText}" Width="Auto" MinWidth="110"/>
+                                <DataGridTextColumn Header="BİTİŞ" Binding="{Binding EndsText}" Width="Auto" MinWidth="90"/>
+                                <DataGridTextColumn Header="ÜCRET" Binding="{Binding Price, StringFormat={}{0:C2}}" Width="Auto" MinWidth="110"/>
+                                <DataGridTextColumn Header="DURUM" Binding="{Binding StatusText}" Width="Auto" MinWidth="90"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Grid.Row="1" Text="Henüz kayıt yok" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Visibility="{Binding IsMealsEmpty, Converter={StaticResource Bool}}"/>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Sınıflar" Content="{Binding Classes}" ContentTemplate="{StaticResource LookupTab}" Visibility="{Binding CanReadLookups, Converter={StaticResource Bool}}"/>
+                <TabItem Header="Şubeler" Content="{Binding Sections}" ContentTemplate="{StaticResource LookupTab}" Visibility="{Binding CanReadLookups, Converter={StaticResource Bool}}"/>
+                <TabItem Header="Bölümler" Content="{Binding Departments}" ContentTemplate="{StaticResource LookupTab}" Visibility="{Binding CanReadLookups, Converter={StaticResource Bool}}"/>
+                <TabItem Header="Görevler" Content="{Binding Jobs}" ContentTemplate="{StaticResource LookupTab}" Visibility="{Binding CanReadLookups, Converter={StaticResource Bool}}"/>
+            </TabControl>
+        </controls:PageShell>
+
+        <!-- Ogun formu cekmecede: eski programdaki Ogun Tanim formunun alanlari (ad, baslama, bitis, ucret). -->
+        <controls:Drawer x:Name="MealPanel" IsOpen="{Binding IsMealOpen, Mode=OneWay}" DrawerWidth="400" Title="{Binding MealFormTitle}" CloseCommand="{Binding CloseMealCommand}">
+            <StackPanel>
+                <TextBlock Text="Öğün adı" Style="{StaticResource Label}"/>
+                <TextBox Text="{Binding MealName, UpdateSourceTrigger=PropertyChanged}" MaxLength="100" AutomationProperties.Name="Öğün adı"/>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="10"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Başlangıç saati" Style="{StaticResource Label}"/>
+                        <TextBox Text="{Binding MealStartsAt, UpdateSourceTrigger=PropertyChanged}" ToolTip="SS:dd (örn. 11:30); boş bırakılabilir" AutomationProperties.Name="Başlangıç saati"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Bitiş saati" Style="{StaticResource Label}"/>
+                        <TextBox Text="{Binding MealEndsAt, UpdateSourceTrigger=PropertyChanged}" ToolTip="SS:dd (örn. 13:30); boş bırakılabilir" AutomationProperties.Name="Bitiş saati"/>
+                    </StackPanel>
+                </Grid>
+                <TextBlock Text="Ücret (₺)" Style="{StaticResource Label}"/>
+                <TextBox Text="{Binding MealPriceText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Örnek: 250,50 — sıfır ücretsiz öğün demektir" AutomationProperties.Name="Öğün ücreti"/>
+                <TextBlock Style="{StaticResource Caption}" Text="Ücret hakediş verirken toplam bedelin hesabında kullanılır." TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <CheckBox Content="Aktif" IsChecked="{Binding MealIsActive}" Margin="0,12,0,0" AutomationProperties.Name="Öğün aktif"/>
+                <TextBlock Text="{Binding MealError}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,10,0,0" Visibility="{Binding HasMealError, Converter={StaticResource Bool}}"/>
+                <WrapPanel Margin="0,12,0,0">
+                    <Button Content="Kaydet" Command="{Binding SaveMealCommand}" Style="{StaticResource Primary}" Margin="0,0,7,0"/>
+                    <Button Content="Vazgeç" Command="{Binding CloseMealCommand}" Style="{StaticResource Action}"/>
+                </WrapPanel>
+            </StackPanel>
+        </controls:Drawer>
+    </Grid>
+</UserControl>

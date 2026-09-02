@@ -119,6 +119,12 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         set => StudentImportHost.DataContext = value;
     }
 
+    public object? DefinitionsDataContext
+    {
+        get => DefinitionsHost.DataContext;
+        set => DefinitionsHost.DataContext = value;
+    }
+
     public void Navigate(string route)
     {
         currentRoute = route;
@@ -140,7 +146,8 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         var reports = route == Services.ShellRoutes.Reports;
         var settings = route == Services.ShellRoutes.Settings;
         var studentImport = route == Services.ShellRoutes.StudentImport;
-        DashboardHost.Visibility = tracking || students || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings || studentImport ? Visibility.Collapsed : Visibility.Visible;
+        var definitions = route == Services.ShellRoutes.Definitions;
+        DashboardHost.Visibility = tracking || students || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings || studentImport || definitions ? Visibility.Collapsed : Visibility.Visible;
         DailyTrackingHost.Visibility = tracking ? Visibility.Visible : Visibility.Collapsed;
         StudentsHost.Visibility = students ? Visibility.Visible : Visibility.Collapsed;
         MealEntitlementsHost.Visibility = entitlements ? Visibility.Visible : Visibility.Collapsed;
@@ -152,6 +159,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         ReportsHost.Visibility = reports ? Visibility.Visible : Visibility.Collapsed;
         SettingsHost.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
         StudentImportHost.Visibility = studentImport ? Visibility.Visible : Visibility.Collapsed;
+        DefinitionsHost.Visibility = definitions ? Visibility.Visible : Visibility.Collapsed;
         if (students && StudentsDataContext is StudentsViewModel viewModel) viewModel.HandleRoute(route);
         if (entitlements && MealEntitlementsDataContext is MealEntitlementsViewModel entitlementViewModel)
         {
@@ -284,6 +292,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         ShellRoutes.Cash => (CashDataContext as CashViewModel)?.RefreshCommand,
         ShellRoutes.Reports => (ReportsDataContext as ReportsViewModel)?.ApplyCommand,
         ShellRoutes.Settings => (SettingsDataContext as SettingsViewModel)?.RefreshCommand,
+        ShellRoutes.Definitions => (DefinitionsDataContext as DefinitionsViewModel)?.RefreshCommand,
         _ => null
     };
 
@@ -309,6 +318,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
             ShellRoutes.Entitlements => MealEntitlementsDataContext is MealEntitlementsViewModel entitlements &&
                 (entitlements.IsCancelConfirmationOpen || entitlements.IsGrantOpen || entitlements.BulkWizard is { IsOpen: true } or { IsHistoryOpen: true }),
             ShellRoutes.Cash => CashDataContext is CashViewModel cash && (cash.IsVoidOpen || cash.IsAddOpen),
+            ShellRoutes.Definitions => DefinitionsDataContext is DefinitionsViewModel definitions && definitions.IsMealOpen,
             _ => false
         };
     }
@@ -348,6 +358,9 @@ public partial class MainWindow : Window, IShortcutCommandTarget
                 break;
             case ShellRoutes.Cash:
                 if (CashDataContext is CashViewModel cash) Execute(cash.IsVoidOpen ? cash.CloseVoidCommand : cash.CloseAddCommand);
+                break;
+            case ShellRoutes.Definitions:
+                if (DefinitionsDataContext is DefinitionsViewModel definitions) Execute(definitions.CloseMealCommand);
                 break;
         }
     }
