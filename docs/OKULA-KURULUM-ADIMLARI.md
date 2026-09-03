@@ -31,6 +31,9 @@ Ekranda `Lisans modu: SUNUCUSUZ (aktivasyon adresi boş)` yazmalı.
 
 Çıktı: `artifacts\installer\YemekhanePro-Setup-1.2.0.exe` (~101 MB)
 
+Klasörde **yalnızca bu dosya** kalır — ara ürünler doğrulamadan sonra temizlenir.
+Müşteriye vereceğiniz tek dosya budur.
+
 ### 3. Lisans Üretici'yi kurun (kendi bilgisayarınıza)
 
 ```powershell
@@ -51,8 +54,8 @@ dotnet publish src\Yemekhane.KeyTool -c Release -o C:\LisansUretici
 
 `YemekhanePro-Setup-1.2.0.exe` → çift tıkla → **Evet** (yönetici) → İleri → Kur → Son
 
-> `.msi` dosyasını **çift tıklamayın**; yönetici yükseltmesi isteyemediği için
-> sessizce iptal olur. Kuracağınız dosya `.exe` olandır.
+> Kutuda **tek dosya** vardır: `YemekhanePro-Setup-1.2.0.exe`. Kurulumun ihtiyaç
+> duyduğu her şey bu dosyanın içindedir; başka bir şey göndermenize gerek yok.
 
 Masaüstünde ve Başlat menüsünde simge oluşur.
 
@@ -122,7 +125,6 @@ Lisans ekranı **bir daha gelmez**. Okul her açılışta yalnızca
 
 | Belirti | Çözüm |
 |---|---|
-| Kurulum çubuğu doldu, hiçbir şey olmadı | `.msi` çift tıklandı. `.exe` olanı kullanın |
 | "Lisans anahtarı geçersiz" | Kurulumu ürettiğiniz sır ile anahtarı ürettiğiniz sır **aynı olmalı** |
 | "Bu lisans başka bir bilgisayara ait" | Dosya başka makine için üretilmiş. Yeni makine kodu isteyin |
 | "Kod okunamadı" | Makine kodu eksik kopyalanmış. **Tamamını** yeniden isteyin |

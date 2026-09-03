@@ -109,6 +109,15 @@ $record = $view.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $view, $n
 $msiVersion = $record.GetType().InvokeMember('StringData', 'GetProperty', $null, $record, 1)
 if ($msiVersion -ne $Version) { throw "MSI ProductVersion beklenenden farklı: $msiVersion" }
 
+# COM nesneleri ACIKCA birakilir: aksi halde $database MSI dosyasini betik bitene
+# kadar KILITLI tutar ve sondaki temizlik "dosya baska bir islem tarafindan
+# kullaniliyor" ile basarisiz olur -- klasorde yanlislikla iki kurulum dosyasi kalir.
+foreach ($comObject in @($record, $view, $database, $windowsInstaller)) {
+    if ($null -ne $comObject) { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($comObject) }
+}
+$record = $null; $view = $null; $database = $null; $windowsInstaller = $null
+[GC]::Collect(); [GC]::WaitForPendingFinalizers()
+
 $msiexec = Start-Process -FilePath 'msiexec.exe' -ArgumentList @('/a', "`"$($msi.FullName)`"", '/qn', "TARGETDIR=`"$extractDir`"") -Wait -PassThru
 if ($msiexec.ExitCode -ne 0) { throw "MSI administrative extraction başarısız oldu: $($msiexec.ExitCode)" }
 $extractedDesktop = Get-ChildItem -LiteralPath $extractDir -Filter 'Yemekhane.Desktop.exe' -Recurse
@@ -185,12 +194,35 @@ if (-not $SkipInstallCheck) {
 }
 
 $setupHash = Get-FileHash -LiteralPath $setup.FullName -Algorithm SHA256
-$msiHash = Get-FileHash -LiteralPath $msi.FullName -Algorithm SHA256
+
+# TEK DOSYA BIRAKILIR. MSI, .exe'nin ICINE gomuludur (Bundle.wxs: Compressed="yes");
+# klasorde ayrica durmasi kullaniciyi hangisini calistiracagi konusunda tereddutte
+# birakir ve yanlis olani (MSI) secen kullanicida kurulum sessizce iptal olur --
+# MSI cift tiklandiginda yonetici yukseltmesi isteyemez.
+#
+# Dosyalar URETILIR ve dogrulamada KULLANILIR (kurulum/onarim/kaldirma denemesi),
+# yalnizca en sonda silinirler: uretmemek, kurulumun calistigini kanitlayan adimi
+# da ortadan kaldirirdi.
+$leftovers = Get-ChildItem -LiteralPath $installerDir -File |
+    Where-Object { $_.FullName -ne $setup.FullName }
+foreach ($leftover in $leftovers) {
+    try { Remove-Item -LiteralPath $leftover.FullName -Force -ErrorAction Stop }
+    catch {
+        # Sessizce gecilmez: klasorde kalan ikinci bir kurulum dosyasi, musterinin
+        # yanlis olani calistirmasina yol acar.
+        throw "Ara dosya silinemedi: $($leftover.Name). Dosya baska bir islem tarafindan kilitli olabilir."
+    }
+}
+
+Write-Host ""
+Write-Host "KURULUM DOSYASI HAZIR (tek dosya):" -ForegroundColor Green
+Write-Host "  $($setup.FullName)" -ForegroundColor Green
+Write-Host ("  {0:N0} MB   SHA256 {1}" -f ($setup.Length / 1MB), $setupHash.Hash) -ForegroundColor Green
+Write-Host "  Musteriye YALNIZCA bu dosyayi verin." -ForegroundColor Green
+
 [pscustomobject]@{
     Setup = $setup.FullName
     SetupBytes = $setup.Length
     SetupSHA256 = $setupHash.Hash
-    Msi = $msi.FullName
-    MsiSHA256 = $msiHash.Hash
     Version = $Version
 } | Format-List

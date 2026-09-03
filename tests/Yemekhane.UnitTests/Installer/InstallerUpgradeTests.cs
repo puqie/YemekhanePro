@@ -1,3 +1,4 @@
+using System.IO;
 using System.Xml.Linq;
 
 namespace Yemekhane.UnitTests.Installer;
@@ -181,6 +182,47 @@ public sealed class InstallerUpgradeTests
         var text = package.ToString();
         foreach (var forbidden in new[] { "LocalAppDataFolder", "AppDataFolder", "RemoveFolderEx", "RemoveFile" })
             Assert.DoesNotContain(forbidden, text, StringComparison.Ordinal);
+    }
+
+
+    /// <summary>
+    /// MUSTERIYE TEK DOSYA GIDER.
+    ///
+    /// MSI, .exe'nin icine gomuludur (Bundle.wxs: Compressed="yes"); klasorde ayrica
+    /// durmasi kullaniciyi hangisini calistiracagi konusunda tereddutte birakir ve
+    /// yanlis olani (MSI) secen kullanicida kurulum SESSIZCE iptal olur -- MSI cift
+    /// tiklandiginda yonetici yukseltmesi isteyemez.
+    ///
+    /// Betik ara dosyalari uretir ve dogrulamada kullanir (kurulum/onarim/kaldirma
+    /// denemesi), yalnizca en sonda siler. Bu test o temizligin betikten
+    /// kaldirilmadigini kilitler.
+    /// </summary>
+    [Fact]
+    public void BuildScriptLeavesOnlyTheSetupExecutable()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRoot(), "scripts", "build-installer.ps1"));
+
+        Assert.Contains("$leftovers", script, StringComparison.Ordinal);
+        Assert.Contains("Remove-Item -LiteralPath $leftover.FullName", script, StringComparison.Ordinal);
+        // Silme SESSIZCE gecilmemeli: klasorde kalan ikinci kurulum dosyasi,
+        // musterinin yanlis olani calistirmasina yol acar.
+        Assert.Contains("Ara dosya silinemedi", script, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// COM nesneleri acikca birakilmalidir: birakilmazsa $database MSI dosyasini
+    /// betik bitene kadar KILITLI tutar ve temizlik basarisiz olur. Bu gercekten
+    /// yasandi -- ilk denemede klasorde iki kurulum dosyasi birden kaldi.
+    /// </summary>
+    [Fact]
+    public void BuildScriptReleasesComObjectsBeforeCleanup()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRoot(), "scripts", "build-installer.ps1"));
+
+        Assert.Contains("ReleaseComObject", script, StringComparison.Ordinal);
+        Assert.True(script.IndexOf("ReleaseComObject", StringComparison.Ordinal)
+                    < script.IndexOf("$leftovers", StringComparison.Ordinal),
+            "COM nesneleri temizlikten ÖNCE bırakılmalı; sonra bırakılırsa dosya kilitli kalır.");
     }
 
     private static XDocument LoadPackage() =>

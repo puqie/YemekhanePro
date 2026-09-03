@@ -33,9 +33,8 @@ Okula yalnızca **Bölüm A**'yı verin.
 
 Kurulum bittiğinde **masaüstünde** ve **Başlat menüsünde** YemekhanePro simgesi bulunur.
 
-> **`.msi` dosyasını çift tıklamayın.** Kutuda `.msi` de çıkabilir; o dosya yönetici
-> yükseltmesi isteyemediği için kurulum sessizce iptal olur ve siz yalnızca dolan bir
-> ilerleme çubuğu görürsünüz. Kuracağınız dosya **`.exe`** olandır.
+> Kurulum **tek dosyadır**: `YemekhanePro-Setup-1.1.0.exe`. Gereken her şey bu
+> dosyanın içindedir.
 
 ## A3. İlk açılış — yönetici parolası
 
@@ -131,7 +130,6 @@ ederseniz de sonuç aynıdır.
 
 | Belirti | Nedeni ve çözümü |
 |---|---|
-| Kurulum çubuğu doldu, hiçbir şey olmadı | `.msi` dosyasını çift tıkladınız. `.exe` olanı kullanın (bkz. A2) |
 | "Daha yeni bir YemekhanePro sürümü zaten yüklü" | Yüklü sürüm daha yeni. Önce onu kaldırın |
 | Program açılıyor, ekran bomboş | Veri klasörü yeni oluşmuştur; bu ilk kurulumda normaldir |
 | Windows SmartScreen uyarısı | Kurulum dosyası imzalı değilse çıkar. **Ek bilgi → Yine de çalıştır** |
