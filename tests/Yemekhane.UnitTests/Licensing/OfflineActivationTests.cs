@@ -40,6 +40,51 @@ public sealed class OfflineActivationTests
         Assert.Contains("gecersiz", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+
+    /// <summary>
+    /// ANAHTAR YALNIZCA BIR KEZ GIRILIR.
+    ///
+    /// Kullanicinin her acilista yapmasi gereken sey kullanici adi/sifre ile
+    /// GIRIS'tir; lisans anahtari degil. Anahtar bir kez girilir, lisans diske
+    /// kaydedilir ve sonraki acilislarda oradan okunur.
+    ///
+    /// Bu davranis daha once testle korunmuyordu: biri kaydi kaldirsa ya da
+    /// Check() mantigini bozsa, okul her sabah anahtar aramak zorunda kalir ve
+    /// bunu ancak sikayet gelince ogrenirdiniz.
+    /// </summary>
+    [Fact]
+    public async Task AnahtarYalnizcaBirKezGirilir()
+    {
+        var store = new MemoryStore();
+        var machine = Machine("makine-a");
+
+        // Ilk acilis: lisans yok -> aktivasyon ekrani acilir.
+        Assert.Equal(LicenseStatus.NotActivated, CreateService(store, machine).Check().Status);
+
+        // Kullanici anahtari BIR KEZ girer.
+        await CreateService(store, machine).ActivateAsync(
+            OfflineLicenseKey.Create(DateTimeOffset.UtcNow, Secret));
+
+        // Sonraki her acilis: aktivasyon ekrani ACILMAZ.
+        for (var launch = 2; launch <= 10; launch++)
+            Assert.Equal(LicenseStatus.Valid, CreateService(store, machine).Check().Status);
+    }
+
+    /// <summary>
+    /// Aktivasyon lisansi DISKE yazmalidir: yalnizca bellekte tutulsaydi program
+    /// kapaninca kaybolur ve her acilista anahtar sorulurdu.
+    /// </summary>
+    [Fact]
+    public async Task AktivasyonLisansiDiskeYazar()
+    {
+        var store = new MemoryStore();
+        await CreateService(store, Machine("makine-a")).ActivateAsync(
+            OfflineLicenseKey.Create(DateTimeOffset.UtcNow, Secret));
+
+        Assert.NotNull(store.Saved);
+        Assert.False(string.IsNullOrWhiteSpace(store.Saved!.Signature));
+    }
+
     /// <summary>
     /// ASIL KOPYALAMA KORUMASI: lisans dosyasi baska bilgisayara kopyalansa bile
     /// calismamalidir. Sunucusuz modda uzaktan iptal olmadigi icin bu koruma daha

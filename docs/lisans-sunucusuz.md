@@ -118,11 +118,19 @@ CSV'ye **ekleyerek** yazar; satış kaydınız birikerek gider.
 
 ## 4. Müşteri ne yapar
 
+**Yalnızca ilk kurulumda:**
+
 1. Kurulumu çalıştırır
 2. Programı açar, lisans ekranında anahtarı girer
 3. **Etkinleştir**
 
-İnternet gerekmez. Program lisansı üretip o bilgisayara bağlar.
+İnternet gerekmez. Program lisansı üretip o bilgisayara bağlar ve diske kaydeder.
+
+**Sonraki her açılışta:** lisans ekranı **gelmez**. Kullanıcı doğrudan
+**kullanıcı adı ve şifresini** girip programa girer — tıpkı her gün olduğu gibi.
+
+> Lisans anahtarı **bir kez** girilir, sonra unutulur. Her açılışta sorulan şey
+> kullanıcı adı/şifredir. (`AnahtarYalnizcaBirKezGirilir` testiyle kilitli.)
 
 ---
 
