@@ -20,7 +20,7 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
             .ToListAsync(cancellationToken);
-        return new ReportResult(items, query.Page, query.PageSize, summary);
+        return new ReportResult(MaskSensitive(items, query.IncludeSensitive), query.Page, query.PageSize, summary);
     }
 
     public async IAsyncEnumerable<IReadOnlyList<ReportRow>> StreamBatchesAsync(
@@ -35,12 +35,37 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
         {
             batch.Add(row);
             if (batch.Count != batchSize) continue;
-            yield return batch;
+            yield return MaskSensitive(batch, query.IncludeSensitive);
             batch = new List<ReportRow>(batchSize);
         }
 
-        if (batch.Count > 0) yield return batch;
+        if (batch.Count > 0) yield return MaskSensitive(batch, query.IncludeSensitive);
     }
+
+    /// <summary>
+    /// Veli telefonu, hassas veri iznine baglidir.
+    ///
+    /// Maskeleme SORGUDA degil BURADA yapilir: EF bu ifadeyi SQL'e ceviremez. Ve iki
+    /// cikis noktasinin (ekran + disa aktarma) IKISINDE birden uygulanir -- yalnizca
+    /// birine uygulanirsa izin kapisi acik kalir.
+    ///
+    /// Neden null degil de maskeleme: /api/students ucu ayni veriyi son dort hane acik
+    /// gosterir. Ayni kullanici ayni veriyi iki ucta FARKLI gormemelidir; ayrica son dort
+    /// hane, personelin "dogru veliyi mi ariyorum" sorusunu yanitlamaya yeter.
+    /// </summary>
+    private static List<ReportRow> MaskSensitive(List<ReportRow> rows, bool includeSensitive)
+    {
+        if (includeSensitive) return rows;
+        for (var index = 0; index < rows.Count; index++)
+        {
+            var phone = rows[index].ParentPhone;
+            if (!string.IsNullOrEmpty(phone)) rows[index] = rows[index] with { ParentPhone = MaskPhone(phone) };
+        }
+        return rows;
+    }
+
+    private static string MaskPhone(string value) =>
+        value.Length <= 4 ? new string('•', value.Length) : new string('•', value.Length - 4) + value[^4..];
 
     /// <summary>
     /// Filtrelenmis satir kaynagi. Gunluk Kasa'da filtreler (tarih, ogrenci, sinif, durum...)

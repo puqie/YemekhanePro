@@ -15,6 +15,22 @@ namespace Yemekhane.UnitTests.Reports;
 /// </summary>
 public sealed class StudentListReportTests
 {
+    /// <summary>
+    /// Hassas izinle ayni sorgu veli telefonunu TAM verir: maskeleme izne baglidir,
+    /// koru koru degil. Aksi halde okul yoneticisi veliyi arayamazdi.
+    /// </summary>
+    [Fact]
+    public async Task HassasIzinleVeliTelefonuTamGelir()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+
+        var result = await fixture.Service.QueryAsync(
+            ReportType.StudentList, new ReportQuery(IncludeSensitive: true));
+
+        var ada = result.Items.Single(x => x.StudentNo == "5001");
+        Assert.Equal("05321234567", ada.ParentPhone);
+    }
+
     [Fact]
     public async Task ListsEveryLivingStudentOrderedByClassSectionAndNumber()
     {
@@ -32,7 +48,11 @@ public sealed class StudentListReportTests
         var ada = result.Items.Single(x => x.StudentNo == "5001");
         Assert.Equal("6A", ada.Class); Assert.Equal("B", ada.Section);
         Assert.Equal("8350001", ada.CardNo);
-        Assert.Equal("YILMAZ VELİSİ", ada.ParentName); Assert.Equal("05321234567", ada.ParentPhone);
+        Assert.Equal("YILMAZ VELİSİ", ada.ParentName);
+        // IncludeSensitive=false (varsayilan): veli telefonu MASKELI gelir. /api/students ucu
+        // ayni veriyi ayni sekilde maskeler; iki ucun farkli davranmasi, reports.export izninin
+        // students.sensitive.read kapisini atlamasi demekti.
+        Assert.Equal("•••••••4567", ada.ParentPhone);
         Assert.Equal("ACTIVE", ada.Status); Assert.Equal(new DateOnly(2025, 9, 15), ada.ReportDate);
 
         var demir = result.Items.Single(x => x.StudentNo == "5003");
