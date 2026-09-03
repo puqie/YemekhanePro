@@ -51,17 +51,134 @@ public partial class MainWindow : Window
         Say("Anahtar çifti üretildi. Açık anahtarı kopyalayıp kurulumu üretin.");
     }
 
-    private void CopyPublicKeyClick(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Kurulum exesini uretir. Acik anahtar zaten burada oldugu icin kullaniciya
+    /// sorulmaz; kopyalama, ortam degiskeni ve PowerShell adimlarinin tamami kalkti.
+    /// </summary>
+    private async void BuildInstallerClick(object sender, RoutedEventArgs e)
     {
-        if (keyPair is null) return;
+        if (keyPair is null)
+        {
+            Warn("Önce anahtar çifti üretin.");
+            return;
+        }
+
+        var version = VersionBox.Text.Trim();
+        if (!InstallerBuilder.IsValidVersion(version))
+        {
+            Warn("Sürüm 1.3.0 gibi üç parçalı olmalı.");
+            VersionBox.Focus();
+            return;
+        }
+
+        // Arac yayinlanmis klasorden calisiyorsa depo yoktur ve uretim yapilamaz.
+        // Sessizce denemek yerine ACIKCA soylenir.
+        var repository = InstallerBuilder.FindRepositoryRoot(AppContext.BaseDirectory);
+        if (repository is null)
+        {
+            Warn("Kaynak klasörü bulunamadı. Kurulum üretimi için bu aracı proje klasöründen çalıştırın.");
+            return;
+        }
+
+        var target = InstallerBuilder.OutputPathFor(repository, version);
+        if (File.Exists(target))
+        {
+            // Ayni surumu yeniden uretmek eskisini SILER. Musteriye gonderilmis bir
+            // surumu farkinda olmadan degistirmek, hangi kurulumun nerede oldugunu
+            // izlenemez kilardi.
+            var answer = MessageBox.Show(
+                $"{version} sürümü zaten üretilmiş.{Environment.NewLine}{Environment.NewLine}" +
+                "Yeniden üretilirse eski dosya silinir. Devam edilsin mi?",
+                "Sürüm zaten var", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes) return;
+        }
+
+        SetBuilding(true);
+        Say($"{version} üretiliyor… Birkaç dakika sürer, pencereyi kapatmayın.");
+
+        // ACIK anahtar gecirilir; ozel anahtar bu bilgisayardan ASLA cikmaz.
+        var result = await InstallerBuilder.BuildAsync(repository, version, keyPair.PublicKey, CancellationToken.None);
+
+        SetBuilding(false);
+
+        if (!result.Succeeded)
+        {
+            Warn("Kurulum üretilemedi. Ayrıntı için açılan pencereye bakın.");
+            ShowBuildLog(result.Log);
+            return;
+        }
+
+        Say($"Kurulum hazır: {Path.GetFileName(result.OutputPath!)} — okula bu tek dosyayı gönderin.");
+        Reveal(result.OutputPath!);
+    }
+
+    /// <summary>Uretim sirasinda dugmeleri kilitler: iki uretim ayni klasore yazardi.</summary>
+    private void SetBuilding(bool building)
+    {
+        BuildInstallerButton.IsEnabled = !building;
+        BuildInstallerButton.Content = building ? "Üretiliyor…" : "Kurulum exesi üret";
+        CreateKeyPairButton.IsEnabled = !building;
+        VersionBox.IsEnabled = !building;
+        Cursor = building ? System.Windows.Input.Cursors.Wait : null;
+    }
+
+    /// <summary>Uretim gunlugunu ayri bir pencerede gosterir; hatalar uzundur.</summary>
+    private void ShowBuildLog(string log)
+    {
+        var window = new Window
+        {
+            Title = "Kurulum üretim günlüğü",
+            Width = 900,
+            Height = 560,
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new System.Windows.Controls.TextBox
+            {
+                Text = log,
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.NoWrap,
+                VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto,
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                FontSize = 11,
+            },
+        };
+        window.ShowDialog();
+    }
+
+    /// <summary>Dosyayi Gezgin'de secili olarak acar: kullanici aramak zorunda kalmaz.</summary>
+    private static void Reveal(string path)
+    {
         try
         {
-            Clipboard.SetText(keyPair.PublicKey);
-            Say("Açık anahtar kopyalandı. build-installer.ps1 -LicensingPublicKey ile kullanın.");
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+        }
+        // Gezgin acilamamasi uretimi gecersiz kilmaz; dosya yerinde duruyor.
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or IOException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// Makine kodunu panodan alir. Kod her zaman kopyalanarak gelir; elle
+    /// yapistirmak yerine tek dugme, kodun bir kismini secip yapistirma hatasini
+    /// da onler.
+    /// </summary>
+    private void PasteCodeClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var text = Clipboard.GetText();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                Warn("Pano boş. Okuldan gelen makine kodunu kopyalayıp yeniden deneyin.");
+                return;
+            }
+            MachineCodeBox.Text = text.Trim();
         }
         catch (Exception exception) when (exception is System.Runtime.InteropServices.COMException)
         {
-            Warn("Panoya kopyalanamadı. Metni elle seçip kopyalayabilirsiniz.");
+            Warn("Pano okunamadı. Kodu kutuya elle yapıştırabilirsiniz.");
         }
     }
 
@@ -77,7 +194,63 @@ public partial class MainWindow : Window
             ? "Özel anahtar bu bilgisayarda şifreli saklanıyor ve hiçbir yere gönderilmez."
             : "Önce bir anahtar çifti üretin. Özel anahtar burada kalır; kuruluma yalnızca açık anahtar girer.";
         if (has) PublicKeyBox.Text = keyPair!.PublicKey;
+        // Anahtar cifti UYGUN bir imzalama yoludur: cift uretildiginde "Anahtar uret"
+        // dugmesi de acilmalidir. Yenilenmedigi icin cift uretmis satici, HMAC sirri
+        // da girmedigi surece dugmeyi gri goruyordu.
+        GenerateButton.IsEnabled = has || !string.IsNullOrWhiteSpace(secret);
+        RefreshBuildHint();
         RefreshFileButton();
+    }
+
+    /// <summary>
+    /// Kurulum uretiminin bu bilgisayarda mumkun olup olmadigini soyler. Arac
+    /// yayinlanmis klasorden calisiyorsa kaynak agaci yoktur; kullanici dugmeye
+    /// basip bekledikten sonra ogrenmemelidir.
+    /// </summary>
+    private void RefreshBuildHint()
+    {
+        if (keyPair is null) return;
+
+        var repository = InstallerBuilder.FindRepositoryRoot(AppContext.BaseDirectory);
+        if (repository is null)
+        {
+            BuildInstallerButton.IsEnabled = false;
+            BuildHint.Text = "Kurulum üretimi için aracı proje klasöründen çalıştırın.";
+            return;
+        }
+
+        BuildInstallerButton.IsEnabled = true;
+        BuildHint.Text = string.Empty;
+        if (string.IsNullOrWhiteSpace(VersionBox.Text)) VersionBox.Text = NextVersion(repository);
+    }
+
+    /// <summary>
+    /// Onerilen sonraki surum: uretilmis en yuksek surumun yama hanesi bir artirilir.
+    /// Kullanici surum numarasi uydurmak zorunda kalmaz ve ayni surumu ikinci kez
+    /// uretip oncekini silmesi de onlenir.
+    /// </summary>
+    private static string NextVersion(string repository)
+    {
+        var directory = Path.Combine(repository, "artifacts", "installer");
+        var highest = new Version(1, 0, 0);
+        var found = false;
+
+        if (Directory.Exists(directory))
+        {
+            foreach (var file in Directory.EnumerateFiles(directory, "YemekhaneProKurulum-*.exe"))
+            {
+                var text = Path.GetFileNameWithoutExtension(file)["YemekhaneProKurulum-".Length..];
+                if (Version.TryParse(text, out var parsed) && parsed > highest)
+                {
+                    highest = parsed;
+                    found = true;
+                }
+            }
+        }
+
+        return found
+            ? $"{highest.Major}.{highest.Minor}.{highest.Build + 1}"
+            : "1.0.0";
     }
 
     /// <summary>
@@ -208,20 +381,18 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Makine koduna kilitli lisans dosyasi uretir ve kaydeder.
+    /// Makine koduna kilitli lisans dosyasi uretir ve Masaustu'ne kaydeder.
+    ///
+    /// Kaydetme penceresi ACILMAZ: dosyanin nereye gittigi hep aynidir ve
+    /// kullanicidan klasor secmesini istemek, gonderilecek dosyayi sonradan
+    /// aramak zorunda birakiyordu.
     /// </summary>
     private void MakeFileClick(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(secret))
-        {
-            Warn("Önce imza sırrını kaydedin.");
-            return;
-        }
-
         var hashes = MachineCode.Parse(MachineCodeBox.Text);
         if (hashes is null)
         {
-            Warn("Makine kodu geçersiz.");
+            Warn("Makine kodu geçersiz. Okuldan kodun TAMAMINI yeniden göndermesini isteyin.");
             return;
         }
 
@@ -233,45 +404,25 @@ public partial class MainWindow : Window
             return;
         }
 
-        var machineId = new HardwareFingerprint(hashes).MachineId;
-        var dialog = new Microsoft.Win32.SaveFileDialog
+        // ON KOSUL LicenseFileIssuer'da: anahtar cifti VEYA HMAC sirri yeter.
+        // Burada yalnizca sir sorulmasi, asimetrik modu tamamen calismaz kiliyordu.
+        var issued = LicenseFileIssuer.Issue(hashes, customer, keyPair, secret, DateTimeOffset.Now);
+        if (issued is null)
         {
-            Title = "Lisans dosyasını kaydet",
-            Filter = "Lisans dosyası (*.lic)|*.lic",
-            FileName = LicenseFile.SuggestFileName(customer, machineId)
-        };
-        if (dialog.ShowDialog(this) != true) return;
+            Warn("Önce anahtar çifti üretin.");
+            return;
+        }
 
-        // Anahtar da uretilir: dosyanin icinde tasinir ve satis kaydinda gorunur,
-        // boylece hangi lisansin kime gittigi izlenebilir kalir.
-        //
-        // IMZALAMA: anahtar cifti varsa OZEL ANAHTARLA imzalanir -- musterinin
-        // kurulumundaki acik anahtar bunu dogrular ama benzerini URETEMEZ. Cift yoksa
-        // eski HMAC yoluna dusulur (sunucu modu ve daha once satilmis lisanslar icin).
-        var issuedAt = DateTimeOffset.Now;
-        StoredLicense license;
-        string key;
-        if (keyPair is not null)
-        {
-            key = OfflineLicenseKey.Create(issuedAt, keyPair.PrivateKey);
-            var payload = LicenseSignature.BuildPayload(key, hashes, issuedAt, null);
-            license = new StoredLicense(key, customer, "Standart", hashes, issuedAt,
-                ExpiresAt: null, LastValidatedAt: issuedAt,
-                LicenseKeyPairFactory.Sign(payload, keyPair.PrivateKey));
-        }
-        else
-        {
-            key = OfflineLicenseKey.Create(issuedAt, secret!);
-            license = LicenseIssuer.Issue(key, customer, "Standart", hashes,
-                issuedAt, expiresAt: null, secret!);
-        }
+        var path = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            issued.SuggestedFileName);
 
         try
         {
-            File.WriteAllText(dialog.FileName, LicenseFile.Write(license));
-            SalesLog.Append(new SaleRecord(key, customer,
-                string.IsNullOrWhiteSpace(NoteBox.Text) ? $"dosya · {machineId}"
-                    : $"{NoteBox.Text.Trim()} · dosya · {machineId}",
+            File.WriteAllText(path, issued.Content);
+            SalesLog.Append(new SaleRecord(issued.Key, customer,
+                string.IsNullOrWhiteSpace(NoteBox.Text) ? $"dosya · {issued.MachineId}"
+                    : $"{NoteBox.Text.Trim()} · dosya · {issued.MachineId}",
                 DateTimeOffset.Now));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -283,7 +434,8 @@ public partial class MainWindow : Window
         MachineCodeBox.Clear();
         NoteBox.Clear();
         ReloadHistory();
-        Say($"Lisans dosyası kaydedildi: {Path.GetFileName(dialog.FileName)} — yalnızca {machineId} kimlikli bilgisayarda çalışır.");
+        Say($"Masaüstüne kaydedildi: {issued.SuggestedFileName} — okula bu dosyayı gönderin.");
+        Reveal(path);
     }
 
     private void CopyClick(object sender, RoutedEventArgs e)

@@ -1,145 +1,110 @@
-# Okula Kurulum — Adım Adım
+# YemekhanePro — Kurulum Adımları
 
-Bir okula sıfırdan kurulum yaparken izleyeceğiniz sıra.
-
----
-
-## ÖNCE: Kurulum dosyasını üretin (bir kez)
-
-> Bunu her okul için tekrar yapmanıza gerek yok. Bir kez üretip aynı `.exe`
-> dosyasını bütün okullara kurarsınız.
-
-### 1. İmza sırrınızı üretin ve saklayın
-
-```powershell
-[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
-```
-
-Çıkan metni **parola yöneticinize kaydedin**.
-
-> **Kaybederseniz sattığınız tüm lisanslar doğrulanamaz hale gelir.** Yeniden
-> üretemezsiniz; her müşteriye yeni kurulum + yeni lisans göndermeniz gerekir.
-
-### 2. Kurulum dosyasını üretin
-
-```powershell
-$env:YEMEKHANE_LICENSING_SECRET = '<1. adımdaki sır>'
-.\scripts\build-installer.ps1 -Version 1.2.0
-```
-
-Ekranda `Lisans modu: SUNUCUSUZ (aktivasyon adresi boş)` yazmalı.
-
-Çıktı: `artifacts\installer\YemekhanePro-Setup-1.2.0.exe` (~101 MB)
-
-Klasörde **yalnızca bu dosya** kalır — ara ürünler doğrulamadan sonra temizlenir.
-Müşteriye vereceğiniz tek dosya budur.
-
-### 3. Lisans Üretici'yi kurun (kendi bilgisayarınıza)
-
-```powershell
-dotnet publish src\Yemekhane.KeyTool -c Release -o C:\LisansUretici
-```
-
-`C:\LisansUretici\YemekhaneLisansUretici.exe` → masaüstüne kısayol yapın.
-
-İlk açılışta imza sırrını **bir kez** girip Kaydet deyin.
-
-> Bu programı **müşteriye vermeyin.** İçinde imza sırrı var.
+İki taraf var: **siz (satıcı)** ve **okul**. Sizin tarafınız bir kere yapılır.
 
 ---
 
-## OKULA KURULUM
+## BÖLÜM A — Sizde (tek sefer)
 
-### 4. Programı kurun
+### A1. Lisans Üretici'yi açın
 
-`YemekhanePro-Setup-1.2.0.exe` → çift tıkla → **Evet** (yönetici) → İleri → Kur → Son
+```powershell
+dotnet run --project src\Yemekhane.KeyTool
+```
 
-> Kutuda **tek dosya** vardır: `YemekhanePro-Setup-1.2.0.exe`. Kurulumun ihtiyaç
-> duyduğu her şey bu dosyanın içindedir; başka bir şey göndermenize gerek yok.
+### A2. "Anahtar çifti üret" düğmesine basın
 
-Masaüstünde ve Başlat menüsünde simge oluşur.
+Bir kez basılır, ömür boyu aynı çift kullanılır.
 
-### 5. Lisansı verin
+- **Özel anahtar** bu bilgisayarda şifreli saklanır, ekranda hiç görünmez
+- **Açık anahtar** kurulumlara otomatik gömülür — kopyalamanız gerekmez
 
-Programı ilk açtığınızda **lisans ekranı** gelir. İki yolunuz var:
+> **Dikkat:** Sonradan "Yeni çift üret" derseniz daha önce sattığınız **tüm lisanslar geçersiz olur**. Program bunu sorar.
+>
+> Özel anahtar yalnızca **sizin Windows hesabınızda** çözülür. Bilgisayar değiştirirseniz yeni çift üretip yeni kurulum dağıtmanız gerekir.
 
-#### Yol A — Anahtar (hızlı, güvendiğiniz okul)
+### A3. "Kurulum exesi üret"
 
-1. Lisans Üretici'yi açın
-2. Okul adını yazın → **Anahtar üret**
-3. **Kopyala** → okula gönderin
-4. Okul anahtarı girer → **Etkinleştir**
+Sürüm kutusu kendiliğinden dolu gelir (bir önceki sürümden bir sonrası). Düğmeye basın, birkaç dakika bekleyin.
 
-> Anahtar **tekrar kullanılabilir**: aynı anahtarla ikinci bir bilgisayar da
-> lisanslanabilir. Kopyalanmasını istemiyorsanız Yol B'yi kullanın.
+Bittiğinde Gezgin açılır ve dosya seçili gelir:
 
-#### Yol B — Lisans dosyası (kopyalanamaz)
+```
+artifacts\installer\YemekhaneProKurulum-1.0.0.exe
+```
 
-1. **Okul**, lisans ekranında **"Makine kodunu kopyala"** der, kodu size yollar
-2. **Siz**, Lisans Üretici'de kodu yapıştırırsınız
-   - Araç **Bilgisayar kimliği: XXXXXXXXXXXX** gösterir
-   - Bu, okulun ekranında yazan kimlikle **aynı olmalı** — farklıysa yanlış kod gelmiş
-3. Okul adını yazın → **Dosya üret** → kaydedin
-4. Dosyayı okula yollayın
-5. Okul **"Lisans dosyası yükle (.lic)"** ile seçer
+**Okula göndereceğiniz tek dosya budur.** İçinde .NET, API, masaüstü, veritabanı — hepsi var.
 
-> Dosya **yalnızca o bilgisayarda** çalışır. Kopyalasalar, USB'ye atsalar bile
-> başka makinede geçersizdir.
+---
 
-### 6. İlk giriş
+## BÖLÜM B — Okulun bilgisayarında
 
-Lisans geçilince **giriş ekranı** gelir:
+### B1. Kurulumu çalıştırın
 
-> *İlk yönetici için tek kullanımlık güvenli parola oluşturuldu ve otomatik dolduruldu.*
+Exe'ye çift tıklayın → İleri → Kur. Yönetici izni ister.
 
-**Kullanıcı adı ve parola kutuları kendiliğinden doludur.** Sadece **Giriş**'e basın.
-
-Sonra: **Ayarlar → Kullanıcılar** → kendi parolanızı belirleyin.
-
-### 7. Okulun bilgilerini girin
-
-| Ekran | Ne yapılır |
+| Ne | Nerede |
 |---|---|
-| **Ayarlar → Genel** | Okul adı (raporların başlığına yazılır) |
-| **Tanımlar → Sınıflar / Şubeler** | Sınıf ve şubeler |
-| **Tanımlar → Öğün türleri** | Öğle, kahvaltı… ve **ücretleri** |
-| **Öğrenciler** | Tek tek ekleyin veya **Öğrenci Aktar** ile Excel'den toplu alın |
-| **Cihazlar** | Turnike / kart okuyucu varsa tanımlayın |
+| Program | `C:\Program Files\YemekhanePro\` |
+| Veriler | `C:\ProgramData\YemekhanePro\` |
 
-### 8. Yedeklemeyi ayarlayın
+Veriler **programı kaldırsanız da silinmez** — güncelleme yapabilirsiniz.
 
-**Ayarlar → Yedekleme** — okula bunu **mutlaka gösterin**.
+### B2. Makine kodunu alın
 
-Veriler şurada: `%LOCALAPPDATA%\YemekhanePro`
+İlk açılışta lisans ekranı gelir. **"Makine kodunu kopyala"** düğmesine basıp size gönderirler (WhatsApp, e-posta — fark etmez).
 
----
+Kod tek satırdır, şuna benzer:
 
-## Sonraki açılışlar
-
-Lisans ekranı **bir daha gelmez**. Okul her açılışta yalnızca
-**kullanıcı adı + şifre** girer.
+```
+YMK1.AalcQOjEaaHJcNGY3F8yjqqvVDTnzTddN5_ubuw...==.74B1B0
+```
 
 ---
 
-## Sorun çıkarsa
+### B3. Siz: lisans dosyasını üretin
 
-| Belirti | Çözüm |
-|---|---|
-| "Lisans anahtarı geçersiz" | Kurulumu ürettiğiniz sır ile anahtarı ürettiğiniz sır **aynı olmalı** |
-| "Bu lisans başka bir bilgisayara ait" | Dosya başka makine için üretilmiş. Yeni makine kodu isteyin |
-| "Kod okunamadı" | Makine kodu eksik kopyalanmış. **Tamamını** yeniden isteyin |
-| Giriş ekranı parolayı doldurmadı | Bilgisayarda eski veritabanı var. Önceki parolayla girin |
-| Windows SmartScreen uyarısı | Kurulum imzalı değil. **Ek bilgi → Yine de çalıştır** |
+Lisans Üretici'de:
 
-## Okul bilgisayar değiştirirse
+1. **Okul adını** yazın
+2. **"Panodan al"** — kodu kopyaladıysanız kutuya kendisi yapıştırır
+3. **"Lisans dosyası üret"**
 
-1. Eski bilgisayarda **Ayarlar → Yedekleme** → yedek alın
-2. Yeni bilgisayara kurun
-3. **Yeni makine kodu** isteyip yeni lisans dosyası üretin
-   (anahtar kullandıysanız aynı anahtar da çalışır)
-4. Yedeği geri yükleyin
+Dosya **Masaüstü'nüze** kaydedilir ve Gezgin'de seçili açılır. Okula gönderin.
+
+> Bu dosya **yalnızca o bilgisayarda** çalışır. Başka makineye kopyalasalar reddedilir.
+
+### B4. Okul: dosyayı yükler
+
+Aynı ekranda **"Lisans dosyası yükle (.lic)"** → dosyayı seçer → program açılır.
+
+> Etkinleştirme kutusuna bir şey **yazılmaz**. O kutu anahtar içindir; dosya ayrı düğmeyle yüklenir.
+
+### B5. İlk yönetici girişi
+
+Program ilk açılışta bir yönetici parolası **üretip ekranda gösterir**. **Not alın — bir daha gösterilmez.**
+
+Dolu bir veritabanında bu adım atlanır; ekran bunu söyler.
+
+---
+
+## Sonraki makineler
+
+B1–B4 her bilgisayar için tekrarlanır. Makine kodu her makinede farklıdır, dolayısıyla her biri kendi `.lic` dosyasını ister.
 
 ## Güncelleme
 
-Yeni sürümün `.exe`'sini doğrudan çalıştırın — eskisi otomatik kaldırılır,
-**veriler ve lisans yerinde kalır**. Kaldırmanıza gerek yok.
+A3'ü yeni sürüm numarasıyla tekrarlayın, okulda üstüne kurun. **Veri de lisans da yerinde kalır.**
+
+Açık anahtar aynı kaldığı için eski lisanslar çalışmaya devam eder.
+
+---
+
+## Sorun giderme
+
+| Belirti | Sebep | Çözüm |
+|---|---|---|
+| "Kurulum üretimi için aracı proje klasöründen çalıştırın" | Araç yayınlanmış klasörden açılmış | `dotnet run --project src\Yemekhane.KeyTool` |
+| "Kod okunamadı" | Kodun bir kısmı kopyalanmış | Okuldan **tamamını** yeniden istersiniz |
+| "Bu lisans başka bir bilgisayara ait" | Dosya yanlış makineye üretilmiş | Doğru makine koduyla yeniden üretin |
+| Kurulum üretimi başarısız | Ayrıntı açılan pencerede | Günlüğü okuyun; genelde açık dosya kilidi |

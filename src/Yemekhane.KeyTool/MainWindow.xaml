@@ -44,6 +44,8 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Face" Background="{TemplateBinding Background}" CornerRadius="3"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -60,9 +62,13 @@
             </Setter>
         </Style>
 
+        <!-- Beyaz zemin uzerinde beyaz dugme kenarliksiz kaldiginda dugme gibi
+             gorunmuyordu; kullanici tiklanabilir oldugunu anlayamazdi. -->
         <Style TargetType="Button" x:Key="Secondary" BasedOn="{StaticResource Primary}">
             <Setter Property="Background" Value="#FFFFFF"/>
             <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+            <Setter Property="BorderBrush" Value="#B9C0C8"/>
+            <Setter Property="BorderThickness" Value="1"/>
         </Style>
     </Window.Resources>
 
@@ -137,21 +143,34 @@
                     <Button Grid.Column="1" x:Name="CreateKeyPairButton" Style="{StaticResource Primary}"
                             Content="Anahtar çifti üret" VerticalAlignment="Center" Click="CreateKeyPairClick"/>
                 </Grid>
-                <StackPanel x:Name="PublicKeyArea" Visibility="Collapsed" Margin="0,12,0,0">
-                    <TextBlock Style="{StaticResource Label}"
-                               Text="Açık anahtar — kurulumu üretirken bunu kullanın (gizli değildir)"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" x:Name="PublicKeyBox" IsReadOnly="True" Height="46"
-                                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                 FontFamily="Consolas" FontSize="11"/>
-                        <Button Grid.Column="1" x:Name="CopyPublicKeyButton" Style="{StaticResource Secondary}"
-                                Content="Kopyala" Margin="12,0,0,0" VerticalAlignment="Stretch"
-                                Click="CopyPublicKeyClick"/>
-                    </Grid>
-                </StackPanel>
+                <!-- KURULUM URETIMI: acik anahtar zaten burada oldugu icin kullanicinin
+                     kopyalamasina, ortam degiskenine yazmasina ya da PowerShell acmasina
+                     gerek yok. Anahtari kopyalama adimi kaldirildi cunku yanlis/eksik
+                     anahtarla uretilen kurulum ancak musteri "calismiyor" dediginde
+                     ortaya cikan sessiz bir hataydi. -->
+                <Border x:Name="PublicKeyArea" Visibility="Collapsed" Margin="0,14,0,0"
+                        Background="#FAFBFC" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                        CornerRadius="3" Padding="14">
+                    <StackPanel>
+                        <TextBlock Text="Kurulum exesi" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
+                        <TextBlock Style="{StaticResource Label}" Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="Okula göndereceğiniz tek dosya. Açık anahtar otomatik gömülür; kopyalamanız gerekmez."/>
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Sürüm" VerticalAlignment="Center"
+                                       Foreground="{StaticResource Muted}" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1" x:Name="VersionBox" Width="90" TextAlignment="Center"/>
+                            <TextBlock Grid.Column="2" x:Name="BuildHint" Style="{StaticResource Label}"
+                                       VerticalAlignment="Center" Margin="12,0,12,0" TextWrapping="Wrap"/>
+                            <Button Grid.Column="3" x:Name="BuildInstallerButton" Style="{StaticResource Primary}"
+                                    Content="Kurulum exesi üret" Click="BuildInstallerClick"/>
+                        </Grid>
+                        <TextBlock x:Name="PublicKeyBox" Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
 
@@ -194,7 +213,7 @@
                 <TextBlock Text="Bu bilgisayara özel lisans dosyası" FontWeight="SemiBold"
                            Foreground="{StaticResource Ink}" Margin="0,0,0,3"/>
                 <TextBlock Style="{StaticResource Label}" TextWrapping="Wrap"
-                           Text="Müşteri lisans ekranındaki &quot;Makine kodunu kopyala&quot; ile size bir kod yollar. Üretilen dosya yalnızca o bilgisayarda çalışır; kopyalansa bile başka makinede geçersizdir."/>
+                           Text="Okuldan gelen makine kodunu kopyalayın, aşağıdaki düğmeye basın. Dosya Masaüstü&#39;ne kaydedilir ve yalnızca o bilgisayarda çalışır."/>
                 <Grid Margin="0,8,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
@@ -203,9 +222,16 @@
                              VerticalContentAlignment="Top" AcceptsReturn="True"
                              VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11"
                              TextChanged="MachineCodeChanged"/>
-                    <Button Grid.Column="1" x:Name="MakeFileButton" Style="{StaticResource Primary}"
-                            Content="Dosya üret" Margin="12,0,0,0" VerticalAlignment="Stretch"
-                            IsEnabled="False" Click="MakeFileClick"/>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                        <!-- PANODAN AL: kod her zaman panoya kopyalanarak gelir (WhatsApp,
+                             e-posta). Elle yapistirmak yerine tek dugme, kodun yarisini
+                             secip yapistirma hatasini da ortadan kaldirir. -->
+                        <Button x:Name="PasteCodeButton" Style="{StaticResource Secondary}"
+                                Content="Panodan al" Padding="14,7" Click="PasteCodeClick"/>
+                        <Button x:Name="MakeFileButton" Style="{StaticResource Primary}"
+                                Content="Lisans dosyası üret" Margin="0,6,0,0" Padding="14,7"
+                                IsEnabled="False" Click="MakeFileClick"/>
+                    </StackPanel>
                 </Grid>
                 <TextBlock x:Name="MachineCodeHint" Style="{StaticResource Label}" Margin="0,6,0,0" TextWrapping="Wrap"/>
             </StackPanel>

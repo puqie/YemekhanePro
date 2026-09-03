@@ -23,18 +23,26 @@ anahtar doğrulaması ve makineye bağlama tamamen müşterinin bilgisayarında 
 
 ## Nasıl çalışır
 
-Lisans anahtarının **son bloğu imzadır** — imza sırrınızla hesaplanır:
+Lisanslar **özel anahtarınızla imzalanır**, kurulumdaki **açık anahtarla doğrulanır**.
+İki anahtar farklıdır: açık anahtar imzayı kontrol eder ama benzerini **üretemez**.
 
 ```
-YMK-2026-HUG8-CG6C-CZ2C
-                  ^^^^ imza
+  SİZDE            →  imzalar  →   .lic dosyası
+  özel anahtar                          ↓
+                                   OKULDA
+  açık anahtar     →  doğrular  →  (üretemez)
 ```
 
-Program aynı sırla bu imzayı doğrular. Sırrı bilmeyen geçerli anahtar üretemez,
-dolayısıyla "bu anahtarı satıcı verdi mi" sorusu sunucu olmadan yanıtlanır.
+Müşteri kurulum klasörünü açıp açık anahtarı okusa bile kendine lisans yazamaz.
 
-Anahtar girildiğinde program lisansı **kendisi üretir** ve o bilgisayarın donanımına
-bağlar. Lisans dosyası başka bilgisayara kopyalansa çalışmaz.
+> **Neden simetrik (HMAC) değil:** Orada aynı sır hem imzalar hem doğrular,
+> dolayısıyla sırrın müşterinin bilgisayarında bulunması zorunluydu. Ölçüldü:
+> `appsettings.json` açılıp sır okunabiliyor ve sınırsız geçerli lisans
+> üretilebiliyordu. Eski yöntem yalnızca sunucu modu ve daha önce satılmış
+> lisanslar için korunuyor.
+
+Lisans ayrıca o bilgisayarın **donanımına bağlanır**; dosya kopyalansa başka
+makinede çalışmaz.
 
 ## Ne kazanıyorsunuz, ne kaybediyorsunuz
 
@@ -57,54 +65,62 @@ bağlar. Lisans dosyası başka bilgisayara kopyalansa çalışmaz.
 
 ---
 
-## 1. İmza sırrınızı üretin (bir kez)
+## 1. Lisans Üretici'yi açın
 
 ```powershell
-[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
+dotnet run --project src\Yemekhane.KeyTool
 ```
 
-Parola yöneticinizde saklayın. **Kaybederseniz sattığınız tüm lisanslar
-doğrulanamaz hale gelir.**
+## 2. "Anahtar çifti üret" (bir kez)
 
-## 2. Kurulum dosyasını üretin
+Bu, sunucusuz modun kalbi. **Asimetrik** bir çift üretilir:
 
-Aktivasyon adresini **boş bırakın** — sunucusuz modu bu seçer:
+| Anahtar | Nerede durur | Ne yapar |
+|---|---|---|
+| **Özel** | Yalnızca bu bilgisayarda, şifreli | Lisans **imzalar** |
+| **Açık** | Her kuruluma gömülür | Lisans **doğrular** — üretemez |
 
-```powershell
-$env:YEMEKHANE_LICENSING_SECRET = '<imza sırrı>'
-.\scripts\build-installer.ps1 -Version 1.1.0
-```
+Müşteri kurulum klasörünü açıp açık anahtarı okusa bile kendine lisans **yazamaz**.
+HMAC (simetrik) yöntemde yazabiliyordu; bu yüzden bırakıldı.
 
-Betik ekrana `Lisans modu: SUNUCUSUZ` yazar. Çıktı:
-`artifacts\installer\YemekhanePro-Setup-1.1.0.exe`
+> **Kaybederseniz** sattığınız tüm lisanslar doğrulanamaz hale gelir. Özel anahtar
+> yalnızca sizin Windows hesabınızda çözülür.
 
-## 3. Anahtar üretin ve satın
+## 3. "Kurulum exesi üret"
 
-İki yol var. **Lisans Üretici** penceresi günlük kullanım için daha rahat.
+Sürüm kutusu kendiliğinden dolu gelir. Düğmeye basın; açık anahtar otomatik gömülür,
+kopyalamanız gerekmez. Birkaç dakika sürer.
 
-### Yol A — Lisans Üretici penceresi (önerilen)
+Çıktı: `artifacts\installer\YemekhaneProKurulum-<sürüm>.exe` — okula giden **tek dosya**.
 
-```powershell
-dotnet publish src\Yemekhane.KeyTool -c Release -o C:\LisansUretici
-```
+## 4. Satış: hangi yol?
 
-`C:\LisansUretici\YemekhaneLisansUretici.exe` dosyasını çift tıklayın.
-Masaüstüne kısayol koyabilirsiniz.
+| İhtiyaç | Yöntem |
+|---|---|
+| Belirli bir bilgisayara kilitle (önerilen) | **Lisans dosyası** — aşağıda |
+| Serbest anahtar, makine bağı yok | **Anahtar üret** düğmesi |
 
-İlk açılışta **imza sırrını bir kez** girip Kaydet'e basarsınız; sır bu bilgisayara
-Windows'un kendi şifrelemesiyle (DPAPI) kaydedilir, bir daha sormaz. Sonrasında her
-satışta yalnızca okul adını yazıp **Anahtar üret** demeniz yeter.
+### Makineye kilitli lisans dosyası
 
-- **Kopyala** düğmesi anahtarı panoya alır — WhatsApp'a yapıştırıp gönderirsiniz
-- Alt taraftaki **Satış geçmişi** kime ne sattığınızı tutar
-- **Klasörü aç** ile CSV'ye ulaşırsınız (Excel'de açılır)
+1. Okul, lisans ekranında **"Makine kodunu kopyala"** der ve size yollar
+2. Siz: okul adını yazın → **"Panodan al"** → **"Lisans dosyası üret"**
+3. Dosya Masaüstü'nüze düşer, okula gönderirsiniz
+4. Okul **"Lisans dosyası yükle (.lic)"** ile seçer
 
-> Bu programı **müşteriye vermeyin**. İçinde imza sırrı saklanır ve geçerli lisans
-> anahtarı üretebilir. Kurulum paketine de dahil edilmez.
+Dosya yalnızca o bilgisayarda çalışır; kopyalansa bile başka makinede reddedilir.
 
-### Yol B — Komut satırı
+### Serbest anahtar
 
-Toplu üretim veya betikten çağırmak için:
+Okul adını yazıp **Anahtar üret** deyin. **Kopyala** ile panoya alıp gönderirsiniz.
+Alt taraftaki **Satış geçmişi** kime ne sattığınızı tutar; **Klasörü aç** ile CSV'ye
+ulaşırsınız.
+
+> Lisans Üretici'yi **müşteriye vermeyin**. Özel anahtarı saklar ve geçerli lisans
+> üretebilir. Kurulum paketine dahil edilmez.
+
+### Komut satırından toplu üretim
+
+Betikten çağırmak için (eski HMAC yöntemi):
 
 ```powershell
 $env:YEMEKHANE_LICENSING_SECRET = '<AYNI imza sırrı>'
