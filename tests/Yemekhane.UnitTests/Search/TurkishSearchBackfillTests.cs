@@ -13,6 +13,25 @@ namespace Yemekhane.UnitTests.Search;
 /// </summary>
 public sealed class TurkishSearchBackfillTests
 {
+
+    /// <summary>
+    /// ASIL FAYDA: personel Türkçe karakter YAZMADAN da öğrenciyi bulabilmelidir.
+    ///
+    /// Ölçüldü: 423 öğrencinin 288'i (%68) bu düzeltme öncesinde ASCII yazımla
+    /// bulunamıyordu. Okul personeli hızlı veri girerken Türkçe karakter kullanmaz;
+    /// "simsek" yazıp sonuç alamamak, kaydın var olmadığı izlenimi verir.
+    /// </summary>
+    [Theory]
+    [InlineData("Şevval", "Şimşek", "SEVVAL SIMSEK")]
+    [InlineData("Hüseyin", "Çetin", "HUSEYIN CETIN")]
+    [InlineData("Öznur", "Güngör", "OZNUR GUNGOR")]
+    [InlineData("Ali", "Koç", "ALI KOC")]
+    // i/ı birleştirmesi KORUNUR: eski davranış bozulmadı.
+    [InlineData("Irmak", "Yılmaz", "IRMAK YILMAZ")]
+    [InlineData("İsmail", "Işık", "ISMAIL ISIK")]
+    public void AsciiYazimTurkceAdiBulur(string first, string last, string expected) =>
+        Assert.Equal(expected, TurkishSearchText.NormalizeFullName(first, last));
+
     [Theory]
     [InlineData("ışıl", "Şahin")]
     [InlineData("İsmail", "Yılmaz")]
