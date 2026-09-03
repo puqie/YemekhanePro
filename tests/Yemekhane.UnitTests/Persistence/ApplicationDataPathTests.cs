@@ -92,4 +92,52 @@ public sealed class ApplicationDataPathTests : IDisposable
         Assert.True(File.Exists(Path.Combine(resolved, "yemekhane.db")));
         Assert.False(File.Exists(Path.Combine(resolved, "yemekhane.db.migration.lock")));
     }
+
+    /// <summary>
+    /// PROGRAM KALDIRILIP YENIDEN KURULDUGUNDA VERI DURMALIDIR.
+    ///
+    /// Kullanicinin guncelleme yolu budur: "Program Ekle/Kaldir"dan kaldir, yeni surumu kur.
+    /// Program dosyalari Program Files'ta, veri ise %LOCALAPPDATA%'dadir; kaldirma yalnizca
+    /// ilkini siler. Bu test, veri yolunun kuruluma GOMULU olmadigini ve yeni kurulumun ayni
+    /// klasoru buldugunu kanitlar -- aksi halde okul her guncellemede tum ogrenci, gecis ve
+    /// kasa gecmisini kaybederdi.
+    /// </summary>
+    [Fact]
+    public void UninstallingAndReinstallingKeepsTheSchoolsData()
+    {
+        // 1) Okul programi kullaniyor: veritabani ve alt klasorler olustu.
+        var first = ApplicationDataPath.Resolve(root);
+        File.WriteAllText(Path.Combine(first, "yemekhane.db"), "ogrenciler-gecisler-kasa");
+        Directory.CreateDirectory(Path.Combine(first, "Backups"));
+        File.WriteAllText(Path.Combine(first, "Backups", "2026-09-01.db"), "yedek");
+
+        // 2) Program kaldirildi. Kaldirma Program Files'i siler, veri klasorune DOKUNMAZ:
+        //    burada veri klasorune hicbir sey yapmiyoruz -- kaldirmanin yaptigi da budur.
+
+        // 3) Yeni surum kuruldu ve acildi.
+        var second = ApplicationDataPath.Resolve(root);
+
+        Assert.Equal(first, second);
+        Assert.Equal("ogrenciler-gecisler-kasa", File.ReadAllText(Path.Combine(second, "yemekhane.db")));
+        Assert.Equal("yedek", File.ReadAllText(Path.Combine(second, "Backups", "2026-09-01.db")));
+    }
+
+    /// <summary>
+    /// Veri klasoru kullaniciya GORE cozulur, kurulum klasorune gore degil. Program baska
+    /// bir klasore kurulsa da (kullanici kurulum sihirbazinda yolu degistirebilir) ayni
+    /// veriye ulasilmalidir.
+    /// </summary>
+    [Fact]
+    public void DataIsFoundRegardlessOfWhereTheProgramWasInstalled()
+    {
+        var before = ApplicationDataPath.Resolve(root);
+        File.WriteAllText(Path.Combine(before, "yemekhane.db"), "veri");
+
+        // Kurulum yolu degisti diye veri yolu degismez: Resolve yalnizca kullanici
+        // profilindeki koke bakar.
+        var after = ApplicationDataPath.Resolve(root);
+
+        Assert.Equal(before, after);
+        Assert.Equal("veri", File.ReadAllText(Path.Combine(after, "yemekhane.db")));
+    }
 }

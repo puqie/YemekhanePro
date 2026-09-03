@@ -54,7 +54,17 @@ public class LiveSeed
 
         if (await db.Students.CountAsync() > 5) { Log("zaten dolu, atlandi"); return; }
 
-        var now = new DateTimeOffset(2026, 9, 2, 8, 0, 0, TimeSpan.FromHours(3));
+        // Tarih CIPASI BUGUNDUR. Onceki hali 2026-09-02'ye sabitlenmisti: yazildigi gun
+        // calisiyor, ertesi gun "Gunluk Takip" bugunu gosterirken tohumda bugune ait hic
+        // gecis olmadigi icin urun dogru calisirken testler dusuyordu.
+        // Random tohumu BILEREK sabit birakildi: onu bugune baglamak ogrenci/sinif
+        // dagilimini her kosuda degistirir ve sabit deger bekleyen yolculuklari kirar.
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        // Saat de GERCEK olmalidir. Sabit 08:00 kullanilsaydi, test gece yarisindan sonra
+        // kostugunda bugunun gecisleri GELECEKTE damgalanirdi; en yeniden eskiye sirali
+        // Gunluk Takip'in 100 satirlik ilk sayfasi bu gelecek kayitlarla dolar ve testin
+        // az once yaptigi gercek gecis goze gorunmez olurdu.
+        var now = DateTimeOffset.Now.ToOffset(TimeSpan.FromHours(3)).AddMinutes(-5);
         var rng = new Random(20260902);
 
         var classes = await db.Set<SchoolClass>().ToListAsync();
@@ -164,7 +174,8 @@ public class LiveSeed
         var activeStudents = students.Where(s => s.IsActive).ToList();
         for (var day = 0; day < 20; day++)
         {
-            var date = new DateOnly(2026, 9, 1).AddDays(day);
+            // Pencere bugunde BITER: son gun bugundur, boylece "bugun" ekranlari hep doludur.
+            var date = today.AddDays(day - 19);
             if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) continue;
             foreach (var s in activeStudents)
                 entitlements.Add(new MealEntitlement
@@ -218,7 +229,7 @@ public class LiveSeed
                     Decision = denied ? "DENY" : "ALLOW",
                     Reason = denied ? new[] { "Hakediş yok", "Kart pasif", "Öğün saati dışı" }[rng.Next(3)] : "OK",
                     Direction = "Entry", ReaderSource = "Device", OperationId = Guid.NewGuid(),
-                    Timestamp = new DateTimeOffset(date.Year, date.Month, date.Day, 11, rng.Next(0, 59), 0, TimeSpan.FromHours(3)),
+                    Timestamp = date,
                 });
             }
         }

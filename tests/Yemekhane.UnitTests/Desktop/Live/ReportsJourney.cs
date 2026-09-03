@@ -21,8 +21,12 @@ namespace Yemekhane.UnitTests.Desktop.Live;
 /// <summary>Canli yolculuklarin ortak bekleme / gecis yardimcilari.</summary>
 internal static class Journey
 {
-    public const string Today = "2026-09-02";
-    public static readonly DateTime TodayDate = new(2026, 9, 2);
+    // Tarih SABIT KODLANMAMALIDIR: onceki hali new(2026, 9, 2) idi ve yazildigi gunun
+    // ertesinde, urun dogru calisirken kirmiziya donuyordu ("Expected 2026-09-02,
+    // Actual 2026-09-03"). Ekranin "bugun" dedigi sey ile testin "bugun" dedigi sey
+    // ayni kaynaktan gelmelidir.
+    public static string Today => TodayDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    public static DateTime TodayDate => DateTime.Today;
 
     public static void Until(LiveUiHarness ui, Func<bool> condition, string what, int timeoutMs = 30000)
     {

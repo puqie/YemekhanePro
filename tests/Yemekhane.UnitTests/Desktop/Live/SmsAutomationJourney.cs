@@ -180,12 +180,17 @@ public class SmsAutomationJourney
             // Gecmiste kaynak filtresi + Turkce kaynak metni.
             ui.Navigate("sms"); smsTabs.SelectedIndex = 2; ui.Pump();
             sms.HistorySource = SmsSources.AutoEntitlement;
+            // Ogrenci filtresi de verilir: gecmis sayfa basina 50 kayit gosterir ve tohum
+            // verisi bugun icin YUZLERCE otomatik hak uyarisi uretir. Yalnizca kaynak
+            // filtresiyle aranan ogrenci ilk sayfanin disinda kalabilir -- gercek kullanici
+            // da 266 satiri gozle taramaz, ogrenciyi yazar.
+            sms.HistoryStudent = studentNo!;
             sms.RefreshHistoryCommand.Execute(null); ui.Delay(1500); ui.Pump();
             Assert.Contains(sms.History, h => h.StudentId == student.Id && h.Source == SmsSources.AutoEntitlement);
             texts = ui.FindAll<TextBlock>().Select(t => t.Text).ToList();
             Assert.Contains("Otomatik: hak uyarısı", texts);
             ui.Shot("otosms-08-gecmis-hak");
-            sms.HistorySource = "";
+            sms.HistorySource = ""; sms.HistoryStudent = "";
         }
         finally
         {

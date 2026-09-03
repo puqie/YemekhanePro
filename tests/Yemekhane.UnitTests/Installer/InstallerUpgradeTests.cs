@@ -154,6 +154,35 @@ public sealed class InstallerUpgradeTests
         Assert.NotEqual("5D383CAC-54F8-47FD-AF1A-605E02F9D229", (string?)package.Attribute("UpgradeCode"));
     }
 
+
+    /// <summary>
+    /// KALDIRMA OKULUN VERISINI SILMEMELIDIR.
+    ///
+    /// Kullanicinin guncelleme yolu "kaldir, yenisini kur"dur. Kaldirma veriyi de silseydi
+    /// her guncelleme tum ogrenci, gecis ve kasa gecmisini yok ederdi -- ve kullanici bunu
+    /// ancak yeni surumu acip BOMBOS bir sistem gorunce anlardi.
+    ///
+    /// Veri %LOCALAPPDATA%\YemekhanePro'dadir; kurulum yalnizca Program Files'a yazar.
+    /// Bu test, pakete kullanici veri klasorune dokunan bir kural EKLENMEDIGINI kilitler:
+    /// tek RemoveFolder Baslat menusu kisayolu icindir.
+    /// </summary>
+    [Fact]
+    public void UninstallNeverTouchesTheSchoolsDataFolder()
+    {
+        var package = LoadPackage();
+
+        // Kaldirmada silinen klasorler: yalnizca Baslat menusu klasoru olmalidir.
+        var removedFolders = package.Descendants(Wxs + "RemoveFolder")
+            .Select(x => (string?)x.Attribute("Id") ?? "")
+            .ToList();
+        Assert.Equal(["RemoveProgramMenuDir"], removedFolders);
+
+        // Veri klasorune isaret eden hicbir dizin/eylem bulunmamalidir.
+        var text = package.ToString();
+        foreach (var forbidden in new[] { "LocalAppDataFolder", "AppDataFolder", "RemoveFolderEx", "RemoveFile" })
+            Assert.DoesNotContain(forbidden, text, StringComparison.Ordinal);
+    }
+
     private static XDocument LoadPackage() =>
         XDocument.Load(Path.Combine(FindRoot(), "installer", "Package.wxs"));
 
