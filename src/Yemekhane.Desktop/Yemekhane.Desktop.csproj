@@ -53,6 +53,15 @@
                       Lines="$([System.IO.File]::ReadAllText('$(PublishDir)appsettings.json').Replace('&quot;SigningSecret&quot;: &quot;&quot;', '&quot;SigningSecret&quot;: &quot;$(LicensingSigningSecret)&quot;'))"
                       Overwrite="true"
                       Encoding="UTF-8" />
+
+    <!-- ACIK ANAHTAR: verilirse kuruluma gomulur ve HMAC sirri YERINE kullanilir.
+         Acik anahtar lisansi dogrular ama URETEMEZ; musteri kurulum klasorunu acip
+         okusa bile kendine lisans yazamaz. HMAC sirri okunsaydi yazabilirdi. -->
+    <WriteLinesToFile Condition="'$(LicensingPublicKey)' != ''"
+                      File="$(PublishDir)appsettings.json"
+                      Lines="$([System.IO.File]::ReadAllText('$(PublishDir)appsettings.json').Replace('&quot;PublicKey&quot;: &quot;&quot;', '&quot;PublicKey&quot;: &quot;$(LicensingPublicKey)&quot;'))"
+                      Overwrite="true"
+                      Encoding="UTF-8" />
   </Target>
 
 </Project>

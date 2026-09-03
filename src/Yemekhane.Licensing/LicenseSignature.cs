@@ -54,7 +54,24 @@ public static class LicenseSignature
         return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)));
     }
 
-    /// <summary>Lisans kaydinin imzasinin gecerli olup olmadigi.</summary>
+    /// <summary>
+    /// Lisansi ACIK ANAHTARLA dogrular (asimetrik).
+    ///
+    /// Tercih edilen yoldur: acik anahtar lisansi dogrular ama URETEMEZ, dolayisiyla
+    /// musterinin kurulumundan okunmasi bir ise yaramaz. HMAC yolunda ayni sir hem
+    /// imzalar hem dogrular ve musteri onu okuyup kendine lisans uretebilirdi.
+    /// </summary>
+    public static bool VerifyWithPublicKey(StoredLicense license, string publicKey)
+    {
+        ArgumentNullException.ThrowIfNull(license);
+        if (string.IsNullOrEmpty(publicKey) || string.IsNullOrEmpty(license.Signature)) return false;
+
+        return LicenseKeyPairFactory.Verify(
+            BuildPayload(license.LicenseKey, license.FingerprintHashes, license.IssuedAt, license.ExpiresAt),
+            license.Signature, publicKey);
+    }
+
+    /// <summary>Lisans kaydinin imzasinin gecerli olup olmadigi (HMAC).</summary>
     public static bool Verify(StoredLicense license, string secret)
     {
         ArgumentNullException.ThrowIfNull(license);

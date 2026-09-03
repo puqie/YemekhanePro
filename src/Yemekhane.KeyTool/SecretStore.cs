@@ -1,6 +1,7 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using Yemekhane.Licensing;
 
 namespace Yemekhane.KeyTool;
 
@@ -26,6 +27,47 @@ public static class SecretStore
     /// </summary>
     private static readonly byte[] Entropy =
         Encoding.UTF8.GetBytes("YemekhanePro.LisansUretici.v1");
+
+    /// <summary>
+    /// Ozel ve acik anahtari ayiran karakter. Base64 alfabesinde bulunmaz,
+    /// dolayisiyla anahtarlarin icinde gecemez ve ayirma her zaman dogru calisir.
+    /// </summary>
+    private const char Separator = '|';
+
+    /// <summary>
+    /// Asimetrik OZEL anahtarin dosyasi. Ayri tutulur: HMAC sirri ile karistirilirsa
+    /// yanlis olani kuruluma gomulur ve musteri kendine lisans uretebilir.
+    /// </summary>
+    private static string KeyPairPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "YemekhanePro", "lisans-anahtar-cifti.dat");
+
+    /// <summary>Kayitli anahtar ciftini okur; yoksa null.</summary>
+    public static LicenseKeyPair? LoadKeyPair()
+    {
+        try
+        {
+            if (!File.Exists(KeyPairPath)) return null;
+            var text = Encoding.UTF8.GetString(ProtectedData.Unprotect(
+                File.ReadAllBytes(KeyPairPath), Entropy, DataProtectionScope.CurrentUser));
+            var parts = text.Split(Separator);
+            return parts.Length == 2 ? new LicenseKeyPair(parts[0], parts[1]) : null;
+        }
+        catch (Exception exception) when (exception is CryptographicException or IOException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Anahtar ciftini sifreleyerek kaydeder.</summary>
+    public static void SaveKeyPair(LicenseKeyPair pair)
+    {
+        ArgumentNullException.ThrowIfNull(pair);
+        Directory.CreateDirectory(Path.GetDirectoryName(KeyPairPath)!);
+        File.WriteAllBytes(KeyPairPath, ProtectedData.Protect(
+            Encoding.UTF8.GetBytes(pair.PrivateKey + Separator + pair.PublicKey),
+            Entropy, DataProtectionScope.CurrentUser));
+    }
 
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

@@ -9,6 +9,12 @@ param(
     # Depoya YAZILMAZ: ortam degiskeninden okunur ya da parametreyle gecilir.
     [string]$LicensingSigningSecret = $env:YEMEKHANE_LICENSING_SECRET,
 
+    # Lisans ACIK anahtari. Verilirse imza dogrulamasi bununla yapilir ve HMAC sirri
+    # kuruluma GOMULMEZ. Acik anahtar lisansi dogrular ama URETEMEZ; musteri kurulum
+    # klasorunu acip okusa bile kendine lisans yazamaz -- HMAC sirri okunsaydi yazabilirdi.
+    # Ozel anahtar SATICIDA kalir ve buraya ASLA verilmez.
+    [string]$LicensingPublicKey = $env:YEMEKHANE_LICENSING_PUBLIC_KEY,
+
     # Aktivasyon sunucusunun adresi. BOS birakilirsa SUNUCUSUZ kurulum uretilir:
     # anahtar dogrulamasi ve donanim bagi yerel kalir, aylik sunucu maliyeti olmaz.
     # Feda edilen tek yetenek uzaktan iptaldir.
@@ -19,7 +25,24 @@ param(
     [switch]$SkipInstallCheck
 )
 
-if ([string]::IsNullOrWhiteSpace($LicensingSigningSecret)) {
+# Acik anahtar verildiyse HMAC sirri GEREKMEZ ve kuruluma konmaz.
+if (-not [string]::IsNullOrWhiteSpace($LicensingPublicKey)) {
+    # Ozel anahtarin yanlislikla buraya verilmesi felakettir: musteri onunla kendine
+    # sinirsiz lisans uretebilir. Acikca reddedilir.
+    Add-Type -AssemblyName System.Security
+    $isPublic = $true
+    try {
+        $ecdsa = [System.Security.Cryptography.ECDsa]::Create()
+        $bytesRead = 0
+        $ecdsa.ImportSubjectPublicKeyInfo([Convert]::FromBase64String($LicensingPublicKey), [ref]$bytesRead)
+        $ecdsa.Dispose()
+    } catch { $isPublic = $false }
+    if (-not $isPublic) {
+        throw 'LicensingPublicKey gecerli bir ACIK anahtar degil. Ozel anahtari kuruluma gomeyin.'
+    }
+    $LicensingSigningSecret = ''
+}
+elseif ([string]::IsNullOrWhiteSpace($LicensingSigningSecret)) {
     throw @'
 Lisans imza sirri verilmedi; kurulum uretilse bile uygulama acilista dururdu.
 
@@ -62,7 +85,7 @@ if (-not $SkipTests) {
 
 $publishCommon = @('-c', $configuration, '-r', 'win-x64', '--self-contained', 'true', '--no-restore',
     '-p:PublishTrimmed=false', '-p:PublishSingleFile=false', '-p:DebugType=None', '-p:DebugSymbols=false',
-    "-p:Version=$Version", "-p:LicensingSigningSecret=$LicensingSigningSecret", '-warnaserror')
+    "-p:Version=$Version", "-p:LicensingSigningSecret=$LicensingSigningSecret", "-p:LicensingPublicKey=$LicensingPublicKey", '-warnaserror')
 Invoke-DotNet (@('publish', (Join-Path $root 'src\Yemekhane.Desktop\Yemekhane.Desktop.csproj'), '-o', $desktopDir) + $publishCommon)
 Invoke-DotNet (@('publish', (Join-Path $root 'src\Yemekhane.Api\Yemekhane.Api.csproj'), '-o', $apiDir) + $publishCommon)
 

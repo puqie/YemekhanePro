@@ -12,14 +12,81 @@ public partial class MainWindow : Window
     private const int MaximumCount = 200;
 
     private string? secret;
+    private LicenseKeyPair? keyPair;
 
     public MainWindow()
     {
         InitializeComponent();
         secret = SecretStore.Load();
+        keyPair = SecretStore.LoadKeyPair();
+        ApplyKeyPairState();
         ApplySecretState();
         ReloadHistory();
     }
+
+    /// <summary>
+    /// Anahtar cifti uretir. BIR KEZ yapilir; sonra hep ayni cift kullanilir.
+    ///
+    /// Yeni cift uretmek, daha once satilmis TUM lisanslari gecersiz kilar --
+    /// eski kurulumlardaki acik anahtar yeni imzalari dogrulayamaz. Bu yuzden
+    /// mevcut cift varken onay istenir.
+    /// </summary>
+    private void CreateKeyPairClick(object sender, RoutedEventArgs e)
+    {
+        if (keyPair is not null)
+        {
+            var answer = MessageBox.Show(
+                "Zaten bir anahtar çiftiniz var.\n\n" +
+                "Yeni çift üretirseniz DAHA ÖNCE SATTIĞINIZ TÜM LİSANSLAR geçersiz olur; " +
+                "her müşteriye yeni kurulum ve yeni lisans göndermeniz gerekir.\n\n" +
+                "Yine de yeni çift üretilsin mi?",
+                "Anahtar çifti değiştir", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes) return;
+        }
+
+        keyPair = LicenseKeyPairFactory.Create();
+        SecretStore.SaveKeyPair(keyPair);
+        ApplyKeyPairState();
+        Say("Anahtar çifti üretildi. Açık anahtarı kopyalayıp kurulumu üretin.");
+    }
+
+    private void CopyPublicKeyClick(object sender, RoutedEventArgs e)
+    {
+        if (keyPair is null) return;
+        try
+        {
+            Clipboard.SetText(keyPair.PublicKey);
+            Say("Açık anahtar kopyalandı. build-installer.ps1 -LicensingPublicKey ile kullanın.");
+        }
+        catch (Exception exception) when (exception is System.Runtime.InteropServices.COMException)
+        {
+            Warn("Panoya kopyalanamadı. Metni elle seçip kopyalayabilirsiniz.");
+        }
+    }
+
+    private void ApplyKeyPairState()
+    {
+        var has = keyPair is not null;
+        PublicKeyArea.Visibility = has ? Visibility.Visible : Visibility.Collapsed;
+        CreateKeyPairButton.Content = has ? "Yeni çift üret" : "Anahtar çifti üret";
+        KeyPairTitle.Text = has ? "Lisans anahtar çifti hazır" : "Lisans anahtar çifti";
+        KeyPairHint.Text = has
+            // Ozel anahtar ASLA ekranda gosterilmez: ekran goruntusu, omuz ustunden
+            // bakma ve ekran paylasimi hepsi sizinti yoludur.
+            ? "Özel anahtar bu bilgisayarda şifreli saklanıyor ve hiçbir yere gönderilmez."
+            : "Önce bir anahtar çifti üretin. Özel anahtar burada kalır; kuruluma yalnızca açık anahtar girer.";
+        if (has) PublicKeyBox.Text = keyPair!.PublicKey;
+        RefreshFileButton();
+    }
+
+    /// <summary>
+    /// Dosya uretimi ozel anahtar VEYA eski HMAC sirri ile yapilabilir; ikisi de
+    /// yoksa dugme kapali kalir.
+    /// </summary>
+    private void RefreshFileButton() =>
+        MakeFileButton.IsEnabled = (keyPair is not null || !string.IsNullOrWhiteSpace(secret))
+            && MachineCode.MachineIdOf(MachineCodeBox.Text) is not null;
 
     private void SaveSecretClick(object sender, RoutedEventArgs e)
     {
@@ -58,9 +125,11 @@ public partial class MainWindow : Window
 
     private void GenerateClick(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(secret))
+        // Anahtar cifti varsa OZEL anahtarla, yoksa eski HMAC sirriyla imzalanir.
+        var signingKey = keyPair?.PrivateKey ?? secret;
+        if (string.IsNullOrWhiteSpace(signingKey))
         {
-            Warn("Önce imza sırrını kaydedin.");
+            Warn("Önce anahtar çifti üretin.");
             return;
         }
 
@@ -88,7 +157,7 @@ public partial class MainWindow : Window
         {
             for (var index = 0; index < count; index++)
             {
-                var key = OfflineLicenseKey.Create(now, secret);
+                var key = OfflineLicenseKey.Create(now, signingKey);
                 SalesLog.Append(new SaleRecord(key, customer, note, now));
                 keys.Add(key);
             }
@@ -135,7 +204,7 @@ public partial class MainWindow : Window
         }
 
         MachineCodeHint.Text = $"Bilgisayar kimliği: {machineId} — müşterinin ekranında yazan ile aynı olmalı.";
-        MakeFileButton.IsEnabled = !string.IsNullOrWhiteSpace(secret);
+        RefreshFileButton();
     }
 
     /// <summary>
@@ -175,9 +244,27 @@ public partial class MainWindow : Window
 
         // Anahtar da uretilir: dosyanin icinde tasinir ve satis kaydinda gorunur,
         // boylece hangi lisansin kime gittigi izlenebilir kalir.
-        var key = OfflineLicenseKey.Create(DateTimeOffset.Now, secret);
-        var license = LicenseIssuer.Issue(key, customer, "Standart", hashes,
-            DateTimeOffset.Now, expiresAt: null, secret);
+        //
+        // IMZALAMA: anahtar cifti varsa OZEL ANAHTARLA imzalanir -- musterinin
+        // kurulumundaki acik anahtar bunu dogrular ama benzerini URETEMEZ. Cift yoksa
+        // eski HMAC yoluna dusulur (sunucu modu ve daha once satilmis lisanslar icin).
+        var issuedAt = DateTimeOffset.Now;
+        StoredLicense license;
+        string key;
+        if (keyPair is not null)
+        {
+            key = OfflineLicenseKey.Create(issuedAt, keyPair.PrivateKey);
+            var payload = LicenseSignature.BuildPayload(key, hashes, issuedAt, null);
+            license = new StoredLicense(key, customer, "Standart", hashes, issuedAt,
+                ExpiresAt: null, LastValidatedAt: issuedAt,
+                LicenseKeyPairFactory.Sign(payload, keyPair.PrivateKey));
+        }
+        else
+        {
+            key = OfflineLicenseKey.Create(issuedAt, secret!);
+            license = LicenseIssuer.Issue(key, customer, "Standart", hashes,
+                issuedAt, expiresAt: null, secret!);
+        }
 
         try
         {
@@ -228,11 +315,12 @@ public partial class MainWindow : Window
         SecretSaved.Visibility = hasSecret ? Visibility.Visible : Visibility.Collapsed;
         SaveSecretButton.Visibility = hasSecret ? Visibility.Collapsed : Visibility.Visible;
         ChangeSecretButton.Visibility = hasSecret ? Visibility.Visible : Visibility.Collapsed;
-        GenerateButton.IsEnabled = hasSecret;
+        // Anahtar uretimi: cift varsa ozel anahtarla, yoksa eski HMAC sirriyla.
+        GenerateButton.IsEnabled = hasSecret || keyPair is not null;
         // Dosya dugmesi HEM sir HEM gecerli makine kodu ister; sir kaydedildiginde
         // kod kutusu doluysa acilmalidir, aksi halde kullanici kodu silip yeniden
         // yapistirmak zorunda kalirdi.
-        MakeFileButton.IsEnabled = hasSecret && MachineCode.MachineIdOf(MachineCodeBox.Text) is not null;
+        RefreshFileButton();
 
         // Sirrin KENDISI gosterilmez; yalnizca dogru sir mi diye ayirt etmeye yetecek
         // kadar ipucu verilir.

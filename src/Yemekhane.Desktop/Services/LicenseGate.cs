@@ -34,9 +34,24 @@ public static class LicenseGate
         var activationUri = configuration["Licensing:ActivationUri"];
         var signingSecret = configuration["Licensing:SigningSecret"];
 
-        if (string.IsNullOrWhiteSpace(signingSecret))
+        // ACIK ANAHTAR: doluysa imza bununla dogrulanir. Acik anahtar lisansi dogrular
+        // ama URETEMEZ, dolayisiyla musterinin kurulum klasorunden okunmasi bir ise
+        // yaramaz -- HMAC sirri okunsa kendine sinirsiz lisans uretebilirdi.
+        var publicKey = configuration["Licensing:PublicKey"];
+
+        // Acik anahtar varken HMAC sirri gerekmez; kuruluma hic konmamalidir.
+        if (string.IsNullOrWhiteSpace(publicKey) && string.IsNullOrWhiteSpace(signingSecret))
             throw new InvalidOperationException(
-                "Licensing:SigningSecret yapılandırması bulunamadı. Lisans doğrulaması bu değer olmadan yapılamaz.");
+                "Licensing:PublicKey veya Licensing:SigningSecret yapılandırması bulunamadı. " +
+                "Lisans doğrulaması bu değerlerden biri olmadan yapılamaz.");
+
+        // OZEL anahtarin kuruluma gomulmesi felakettir: musteri onunla kendine lisans
+        // uretebilir. Acikca reddedilir, sessizce calismaya birakilmaz.
+        if (!string.IsNullOrWhiteSpace(publicKey) && !LicenseKeyPairFactory.IsPublicKey(publicKey))
+            throw new InvalidOperationException(
+                "Licensing:PublicKey geçerli bir açık anahtar değil. Özel anahtarı kuruluma gömmeyin.");
+
+        signingSecret ??= string.Empty;
 
         // SUNUCUSUZ MOD: adres bos birakilirsa aktivasyon sunucusu YOKTUR.
         // Anahtar imzasi ve donanim baglantisi yerel oldugu icin lisanslama calismaya
@@ -54,7 +69,8 @@ public static class LicenseGate
                 signingSecret,
                 // Dogrulanacak sunucu yokken 30 gun sonra programi kilitlemek, musteriyi
                 // cozumu olmayan bir duruma sokardi.
-                enforceOfflineGracePeriod: false);
+                enforceOfflineGracePeriod: false,
+                publicKey: publicKey);
 
         if (!Uri.TryCreate(activationUri, UriKind.Absolute, out var uri))
             throw new InvalidOperationException("Licensing:ActivationUri mutlak bir URI olmalıdır.");
@@ -68,7 +84,8 @@ public static class LicenseGate
             new WindowsHardwareFingerprintReader(),
             new HttpLicenseActivationClient(httpClient),
             TimeProvider.System,
-            signingSecret);
+            signingSecret,
+            publicKey: publicKey);
     }
 
     /// <summary>

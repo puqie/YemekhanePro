@@ -84,9 +84,13 @@
                        Foreground="{StaticResource Muted}" Margin="0,3,0,0" TextWrapping="Wrap"/>
         </StackPanel>
 
-        <!-- Imza sirri -->
+        <!-- ESKI HMAC SIRRI: yalnizca SUNUCU modunda gerekir. Sunucusuz modda asimetrik
+             anahtar cifti kullanilir ve bu panel gizli kalir; iki panel birden
+             gosterilse kullanici hangisini dolduracagini bilemezdi. Panel korunuyor
+             cunku sunucu moduna donen satici hala HMAC sirri girmelidir. -->
         <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1"
-                CornerRadius="4" Padding="16" Margin="0,0,0,14">
+                CornerRadius="4" Padding="16" Margin="0,0,0,14"
+                x:Name="LegacySecretPanel" Visibility="Collapsed">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -111,6 +115,44 @@
                             Visibility="Collapsed" Margin="8,0,0,0" Click="ChangeSecretClick"/>
                 </StackPanel>
             </Grid>
+        </Border>
+
+        <!-- ANAHTAR CIFTI (asimetrik): ozel anahtar BU BILGISAYARDA kalir, kuruluma
+             yalnizca ACIK anahtar girer. Acik anahtar lisansi dogrular ama URETEMEZ;
+             musteri kurulum klasorunu acip okusa bile kendine lisans yazamaz.
+             HMAC sirri okunsaydi yazabilirdi; olculdu. -->
+        <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                CornerRadius="4" Padding="16" Margin="0,0,0,14" x:Name="KeyPairPanel">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock x:Name="KeyPairTitle" FontWeight="SemiBold" Foreground="{StaticResource Ink}"
+                                   Text="Lisans anahtar çifti"/>
+                        <TextBlock x:Name="KeyPairHint" Style="{StaticResource Label}" Margin="0,3,12,0"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" x:Name="CreateKeyPairButton" Style="{StaticResource Primary}"
+                            Content="Anahtar çifti üret" VerticalAlignment="Center" Click="CreateKeyPairClick"/>
+                </Grid>
+                <StackPanel x:Name="PublicKeyArea" Visibility="Collapsed" Margin="0,12,0,0">
+                    <TextBlock Style="{StaticResource Label}"
+                               Text="Açık anahtar — kurulumu üretirken bunu kullanın (gizli değildir)"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" x:Name="PublicKeyBox" IsReadOnly="True" Height="46"
+                                 TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas" FontSize="11"/>
+                        <Button Grid.Column="1" x:Name="CopyPublicKeyButton" Style="{StaticResource Secondary}"
+                                Content="Kopyala" Margin="12,0,0,0" VerticalAlignment="Stretch"
+                                Click="CopyPublicKeyClick"/>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
         </Border>
 
         <!-- Uretim -->

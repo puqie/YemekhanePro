@@ -54,6 +54,16 @@ public sealed class LicenseService : ILicenseService
     private readonly string signingSecret;
 
     /// <summary>
+    /// Lisans dogrulamasi icin ACIK anahtar. Doluysa imza bununla dogrulanir;
+    /// acik anahtar lisansi dogrular ama URETEMEZ, dolayisiyla musterinin
+    /// kurulumundan okunmasi bir ise yaramaz.
+    ///
+    /// Bos ise eski HMAC yoluna dusulur -- sunucu modu ve daha once satilmis
+    /// lisanslar bu yolu kullanir ve kirilmamalidir.
+    /// </summary>
+    private readonly string? publicKey;
+
+    /// <summary>
     /// Cevrimdisi tolerans uygulanir mi?
     ///
     /// SUNUCUSUZ modda FALSE olmalidir: dogrulanacak bir sunucu yokken 30 gun sonra
@@ -69,13 +79,20 @@ public sealed class LicenseService : ILicenseService
         ILicenseActivationClient activationClient,
         TimeProvider timeProvider,
         string signingSecret,
-        bool enforceOfflineGracePeriod = true)
+        bool enforceOfflineGracePeriod = true,
+        string? publicKey = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(fingerprintReader);
         ArgumentNullException.ThrowIfNull(activationClient);
         ArgumentNullException.ThrowIfNull(timeProvider);
-        ArgumentException.ThrowIfNullOrEmpty(signingSecret);
+        // Ikisinden BIRI yeterlidir: acik anahtarli kurulumda HMAC sirri BULUNMAMALIDIR
+        // (musteri onu okuyup kendine lisans uretebilirdi), sunucu modunda ise acik
+        // anahtar yoktur. Ikisi birden bos ise dogrulama yapilamaz.
+        if (string.IsNullOrEmpty(signingSecret) && string.IsNullOrEmpty(publicKey))
+            throw new ArgumentException(
+                "İmza sırrı veya açık anahtar verilmelidir; ikisi de yoksa lisans doğrulanamaz.",
+                nameof(signingSecret));
 
         this.store = store;
         this.fingerprintReader = fingerprintReader;
@@ -83,6 +100,7 @@ public sealed class LicenseService : ILicenseService
         this.timeProvider = timeProvider;
         this.signingSecret = signingSecret;
         this.enforceOfflineGracePeriod = enforceOfflineGracePeriod;
+        this.publicKey = publicKey;
     }
 
     public LicenseCheck Check()
@@ -102,7 +120,12 @@ public sealed class LicenseService : ILicenseService
 
         // Imza once dogrulanir: kurcalanmis bir dosyadaki tarihlere ve parmak izlerine
         // guvenip onlarla karar vermek, kontrolun tamamini anlamsiz kilardi.
-        if (!LicenseSignature.Verify(license, signingSecret))
+        // Once ACIK ANAHTAR denenir; yoksa HMAC'e dusulur. Sira onemlidir: acik
+        // anahtarli kurulumda HMAC sirri gecersiz olabilir ve olmalidir de.
+        var signatureValid = publicKey is { Length: > 0 }
+            ? LicenseSignature.VerifyWithPublicKey(license, publicKey)
+            : LicenseSignature.Verify(license, signingSecret);
+        if (!signatureValid)
             return new(LicenseStatus.Tampered,
                 "Lisans dosyasi gecerli degil. Lutfen lisansinizi yeniden etkinlestirin.");
 
