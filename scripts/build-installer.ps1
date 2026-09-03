@@ -9,6 +9,11 @@ param(
     # Depoya YAZILMAZ: ortam degiskeninden okunur ya da parametreyle gecilir.
     [string]$LicensingSigningSecret = $env:YEMEKHANE_LICENSING_SECRET,
 
+    # Aktivasyon sunucusunun adresi. BOS birakilirsa SUNUCUSUZ kurulum uretilir:
+    # anahtar dogrulamasi ve donanim bagi yerel kalir, aylik sunucu maliyeti olmaz.
+    # Feda edilen tek yetenek uzaktan iptaldir.
+    [string]$ActivationUri = '',
+
     [switch]$SkipTests,
     [switch]$SkipSmoke,
     [switch]$SkipInstallCheck
@@ -60,6 +65,21 @@ $publishCommon = @('-c', $configuration, '-r', 'win-x64', '--self-contained', 't
     "-p:Version=$Version", "-p:LicensingSigningSecret=$LicensingSigningSecret", '-warnaserror')
 Invoke-DotNet (@('publish', (Join-Path $root 'src\Yemekhane.Desktop\Yemekhane.Desktop.csproj'), '-o', $desktopDir) + $publishCommon)
 Invoke-DotNet (@('publish', (Join-Path $root 'src\Yemekhane.Api\Yemekhane.Api.csproj'), '-o', $apiDir) + $publishCommon)
+
+# Aktivasyon adresi yayimlanan appsettings.json'a yazilir. Bos deger SUNUCUSUZ modu
+# secer (LicenseGate: adres yoksa sunucu yok). Depodaki ornek adres, musterinin
+# olmayan bir sunucuya baglanmaya calismasina yol acardi.
+$desktopSettingsPath = Join-Path $desktopDir 'appsettings.json'
+if (Test-Path -LiteralPath $desktopSettingsPath) {
+    $desktopSettings = Get-Content -LiteralPath $desktopSettingsPath -Raw | ConvertFrom-Json
+    $desktopSettings.Licensing.ActivationUri = $ActivationUri
+    $desktopSettings | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $desktopSettingsPath -Encoding utf8
+    if ([string]::IsNullOrWhiteSpace($ActivationUri)) {
+        Write-Host "Lisans modu: SUNUCUSUZ (aktivasyon adresi bos)" -ForegroundColor Cyan
+    } else {
+        Write-Host "Lisans modu: SUNUCULU -> $ActivationUri" -ForegroundColor Cyan
+    }
+}
 
 $licenseDir = Join-Path $desktopDir 'licenses'
 New-Item -ItemType Directory -Path $licenseDir | Out-Null

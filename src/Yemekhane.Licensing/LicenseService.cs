@@ -45,12 +45,23 @@ public sealed class LicenseService : ILicenseService
     private readonly TimeProvider timeProvider;
     private readonly string signingSecret;
 
+    /// <summary>
+    /// Cevrimdisi tolerans uygulanir mi?
+    ///
+    /// SUNUCUSUZ modda FALSE olmalidir: dogrulanacak bir sunucu yokken 30 gun sonra
+    /// "internete baglayin" deyip programi kilitlemek, musteriyi cozumu olmayan bir
+    /// duruma sokar. Diger tum kontroller (imza, donanim, saat, bitis tarihi) her iki
+    /// modda da AYNEN calisir -- sunucusuz olmak korumasiz olmak degildir.
+    /// </summary>
+    private readonly bool enforceOfflineGracePeriod;
+
     public LicenseService(
         ILicenseStore store,
         IHardwareFingerprintReader fingerprintReader,
         ILicenseActivationClient activationClient,
         TimeProvider timeProvider,
-        string signingSecret)
+        string signingSecret,
+        bool enforceOfflineGracePeriod = true)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(fingerprintReader);
@@ -63,6 +74,7 @@ public sealed class LicenseService : ILicenseService
         this.activationClient = activationClient;
         this.timeProvider = timeProvider;
         this.signingSecret = signingSecret;
+        this.enforceOfflineGracePeriod = enforceOfflineGracePeriod;
     }
 
     public LicenseCheck Check()
@@ -106,7 +118,7 @@ public sealed class LicenseService : ILicenseService
                 $"Lisans suresi {expiresAt.ToLocalTime():dd.MM.yyyy} tarihinde doldu. Lutfen aboneliginizi yenileyin.");
 
         var offlineFor = now - license.LastValidatedAt;
-        if (offlineFor > OfflineGracePeriod)
+        if (enforceOfflineGracePeriod && offlineFor > OfflineGracePeriod)
             return new(LicenseStatus.OfflineGracePeriodExceeded,
                 $"Lisans {OfflineGracePeriod.Days} gundur dogrulanamadi. Lutfen bilgisayari internete baglayin.");
 

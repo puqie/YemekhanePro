@@ -38,6 +38,24 @@ public static class LicenseGate
             throw new InvalidOperationException(
                 "Licensing:SigningSecret yapılandırması bulunamadı. Lisans doğrulaması bu değer olmadan yapılamaz.");
 
+        // SUNUCUSUZ MOD: adres bos birakilirsa aktivasyon sunucusu YOKTUR.
+        // Anahtar imzasi ve donanim baglantisi yerel oldugu icin lisanslama calismaya
+        // devam eder; yalnizca UZAKTAN IPTAL yetenegi kaybedilir. Ayri bir bayrak yerine
+        // adresin bos olmasi kullanilir: "sunucu adresi yoksa sunucu yok" kendini anlatir
+        // ve adres girili mevcut kurulumlar hic etkilenmez.
+        if (string.IsNullOrWhiteSpace(activationUri))
+            return new LicenseService(
+                new WindowsLicenseStore(dataDirectory),
+                new WindowsHardwareFingerprintReader(),
+                new OfflineLicenseActivationClient(signingSecret,
+                    configuration["Licensing:CustomerName"] ?? "Yerel Kurulum",
+                    configuration["Licensing:Edition"] ?? "Standart"),
+                TimeProvider.System,
+                signingSecret,
+                // Dogrulanacak sunucu yokken 30 gun sonra programi kilitlemek, musteriyi
+                // cozumu olmayan bir duruma sokardi.
+                enforceOfflineGracePeriod: false);
+
         if (!Uri.TryCreate(activationUri, UriKind.Absolute, out var uri))
             throw new InvalidOperationException("Licensing:ActivationUri mutlak bir URI olmalıdır.");
 

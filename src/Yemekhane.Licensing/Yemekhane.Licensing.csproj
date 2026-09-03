@@ -29,6 +29,7 @@
     <Compile Remove="LicenseService.cs" />
     <Compile Remove="HttpLicenseActivationClient.cs" />
     <Compile Remove="LicenseActivationClient.cs" />
+    <Compile Remove="OfflineLicenseActivationClient.cs" />
     <Compile Remove="FingerprintMatcher.cs" />
   </ItemGroup>
 
