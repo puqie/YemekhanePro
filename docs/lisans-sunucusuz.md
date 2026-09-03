@@ -64,6 +64,32 @@ Betik ekrana `Lisans modu: SUNUCUSUZ` yazar. Çıktı:
 
 ## 3. Anahtar üretin ve satın
 
+İki yol var. **Lisans Üretici** penceresi günlük kullanım için daha rahat.
+
+### Yol A — Lisans Üretici penceresi (önerilen)
+
+```powershell
+dotnet publish src\Yemekhane.KeyTool -c Release -o C:\LisansUretici
+```
+
+`C:\LisansUretici\YemekhaneLisansUretici.exe` dosyasını çift tıklayın.
+Masaüstüne kısayol koyabilirsiniz.
+
+İlk açılışta **imza sırrını bir kez** girip Kaydet'e basarsınız; sır bu bilgisayara
+Windows'un kendi şifrelemesiyle (DPAPI) kaydedilir, bir daha sormaz. Sonrasında her
+satışta yalnızca okul adını yazıp **Anahtar üret** demeniz yeter.
+
+- **Kopyala** düğmesi anahtarı panoya alır — WhatsApp'a yapıştırıp gönderirsiniz
+- Alt taraftaki **Satış geçmişi** kime ne sattığınızı tutar
+- **Klasörü aç** ile CSV'ye ulaşırsınız (Excel'de açılır)
+
+> Bu programı **müşteriye vermeyin**. İçinde imza sırrı saklanır ve geçerli lisans
+> anahtarı üretebilir. Kurulum paketine de dahil edilmez.
+
+### Yol B — Komut satırı
+
+Toplu üretim veya betikten çağırmak için:
+
 ```powershell
 $env:YEMEKHANE_LICENSING_SECRET = '<AYNI imza sırrı>'
 .\scripts\lisans-uret.ps1 -Customer "Atatürk İlkokulu"

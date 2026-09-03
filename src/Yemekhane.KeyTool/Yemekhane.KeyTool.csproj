@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- SATICININ ARACI. Musteriye HICBIR ZAMAN verilmez: icinde imza sirri saklanir
+       ve bu arac gecerli lisans anahtari uretebilir. Kurulum paketine de girmez;
+       ayrica yayimlanip yalnizca satici bilgisayarinda durur. -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>YemekhaneLisansUretici</AssemblyName>
+    <RootNamespace>Yemekhane.KeyTool</RootNamespace>
+    <ApplicationIcon></ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Yemekhane.Licensing\Yemekhane.Licensing.csproj" />
+  </ItemGroup>
+
+</Project>
