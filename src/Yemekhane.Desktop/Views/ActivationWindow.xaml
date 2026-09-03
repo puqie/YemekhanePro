@@ -34,6 +34,16 @@
                          AutomationProperties.Name="Bilgisayar kimliği"
                          AutomationProperties.HelpText="Destek ile görüşürken bu kimliği bildirin"/>
                 <TextBlock Text="Destek ile görüşürken bu kimliği bildirin." Foreground="{StaticResource FaintBrush}" FontSize="11" Margin="0,6,20,0" TextWrapping="Wrap"/>
+
+                <!-- Lisans DOSYASI icin saticinin makine koduna ihtiyaci vardir; yukaridaki
+                     kisa kimlik tek yonlu bir ozettir ve ondan parmak izlerine donulemez.
+                     Kod uzun oldugu icin elle yazdirilmaz, panoya kopyalanir. -->
+                <Button x:Name="CopyMachineCodeButton" Content="Makine kodunu kopyala" Height="34" Margin="0,22,20,0"
+                        Click="CopyMachineCodeClick" Style="{StaticResource Action}"
+                        AutomationProperties.Name="Makine kodunu panoya kopyala"
+                        AutomationProperties.HelpText="Lisans dosyası isteyecekseniz bu kodu satıcınıza gönderin"/>
+                <TextBlock x:Name="CopyHint" Foreground="{StaticResource FaintBrush}" FontSize="11"
+                           Margin="0,6,20,0" TextWrapping="Wrap"/>
             </StackPanel>
         </Border>
         <Grid Grid.Column="1" Margin="64,28,64,20">
@@ -72,7 +82,24 @@
                         Style="{StaticResource Primary}"
                         AutomationProperties.Name="Lisansı etkinleştir"/>
 
-                <TextBlock Text="Etkinleştirme için internet bağlantısı gerekir. Bağlantı kurulamazsa hiçbir bilginiz gönderilmez; yeniden deneyebilirsiniz."
+                <!-- Ikinci yol: saticinin bu bilgisayara ozel urettigi lisans dosyasi.
+                     Anahtar yolundan farki, dosyanin BASKA makinede calismamasidir. -->
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Height="1" Background="{StaticResource FaintBrush}" VerticalAlignment="Center" Opacity="0.5"/>
+                    <TextBlock Grid.Column="1" Text="ya da" Margin="10,0" Foreground="{StaticResource FaintBrush}" FontSize="11"/>
+                    <Border Grid.Column="2" Height="1" Background="{StaticResource FaintBrush}" VerticalAlignment="Center" Opacity="0.5"/>
+                </Grid>
+
+                <Button x:Name="ImportFileButton" Content="Lisans dosyası yükle (.lic)" Height="38" Margin="0,16,0,0"
+                        Click="ImportFileClick" IsEnabled="{Binding IsEditable}"
+                        Style="{StaticResource Action}"
+                        AutomationProperties.Name="Lisans dosyası yükle"
+                        AutomationProperties.HelpText="Satıcınızın bu bilgisayar için ürettiği .lic dosyasını seçin"/>
+
+                <TextBlock Text="Lisans anahtarı için internet gerekmez. Satıcınız size bu bilgisayara özel bir .lic dosyası verdiyse ikinci seçeneği kullanın."
                            Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,14,0,0"/>
             </StackPanel>
             </ScrollViewer>

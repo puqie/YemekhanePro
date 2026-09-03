@@ -5,6 +5,22 @@ anahtar doğrulaması ve makineye bağlama tamamen müşterinin bilgisayarında 
 
 ---
 
+## İki satış yolu
+
+| | Anahtar | **Lisans dosyası (.lic)** |
+|---|---|---|
+| Müşteriye giden | Kısa metin | Dosya |
+| Ön adım | Yok | Müşteri makine kodunu yollar |
+| İkinci bilgisayarda | **Çalışır** ⚠️ | **Çalışmaz** ✅ |
+| Ne zaman | Güvendiğiniz müşteri | Kopyalanmasını istemediğinizde |
+
+> **Önemli fark:** Anahtar tekrar kullanılabilir — sunucusuz modda "bu anahtar
+> daha önce kullanıldı mı" diye soracak bir merci yoktur. Lisans **dosyası** ise
+> üretilirken hedef bilgisayara kilitlenir; kopyalansa bile başka makinede
+> çalışmaz. Kopya korumasına önem veriyorsanız dosya yolunu kullanın.
+
+---
+
 ## Nasıl çalışır
 
 Lisans anahtarının **son bloğu imzadır** — imza sırrınızla hesaplanır:
@@ -116,6 +132,28 @@ CSV'ye **ekleyerek** yazar; satış kaydınız birikerek gider.
 > **Betik çalışmazsa:** Windows betik çalıştırmayı engelliyor olabilir.
 > `powershell -ExecutionPolicy Bypass -File .\scripts\lisans-uret.ps1 ...`
 
+## 3b. Makineye kilitli lisans DOSYASI üretmek
+
+Anahtar yerine dosya göndermek isterseniz — dosya başka bilgisayarda çalışmaz:
+
+1. **Müşteri**, programı açar, lisans ekranında **"Makine kodunu kopyala"** der ve
+   kodu size yollar (WhatsApp, e-posta).
+2. **Siz**, Lisans Üretici'de kodu yapıştırırsınız. Araç kodun hangi bilgisayara ait
+   olduğunu gösterir — müşterinin ekranında yazan **Bilgisayar kimliği** ile aynı
+   olmalı; farklıysa yanlış kod gelmiş demektir.
+3. **Dosya üret** → `Ataturk-Ilkokulu-7266C28AA6B4.lic` kaydedilir.
+4. Dosyayı müşteriye yollarsınız; müşteri lisans ekranında
+   **"Lisans dosyası yükle (.lic)"** ile seçer.
+
+Dosya adında makine kimliği yazar — bir okula iki bilgisayar satarsanız yanlış
+dosyayı göndermezsiniz.
+
+> **Neden "kullanınca kendini silsin" değil:** Müşteri dosyayı açmadan önce
+> kopyalarsa (bir dosyayı yedeklemek çok doğaldır) silme hiçbir şey korumaz,
+> yalnızca güvenlik yanılsaması yaratır. Makineye kilitlemek kopyalamayı
+> **önemsiz** hale getirir: dosya istediği kadar çoğaltılsın, başka bilgisayarda
+> matematiksel olarak çalışmaz.
+
 ## 4. Müşteri ne yapar
 
 **Yalnızca ilk kurulumda:**
@@ -139,7 +177,9 @@ CSV'ye **ekleyerek** yazar; satış kaydınız birikerek gider.
 | Durum | Ne yapmalı |
 |---|---|
 | "Lisans anahtarı geçersiz" | Anahtar yanlış yazılmış ya da **başka bir sırla** üretilmiş. Kurulumu ürettiğiniz sır ile anahtarı ürettiğiniz sır aynı olmalı |
-| Müşteri bilgisayar değiştirdi | Yeni anahtar üretip verin. Eski anahtarı geri alamazsınız (uzaktan iptal yok) |
+| Müşteri bilgisayar değiştirdi | Yeni makine kodunu isteyip yeni dosya üretin. Eskisi yeni bilgisayarda zaten çalışmaz |
+| "Bu lisans başka bir bilgisayara ait" (dosya) | Dosya başka makine için üretilmiş. Müşteriden makine kodunu yeniden isteyin |
+| "Kod okunamadı" | Makine kodu eksik kopyalanmış. Müşteriden kodun **tamamını** yeniden göndermesini isteyin |
 | "Bu lisans başka bir bilgisayara ait" | Lisans dosyası kopyalanmış. Donanım bağı çalışıyor demektir |
 | Müşteri format attı | Aynı anahtar çalışır — donanım aynı kaldığı sürece |
 | Anakart değişti | Donanım imzası bozulur; yeni anahtar gerekir |

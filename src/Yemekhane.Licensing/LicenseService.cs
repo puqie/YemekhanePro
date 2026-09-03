@@ -14,6 +14,14 @@ public interface ILicenseService
 
     /// <summary>Verilen anahtarla bu makineyi aktive etmeyi dener.</summary>
     Task<LicenseCheck> ActivateAsync(string licenseKey, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Saticidan gelen lisans DOSYASINI yukler.
+    ///
+    /// Dosya uretilirken hedef makineye kilitlenmistir; baska bir bilgisayarda
+    /// yuklenirse reddedilir. Ag erisimi gerektirmez.
+    /// </summary>
+    LicenseCheck ImportFile(string? fileContent);
 }
 
 /// <summary>
@@ -198,6 +206,28 @@ public sealed class LicenseService : ILicenseService
             LastValidatedAt = lastValidatedAt,
             Signature = validation.Signature ?? license.Signature
         };
+    }
+
+    /// <summary>
+    /// Lisans dosyasini yukler. Hicbir sey URETMEZ: dosyayi oldugu gibi degerlendirir
+    /// ve gecerliyse kaydeder.
+    ///
+    /// Imza ve parmak izi kontrolu <see cref="Evaluate"/> icinde yapilir; boylece
+    /// dosya yolu ile anahtar yolu AYNI kurallara tabidir. Once kaydedip sonra
+    /// bakmak, gecersiz bir dosyanin gecerli olani ezmesine yol acardi.
+    /// </summary>
+    public LicenseCheck ImportFile(string? fileContent)
+    {
+        var license = LicenseFile.Read(fileContent);
+        if (license is null)
+            return new(LicenseStatus.NotActivated,
+                "Lisans dosyasi okunamadi. Saticinizdan aldiginiz .lic dosyasini secin.");
+
+        var check = Evaluate(license);
+        if (!check.IsValid) return check;
+
+        store.Save(license);
+        return check;
     }
 
     public async Task<LicenseCheck> ActivateAsync(string licenseKey, CancellationToken cancellationToken = default)

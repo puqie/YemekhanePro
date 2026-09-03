@@ -116,5 +116,7 @@ public sealed class LicenseGateTests
 
         public Task<LicenseCheck> ActivateAsync(string licenseKey, CancellationToken cancellationToken = default) =>
             Task.FromResult(check);
+
+        public LicenseCheck ImportFile(string? fileContent) => check;
     }
 }

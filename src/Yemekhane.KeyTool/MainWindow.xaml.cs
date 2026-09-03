@@ -110,6 +110,95 @@ public partial class MainWindow : Window
             : $"{count} anahtar üretildi ve satış geçmişine yazıldı.");
     }
 
+    /// <summary>
+    /// Makine kodu degistikce dogrulanir: gecerliyse hangi bilgisayara ait oldugu
+    /// gosterilir. Boylece satici, dosyayi URETMEDEN once dogru makineye baktigini
+    /// karsilastirabilir -- yanlis makineye kilitli dosya gondermek, musterinin
+    /// "calismiyor" demesiyle ortaya cikan pahali bir hatadir.
+    /// </summary>
+    private void MachineCodeChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        var code = MachineCodeBox.Text;
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            MachineCodeHint.Text = string.Empty;
+            MakeFileButton.IsEnabled = false;
+            return;
+        }
+
+        var machineId = MachineCode.MachineIdOf(code);
+        if (machineId is null)
+        {
+            MachineCodeHint.Text = "Kod okunamadı. Müşteriden kodun TAMAMINI yeniden göndermesini isteyin.";
+            MakeFileButton.IsEnabled = false;
+            return;
+        }
+
+        MachineCodeHint.Text = $"Bilgisayar kimliği: {machineId} — müşterinin ekranında yazan ile aynı olmalı.";
+        MakeFileButton.IsEnabled = !string.IsNullOrWhiteSpace(secret);
+    }
+
+    /// <summary>
+    /// Makine koduna kilitli lisans dosyasi uretir ve kaydeder.
+    /// </summary>
+    private void MakeFileClick(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            Warn("Önce imza sırrını kaydedin.");
+            return;
+        }
+
+        var hashes = MachineCode.Parse(MachineCodeBox.Text);
+        if (hashes is null)
+        {
+            Warn("Makine kodu geçersiz.");
+            return;
+        }
+
+        var customer = CustomerBox.Text.Trim();
+        if (customer.Length == 0)
+        {
+            Warn("Okul / müşteri adını yazın.");
+            CustomerBox.Focus();
+            return;
+        }
+
+        var machineId = new HardwareFingerprint(hashes).MachineId;
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Lisans dosyasını kaydet",
+            Filter = "Lisans dosyası (*.lic)|*.lic",
+            FileName = LicenseFile.SuggestFileName(customer, machineId)
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        // Anahtar da uretilir: dosyanin icinde tasinir ve satis kaydinda gorunur,
+        // boylece hangi lisansin kime gittigi izlenebilir kalir.
+        var key = OfflineLicenseKey.Create(DateTimeOffset.Now, secret);
+        var license = LicenseIssuer.Issue(key, customer, "Standart", hashes,
+            DateTimeOffset.Now, expiresAt: null, secret);
+
+        try
+        {
+            File.WriteAllText(dialog.FileName, LicenseFile.Write(license));
+            SalesLog.Append(new SaleRecord(key, customer,
+                string.IsNullOrWhiteSpace(NoteBox.Text) ? $"dosya · {machineId}"
+                    : $"{NoteBox.Text.Trim()} · dosya · {machineId}",
+                DateTimeOffset.Now));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            Warn("Dosya yazılamadı: " + exception.Message);
+            return;
+        }
+
+        MachineCodeBox.Clear();
+        NoteBox.Clear();
+        ReloadHistory();
+        Say($"Lisans dosyası kaydedildi: {Path.GetFileName(dialog.FileName)} — yalnızca {machineId} kimlikli bilgisayarda çalışır.");
+    }
+
     private void CopyClick(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(LatestKeyBox.Text)) return;
@@ -140,6 +229,10 @@ public partial class MainWindow : Window
         SaveSecretButton.Visibility = hasSecret ? Visibility.Collapsed : Visibility.Visible;
         ChangeSecretButton.Visibility = hasSecret ? Visibility.Visible : Visibility.Collapsed;
         GenerateButton.IsEnabled = hasSecret;
+        // Dosya dugmesi HEM sir HEM gecerli makine kodu ister; sir kaydedildiginde
+        // kod kutusu doluysa acilmalidir, aksi halde kullanici kodu silip yeniden
+        // yapistirmak zorunda kalirdi.
+        MakeFileButton.IsEnabled = hasSecret && MachineCode.MachineIdOf(MachineCodeBox.Text) is not null;
 
         // Sirrin KENDISI gosterilmez; yalnizca dogru sir mi diye ayirt etmeye yetecek
         // kadar ipucu verilir.

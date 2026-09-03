@@ -262,8 +262,10 @@ public partial class App : System.Windows.Application, IDisposable
 
         // ShutdownMode=OnExplicitShutdown oldugu icin bu diyalog kapandiginda uygulama
         // kendiliginden bitmez; karari burada veririz.
-        var machineId = new WindowsHardwareFingerprintReader().Read().MachineId;
-        var activation = new ActivationWindow(licenseService, decision.Check, machineId);
+        // Parmak izi de gecirilir: makine KODU (lisans dosyasi istemek icin) tam parmak
+        // izinden uretilir; ekranda gosterilen kisa kimlik tek yonlu bir ozettir.
+        var fingerprint = new WindowsHardwareFingerprintReader().Read();
+        var activation = new ActivationWindow(licenseService, decision.Check, fingerprint.MachineId, fingerprint);
         return activation.ShowDialog() == true;
     }
 

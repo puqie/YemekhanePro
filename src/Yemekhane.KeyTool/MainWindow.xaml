@@ -71,6 +71,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -144,8 +145,32 @@
             </Grid>
         </Border>
 
-        <!-- Sonuc + gecmis -->
+        <!-- Makineye kilitli lisans DOSYASI -->
         <Border Grid.Row="3" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                CornerRadius="4" Padding="16" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="Bu bilgisayara özel lisans dosyası" FontWeight="SemiBold"
+                           Foreground="{StaticResource Ink}" Margin="0,0,0,3"/>
+                <TextBlock Style="{StaticResource Label}" TextWrapping="Wrap"
+                           Text="Müşteri lisans ekranındaki &quot;Makine kodunu kopyala&quot; ile size bir kod yollar. Üretilen dosya yalnızca o bilgisayarda çalışır; kopyalansa bile başka makinede geçersizdir."/>
+                <Grid Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" x:Name="MachineCodeBox" Height="56" TextWrapping="Wrap"
+                             VerticalContentAlignment="Top" AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11"
+                             TextChanged="MachineCodeChanged"/>
+                    <Button Grid.Column="1" x:Name="MakeFileButton" Style="{StaticResource Primary}"
+                            Content="Dosya üret" Margin="12,0,0,0" VerticalAlignment="Stretch"
+                            IsEnabled="False" Click="MakeFileClick"/>
+                </Grid>
+                <TextBlock x:Name="MachineCodeHint" Style="{StaticResource Label}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Sonuc + gecmis -->
+        <Border Grid.Row="4" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1"
                 CornerRadius="4">
             <Grid>
                 <Grid.RowDefinitions>
@@ -201,7 +226,7 @@
             </Grid>
         </Border>
 
-        <TextBlock Grid.Row="4" x:Name="StatusText" Margin="0,12,0,0" TextWrapping="Wrap"
+        <TextBlock Grid.Row="5" x:Name="StatusText" Margin="0,12,0,0" TextWrapping="Wrap"
                    Foreground="{StaticResource Muted}"/>
     </Grid>
 </Window>
