@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
@@ -21,9 +21,16 @@ public sealed class Task061UiAcceptanceTests
         RunSta(() =>
         {
             var window = new MainWindow(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(window);
-            Assert.Equal(1280, window.MinWidth);
-            Assert.Equal(720, window.MinHeight);
-            foreach (var size in new[] { new Size(1280, 720), new Size(1920, 1080) })
+            // MinWidth 1280 -> 1024, MinHeight 720 -> 640. Bunlar CIHAZDAN BAGIMSIZ
+            // birimdir: %125 olcekte 1280 fiziksel 1600 piksel ister ve 1366x768 bir
+            // dizustunde pencerenin sag kenari EKRAN DISINDA kalir (sahada goruldu:
+            // "Seçileni İptal" dugmesi ve son filtre kutusu gorunmuyordu).
+            Assert.Equal(1024, window.MinWidth);
+            Assert.Equal(640, window.MinHeight);
+            // 1366x768 EKLENDI: en yaygin dizustu cozunurlugu ve tasmanin gerceklestigi
+            // boyut. Yalnizca 1280 ve 1920 olculseydi bu hata yine gozden kacardi --
+            // asil korunan sey MinWidth sabiti degil, icerigin ekrana SIGMASIDIR.
+            foreach (var size in new[] { new Size(1024, 640), new Size(1366, 768), new Size(1280, 720), new Size(1920, 1080) })
             {
                 window.Measure(size);
                 window.Arrange(new Rect(size));

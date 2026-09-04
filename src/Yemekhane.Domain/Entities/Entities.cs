@@ -1,4 +1,4 @@
-namespace Yemekhane.Domain.Entities;
+﻿namespace Yemekhane.Domain.Entities;
 
 public abstract class Entity
 {
@@ -151,6 +151,20 @@ public sealed class Device : Entity
     public bool IsActive { get; set; } = true;
     public bool AutoConnect { get; set; }
     public bool HasTurnstile { get; set; }
+
+    /// <summary>
+    /// Turnike role darbe suresi (ms). Uretici dokumaninda belgelenmedigi icin kurulumda
+    /// sahada dogrulanir; bu yuzden sabit degil, cihaz basina yapilandirilabilir.
+    /// Null ise OzakTurnstileProfile varsayilani kullanilir.
+    /// </summary>
+    public int? TurnstileRelayPulseMs { get; set; }
+
+    /// <summary>
+    /// Turnike her iki yonde de surulebiliyor mu. Sahadaki mekanik yonlendirme tek yone
+    /// kilitlenmis olabilir; cift yon varsayilmaz, kurulumda bildirilir.
+    /// </summary>
+    public bool TurnstileBidirectional { get; set; }
+
     public string? Location { get; set; }
     public required string Direction { get; set; }
     public DateTimeOffset? LastConnectedAt { get; set; }

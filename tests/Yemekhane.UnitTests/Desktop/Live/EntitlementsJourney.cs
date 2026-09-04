@@ -53,33 +53,33 @@ public class EntitlementsJourney
         vm.PreviousPageCommand.Execute(null); ui.Delay(1500); ui.Pump(); Assert.Equal(1, vm.Page);
 
         // Ogrenci no filtresi
-        vm.StudentNo = "5012"; Load(ui, vm);
+        vm.SearchText = "5012"; Load(ui, vm);
         Assert.All(vm.Items, x => Assert.Equal("5012", x.StudentNo));
         var dbStudent = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId where s.student_no='5012' and e.EntitlementDate between @p0 and @p1", from, to);
         Assert.Equal(dbStudent, vm.TotalCount);
         ui.Shot("ent-03-filtre-no");
-        vm.StudentNo = null;
+        vm.SearchText = null;
 
         // Kart no filtresi
-        vm.CardNumber = "8350012"; Load(ui, vm);
+        vm.SearchText = "8350012"; Load(ui, vm);
         Assert.All(vm.Items, x => Assert.Equal("8350012", x.CardNumber));
         Assert.Equal(dbStudent, vm.TotalCount);
-        vm.CardNumber = null;
+        vm.SearchText = null;
 
         // Ad soyad filtresi: ayni adli ogrenciler (uc ADA) listede no + sinif ile ayirt edilebilir.
-        vm.StudentName = "ADA"; Load(ui, vm);
+        vm.SearchText = "ADA"; Load(ui, vm);
         Assert.All(vm.Items, x => Assert.Contains("ADA", x.StudentName, StringComparison.Ordinal));
         var dbAda = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId where (s.FirstName || ' ' || s.LastName) like '%ADA%' and e.EntitlementDate between @p0 and @p1", from, to);
         Assert.Equal(dbAda, vm.TotalCount);
         ui.Shot("ent-04-filtre-ad");
-        vm.StudentName = null;
+        vm.SearchText = null;
 
         // Sinif filtresi
-        vm.ClassName = "7A"; Load(ui, vm);
+        vm.SearchText = "7A"; Load(ui, vm);
         Assert.All(vm.Items, x => Assert.Equal("7A", x.ClassName));
         var db7a = EntLiveDb.Scalar("select count(*) from meal_entitlements e join students s on s.Id=e.StudentId join classes c on c.Id=s.ClassId where c.Name='7A' and e.EntitlementDate between @p0 and @p1", from, to);
         Assert.Equal(db7a, vm.TotalCount);
-        vm.ClassName = null;
+        vm.SearchText = null;
 
         // Ogun filtresi
         vm.SelectedMeal = vm.MealTypes.Single(x => x.Name == "Öğle Yemeği"); Load(ui, vm);
@@ -160,7 +160,7 @@ public class EntitlementsJourney
         ui.Shot("ent-13-liste-yeni-haklar");
 
         // Listede yeni satirlar gorunur mu?
-        vm.ClassName = "5A"; vm.StartsOn = new DateTime(2026, 9, 21); vm.EndsOn = new DateTime(2026, 9, 25); Load(ui, vm);
+        vm.SearchText = "5A"; vm.StartsOn = new DateTime(2026, 9, 21); vm.EndsOn = new DateTime(2026, 9, 25); Load(ui, vm);
         Assert.Equal(classCount * 5, vm.TotalCount);
         Assert.Equal(classCount * 5, vm.TotalQuantity);
 
@@ -249,7 +249,7 @@ public class EntitlementsJourney
         ui.LoadAll(); ui.Navigate("entitlements");
         var vm = ui.Entitlements;
         // Ayni adli ogrenciler: ADA'lar, 2026-09-03
-        vm.StudentName = "ADA"; vm.StartsOn = new DateTime(2026, 9, 3); vm.EndsOn = new DateTime(2026, 9, 3); vm.Status = "Active"; Load(ui, vm);
+        vm.SearchText = "ADA"; vm.StartsOn = new DateTime(2026, 9, 3); vm.EndsOn = new DateTime(2026, 9, 3); vm.Status = "Active"; Load(ui, vm);
         Assert.True(vm.Items.Count >= 2, "en az iki ADA satiri bekleniyordu");
         var grid = ui.FindAll<DataGrid>().Single(x => x.Name == "EntitlementsGrid");
         grid.SelectedItems.Clear(); grid.SelectedItems.Add(vm.Items[0]); grid.SelectedItems.Add(vm.Items[1]); ui.Pump();

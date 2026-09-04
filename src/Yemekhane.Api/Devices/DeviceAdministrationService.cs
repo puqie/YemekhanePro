@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
@@ -14,13 +14,14 @@ namespace Yemekhane.Api.Devices;
 
 public sealed record DeviceWriteRequest(string Name, string DeviceType, string ConnectionType,
     string? IpAddress, int? Port, string? ComPort, int? BaudRate, bool IsActive, bool AutoConnect,
-    bool HasTurnstile, string? Location, string Direction);
+    bool HasTurnstile, string? Location, string Direction,
+    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false);
 
 public sealed record DeviceDto(Guid Id, string Name, string DeviceType, string ConnectionType,
     string Endpoint, string? IpAddress, int? Port, string? ComPort, int? BaudRate, bool IsActive,
     bool AutoConnect, bool HasTurnstile, string? Location, string Direction, string Status,
     DateTimeOffset? LastConnectedAt, DateTimeOffset? LastStatusAt, string? Model, string? SerialNumber,
-    string? Firmware, bool IsSimulator);
+    string? Firmware, bool IsSimulator, int? TurnstileRelayPulseMs, bool TurnstileBidirectional);
 
 public sealed record DeviceActionResult(bool Succeeded, string Status, string Message,
     string? ErrorCode = null, DeviceDto? Device = null);
@@ -32,8 +33,12 @@ public sealed partial class DeviceAdministrationService(
     YemekhaneDbContext db, DeviceManager manager, IDeviceAdapterFactory factory,
     IAuditService audit, TimeProvider timeProvider, IHostEnvironment environment)
 {
-    private static readonly HashSet<string> Types = ["SF300", "ComReader", "EthernetReader", "Simulator"];
+    private static readonly HashSet<string> Types = ["SF300", "SC403", "ComReader", "EthernetReader", "Simulator"];
     private static readonly HashSet<string> Directions = ["Entry", "Exit", "Bidirectional"];
+
+    /// <summary>Role darbesi sinirlari; OzakTurnstileProfile ile ayni araligi zorunlu kilar.</summary>
+    private const int MinRelayPulseMs = 50;
+    private const int MaxRelayPulseMs = 5000;
     public bool IsSimulatorAllowed => environment.IsDevelopment();
 
     public async Task<IReadOnlyList<DeviceDto>> ListAsync(CancellationToken cancellationToken) =>
@@ -194,6 +199,16 @@ public sealed partial class DeviceAdministrationService(
             if (await db.Devices.AnyAsync(x => x.Id != id && x.ComPort == com && x.BaudRate == baud, cancellationToken))
                 throw new RequestValidationException("Bu COM portu ve baud hızı başka bir cihazda kullanılıyor.");
         }
+        // Role darbesi turnike acik kalma suresini belirler. Asiri uzun darbe, kontagin turnike
+        // bir sonraki gecise hazir olduktan sonra da kapali kalmasina — yani tek okutmayla birden
+        // fazla kisinin gecmesine — yol acar; bu yuzden ust sinir zorunludur.
+        if (request.HasTurnstile && request.TurnstileRelayPulseMs is { } pulse &&
+            (pulse < MinRelayPulseMs || pulse > MaxRelayPulseMs))
+        {
+            throw new RequestValidationException(
+                $"Röle darbe süresi {MinRelayPulseMs}-{MaxRelayPulseMs} ms arasında olmalıdır.");
+        }
+
         if (await db.Devices.AnyAsync(x => x.Id != id && x.Name == name, cancellationToken))
             throw new RequestValidationException("Bu cihaz adı kullanılıyor.");
         return request with { Name = name, ConnectionType = connection, IpAddress = ip, Port = port,
@@ -247,7 +262,8 @@ public sealed partial class DeviceAdministrationService(
     }
 
     internal static DeviceAdapterConfiguration Configuration(Device x) => new(x.Id, x.Name, x.DeviceType,
-        x.ConnectionType, x.ComPort, x.BaudRate, x.IpAddress, x.IpPort, x.HasTurnstile);
+        x.ConnectionType, x.ComPort, x.BaudRate, x.IpAddress, x.IpPort, x.HasTurnstile,
+        x.TurnstileRelayPulseMs, x.TurnstileBidirectional);
 
     private static void Apply(Device x, DeviceWriteRequest r, DateTimeOffset now)
     {
@@ -255,13 +271,18 @@ public sealed partial class DeviceAdministrationService(
         x.IpAddress = r.IpAddress; x.IpPort = r.Port; x.ComPort = r.ComPort; x.BaudRate = r.BaudRate;
         x.IsActive = r.IsActive; x.AutoConnect = r.AutoConnect; x.HasTurnstile = r.HasTurnstile;
         x.Location = r.Location; x.Direction = r.Direction; x.UpdatedAt = now;
+        // Turnike ayarlari yalnizca turnike bagliyken anlamlidir; aksi halde temizlenir ki
+        // sonradan turnike isaretlendiginde eski bir degerin sessizce geri gelmesi onlensin.
+        x.TurnstileRelayPulseMs = r.HasTurnstile ? r.TurnstileRelayPulseMs : null;
+        x.TurnstileBidirectional = r.HasTurnstile && r.TurnstileBidirectional;
     }
 
     private static DeviceDto ToDto(Device x) => new(x.Id, x.Name, x.DeviceType, x.ConnectionType,
         x.ConnectionType == "COM" ? $"{x.ComPort} / {x.BaudRate}" : x.ConnectionType == "Ethernet" ? $"{x.IpAddress}:{x.IpPort}" : "Development simulator",
         x.IpAddress, x.IpPort, x.ComPort, x.BaudRate, x.IsActive, x.AutoConnect, x.HasTurnstile,
         x.Location, x.Direction, x.ConnectionStatus, x.LastConnectedAt, x.LastStatusAt, x.Model,
-        x.SerialNumber, x.Firmware, x.DeviceType == "Simulator");
+        x.SerialNumber, x.Firmware, x.DeviceType == "Simulator", x.TurnstileRelayPulseMs,
+        x.TurnstileBidirectional);
 
     internal static string StatusName(DeviceConnectionState state) => state == DeviceConnectionState.Faulted ? "Error" : state.ToString();
 

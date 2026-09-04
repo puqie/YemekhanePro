@@ -317,6 +317,12 @@ namespace Yemekhane.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("TurnstileBidirectional")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("TurnstileRelayPulseMs")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("TEXT");
 

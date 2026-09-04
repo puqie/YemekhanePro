@@ -104,12 +104,49 @@ public sealed class BulkOperationService(IBulkOperationRepository repository, Bu
     {
         var result = new Dictionary<Guid, DateOnly>();
         if (!IsTransfer(request)) return result;
-        foreach (var row in rows)
+
+        // Belirli bir tarihe aktarim: hepsi AYNI gune gider, yigilma kullanicinin
+        // acik istegidir.
+        if (request.TransferBehavior == "SpecifiedDate")
         {
-            var target = request.TransferBehavior == "SpecifiedDate" ? request.TargetDate!.Value
-                : await businessDays.GetNextBusinessDayAsync(row.Date, new CalendarScope(request.Scope.Type, request.Scope.ScopeId), cancellationToken);
-            if (target <= row.Date) throw new RequestValidationException("Aktarım hedefi kaynak tarihten sonra olmalıdır.");
-            result[row.EntitlementId] = target;
+            foreach (var row in rows)
+            {
+                if (request.TargetDate!.Value <= row.Date)
+                    throw new RequestValidationException("Aktarım hedefi kaynak tarihten sonra olmalıdır.");
+                result[row.EntitlementId] = request.TargetDate.Value;
+            }
+            return result;
+        }
+
+        var scope = new CalendarScope(request.Scope.Type, request.Scope.ScopeId);
+        // OGRENCI + OGUN basina ayri planlama: cok gunlu bir tatilde her hak AYRI bir
+        // bos is gunune gitmelidir. Once hepsi ayni "sonraki is gunune" tasiniyor ve
+        // orada toplaniyordu; bes gunluk tatil, ogrenciye bes ogunluk TEK gun
+        // biraktiginda izleyen gunler bos kaliyordu.
+        foreach (var group in rows.GroupBy(x => (x.StudentId, x.MealTypeId)))
+        {
+            var byDate = group.ToDictionary(x => x.Date);
+            var plan = await TransferTargetPlanner.PlanAsync(
+                byDate.Keys,
+                // Kaynak gunler HEDEF OLAMAZ: onlar tatilin kendisidir. Bos
+                // sayilsalardi haklar tatilin ICINE kaydirilirdi.
+                (date, _) => Task.FromResult(byDate.ContainsKey(date)),
+                async (date, token) =>
+                {
+                    try { return await businessDays.GetNextBusinessDayAsync(date, scope, token); }
+                    // On yillik tarama siniri asildi: bu hak icin hedef yok.
+                    catch (EntityNotFoundException) { return null; }
+                },
+                cancellationToken);
+
+            foreach (var (source, target) in plan) result[byDate[source].EntitlementId] = target;
+
+            // Hedef bulunamayan hak SESSIZCE dusurulmez: hak kaybi demektir.
+            var placed = plan.Select(x => x.Source).ToHashSet();
+            var orphan = byDate.Keys.Where(x => !placed.Contains(x)).ToArray();
+            if (orphan.Length > 0)
+                throw new RequestValidationException(
+                    $"{orphan.Length} hak için uygun bir aktarım günü bulunamadı. Takvimdeki tatilleri gözden geçirin.");
         }
         return result;
     }

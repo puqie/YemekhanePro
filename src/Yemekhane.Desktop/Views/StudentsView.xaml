@@ -429,9 +429,15 @@
                             <TextBlock Text="Doğum tarihi" Style="{StaticResource Label}" Margin="0,6,0,3"/>
                             <DatePicker Grid.Row="1" SelectedDate="{Binding FormBirthDate}" MinWidth="0" Margin="0,0,0,4" AutomationProperties.Name="Doğum tarihi"/>
                             <TextBlock Grid.Column="2" Text="Kart No" Style="{StaticResource Label}" Margin="0,6,0,3"/>
-                            <!-- Kart, sicil kaydindan ayri bir islemdir (atama/degistirme gecmis tutar);
-                                 burada yalnizca gosterilir, sag paneldeki Kart Ata/Degistir ile yonetilir. -->
-                            <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource ReadOnlyValue}" ToolTip="Kart atama ve değiştirme sağ panelden yapılır"><TextBlock Text="{Binding DetailCardNumber}" AutomationProperties.Name="Kart No"/></Border>
+                            <!-- Kart numarasi ELLE GIRILEBILIR ve kayitla AYNI ANDA atanir.
+                                 Once salt okunur bir kutuydu ve "sag panelden yapilir" diyordu;
+                                 ama sag panel ogrenci KAYDEDILDIKTEN sonra acildigi icin yeni
+                                 ogrenciye kart vermek iki ayri adim gerektiriyordu ve kullanici
+                                 alani "kapali" saniyordu. Bos birakilirsa kart islemi yapilmaz. -->
+                            <TextBox Grid.Row="1" Grid.Column="2" Style="{StaticResource Field}" MinWidth="0"
+                                     Text="{Binding FormCardNumber, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Kart numarasını yazın; kayıtla birlikte atanır. Boş bırakılırsa kart işlemi yapılmaz."
+                                     AutomationProperties.Name="Kart No"/>
                         </Grid>
                     </StackPanel>
                     <!-- Fotograf: 96px onizleme; yoksa gri siluet. Dosya bellekten gosterilir, disk kilidi kalmaz. -->

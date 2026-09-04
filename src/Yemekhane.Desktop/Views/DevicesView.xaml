@@ -53,6 +53,12 @@
                 <StackPanel Visibility="{Binding IsCom, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="COM portu"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding ComPort}"/><TextBlock Text="Baud"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding BaudRate}"/></StackPanel>
                 <TextBlock Text="Konum"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding Location}"/><TextBlock Text="Yön"/><ComboBox Margin="0,3,0,9" MinHeight="30" ItemsSource="{Binding Directions}" SelectedItem="{Binding Direction}"/>
                 <WrapPanel><CheckBox Content="Aktif" IsChecked="{Binding IsActive}" Margin="0,5,18,10"/><CheckBox Content="Otomatik bağlan" IsChecked="{Binding AutoConnect}" Margin="0,5,18,10"/><CheckBox Content="Turnike bağlı" IsChecked="{Binding HasTurnstile}" Margin="0,5,0,10"/></WrapPanel>
+                <Border Background="{StaticResource InfoSoftBrush}" Padding="11" Margin="0,0,0,10" CornerRadius="5" Visibility="{Binding HasTurnstile, Converter={StaticResource BoolToVisibility}}"><StackPanel>
+                    <TextBlock Text="Turnike sürüş ayarları" FontWeight="SemiBold"/>
+                    <TextBlock Text="Bu değerler üretici dokümanında belgelenmemiştir; kurulumda cihaz başında doğrulayın." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                    <TextBlock Text="Röle darbe süresi (ms, 50-5000)"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding RelayPulseMs}"/>
+                    <CheckBox Content="Turnike çift yönlü sürülebiliyor" IsChecked="{Binding TurnstileBidirectional}" Margin="0,2,0,0"/>
+                </StackPanel></Border>
                 <Border Background="{StaticResource WarningSoftBrush}" Padding="9" Margin="0,0,0,10" Visibility="{Binding IsSimulator, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Development simulator: üretimde oluşturulamaz." Foreground="{StaticResource WarningBrush}"/></Border>
                 <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/><Button Content="Kaydet" Command="{Binding SaveCommand}" Padding="15,8" HorizontalAlignment="Right" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0"/>
             </StackPanel></ScrollViewer></Border>

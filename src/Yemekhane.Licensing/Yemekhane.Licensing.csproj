@@ -30,7 +30,11 @@
     <Compile Remove="HttpLicenseActivationClient.cs" />
     <Compile Remove="LicenseActivationClient.cs" />
     <Compile Remove="OfflineLicenseActivationClient.cs" />
-    <Compile Remove="FingerprintMatcher.cs" />
+    <!-- FingerprintMatcher BU LISTEDE DEGILDIR: icinde hicbir Windows bagimliligi yok,
+         yalnizca dize karsilastirmasi yapar. Windows'a ozgu okuyucuyla (
+         HardwareFingerprintReader) ayni gruba konmustu; sonucu, API'nin 2/3 eslesme
+         kuralina hic erisememesiydi. Kurali API'de tekrar yazmak ayni mantigi iki yere
+         boler ve biri degistiginde oteki sessizce geride kalirdi. -->
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">

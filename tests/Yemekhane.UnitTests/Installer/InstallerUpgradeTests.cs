@@ -1,5 +1,7 @@
 using System.IO;
+using System.Linq;
 using System.Xml.Linq;
+using Yemekhane.KeyTool;
 
 namespace Yemekhane.UnitTests.Installer;
 
@@ -105,7 +107,74 @@ public sealed class InstallerUpgradeTests
         var script = File.ReadAllText(Path.Combine(FindRoot(), "scripts", "build-installer.ps1"));
 
         Assert.Contains("Yemekhane.Bundle.wixproj", script, StringComparison.Ordinal);
-        Assert.Contains("YemekhanePro-Setup", script, StringComparison.Ordinal);
+        Assert.Contains("YemekhaneProKurulum", script, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Kurulum dosyasinin adi UC yerde yaziyor: wixproj uretir, betik okur, arac
+    /// (InstallerBuilder) musteriye verir. Uc taraf sabit dizeyi bagimsiz tekrar
+    /// ettigi icin biri yeniden adlandirildiginda otekiler sessizce geride kalir --
+    /// bu gercekten oldu: betik YemekhanePro-Setup uretirken arac
+    /// YemekhaneProKurulum ariyordu, kurulum basariyla uretildigi halde arac
+    /// "basarisiz" diyordu. Ayni kayma NextVersion'i da bozar: dosyalari
+    /// bulamayinca surum onerisi 1.0.0'da kalir ve yayinlanmis surumun uzerine
+    /// yazilmasini onerir.
+    ///
+    /// Bu test beklenen adi ARACIN kendisinden turetir; boylece uc taraf ayni ada
+    /// bakmadan yesil kalamaz.
+    /// </summary>
+    [Fact]
+    public void KurulumDosyasiAdiBetikWixprojVeAracArasindaAyni()
+    {
+        var root = FindRoot();
+        var expectedName = Path.GetFileName(InstallerBuilder.OutputPathFor(root, "1.3.0"));
+        var script = File.ReadAllText(Path.Combine(root, "scripts", "build-installer.ps1"));
+        var wixproj = File.ReadAllText(
+            Path.Combine(root, "installer-bundle", "Yemekhane.Bundle.wixproj"));
+
+        // Betik ve wixproj surumu degisken olarak yazar; adin surumden onceki
+        // sabit kismi karsilastirilir.
+        var stem = expectedName[..expectedName.IndexOf("-1.3.0.exe", StringComparison.Ordinal)];
+
+        Assert.True(script.Contains(stem, StringComparison.Ordinal),
+            $"Arac '{expectedName}' bekliyor ama build-installer.ps1 icinde '{stem}' yok. "
+            + "Kurulum uretilse bile arac dosyayi bulamaz ve 'basarisiz' der.");
+        Assert.True(wixproj.Contains(stem, StringComparison.Ordinal),
+            $"Arac '{expectedName}' bekliyor ama Yemekhane.Bundle.wixproj icindeki "
+            + $"OutputName '{stem}' uretmiyor. Uretilen dosya baska adla cikar.");
+    }
+
+    /// <summary>
+    /// Yayin korumasi IKI dogrulama yolunu da tanimalidir.
+    ///
+    /// <para>
+    /// Asimetrik mod eklendiginde <c>build-installer.ps1</c> HMAC sirrini bilincli
+    /// olarak bosaltti, ama csproj icindeki uyari kosulu YALNIZCA sirra bakmaya
+    /// devam etti. <c>-warnaserror</c> altinda uyari hataya donduğu icin asimetrik
+    /// kurulum HIC uretilemiyordu ve sebebi "sir verilmedi" diye YANLIS
+    /// gosteriliyordu -- acik anahtar verilmisti, eksik olan bir sey yoktu.
+    /// </para>
+    /// <para>
+    /// Kosul her iki anahtari da anmalidir: biri saglandiginda uyari susmalidir.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void YayinUyarisiAcikAnahtarVerildigindeSusar()
+    {
+        var csproj = File.ReadAllText(
+            Path.Combine(FindRoot(), "src", "Yemekhane.Desktop", "Yemekhane.Desktop.csproj"));
+        var document = XDocument.Parse(csproj);
+
+        var warning = document.Descendants()
+            .Single(element => element.Name.LocalName == "Warning");
+        var condition = (string?)warning.Attribute("Condition") ?? string.Empty;
+
+        Assert.Contains("LicensingSigningSecret", condition, StringComparison.Ordinal);
+        Assert.True(condition.Contains("LicensingPublicKey", StringComparison.Ordinal),
+            "Yayin uyarisi yalnizca LicensingSigningSecret'a bakiyor. Asimetrik modda "
+            + "sir bilincli olarak bostur; acik anahtar verildiginde uyari susmalidir, "
+            + "aksi halde -warnaserror kurulum uretimini tamamen durdurur. Kosul: "
+            + $"'{condition}'");
     }
 
     [Fact]

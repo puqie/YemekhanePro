@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Calendar;
 using Yemekhane.Application.Common;
@@ -28,14 +29,70 @@ public sealed class EfLeaveRepository(YemekhaneDbContext dbContext, BusinessDayS
             foreach (var right in rights)
             {
                 right.Status = request.EntitlementBehavior == "Cancel" ? "Cancelled" : "Transferred"; right.Version++;
-                if (request.EntitlementBehavior == "NextBusinessDay")
+            }
+
+            if (request.EntitlementBehavior == "NextBusinessDay")
+            {
+                var scope = new CalendarScope("Class", student.ClassId);
+                // OGUN TURU BASINA ayri planlanir: ogle ve aksam ayni gunde birlikte
+                // bulunabilir, dolayisiyla "gun dolu mu" sorusu ogune baglidir.
+                foreach (var group in rights.GroupBy(x => x.MealTypeId))
                 {
-                    var targetDate = await businessDayService.GetNextBusinessDayAsync(right.EntitlementDate, new CalendarScope("Class", student.ClassId), cancellationToken);
-                    var target = await dbContext.MealEntitlements.SingleOrDefaultAsync(x => x.StudentId == right.StudentId && x.MealTypeId == right.MealTypeId && x.EntitlementDate == targetDate, cancellationToken);
-                    if (target is null) dbContext.Add(new MealEntitlement { StudentId = right.StudentId, MealTypeId = right.MealTypeId, EntitlementDate = targetDate, Quantity = right.Quantity, Status = "Active", Source = "LeaveTransfer" });
-                    else { target.Quantity += right.Quantity; target.Version++; }
-                    dbContext.Add(new MealTransfer { StudentId = right.StudentId, MealTypeId = right.MealTypeId, SourceEntitlementId = right.Id,
-                        OriginalDate = right.EntitlementDate, TargetDate = targetDate, Quantity = right.Quantity, Reason = request.Description ?? request.LeaveType, CreatedBy = request.CreatedBy });
+                    var mealTypeId = group.Key;
+                    var byDate = group.ToDictionary(x => x.EntitlementDate);
+
+                    // COK GUNLU TATIL: her hak AYRI bir bos is gunune gider. Once
+                    // hepsi ayni "sonraki is gunune" tasiniyordu ve o tek gune
+                    // yigiliyordu; bes gunluk tatil bes ogunluk tek gun uretiyordu.
+                    var plan = await TransferTargetPlanner.PlanAsync(
+                        byDate.Keys,
+                        async (date, token) =>
+                            // Kaynak gunlerin kendisi hedef sayilmaz: onlar zaten
+                            // "Transferred" olarak isaretlendi ve bosaldi.
+                            // KAYNAK GUNLER HEDEF OLAMAZ: onlar iznin/tatilin kendisidir
+                            // ve satirlari tabloda KALIR (Status=Transferred). Bos
+                            // sayilsalardi 7 Eylul'un hakki 8 Eylul'e, 8'inki 9'una
+                            // kayar; tatil hic dikkate alinmamis olurdu (olculdu).
+                            byDate.ContainsKey(date)
+                            // Status'e BAKILMAZ: benzersizlik kisiti
+                            // (StudentId, EntitlementDate, MealTypeId) durumdan
+                            // bagimsizdir; "Active" filtresi konsaydi iptal edilmis bir
+                            // satirin uzerine yazmaya calisip UNIQUE ihlali alirdik.
+                            || await dbContext.MealEntitlements.AnyAsync(
+                                x => x.StudentId == request.StudentId && x.MealTypeId == mealTypeId
+                                    && x.EntitlementDate == date, token),
+                        async (date, token) =>
+                        {
+                            try { return await businessDayService.GetNextBusinessDayAsync(date, scope, token); }
+                            // On yillik tarama siniri asildi: bu hak icin hedef yok.
+                            catch (EntityNotFoundException) { return null; }
+                        },
+                        cancellationToken);
+
+                    foreach (var (source, targetDate) in plan)
+                    {
+                        var right = byDate[source];
+                        dbContext.Add(new MealEntitlement
+                        {
+                            StudentId = right.StudentId, MealTypeId = right.MealTypeId,
+                            EntitlementDate = targetDate, Quantity = right.Quantity,
+                            Status = "Active", Source = "LeaveTransfer"
+                        });
+                        dbContext.Add(new MealTransfer
+                        {
+                            StudentId = right.StudentId, MealTypeId = right.MealTypeId, SourceEntitlementId = right.Id,
+                            OriginalDate = right.EntitlementDate, TargetDate = targetDate, Quantity = right.Quantity,
+                            Reason = request.Description ?? request.LeaveType, CreatedBy = request.CreatedBy
+                        });
+                    }
+
+                    // Hedef bulunamayan hak SESSIZCE dusurulmez: hak kaybi demektir.
+                    var placed = plan.Select(x => x.Source).ToHashSet();
+                    var orphan = byDate.Keys.Where(x => !placed.Contains(x)).ToArray();
+                    if (orphan.Length > 0)
+                        throw new RequestValidationException(
+                            $"{orphan.Length} hak için uygun bir aktarım günü bulunamadı ({string.Join(", ", orphan.Select(x => x.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture)))}). "
+                            + "Takvimdeki tatilleri gözden geçirin.");
                 }
             }
         }

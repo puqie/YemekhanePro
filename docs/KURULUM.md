@@ -25,7 +25,7 @@ Okula yalnızca **Bölüm A**'yı verin.
 
 ## A2. Kurulum
 
-1. `YemekhanePro-Setup-1.1.0.exe` dosyasına çift tıklayın.
+1. `YemekhaneProKurulum-<sürüm>.exe` dosyasına çift tıklayın.
 2. Windows "Bu uygulamanın cihazınızda değişiklik yapmasına izin verilsin mi?" diye sorar → **Evet**.
 3. Lisans sözleşmesini kabul edin → **İleri**.
 4. Kurulum klasörünü değiştirmeniz gerekmez → **İleri** → **Kur**.
@@ -33,7 +33,7 @@ Okula yalnızca **Bölüm A**'yı verin.
 
 Kurulum bittiğinde **masaüstünde** ve **Başlat menüsünde** YemekhanePro simgesi bulunur.
 
-> Kurulum **tek dosyadır**: `YemekhanePro-Setup-1.1.0.exe`. Gereken her şey bu
+> Kurulum **tek dosyadır**: `YemekhaneProKurulum-<sürüm>.exe`. Gereken her şey bu
 > dosyanın içindedir.
 
 ## A3. İlk açılış — yönetici parolası
@@ -182,7 +182,7 @@ $env:YEMEKHANE_LICENSING_SECRET = '<B1 ile AYNI imza sırrı>'
 .\scripts\build-installer.ps1 -Version 1.1.0
 ```
 
-Çıktı: `artifacts\installer\YemekhanePro-Setup-1.1.0.exe`
+Çıktı: `artifacts\installer\YemekhaneProKurulum-<sürüm>.exe`
 
 Betik derler, testleri koşar, yayımlar, MSI ve EXE üretir. Sır verilmezse **başlamadan
 durur** — sırsız üretilen kurulum açılışta donacağı için bu kasıtlı bir kapıdır.

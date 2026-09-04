@@ -20,7 +20,7 @@ public class EntitlementsJourneyBulk
         Assert.NotNull(vm.BulkWizard); Assert.Same(wizard, vm.BulkWizard);
 
         // 2026-09-08 gununden iki AKTIF 5B satiri sec
-        vm.StartsOn = new DateTime(2026, 9, 8); vm.EndsOn = new DateTime(2026, 9, 8); vm.ClassName = "5B"; vm.Status = "Active";
+        vm.StartsOn = new DateTime(2026, 9, 8); vm.EndsOn = new DateTime(2026, 9, 8); vm.SearchText = "5B"; vm.Status = "Active";
         Assert.True(LiveUiHarness.Wait(vm.LoadAsync(1), Timeout)); ui.Pump();
         Assert.True(vm.Items.Count >= 2, "5B icin en az iki satir bekleniyordu");
         var grid = ui.FindAll<DataGrid>().Single(x => x.Name == "EntitlementsGrid");

@@ -1,4 +1,4 @@
-﻿using System.Runtime.ExceptionServices;
+using System.Runtime.ExceptionServices;
 using Yemekhane.Desktop;
 
 namespace Yemekhane.UnitTests.Dashboard;
@@ -15,8 +15,8 @@ public sealed class DashboardUiSmokeTests
             try
             {
                 var window = new MainWindow(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(window);
-                Assert.Equal(1280, window.MinWidth);
-                Assert.Equal(720, window.MinHeight);
+                Assert.Equal(1024, window.MinWidth);
+                Assert.Equal(640, window.MinHeight);
                 window.Close();
             }
             catch (Exception ex) { failure = ex; }

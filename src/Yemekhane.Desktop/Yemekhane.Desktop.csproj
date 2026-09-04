@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Yemekhane.Application\Yemekhane.Application.csproj" />
@@ -43,8 +43,14 @@
        verir). Bu yuzden hedef, sir verilmediginde uyari uretir: hatanin musteride
        degil yayin sirasinda fark edilmesi gerekir. -->
   <Target Name="InjectLicensingSigningSecret" AfterTargets="Publish">
-    <Warning Condition="'$(LicensingSigningSecret)' == ''"
-             Text="LicensingSigningSecret verilmedi. Yayinlanan uygulama acilista duracaktir. Kullanim: dotnet publish -p:LicensingSigningSecret=&lt;sir&gt;" />
+    <!-- ACIK ANAHTAR verildiyse HMAC sirri GEREKMEZ ve uyari VERILMEZ: asimetrik
+         modda sir bilincli olarak bostur (build-installer.ps1 onu bosaltir). Kosul
+         yalnizca sirra bakiyordu; asimetrik mod eklendiginde bu kontrol HMAC
+         dunyasinda kaldi ve -warnaserror altinda uretimi tamamen durduruyordu:
+         uretilen kurulum yoktu, sebebi ise "sir verilmedi" diye yanlis
+         gosteriliyordu. Iki dogrulama yolundan HANGISININ saglandigi onemli. -->
+    <Warning Condition="'$(LicensingSigningSecret)' == '' And '$(LicensingPublicKey)' == ''"
+             Text="Ne LicensingSigningSecret ne LicensingPublicKey verildi. Yayinlanan uygulama acilista duracaktir. Kullanim: dotnet publish -p:LicensingPublicKey=&lt;acik-anahtar&gt; (onerilen) ya da -p:LicensingSigningSecret=&lt;sir&gt;" />
 
     <!-- Yayin ciktisindaki appsettings.json icinde yalnizca bos sir alani degistirilir;
          kaynak dosyaya DOKUNULMAZ. -->

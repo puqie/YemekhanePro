@@ -29,16 +29,29 @@ param(
 if (-not [string]::IsNullOrWhiteSpace($LicensingPublicKey)) {
     # Ozel anahtarin yanlislikla buraya verilmesi felakettir: musteri onunla kendine
     # sinirsiz lisans uretebilir. Acikca reddedilir.
-    Add-Type -AssemblyName System.Security
-    $isPublic = $true
-    try {
-        $ecdsa = [System.Security.Cryptography.ECDsa]::Create()
-        $bytesRead = 0
-        $ecdsa.ImportSubjectPublicKeyInfo([Convert]::FromBase64String($LicensingPublicKey), [ref]$bytesRead)
-        $ecdsa.Dispose()
-    } catch { $isPublic = $false }
-    if (-not $isPublic) {
-        throw 'LicensingPublicKey gecerli bir ACIK anahtar degil. Ozel anahtari kuruluma gomeyin.'
+    # DER basligi denetlenir, ImportSubjectPublicKeyInfo DEGIL: o metot .NET Core 3.0+
+    # API'sidir ve Windows PowerShell 5.1 (.NET Framework, ECDsaCng) uzerinde YOKTUR.
+    # Betik araciin "Kurulum uret" dugmesinden powershell.exe (5.1) ile cagrildigi icin
+    # metot cagrisi patliyor, catch bunu yutuyor ve GECERLI anahtar "gecersiz" diye
+    # reddediliyordu -- hata mesaji yanlis sucluyu gosterdigi icin en can sikici
+    # tarafi buydu. Baslik denetimi saf PowerShell'dir ve her surumde ayni calisir.
+    #
+    # P-256 icin olculen bicimler:
+    #   SubjectPublicKeyInfo (ACIK) : 91 bayt,  30 59 ...
+    #   PKCS#8 PrivateKey    (OZEL) : 138 bayt, 30 81 ...
+    # Ikinci bayt ikisini kesin ayirir; kontrolun ASIL amaci (ozel anahtarin
+    # kuruluma gomulmesini engellemek) tam olarak korunur.
+    try { $keyBytes = [Convert]::FromBase64String($LicensingPublicKey) }
+    catch { throw 'LicensingPublicKey base64 olarak okunamadi. Anahtari eksiksiz kopyalayin.' }
+
+    if ($keyBytes.Length -lt 2 -or $keyBytes[0] -ne 0x30) {
+        throw 'LicensingPublicKey bir DER anahtari degil (0x30 ile baslamiyor).'
+    }
+    if ($keyBytes[1] -eq 0x81) {
+        throw 'LicensingPublicKey OZEL anahtar gibi gorunuyor (PKCS#8). Ozel anahtari kuruluma GOMEYIN: musteri onunla kendine sinirsiz lisans uretir. Aracin verdigi ACIK anahtari kullanin.'
+    }
+    if ($keyBytes[1] -ne 0x59 -or $keyBytes.Length -ne 91) {
+        throw "LicensingPublicKey gecerli bir P-256 ACIK anahtari degil (91 bayt/0x59 beklenir, gelen $($keyBytes.Length) bayt/0x$('{0:X2}' -f $keyBytes[1]))."
     }
     $LicensingSigningSecret = ''
 }
@@ -121,7 +134,7 @@ Invoke-DotNet @('build', (Join-Path $root 'installer-bundle\Yemekhane.Bundle.wix
     "-p:MsiPath=$(Join-Path $installerDir "YemekhanePro-$Version-win-x64.msi")",
     "-p:OutputPath=$installerDir", '-warnaserror')
 
-$setup = Get-Item -LiteralPath (Join-Path $installerDir "YemekhanePro-Setup-$Version.exe")
+$setup = Get-Item -LiteralPath (Join-Path $installerDir "YemekhaneProKurulum-$Version.exe")
 $msi = Get-Item -LiteralPath (Join-Path $installerDir "YemekhanePro-$Version-win-x64.msi")
 $windowsInstaller = New-Object -ComObject WindowsInstaller.Installer
 $database = $windowsInstaller.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $windowsInstaller, @($msi.FullName, 0))

@@ -61,11 +61,19 @@
                 <!-- 125px'te "26.08.2026" metni takvim simgesini kesiyordu; 140 ikisine yeter. -->
                 <StackPanel Width="140" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Başlangıç" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding StartsOn}" ToolTip="Başlangıç tarihi"/></StackPanel>
                 <StackPanel Width="140" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Bitiş" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding EndsOn}" ToolTip="Bitiş tarihi"/></StackPanel>
-                <StackPanel Width="95" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding StudentNo}" ToolTip="Öğrenci NO"/></StackPanel>
-                <StackPanel Width="105" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding CardNumber}" ToolTip="Kart no"/></StackPanel>
-                <StackPanel Width="140" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Ad soyad" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding StudentName}" ToolTip="Ad soyad"/></StackPanel>
-                <!-- Sinif adi en fazla 3 karakter ("12C"); 90px yeter ve dokuz filtre tek satirda kalir. -->
-                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding ClassName}" ToolTip="Sınıf"/></StackPanel>
+                <!-- TEK ARAMA KUTUSU: ad, ogrenci no, kart no ve sinif birlikte aranir.
+                     Once bunlar dort ayri kutuydu; kullanici aradigi seyin hangi kutuya
+                     ait oldugunu bilmek zorundaydi ve yanlis kutuya yazinca SESSIZCE bos
+                     sonuc aliyordu. Dort kutu yerine bir kutu ayrica %125 olcekte
+                     tasmayi da onler. MinWidth ile daralinca kucuk ekranda da kullanilir
+                     kalir; Width sabit degil ki dar pencerede kutu kaybolmasin. -->
+                <StackPanel MinWidth="240" Width="300" Margin="0,0,10,8">
+                    <TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/>
+                    <TextBox Style="{StaticResource FieldCompact}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Ad, öğrenci no, kart no veya sınıf yazın"
+                             AutomationProperties.Name="Ara"
+                             AutomationProperties.HelpText="Ad, öğrenci numarası, kart numarası veya sınıf adında birden arar"/>
+                </StackPanel>
                 <!-- Grup ve Ogun kutulari "Tümü" ogesiyle baslar: bos bir acilir kutu kullaniciya
                      "secilmemis" gibi gorunuyordu ve bir kez secim yapinca filtreyi geri
                      kaldirmanin yolu yoktu (WPF ComboBox'ta secim UI'dan sifirlanamaz). -->
@@ -170,7 +178,22 @@
                 <TextBlock Text="Öğün" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding GrantMeal}"/>
                 <!-- Ogun bedeli Tanimlar ekraninda girilir; sifirsa satir gizli (ucretsiz ogun). -->
                 <TextBlock x:Name="GrantMealPriceText" Text="{Binding GrantMealPriceText}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" Visibility="{Binding HasGrantMealPrice, Converter={StaticResource BoolToVisibility}}"/>
-                <TextBlock Text="Tarih aralığı" Style="{StaticResource Label}"/><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="8"/><ColumnDefinition/></Grid.ColumnDefinitions><DatePicker SelectedDate="{Binding GrantStartsOn}" AutomationProperties.Name="Hakediş başlangıç tarihi"/><DatePicker Grid.Column="2" SelectedDate="{Binding GrantEndsOn}" AutomationProperties.Name="Hakediş bitiş tarihi"/></Grid>
+                <!-- BITIS TARIHI yerine GUN SAYISI: kullanici "10 gunluk yemek hakki"
+                     diye dusunur, bitis tarihini takvimden hafta sonlarini sayarak
+                     bulmak zorunda kalmamali. Sayim IS GUNU uzerinden yapilir, yani
+                     "10 gun" her zaman 10 hak demektir. Hesaplanan aralik hemen
+                     altta gosterilir ki kullanici uygulamadan once gorebilsin. -->
+                <TextBlock Text="Başlangıç" Style="{StaticResource Label}"/>
+                <DatePicker SelectedDate="{Binding GrantStartsOn}" AutomationProperties.Name="Hakediş başlangıç tarihi"/>
+                <TextBlock Text="Kaç gün" Style="{StaticResource Label}" Margin="0,10,0,0"/>
+                <TextBox x:Name="DayCountBox" Width="110" HorizontalAlignment="Left"
+                         Text="{Binding DayCountText, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="Örnek: 10, 15, 20. Hafta sonu seçimine göre iş günü sayılır."
+                         AutomationProperties.Name="Gün sayısı"/>
+                <TextBlock x:Name="GrantRangeText" Text="{Binding GrantRangeText}" Foreground="{StaticResource MutedBrush}"
+                           TextWrapping="Wrap" Margin="0,6,0,0"
+                           AutomationProperties.LiveSetting="Polite"
+                           AutomationProperties.Name="Hesaplanan tarih aralığı"/>
                 <!-- Metin olarak baglanir: int baglamada "abc" sessizce reddedilip ESKI adet kalirdi. -->
                 <TextBlock Text="Günlük adet (1-10)" Style="{StaticResource Label}"/><TextBox x:Name="QuantityBox" Width="110" HorizontalAlignment="Left" Text="{Binding QuantityText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Günlük adet"/>
                 <WrapPanel Margin="0,10,0,0"><CheckBox Content="Cumartesi dahil" IsChecked="{Binding IncludeSaturday}" Margin="0,0,18,0"/><CheckBox Content="Pazar dahil" IsChecked="{Binding IncludeSunday}"/></WrapPanel>

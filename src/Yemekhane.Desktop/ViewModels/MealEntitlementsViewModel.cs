@@ -42,7 +42,9 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     private readonly IMealEntitlementApiClient api;
     private readonly bool canManage, canBulk;
     private bool isLoading, isOffline, isGrantOpen, isCancelConfirmationOpen;
-    private string? errorMessage, statusMessage, studentNo, cardNumber, studentName, className, status, previewMessage;
+    private string? errorMessage, statusMessage, status, previewMessage;
+    private string? searchText;
+    private string dayCountText = "10";
     private int page = 1, pageSize = 50, totalCount, totalQuantity, consumedQuantity, remainingQuantity;
     private string quantityText = "1";
     private DateTime? startsOn = DateTime.Today.AddDays(-7), endsOn = DateTime.Today.AddDays(7);
@@ -92,10 +94,17 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     public bool CanManage => canManage;
     public bool CanBulk => canBulk;
     public BulkOperationWizardViewModel? BulkWizard { get; }
-    public string? StudentNo { get => studentNo; set => Set(ref studentNo, value); }
-    public string? CardNumber { get => cardNumber; set => Set(ref cardNumber, value); }
-    public string? StudentName { get => studentName; set => Set(ref studentName, value); }
-    public string? ClassName { get => className; set => Set(ref className, value); }
+    /// <summary>
+    /// TEK ARAMA metni: ad, ogrenci no, kart no ve sinif adinda birden aranir.
+    ///
+    /// <para>
+    /// Once dort ayri kutu vardi (Ogrenci no / Kart no / Ad soyad / Sinif). Kullanici
+    /// aradigi seyin hangi kutuya ait oldugunu bilmek zorundaydi ve yanlis kutuya
+    /// yazinca SESSIZCE bos sonuc aliyordu. Dokuz kutu ayrica %125 olcekte ekrandan
+    /// tasiyor, sagdaki alanlar goruntunun disinda kaliyordu.
+    /// </para>
+    /// </summary>
+    public string? SearchText { get => searchText; set => Set(ref searchText, value); }
     public string? Status { get => status; set => Set(ref status, value); }
     public DateTime? StartsOn { get => startsOn; set => Set(ref startsOn, value); }
     public DateTime? EndsOn { get => endsOn; set => Set(ref endsOn, value); }
@@ -159,8 +168,44 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     public bool HasPreviewTotal => HasPreview && PreviewTotal > 0;
     public string PreviewTotalText => HasPreviewTotal ? "Toplam bedel: " + PreviewTotal.ToString("C2", Turkish) : "";
     private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
-    public DateTime GrantStartsOn { get => grantStartsOn; set { if (Set(ref grantStartsOn, value)) Preview = null; } }
+    public DateTime GrantStartsOn { get => grantStartsOn; set { if (Set(ref grantStartsOn, value)) { Preview = null; Raise(nameof(GrantRangeText)); } } }
     public DateTime GrantEndsOn { get => grantEndsOn; set { if (Set(ref grantEndsOn, value)) Preview = null; } }
+
+    /// <summary>
+    /// Hakedisin kac GUN surecegi. Kullanici bitis tarihi degil gun sayisi dusunur
+    /// ("10 gunluk yemek hakki"); bitis tarihini elle bulmak icin takvime bakip
+    /// hafta sonlarini saymak gerekiyordu ve yanlis sayilan her gun eksik ya da
+    /// fazla hak olusturuyordu.
+    ///
+    /// <para>
+    /// Metin olarak baglanir: int baglamada "abc" SESSIZCE reddedilip eski deger
+    /// kalirdi (gunluk adet kutusunda ayni tuzak yasandi).
+    /// </para>
+    /// </summary>
+    public string DayCountText
+    {
+        get => dayCountText;
+        set { if (Set(ref dayCountText, value)) { Preview = null; Raise(nameof(GrantRangeText)); } }
+    }
+
+    /// <summary>
+    /// Girilen gun sayisinin hangi tarihte bitecegini soyler. Kullanici "10 gun"
+    /// yazdiginda hangi tarihe kadar hak olusacagini ONCEDEN gormelidir.
+    /// </summary>
+    public string GrantRangeText
+    {
+        get
+        {
+            if (!int.TryParse(DayCountText?.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var days)
+                || days < 1)
+                return "Gün sayısı 1 veya daha büyük bir tam sayı olmalıdır.";
+            var end = WorkingDayRange.EndDateFor(
+                DateOnly.FromDateTime(GrantStartsOn), days, IncludeSaturday, IncludeSunday);
+            return end is null
+                ? "Seçilen günlerle bu süre hesaplanamıyor."
+                : $"{GrantStartsOn:dd.MM.yyyy} - {end.Value:dd.MM.yyyy} ({days} gün)";
+        }
+    }
     /// <summary>
     /// Gunluk adet metin olarak baglanir. int'e dogrudan baglansaydi "abc" gibi bir giris
     /// WPF'te sessizce reddedilir, kutu kirmizi cizilir ama ViewModel ESKI degeri tutar;
@@ -172,8 +217,8 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         get => int.TryParse(quantityText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : 0;
         set => QuantityText = value.ToString(CultureInfo.InvariantCulture);
     }
-    public bool IncludeSaturday { get => includeSaturday; set { if (Set(ref includeSaturday, value)) Preview = null; } }
-    public bool IncludeSunday { get => includeSunday; set { if (Set(ref includeSunday, value)) Preview = null; } }
+    public bool IncludeSaturday { get => includeSaturday; set { if (Set(ref includeSaturday, value)) { Preview = null; Raise(nameof(GrantRangeText)); } } }
+    public bool IncludeSunday { get => includeSunday; set { if (Set(ref includeSunday, value)) { Preview = null; Raise(nameof(GrantRangeText)); } } }
     public EntitlementPreview? Preview { get => preview; private set { if (Set(ref preview, value)) { Raise(nameof(HasPreview)); Raise(nameof(PreviewText)); Raise(nameof(PreviewTotal)); Raise(nameof(HasPreviewTotal)); Raise(nameof(PreviewTotalText)); (ApplyCommand as AsyncCommand)?.Refresh(); } } }
     public bool HasPreview => Preview is not null;
     public string PreviewText => Preview is null ? "" : $"{Preview.StudentCount:N0} öğrenci • {Preview.DayCount:N0} gün • {Preview.RightsCount:N0} hak ({Preview.CreatedCount:N0} yeni, {Preview.UpdatedCount:N0} güncelleme)";
@@ -224,9 +269,10 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         IsLoading = true; IsOffline = false; ErrorMessage = null; StatusMessage = null;
         try
         {
-            var result = await api.SearchAsync(new MealEntitlementQuery(ToDate(StartsOn), ToDate(EndsOn), Empty(StudentNo),
-                Empty(CardNumber), Empty(StudentName), Empty(ClassName), SelectedGroupFilter?.Id, SelectedMealFilter?.Id, Status,
-                targetPage, PageSize));
+            var result = await api.SearchAsync(new MealEntitlementQuery(ToDate(StartsOn), ToDate(EndsOn),
+                StudentNo: null, CardNumber: null, Name: null, ClassName: null,
+                SelectedGroupFilter?.Id, SelectedMealFilter?.Id, Status,
+                targetPage, PageSize, Search: Empty(SearchText)));
             Items.Clear(); foreach (var item in result.Items) Items.Add(item);
             Page = result.Page; TotalCount = result.TotalCount; TotalQuantity = result.Summary.TotalQuantity;
             ConsumedQuantity = result.Summary.ConsumedQuantity; RemainingQuantity = result.Summary.RemainingQuantity;
@@ -330,7 +376,16 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         if (GrantMeal is null) throw new InvalidOperationException("Öğün seçilmelidir.");
         if (!int.TryParse(QuantityText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var quantity) || quantity is < 1 or > 10)
             throw new InvalidOperationException("Günlük adet 1-10 arasında bir tam sayı olmalıdır.");
-        if (GrantEndsOn.Date < GrantStartsOn.Date) throw new InvalidOperationException("Bitiş tarihi başlangıç tarihinden önce olamaz.");
+        // Bitis tarihi GUN SAYISINDAN hesaplanir: kullanici "10 gun" der, sistem
+        // hafta sonlarini atlayarak 10 dolu gun bulur. Boylece "10 gun" her zaman
+        // 10 hak demektir; takvim gunu sayilsaydi hafta sonuna denk gelen istekte
+        // hak sayisi degisirdi.
+        if (!int.TryParse(DayCountText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var dayCount)
+            || dayCount < 1)
+            throw new InvalidOperationException("Gün sayısı 1 veya daha büyük bir tam sayı olmalıdır.");
+        var computedEnd = WorkingDayRange.EndDateFor(
+            DateOnly.FromDateTime(GrantStartsOn), dayCount, IncludeSaturday, IncludeSunday)
+            ?? throw new InvalidOperationException("Seçilen günlerle bu süre hesaplanamıyor. Cumartesi/Pazar seçimini gözden geçirin.");
         var (ids, nos) = ManualStudentInput.Parse(ManualStudentIds);
         if (IsManualTarget && ids.Length == 0 && nos.Length == 0)
             throw new InvalidOperationException("Öğrenci numaralarını girin (örn. 5012, 5013) ya da listeden satır seçerek Hızlı Hakediş'i açın.");
@@ -340,7 +395,7 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         var target = new EntitlementTarget(TargetType, IsManualTarget ? ids : [], GrantClass?.Id, Empty(Grade), GrantGroup?.Id,
             IsManualTarget && nos.Length > 0 ? nos : null);
         return new EntitlementGrantRequest(target, GrantMeal.Id, DateOnly.FromDateTime(GrantStartsOn),
-            DateOnly.FromDateTime(GrantEndsOn), quantity, IncludeSaturday, IncludeSunday, "WPF Quick Grant");
+            computedEnd, quantity, IncludeSaturday, IncludeSunday, "WPF Quick Grant");
     }
 
     private void HandleError(Exception ex, string fallback)

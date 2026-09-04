@@ -42,9 +42,23 @@ public static class InstallerBuilder
         return null;
     }
 
+    /// <summary>
+    /// Kurulum dosyasi adinin surumden onceki sabit kismi.
+    ///
+    /// <para>
+    /// TEK KAYNAK: ad hem burada hem <c>Yemekhane.Bundle.wixproj</c> (OutputName)
+    /// hem de <c>build-installer.ps1</c> icinde geciyor. Uc taraf dizeyi bagimsiz
+    /// tekrar ettiginde biri yeniden adlandirilip otekiler geride kalabiliyor ve
+    /// bu SESSIZ bir hata: kurulum uretilir, arac dosyayi bulamaz ve "basarisiz"
+    /// der. C# tarafi artik bu sabiti paylasir; betik ve wixproj ile uyum
+    /// <c>KurulumDosyasiAdiBetikWixprojVeAracArasindaAyni</c> testiyle baglanir.
+    /// </para>
+    /// </summary>
+    public const string OutputNameStem = "YemekhaneProKurulum";
+
     /// <summary>Verilen surumun uretilecegi hedef dosya yolu.</summary>
     public static string OutputPathFor(string repositoryRoot, string version) =>
-        Path.Combine(repositoryRoot, "artifacts", "installer", $"YemekhaneProKurulum-{version}.exe");
+        Path.Combine(repositoryRoot, "artifacts", "installer", $"{OutputNameStem}-{version}.exe");
 
     /// <summary>Surum numarasi <c>1.2.3</c> bicimine uymali; betik de bunu dayatir.</summary>
     public static bool IsValidVersion(string? version) =>

@@ -46,7 +46,7 @@ Exe'ye çift tıklayın → İleri → Kur. Yönetici izni ister.
 | Ne | Nerede |
 |---|---|
 | Program | `C:\Program Files\YemekhanePro\` |
-| Veriler | `C:\ProgramData\YemekhanePro\` |
+| Veriler | `%LOCALAPPDATA%\YemekhanePro\` |
 
 Veriler **programı kaldırsanız da silinmez** — güncelleme yapabilirsiniz.
 

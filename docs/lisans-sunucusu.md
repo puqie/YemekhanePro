@@ -49,7 +49,7 @@ $env:YEMEKHANE_LICENSING_SECRET = '<AYNI imza sırrı>'
 .\scripts\build-installer.ps1 -Version 1.1.0
 ```
 
-Çıktı: `artifacts\installer\YemekhanePro-Setup-1.1.0.exe`
+Çıktı: `artifacts\installer\YemekhaneProKurulum-<sürüm>.exe`
 
 Masaüstünün sunucuyu bulması için `appsettings.json` içinde aktivasyon adresi
 sunucunuzu göstermeli (`https://lisans.siteniz.com/`).

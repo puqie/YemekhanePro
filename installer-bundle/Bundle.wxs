@@ -1,7 +1,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
   <!--
-    YemekhanePro-Setup.exe: MSI'yi saran bootstrapper.
+    YemekhaneProKurulum-<sürüm>.exe: MSI'yi saran bootstrapper.
 
     MSI cift tiklandiginda UAC yukseltmesi isteyemez; perMachine paket oldugu icin kurulum
     Error 1925 ile sessizce iptal olur ve kullanici yalnizca dolan bir ilerleme cubugu gorur.

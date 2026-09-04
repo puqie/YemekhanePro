@@ -130,7 +130,14 @@ public partial class App : System.Windows.Application, IDisposable
         // veritabani, turnike baglantilari ve zamanlayici servisler hic ayaga kalkmamalidir.
         if (!await EnsureLicensedAsync(configuration)) return false;
 
-        localApi = new LocalApiProcessManager(baseUri);
+        // Acik anahtar ve parmak izi API'ye gecirilir: parola sifirlama, kanit olarak
+        // sunulan .lic dosyasinin imzasini ve makine bagini API'de KENDI dogrular.
+        // Masaustunun "ben dogruladim" demesine guvenmek, API localhost'ta dinledigi
+        // icin korumayi ise yaramaz hale getirirdi.
+        localApi = new LocalApiProcessManager(
+            baseUri,
+            configuration["Licensing:PublicKey"],
+            string.Join('|', new WindowsHardwareFingerprintReader().Read().Hashes));
         await localApi.EnsureReadyAsync();
 
         var session = new MutableJwtSession();

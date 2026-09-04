@@ -360,7 +360,7 @@ public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
         screen.ManualStudentIds = studentId.ToString();
         screen.GrantMeal = screen.MealTypes.Single(x => x.Id == mealTypeId);
         screen.GrantStartsOn = new DateTime(2026, 3, 2);   // Pazartesi
-        screen.GrantEndsOn = new DateTime(2026, 3, 6);     // Cuma
+        screen.DayCountText = "5";                         // Pazartesi-Cuma = 5 is gunu
         screen.Quantity = 1;
 
         // Kullanici once "Onizle" butonuna basar.
@@ -392,13 +392,13 @@ public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
         screen.ManualStudentIds = studentId.ToString();
         screen.GrantMeal = screen.MealTypes.Single(x => x.Id == mealTypeId);
         screen.GrantStartsOn = new DateTime(2026, 4, 6);
-        screen.GrantEndsOn = new DateTime(2026, 4, 10);
+        screen.DayCountText = "5";
         screen.Quantity = 1;
         await Execute(screen.PreviewCommand);
         Assert.NotNull(screen.Preview);
 
         // Kullanici fikrini degistirir.
-        screen.GrantEndsOn = new DateTime(2026, 4, 24);
+        screen.DayCountText = "15";
 
         Assert.Null(screen.Preview);
         Assert.False(screen.ApplyCommand.CanExecute(null),
@@ -460,7 +460,7 @@ public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
         entitlements.ManualStudentIds = studentId.ToString();
         entitlements.GrantMeal = entitlements.MealTypes.Single(x => x.Id == mealTypeId);
         entitlements.GrantStartsOn = today;
-        entitlements.GrantEndsOn = today;
+        entitlements.DayCountText = "1";
         entitlements.Quantity = 1;
         entitlements.IncludeSaturday = true;    // bugun hafta sonuysa da calissin
         entitlements.IncludeSunday = true;
@@ -511,7 +511,7 @@ public sealed class EndUserJourneyTests : IAsyncLifetime, IDisposable
         entitlements.ManualStudentIds = studentId.ToString();
         entitlements.GrantMeal = entitlements.MealTypes.Single(x => x.Id == mealTypeId);
         entitlements.GrantStartsOn = today;
-        entitlements.GrantEndsOn = today;
+        entitlements.DayCountText = "1";
         entitlements.Quantity = 1;
         entitlements.IncludeSaturday = true;
         entitlements.IncludeSunday = true;

@@ -8,10 +8,17 @@ public sealed record BulkEntitlementResult(int StudentCount, int DayCount, int C
 public sealed record EntitlementDetails(Guid Id, Guid StudentId, Guid MealTypeId, DateOnly Date, int Quantity,
     int ConsumedQuantity, int RemainingQuantity, string Status, string? Source);
 
+/// <param name="Search">
+/// TEK ARAMA metni: ad, soyad, ogrenci numarasi, kart numarasi ve sinif adinda birden
+/// aranir. Kullanici aradigi seyin hangi alana ait oldugunu bilmek zorunda kalmasin
+/// diye eklendi; once dort ayri kutu vardi ve kart numarasini "Ogrenci no" kutusuna
+/// yazan kullanici sessizce bos sonuc aliyordu.
+/// </param>
 public sealed record MealEntitlementQuery(
     DateOnly? StartsOn = null, DateOnly? EndsOn = null, string? StudentNo = null, string? CardNumber = null,
     string? Name = null, string? ClassName = null, Guid? GroupId = null, Guid? MealTypeId = null,
-    string? Status = null, int Page = 1, int PageSize = 50, string SortBy = "date", bool Descending = true);
+    string? Status = null, int Page = 1, int PageSize = 50, string SortBy = "date", bool Descending = true,
+    string? Search = null);
 public sealed record MealEntitlementListItem(Guid Id, Guid StudentId, DateOnly Date, string StudentNo,
     string? CardNumber, string MealName, string StudentName, string? ClassName, int Quantity,
     int ConsumedQuantity, int RemainingQuantity, string Status, string? Source, long Version);

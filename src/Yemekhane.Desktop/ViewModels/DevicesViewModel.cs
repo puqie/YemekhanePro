@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Input;
@@ -78,6 +78,8 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
     private bool isActive = true;
     private bool autoConnect;
     private bool hasTurnstile;
+    private int relayPulseMs = 500;
+    private bool turnstileBidirectional;
     private bool simulatorAllowed;
 
     public DevicesViewModel(IDeviceApiClient api, IDashboardRealtimeClient realtime, IReadOnlySet<string> permissions)
@@ -100,7 +102,7 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<DeviceCardViewModel> Devices { get; } = [];
     public ObservableCollection<DeviceLogItem> Logs { get; } = [];
-    public IReadOnlyList<string> DeviceTypes => SimulatorAllowed ? ["SF300", "ComReader", "EthernetReader", "Simulator"] : ["SF300", "ComReader", "EthernetReader"];
+    public IReadOnlyList<string> DeviceTypes => SimulatorAllowed ? ["SF300", "SC403", "ComReader", "EthernetReader", "Simulator"] : ["SF300", "SC403", "ComReader", "EthernetReader"];
     public IReadOnlyList<string> Directions { get; } = ["Entry", "Exit", "Bidirectional"];
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) { Raise(nameof(ShowEmpty)); Raise(nameof(ShowContent)); } } }
     public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
@@ -115,7 +117,7 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
     public string EditorTitle => editing is null ? "Yeni cihaz" : "Cihaz ayarları";
     public string Name { get => name; set => Set(ref name, value); }
     public string SelectedType { get => selectedType; set { if (Set(ref selectedType, value)) { Raise(nameof(IsEthernet)); Raise(nameof(IsCom)); Raise(nameof(IsSimulator)); } } }
-    public bool IsEthernet => SelectedType is "SF300" or "EthernetReader";
+    public bool IsEthernet => SelectedType is "SF300" or "SC403" or "EthernetReader";
     public bool IsCom => SelectedType == "ComReader";
     public bool IsSimulator => SelectedType == "Simulator";
     public string IpAddress { get => ipAddress; set => Set(ref ipAddress, value); }
@@ -127,6 +129,12 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
     public bool IsActive { get => isActive; set => Set(ref isActive, value); }
     public bool AutoConnect { get => autoConnect; set => Set(ref autoConnect, value); }
     public bool HasTurnstile { get => hasTurnstile; set => Set(ref hasTurnstile, value); }
+
+    /// <summary>Role darbe suresi (ms). Uretici dokumaninda yok; kurulumda sahada dogrulanir.</summary>
+    public int RelayPulseMs { get => relayPulseMs; set => Set(ref relayPulseMs, value); }
+
+    /// <summary>Turnike her iki yonde de surulebiliyor mu. Mekanik yonlendirme tek yone kilitli olabilir.</summary>
+    public bool TurnstileBidirectional { get => turnstileBidirectional; set => Set(ref turnstileBidirectional, value); }
     public ICommand RefreshCommand { get; } public ICommand AddCommand { get; } public ICommand SaveCommand { get; }
     public ICommand CloseEditorCommand { get; } public ICommand CloseLogsCommand { get; }
     public ICommand ConnectCommand { get; } public ICommand DisconnectCommand { get; } public ICommand TestCommand { get; }
@@ -167,12 +175,12 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
         }
         finally { card.IsBusy = false; }
     }
-    private void OpenCreate() { editing = null; Name = ""; SelectedType = "EthernetReader"; IpAddress = ""; Port = 4370; ComPort = "COM1"; BaudRate = 9600; Location = ""; Direction = "Entry"; IsActive = true; AutoConnect = false; HasTurnstile = false; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
-    private void OpenEdit(DeviceCardViewModel card) { editing = card; var x = card.Item; Name = x.Name; SelectedType = x.DeviceType; IpAddress = x.IpAddress ?? ""; Port = x.Port ?? 4370; ComPort = x.ComPort ?? "COM1"; BaudRate = x.BaudRate ?? 9600; Location = x.Location ?? ""; Direction = x.Direction; IsActive = x.IsActive; AutoConnect = x.AutoConnect; HasTurnstile = x.HasTurnstile; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
+    private void OpenCreate() { editing = null; Name = ""; SelectedType = "EthernetReader"; IpAddress = ""; Port = 4370; ComPort = "COM1"; BaudRate = 9600; Location = ""; Direction = "Entry"; IsActive = true; AutoConnect = false; HasTurnstile = false; RelayPulseMs = 500; TurnstileBidirectional = false; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
+    private void OpenEdit(DeviceCardViewModel card) { editing = card; var x = card.Item; Name = x.Name; SelectedType = x.DeviceType; IpAddress = x.IpAddress ?? ""; Port = x.Port ?? 4370; ComPort = x.ComPort ?? "COM1"; BaudRate = x.BaudRate ?? 9600; Location = x.Location ?? ""; Direction = x.Direction; IsActive = x.IsActive; AutoConnect = x.AutoConnect; HasTurnstile = x.HasTurnstile; RelayPulseMs = x.TurnstileRelayPulseMs ?? 500; TurnstileBidirectional = x.TurnstileBidirectional; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
     private async Task SaveAsync()
     {
         IsLoading = true; ErrorMessage = null;
-        try { var model = new DeviceWriteModel(Name, SelectedType, IsCom ? "COM" : IsSimulator ? "Simulator" : "Ethernet", IsEthernet ? IpAddress : null, IsEthernet ? Port : null, IsCom ? ComPort : null, IsCom ? BaudRate : null, IsActive, AutoConnect, HasTurnstile, Location, Direction); var value = editing is null ? await api.CreateAsync(model) : await api.UpdateAsync(editing.Id, model); if (editing is null) Devices.Add(new DeviceCardViewModel(value)); else editing.Update(value); IsEditorOpen = false; Raise(nameof(ShowEmpty)); }
+        try { var model = new DeviceWriteModel(Name, SelectedType, IsCom ? "COM" : IsSimulator ? "Simulator" : "Ethernet", IsEthernet ? IpAddress : null, IsEthernet ? Port : null, IsCom ? ComPort : null, IsCom ? BaudRate : null, IsActive, AutoConnect, HasTurnstile, Location, Direction, HasTurnstile ? RelayPulseMs : null, HasTurnstile && TurnstileBidirectional); var value = editing is null ? await api.CreateAsync(model) : await api.UpdateAsync(editing.Id, model); if (editing is null) Devices.Add(new DeviceCardViewModel(value)); else editing.Update(value); IsEditorOpen = false; Raise(nameof(ShowEmpty)); }
         catch (HttpRequestException ex) { ErrorMessage = ex.Message; }
         finally { IsLoading = false; }
     }

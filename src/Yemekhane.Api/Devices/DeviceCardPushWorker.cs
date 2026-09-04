@@ -141,10 +141,12 @@ public sealed class DeviceCardPushWorker(
     /// <summary>
     /// Kalici hatalar yeniden denenmez: gecersiz kart veya dolu cihaz hafizasi tekrar denemekle duzelmez,
     /// yalnizca kuyrugu mesgul eder ve gercek sorunlari gizler.
+    ///
+    /// Siniflandirma <see cref="DeviceErrorCodes"/> uzerinden yapilir; kodlar saticiya gore
+    /// karsilastirilirsa her yeni cihaz ailesi (SC403 gibi) sessizce siniflandirma disinda kalir
+    /// ve olu bir cihaz kart kart denenmeye devam eder.
     /// </summary>
-    private static bool IsPermanent(string? errorCode) => errorCode is
-        "SF300_INVALID_CARD" or "SF300_MEMORY_FULL" or "SF300_UNSUPPORTED" or "SF300_CAPABILITY";
+    private static bool IsPermanent(string? errorCode) => DeviceErrorCodes.IsPermanent(errorCode);
 
-    private static bool IsDisconnected(string? errorCode) => errorCode is
-        "SF300_DISCONNECTED" or "SF300_CONNECT_FAILED" or "SF300_CONNECT_TIMEOUT" or "SF300_WRITE_FAILED";
+    private static bool IsDisconnected(string? errorCode) => DeviceErrorCodes.IsDisconnected(errorCode);
 }

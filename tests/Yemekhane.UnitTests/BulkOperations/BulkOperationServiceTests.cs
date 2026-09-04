@@ -48,6 +48,46 @@ public sealed class BulkOperationServiceTests
         Assert.Equal(new DateOnly(2026, 9, 15), preview.Entitlements.Single().TargetDate);
     }
 
+    /// <summary>
+    /// COK GUNLU TATIL: 11-13 Eylul tatil edilirse UC hak, izleyen UC AYRI is gunune
+    /// dagilmalidir.
+    ///
+    /// <para>
+    /// Onceki davranis hepsini AYNI "sonraki is gunune" tasiyip orada topluyordu
+    /// (Quantity += ...): ogrenci 14 Eylul'de uc ogun hakkina sahip gorunuyor,
+    /// 15-16 bos kaliyordu. Kullanicinin kurali "bes gunu olana bes gun, uc gunu
+    /// olana uc gun" -- yani her hak kendi gunune.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task CokGunluTatilHaklariAyriIsGunlerineDagitir()
+    {
+        // BES ARDISIK IS GUNU (7-11 Eylul, Pzt-Cum). Ardisik olmasi SART: 11-13
+        // kullanilsaydi 12-13 hafta sonu olacagi icin kaynak gunlerin birbirine
+        // hedef olmasi durumu hic olusmaz ve hata gozden kacardi (olculdu).
+        await using var fixture = await Fixture.CreateAsync(includeWorkWeek: true);
+        var request = fixture.Request("Transfer", "NextBusinessDay",
+            starts: new DateOnly(2026, 9, 7), ends: new DateOnly(2026, 9, 11));
+
+        var preview = await fixture.Service.PreviewAsync(request);
+
+        // Bes hak, izleyen bes IS GUNUNE birer birer: 14-18 Eylul.
+        // Kaynak gunler (7-11) HEDEF OLAMAZ; olsaydi haklar tatilin ICINE kayardi.
+        Assert.Equal(5, preview.TransferredCount);
+        Assert.Equal(
+            [new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 15), new DateOnly(2026, 9, 16),
+             new DateOnly(2026, 9, 17), new DateOnly(2026, 9, 18)],
+            preview.Entitlements.Select(x => x.TargetDate).OrderBy(x => x));
+
+        await fixture.Service.ApplyAsync(new(request, preview.PreviewToken), fixture.UserId);
+
+        // HICBIR gune yigilmamali: her hedef gunde tek hak.
+        foreach (var day in new[] { 14, 15, 16, 17, 18 })
+            Assert.Equal(1, (await fixture.Db.MealEntitlements
+                .SingleAsync(x => x.EntitlementDate == new DateOnly(2026, 9, day) && x.StudentId == fixture.StudentA.Id)).Quantity);
+        Assert.Equal(5, await fixture.Db.MealTransfers.CountAsync(x => x.StudentId == fixture.StudentA.Id));
+    }
+
     [Fact]
     public async Task DatabaseVersionChangeInvalidatesPreviewAndWritesNothing()
     {
@@ -166,7 +206,13 @@ public sealed class BulkOperationServiceTests
         public SchoolClass ClassA { get; } public SchoolClass ClassB { get; } public Student StudentA { get; } public Student StudentB { get; } public MealType Meal { get; }
         public Guid UserId { get; } = Guid.NewGuid();
 
-        public static async Task<Fixture> CreateAsync(bool includeThreeDays = false, IReadOnlyCollection<DateOnly>? closed = null)
+        /// <param name="includeWorkWeek">
+        /// 7-11 Eylul 2026 (Pazartesi-Cuma) bes ARDISIK IS GUNU. includeThreeDays
+        /// 11-13'u kullanir ama 12-13 hafta sonudur; kaynak gunlerin birbirine hedef
+        /// olmasi durumu orada HIC olusmaz ve hata gozden kacar.
+        /// </param>
+        public static async Task<Fixture> CreateAsync(bool includeThreeDays = false, IReadOnlyCollection<DateOnly>? closed = null,
+            bool includeWorkWeek = false)
         {
             var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
             var db = new YemekhaneDbContext(new DbContextOptionsBuilder<YemekhaneDbContext>().UseSqlite(connection).Options);
@@ -175,7 +221,9 @@ public sealed class BulkOperationServiceTests
             var studentA = new Student { StudentNo = "A", FirstName = "Ada", LastName = "A", ClassId = classA.Id };
             var studentB = new Student { StudentNo = "B", FirstName = "Bora", LastName = "B", ClassId = classB.Id };
             var meal = new MealType { Name = "Öğle" }; db.AddRange(classA, classB, studentA, studentB, meal); await db.SaveChangesAsync();
-            var days = includeThreeDays ? new[] { new DateOnly(2026, 9, 11), new DateOnly(2026, 9, 12), new DateOnly(2026, 9, 13) } : [new DateOnly(2026, 9, 11)];
+            var days = includeWorkWeek
+                ? [new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 8), new DateOnly(2026, 9, 9), new DateOnly(2026, 9, 10), new DateOnly(2026, 9, 11)]
+                : includeThreeDays ? new[] { new DateOnly(2026, 9, 11), new DateOnly(2026, 9, 12), new DateOnly(2026, 9, 13) } : [new DateOnly(2026, 9, 11)];
             foreach (var day in days) db.MealEntitlements.Add(new MealEntitlement { StudentId = studentA.Id, MealTypeId = meal.Id, EntitlementDate = day, Quantity = 1, Status = "Active" });
             db.MealEntitlements.Add(new MealEntitlement { StudentId = studentB.Id, MealTypeId = meal.Id, EntitlementDate = new DateOnly(2026, 9, 11), Quantity = 1, Status = "Active" });
             await db.SaveChangesAsync();

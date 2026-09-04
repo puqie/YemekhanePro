@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -19,6 +19,7 @@ using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.Devices.Turnstiles;
 using Yemekhane.Devices.Management;
 using Yemekhane.Devices.Sf300;
+using Yemekhane.Devices.ZkTeco;
 using Yemekhane.Infrastructure.Sms;
 using Yemekhane.Application.Sms;
 using Yemekhane.Application.Income;
@@ -110,7 +111,11 @@ builder.Services.AddSingleton<IDeviceAdapterFactory>(_ => new DeviceAdapterFacto
     configuration => configuration.DeviceType == "SF300"
         ? new Sf300Protocol(new Sf300TcpTransport(),
             TimeSpan.FromSeconds(production.Devices.OperationTimeoutSeconds))
-        : null));
+        : null,
+    // ZKTeco SC403 icin SDK baglamasi (zkemkeeper.dll) bu kurulumda YOKTUR: 32-bit COM bileseni
+    // makineye ayrica kaydedilmelidir. Null birakmak sessiz basarisizlik degildir; adaptor her
+    // komutu ZK_SDK_NOT_CONFIGURED ile reddeder, boylece kart "yuklendi" sanilmaz.
+    _ => null));
 builder.Services.AddScoped<DeviceAdministrationService>();
 builder.Services.AddHostedService<DeviceRuntimePersistenceService>();
 builder.Services.AddSingleton(builder.Configuration.GetSection("Devices:CardPush").Get<DeviceCardPushOptions>() ?? new DeviceCardPushOptions());
@@ -165,6 +170,18 @@ builder.Services.Configure<PasswordHasherOptions>(options =>
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<InitialAdminBootstrapper>();
+// Parola sifirlama: kanit olarak .lic dosyasi istenir ve imzasi BURADA dogrulanir.
+// Acik anahtar ile makinenin parmak izi masaustunden ortam degiskeniyle gelir;
+// istek govdesinden ALINMAZ, aksi halde saldirgan lisanstaki hash'leri kopyalayip
+// makine kontrolunu anlamsiz kilardi.
+builder.Services.AddScoped(services => new PasswordResetService(
+    services.GetRequiredService<YemekhaneDbContext>(),
+    services.GetRequiredService<IPasswordHasher<User>>(),
+    services.GetRequiredService<TimeProvider>(),
+    builder.Configuration["Licensing:PublicKey"],
+    new Yemekhane.Licensing.HardwareFingerprint(
+        (builder.Configuration["Licensing:MachineFingerprint"] ?? string.Empty)
+            .Split('|', StringSplitOptions.None))));
 builder.Services.AddScoped<RbacSeeder>();
 builder.Services.AddScoped<RbacService>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();

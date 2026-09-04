@@ -19,10 +19,27 @@ public sealed class LocalApiProcessManager : IAsyncDisposable
     private bool ownsProcess;
     private InitialAdminCredentials? initialAdmin;
 
-    public LocalApiProcessManager(Uri baseUri)
+    /// <summary>
+    /// Kuruluma gomulu ACIK anahtar. API'ye gecirilir cunku parola sifirlama, kanit
+    /// olarak sunulan .lic dosyasinin imzasini KENDI dogrular: "masaustu zaten
+    /// dogruladi" varsayimi, API localhost'ta dinledigi icin korumayi ise yaramaz
+    /// hale getirirdi. Yalnizca ACIK anahtar gecer; ozel anahtar saticidadir.
+    /// </summary>
+    private readonly string? licensePublicKey;
+
+    /// <summary>
+    /// Bu makinenin parmak izi (bilesen hash'leri, <c>|</c> ile birlesik). Parola
+    /// sifirlamada lisansin BU bilgisayara ait olup olmadigi bununla olculur.
+    /// </summary>
+    private readonly string? machineFingerprint;
+
+    public LocalApiProcessManager(
+        Uri baseUri, string? licensePublicKey = null, string? machineFingerprint = null)
     {
         ArgumentNullException.ThrowIfNull(baseUri);
         this.baseUri = baseUri;
+        this.licensePublicKey = licensePublicKey;
+        this.machineFingerprint = machineFingerprint;
         healthClient = new HttpClient { BaseAddress = baseUri, Timeout = TimeSpan.FromSeconds(2) };
     }
 
@@ -56,6 +73,17 @@ public sealed class LocalApiProcessManager : IAsyncDisposable
             // acik oturumlarin tokenlari dogrulanamaz hale gelir ve kullanici sessizce 401 alir.
             ["YEMEKHANE_Authentication__Jwt__SigningKey"] = signingKey
         };
+        // Acik anahtar API'ye gecer: parola sifirlama .lic imzasini orada dogrular.
+        // Bos ise gecirilmez ve sifirlama ucu her istegi reddeder -- dogrulayamadigi
+        // bir kaniti kabul etmektense hic kabul etmemesi dogrudur.
+        if (!string.IsNullOrWhiteSpace(licensePublicKey))
+            values["YEMEKHANE_Licensing__PublicKey"] = licensePublicKey;
+        // Makinenin parmak izi ORTAM DEGISKENIYLE gecer, istek govdesiyle DEGIL.
+        // Istekten alinsaydi, saldirgan lisans dosyasindaki hash'leri oldugu gibi
+        // gonderip makine kontrolunu tamamen anlamsiz kilardi. Ortam degiskeni surec
+        // baslarken sabitlenir ve disaridan gelen hicbir istekle degistirilemez.
+        if (!string.IsNullOrWhiteSpace(machineFingerprint))
+            values["YEMEKHANE_Licensing__MachineFingerprint"] = machineFingerprint;
         // Bootstrap parolasi bir kez uretilir ve kullaniciya gosterilene kadar korunur: API veritabani
         // dosyasini olusturduktan sonra bootstrap tamamlanmadan cokerse yeniden baslatmada dosya var
         // gorunur; parola burada dusurulurse kullaniciya karsiligi olmayan bir parola gosterilir.

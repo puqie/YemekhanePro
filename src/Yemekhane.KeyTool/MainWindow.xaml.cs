@@ -237,9 +237,14 @@ public partial class MainWindow : Window
 
         if (Directory.Exists(directory))
         {
-            foreach (var file in Directory.EnumerateFiles(directory, "YemekhaneProKurulum-*.exe"))
+            // Ad sabiti InstallerBuilder'dan gelir: burada tekrar yazilsaydi ve
+            // kurulum dosyasi yeniden adlandirilsaydi hicbir dosya bulunamaz,
+            // surum onerisi sessizce 1.0.0'da kalir ve yayinlanmis surumun
+            // uzerine yazilmasi onerilirdi.
+            var prefix = InstallerBuilder.OutputNameStem + "-";
+            foreach (var file in Directory.EnumerateFiles(directory, prefix + "*.exe"))
             {
-                var text = Path.GetFileNameWithoutExtension(file)["YemekhaneProKurulum-".Length..];
+                var text = Path.GetFileNameWithoutExtension(file)[prefix.Length..];
                 if (Version.TryParse(text, out var parsed) && parsed > highest)
                 {
                     highest = parsed;

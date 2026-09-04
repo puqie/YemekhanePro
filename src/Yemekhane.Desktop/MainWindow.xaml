@@ -5,7 +5,7 @@
         xmlns:desktop="clr-namespace:Yemekhane.Desktop"
         xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
         Title="YemekhanePro • Operasyon Merkezi" Icon="pack://application:,,,/Yemekhane.Desktop;component/Assets/logo-256.png" Width="1440" Height="900"
-        MinWidth="1280" MinHeight="720" WindowStartupLocation="CenterScreen"
+        MinWidth="1024" MinHeight="640" WindowStartupLocation="CenterScreen"
          Language="tr-TR" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12"
          UseLayoutRounding="True" SnapsToDevicePixels="True" AutomationProperties.Name="YemekhanePro operasyon merkezi">
     <Window.Resources>
@@ -155,15 +155,15 @@
                             </Border>
                         </Grid>
                     </Button>
-                    <Border Background="{StaticResource HoverBrush}" CornerRadius="12" Padding="9,4" Margin="0,0,10,0">
+                    <!-- Gosterge YALNIZCA sorun varken cikar. Once her zaman gorunuyordu ve
+                         "Canlı" yaziyordu: bu aslinda yerel API'ye SignalR baglantisini
+                         anlatiyor, ama kullanici bunu "internete bagli" saniyordu. Sunucusuz
+                         kurulumda her sey yolundayken soylenecek bir sey yok; bozuldugunda
+                         ise sebebi acikca yazar. -->
+                    <Border Background="{StaticResource HoverBrush}" CornerRadius="12" Padding="9,4" Margin="0,0,10,0"
+                            Visibility="{Binding IsOffline, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="7" Height="7" Margin="0,0,6,0">
-                                <Ellipse.Style>
-                                    <Style TargetType="Ellipse"><Setter Property="Fill" Value="{StaticResource DangerBrush}" />
-                                        <Style.Triggers><DataTrigger Binding="{Binding IsOffline}" Value="False"><Setter Property="Fill" Value="{StaticResource SuccessBrush}" /></DataTrigger></Style.Triggers>
-                                    </Style>
-                                </Ellipse.Style>
-                            </Ellipse>
+                            <Ellipse Width="7" Height="7" Margin="0,0,6,0" Fill="{StaticResource DangerBrush}"/>
                             <TextBlock Text="{Binding ConnectionText}" Foreground="{StaticResource MutedBrush}" />
                         </StackPanel>
                     </Border>
@@ -179,8 +179,14 @@
                      Sinif Kullanim Ozeti ve Son Hatalar tablolarinin sutun basliklari hic
                      gorunmuyordu (olculdu: ActualWidth=20). Disabled ile icerik pencere
                      genisligine sigar; zaten Grid'in MinWidth=1000 tanimi alt siniri korur. -->
+                <!-- MinWidth 1000 -> 760: 1000 CIHAZDAN BAGIMSIZ birimdir, %125 olcekte
+                     fiziksel 1250 piksel ister. 1366px'lik bir dizustunde (kenar bosluklari
+                     ve kenar cubugu dustukten sonra) icerik alanina SIGMIYOR ve sag taraf
+                     ekran disinda kaliyordu: "Seçileni İptal" dugmesi ve son filtre kutusu
+                     goruntunun disindaydi. Icerik zaten WrapPanel kullanir, daralinca alt
+                     satira sarar. 760 alt siniri tablolarin 20px'e cokmesini hala onler. -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <Grid MinWidth="1000" Margin="22,0,22,18" Visibility="{Binding ShowContent, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid MinWidth="760" Margin="22,0,22,18" Visibility="{Binding ShowContent, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />

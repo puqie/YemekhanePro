@@ -111,6 +111,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private DateTime? formBirthDate;
     private string formStudentNo = "", formFirstName = "", formLastName = "";
     private string? formNationalId, formAddress, formNotes, formFingerprintId, formPid;
+    private string? formCardNumber;
     // Veli: sicil kartindan girilir. Ogrenciyle birlikte kaydedilir (bkz. CommitParentAsync).
     private string? formParentName, formParentPhone;
     private Guid? parentId;
@@ -320,6 +321,18 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public string? FormNationalId { get => formNationalId; set { if (Set(ref formNationalId, value)) ClearValidationError(); } }
     public string? FormAddress { get => formAddress; set => Set(ref formAddress, value); }
     public string? FormNotes { get => formNotes; set => Set(ref formNotes, value); }
+
+    /// <summary>
+    /// Ogrenci Karti cekmecesindeki kart numarasi.
+    ///
+    /// <para>
+    /// Once cekmecede kart alani HIC YOKTU: kart yalnizca sag panelden, ogrenci
+    /// KAYDEDILDIKTEN sonra verilebiliyordu. Yeni ogrenci eklerken kart vermek iki
+    /// ayri adim gerektiriyordu ve kullanici cekmecedeki salt okunur kutuyu gorup
+    /// "kapali" saniyordu. Kart artik kayitla AYNI ANDA atanir.
+    /// </para>
+    /// </summary>
+    public string? FormCardNumber { get => formCardNumber; set => Set(ref formCardNumber, value); }
     /// <summary>Sicil karti alanlari (eski programdaki form): dogum tarihi, parmak izi, PI ID ve dort tanim.</summary>
     public DateTime? FormBirthDate { get => formBirthDate; set { if (Set(ref formBirthDate, value)) ClearValidationError(); } }
     public string? FormFingerprintId { get => formFingerprintId; set => Set(ref formFingerprintId, value); }
@@ -610,6 +623,38 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         savedParentName = name; savedParentPhone = phone;
     }
 
+    /// <summary>
+    /// Cekmecedeki kart numarasini kaydeder.
+    ///
+    /// <para>
+    /// Fotograf ve veli gibi KAYITTAN SONRA gonderilir: yeni ogrencide kimlik ancak
+    /// o an vardir. Aktif kart varsa DEGISTIRME, yoksa ILK ATAMA ucu cagrilir --
+    /// masaustu onceden yalnizca "degistir" ucunu kullaniyordu ve yeni ogrenciye
+    /// kart verilemiyordu.
+    /// </para>
+    /// </summary>
+    private async Task CommitCardAsync(Guid id)
+    {
+        var number = FormCardNumber?.Trim() ?? "";
+        // Bos birakmak "karti kaldir" demek DEGILDIR: kart kaldirma ayri bir eylemdir
+        // (Kartlar sekmesi). Sessizce pasiflestirmek, adini duzelten kullanicinin
+        // kartini yok ederdi.
+        if (number.Length == 0) return;
+        // Zaten ayni numara atanmissa bos yere istek gonderilmez; sunucu bunu
+        // "bu kart zaten kullaniliyor" diye reddederdi.
+        if (string.Equals(number, DetailCardNumber?.Trim(), StringComparison.Ordinal)) return;
+
+        if (HasActiveCard)
+        {
+            try { await api.ReplaceCardAsync(id, new ReplaceCardRequest(number, CardReplacementReason.Trim())); }
+            // Liste eski kalmis olabilir (kart baska yerden pasiflestirilmis): atama ile devam.
+            catch (ApiRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            { await api.AssignCardAsync(id, new AssignCardRequest(number)); }
+        }
+        else await api.AssignCardAsync(id, new AssignCardRequest(number));
+        FormCardNumber = null;
+    }
+
     private async Task EnsureLookupsAsync(bool refresh = false)
     {
         if (lookupsLoaded && !refresh) return;
@@ -624,6 +669,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         FormNationalId = d.NationalId; FormAddress = d.Address; FormNotes = d.Notes;
         FormBirthDate = d.BirthDate?.ToDateTime(TimeOnly.MinValue); FormFingerprintId = d.FingerprintId; FormPid = d.Pid;
         FormClass.Select(d.ClassId); FormSection.Select(d.SectionId); FormDepartment.Select(d.DepartmentId); FormJob.Select(d.JobId);
+        // Mevcut kart numarasi forma tasinir: bos gelseydi kullanici karti olan bir
+        // ogrenciyi duzenlerken alani bos gorup "kart yok" sanirdi.
+        FormCardNumber = SelectedStudent?.Id == d.Id ? SelectedStudent.CardNumber : null;
         RaiseForm();
     }
 
@@ -730,10 +778,18 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             string? parentFailure = null;
             try { await CommitParentAsync(saved.Id); }
             catch (Exception ex) when (IsWriteFailure(ex)) { parentFailure = Describe(ex, "Veli kaydedilemedi."); }
+            // Kart da kayittan SONRA gider: yeni ogrencide kimlik ancak simdi vardir.
+            // Duserse ogrenci yine kaydedilmistir; hata ayrica soylenir ki kullanici
+            // kartin neden atanmadigini bilsin ve sag panelden yeniden deneyebilsin.
+            string? cardFailure = null;
+            try { await CommitCardAsync(saved.Id); }
+            catch (Exception ex) when (IsWriteFailure(ex)) { cardFailure = Describe(ex, "Kart atanamadı."); }
             await RefreshAfterWriteAsync(saved.Id);
             if (photoFailure is not null) ErrorMessage = "Öğrenci kaydedildi ancak fotoğraf işlenemedi: " + photoFailure;
             if (parentFailure is not null)
                 ErrorMessage = (ErrorMessage is null ? "" : ErrorMessage + " ") + "Öğrenci kaydedildi ancak veli işlenemedi: " + parentFailure;
+            if (cardFailure is not null)
+                ErrorMessage = (ErrorMessage is null ? "" : ErrorMessage + " ") + "Öğrenci kaydedildi ancak kart atanamadı: " + cardFailure;
         }
         // Form ACIK BIRAKILIR: kullanici numarayi duzeltip yeniden deneyebilmelidir.
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci kaydedilemedi."); }
@@ -937,6 +993,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     {
         FormStudentNo = FormFirstName = FormLastName = ""; FormNationalId = FormAddress = FormNotes = FormFingerprintId = FormPid = null;
         FormParentName = FormParentPhone = null; parentId = null; savedParentName = savedParentPhone = null;
+        FormCardNumber = null;
         FormBirthDate = null; FormClass.Select(null); FormSection.Select(null); FormDepartment.Select(null); FormJob.Select(null);
         RaiseForm();
     }
@@ -944,6 +1001,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     {
         Raise(nameof(FormStudentNo)); Raise(nameof(FormFirstName)); Raise(nameof(FormLastName)); Raise(nameof(FormNationalId)); Raise(nameof(FormAddress)); Raise(nameof(FormNotes));
         Raise(nameof(FormFingerprintId)); Raise(nameof(FormPid)); Raise(nameof(FormBirthDate)); Raise(nameof(FormSubtitle));
+        // Kart numarasi da bildirilmeli: unutulursa form doldurulur ama kutu ekranda
+        // ESKI degeri gosterir ve kullanici yanlis karti kaydeder.
+        Raise(nameof(FormCardNumber));
         RaiseParentForm();
     }
     private void CloseDrawers() { IsQuickDetailOpen = IsDetailOpen = IsFormOpen = false; }

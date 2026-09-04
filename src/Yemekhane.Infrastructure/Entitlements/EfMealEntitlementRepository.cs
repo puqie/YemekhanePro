@@ -146,6 +146,26 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
             rights = rights.Where(x => dbContext.Students.Any(s => s.Id == x.StudentId
                 && dbContext.Set<SchoolClass>().Any(c => c.Id == s.ClassId && EF.Functions.Like(c.Name, value))));
         }
+        // TEK ARAMA: ad, ogrenci no, kart no ve sinif adinda BIRDEN arar. Kullanici
+        // aradigi seyin hangi alana ait oldugunu bilmek zorunda kalmaz -- once dort
+        // ayri kutu vardi ve kart numarasini yanlis kutuya yazan kullanici sessizce
+        // bos sonuc aliyordu.
+        //
+        // Ad ve sinif icin SearchName sutunu kullanilir: ham ada bakilsaydi "ismail"
+        // yazan kullanici "İsmail" kaydini BULAMAZDI (Turkce i/I ayrimi).
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var raw = query.Search.Trim();
+            var like = $"%{raw}%";
+            var normalized = $"%{TurkishSearchText.Normalize(raw)}%";
+            rights = rights.Where(x => dbContext.Students.Any(s => s.Id == x.StudentId
+                && (EF.Functions.Like(s.SearchName, normalized)
+                    || EF.Functions.Like(s.StudentNo, like)
+                    || dbContext.Set<SchoolClass>().Any(c => c.Id == s.ClassId
+                        && EF.Functions.Like(c.SearchName, normalized))))
+                || dbContext.StudentCards.Any(c => c.StudentId == x.StudentId && c.IsActive
+                    && EF.Functions.Like(c.CardNumber, like)));
+        }
 
         var joined = from right in rights
                    join student in dbContext.Students.AsNoTracking() on right.StudentId equals student.Id
