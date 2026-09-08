@@ -2,8 +2,10 @@ namespace Yemekhane.Application.Calendar;
 
 public sealed record CalendarEntitlementSummary(int StudentCount, int Count, int Quantity, int Used);
 
+/// <param name="GroupId">Aralikli tatilin ortak kimligi; tek gunluk tatilde null.</param>
+/// <param name="GroupDayCount">Ayni aralıktaki toplam gun (tek gun icin 1); "tum araligi sil" dugmesi bunu gosterir.</param>
 public sealed record CalendarHolidayItem(Guid Id, string Name, string HolidayType, string TransferBehavior,
-    IReadOnlyCollection<HolidayScopeRequest> Scopes);
+    IReadOnlyCollection<HolidayScopeRequest> Scopes, Guid? GroupId = null, int GroupDayCount = 1);
 
 public sealed record CalendarExceptionItem(Guid Id, string ExceptionType, string ScopeType, Guid? ScopeId,
     string EntitlementBehavior, DateOnly? TargetDate, string? Description);

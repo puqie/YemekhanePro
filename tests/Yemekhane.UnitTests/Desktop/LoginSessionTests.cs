@@ -14,7 +14,7 @@ namespace Yemekhane.UnitTests.Desktop;
 /// <summary>
 /// Oturum suresi, giris penceresindeki kilit ipucu ve lisans penceresi.
 ///
-/// API belirteci 15 dakikada dolar ve yenileme ucu yoktur; onceden tek cikis yolu
+/// API belirteci 12 saatte dolar ve yenileme ucu yoktur; onceden tek cikis yolu
 /// uygulamayi kapatip acmakti. Kilitli hesaba API guvenlik geregi "parola gecersiz"
 /// der; kullanici dogru parolayi yazip yine reddedilince nedenini bilemiyordu.
 /// </summary>

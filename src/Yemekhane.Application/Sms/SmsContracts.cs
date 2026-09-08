@@ -30,7 +30,8 @@ public sealed record SmsSendResult(
     SmsErrorCategory ErrorCategory = SmsErrorCategory.None,
     string? ErrorCode = null,
     string? ErrorMessage = null,
-    int? HttpStatusCode = null)
+    int? HttpStatusCode = null,
+    string? RawResponse = null)
 {
     public bool IsSuccess => Outcome == SmsSendOutcome.Success;
 }
@@ -38,6 +39,26 @@ public sealed record SmsSendResult(
 public interface ISmsProvider
 {
     Task<SmsSendResult> SendAsync(SmsSendRequest request, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Test SMS istegi; mesaj bos birakilirsa "YemekhanePro test mesajı <tarih saat>" gider.</summary>
+public sealed record SmsTestRequest(string Phone, string? Message = null);
+
+/// <summary>
+/// Test SMS sonucu: memur saglayicinin ne dedigini gormeli ("aldığımız cevapta yansımalı").
+/// <paramref name="RawResponse"/> saglayicinin ham govdesidir (en fazla 500 karakter).
+/// </summary>
+public sealed record SmsTestResult(bool Success, string Provider, string Phone, string? ProviderMessageId,
+    string? ErrorCategory, string? ErrorCode, string? ErrorMessage, string? RawResponse, DateTimeOffset SentAt);
+
+/// <summary>Kontor sorgusu (Mutlucell); diger saglayicilarda Success=false ve aciklama.</summary>
+public sealed record SmsCreditResult(bool Success, decimal? Credit, string Message, string? RawResponse);
+
+/// <summary>Kuyruga girmeden, KAYITLI ayarlarla saglayiciyi sinar (Ayarlar → SMS → Test SMS / Kontör).</summary>
+public interface ISmsProviderProbe
+{
+    Task<SmsTestResult> SendTestAsync(SmsTestRequest request, CancellationToken cancellationToken = default);
+    Task<SmsCreditResult> QueryCreditAsync(CancellationToken cancellationToken = default);
 }
 
 public static class SmsLogStatuses

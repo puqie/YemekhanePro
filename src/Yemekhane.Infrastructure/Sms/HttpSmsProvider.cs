@@ -70,6 +70,7 @@ public sealed class HttpSmsProvider(
             var statusCode = (int)response.StatusCode;
             if (!response.IsSuccessStatusCode)
             {
+                var errorBody = await ReadBodyOrNullAsync(response, linkedCancellation.Token).ConfigureAwait(false);
                 var transient = response.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests ||
                     statusCode >= 500;
                 var category = response.StatusCode switch
@@ -81,7 +82,7 @@ public sealed class HttpSmsProvider(
                     _ => SmsErrorCategory.ProviderRejected
                 };
                 return Failure(transient ? SmsSendOutcome.TransientFailure : SmsSendOutcome.PermanentFailure,
-                    category, $"http_{statusCode}", statusCode);
+                    category, $"http_{statusCode}", statusCode, errorBody);
             }
 
             string body;
@@ -105,17 +106,38 @@ public sealed class HttpSmsProvider(
             try
             {
                 return new SmsSendResult(SmsSendOutcome.Success,
-                    responseParser.ParseProviderMessageId(body), HttpStatusCode: statusCode);
+                    responseParser.ParseProviderMessageId(body), HttpStatusCode: statusCode, RawResponse: Truncate(body));
             }
             catch (JsonException)
             {
                 return Failure(SmsSendOutcome.PermanentFailure, SmsErrorCategory.InvalidResponse,
-                    "invalid_response", statusCode);
+                    "invalid_response", statusCode, Truncate(body));
             }
         }
     }
 
+    /// <summary>Hata govdesi test SMS ekraninda gosterilir; okunamazsa sonucu degistirmez.</summary>
+    private static async Task<string?> ReadBodyOrNullAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await response.Content.LoadIntoBufferAsync(65_536, cancellationToken).ConfigureAwait(false);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            return string.IsNullOrWhiteSpace(body) ? null : Truncate(body);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or ObjectDisposedException)
+        {
+            return null;
+        }
+    }
+
+    private static string Truncate(string body)
+    {
+        var text = body.Trim();
+        return text.Length <= 500 ? text : text[..500] + "…";
+    }
+
     private static SmsSendResult Failure(SmsSendOutcome outcome, SmsErrorCategory category,
-        string code, int? statusCode = null) =>
-        new(outcome, ErrorCategory: category, ErrorCode: code, HttpStatusCode: statusCode);
+        string code, int? statusCode = null, string? raw = null) =>
+        new(outcome, ErrorCategory: category, ErrorCode: code, HttpStatusCode: statusCode, RawResponse: raw);
 }

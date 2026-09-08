@@ -19,6 +19,8 @@
                  satir ici ekleme kutusu + Ekle, secili satirda Yeniden Adlandir ve iki adimli Sil. -->
             <DataTemplate x:Key="LookupTab">
                 <Grid Margin="14">
+                    <!-- DataGrid sutunlari gorsel agacta degil; TÜR sutununun gorunurlugu bu vekil uzerinden sekmeye baglanir. -->
+                    <Grid.Resources><controls:BindingProxy x:Key="TabProxy" Data="{Binding}"/></Grid.Resources>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <WrapPanel>
                         <StackPanel Width="280" Margin="0,0,8,0">
@@ -26,6 +28,10 @@
                             <TextBox Style="{StaticResource FieldCompact}" Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding NewPlaceholder}" ToolTip="Enter ile de eklenir">
                                 <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding AddCommand}"/></TextBox.InputBindings>
                             </TextBox>
+                        </StackPanel>
+                        <StackPanel Width="150" Margin="0,0,8,0" Visibility="{Binding IsClassTab, Converter={StaticResource Bool}}">
+                            <TextBlock Style="{StaticResource Label}" Text="Tür" Margin="0,0,0,4"/>
+                            <ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding ClassKindOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding NewClassKind}" AutomationProperties.Name="Sınıf türü" ToolTip="Anasınıfı veya normal sınıf"/>
                         </StackPanel>
                         <Button Style="{StaticResource Primary}" Content="Ekle" Command="{Binding AddCommand}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                         <TextBlock Text="{Binding SummaryText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Bottom" Margin="12,0,0,9"/>
@@ -45,6 +51,10 @@
                                         <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SaveRenameCommand}"/></TextBox.InputBindings>
                                     </TextBox>
                                 </StackPanel>
+                                <StackPanel Width="150" Margin="0,0,8,0" Visibility="{Binding IsClassTab, Converter={StaticResource Bool}}">
+                                    <TextBlock Style="{StaticResource Label}" Text="Tür" Margin="0,0,0,4"/>
+                                    <ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding ClassKindOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding RenameClassKind}" AutomationProperties.Name="Yeni sınıf türü"/>
+                                </StackPanel>
                                 <Button Style="{StaticResource Primary}" Content="Kaydet" Command="{Binding SaveRenameCommand}" VerticalAlignment="Bottom" Margin="0,0,7,4"/>
                                 <Button Style="{StaticResource Action}" Content="İptal" Command="{Binding CloseRenameCommand}" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
                             </WrapPanel>
@@ -54,6 +64,7 @@
                         <DataGrid.InputBindings><KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/><KeyBinding Key="F2" Command="{Binding OpenRenameCommand}"/></DataGrid.InputBindings>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="AD" Binding="{Binding Name}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="TÜR" Binding="{Binding KindLabel}" Width="Auto" MinWidth="130" Visibility="{Binding Data.IsClassTab, Source={StaticResource TabProxy}, Converter={StaticResource Bool}}"/>
                             <DataGridTextColumn Header="ÖĞRENCİ SAYISI" Binding="{Binding StudentCount, StringFormat={}{0:N0}}" Width="Auto" MinWidth="150"/>
                         </DataGrid.Columns>
                     </DataGrid>

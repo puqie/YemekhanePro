@@ -1,11 +1,13 @@
 namespace Yemekhane.Application.Maintenance;
 
 /// <summary>
-/// Yil sonu sifirlamasi: yeni egitim yilina bos ogrenci listesiyle baslamak icin ogrenciye bagli
-/// TUM veriler (kartlar, veliler, hakedisler, kullanimlar, gecis kayitlari, izinler, bakiye ve
-/// tahsilat hareketleri, SMS ve toplu islem gecmisi) silinir. Tanimlar (ogunler, siniflar,
-/// cihazlar, kullanicilar, ayarlar, tatil takvimi) KALIR. Silmeden once guvenlik yedegi alinir;
-/// yedek alinamazsa hicbir sey silinmez.
+/// Yil sonu sifirlamasi: yeni egitim yilina temiz baslamak icin ISLETIM verileri (hakedisler,
+/// kullanimlar, gecis kayitlari, devirler, izinler, grup uyelikleri, SMS ve toplu islem gecmisi,
+/// kartlar) silinir; ogrenciler SILINMEZ, pasife alinir. Tahsilat ve bakiye hareketleri ile
+/// veliler KORUNUR: veli 1-2 yil onceki odemesini sorabilir, Raporlar → Gelir ve ogrencinin
+/// Ödemeler sekmesi bunu okumaya devam eder. Tanimlar (ogunler, siniflar, cihazlar,
+/// kullanicilar, ayarlar, tatil takvimi) kalir. Once guvenlik yedegi alinir; alinamazsa hicbir
+/// sey degismez.
 /// </summary>
 public static class YearEndReset
 {
@@ -19,18 +21,32 @@ public static class YearEndReset
         string.Equals(confirmation?.Trim(), ConfirmationPhrase, StringComparison.Ordinal);
 }
 
-public sealed record YearEndResetItem(string Key, string Label, int Count);
+/// <summary>Bir sifirlama adiminin kayda ne yaptigi.</summary>
+public static class YearEndResetActions
+{
+    public const string Delete = "Delete";
+    public const string Deactivate = "Deactivate";
+}
+
+/// <param name="Action"><see cref="YearEndResetActions.Delete"/> ya da <see cref="YearEndResetActions.Deactivate"/>.</param>
+public sealed record YearEndResetItem(string Key, string Label, int Count, string Action = YearEndResetActions.Delete);
 
 public sealed record YearEndResetPreview(IReadOnlyList<YearEndResetItem> Items)
 {
+    /// <summary>Etkilenecek kayit sayisi (silinen + pasife alinan).</summary>
     public int Total => Items.Sum(item => item.Count);
+    public int DeletedTotal => Items.Where(item => item.Action == YearEndResetActions.Delete).Sum(item => item.Count);
+    public int DeactivatedTotal => Items.Where(item => item.Action == YearEndResetActions.Deactivate).Sum(item => item.Count);
 }
 
 public sealed record YearEndResetRequest(string? Confirmation);
 
+/// <param name="Deleted">Uygulanan adimlar; pasife alma adimi da bu listede (Action ile ayrilir).</param>
 public sealed record YearEndResetResult(string BackupFileName, IReadOnlyList<YearEndResetItem> Deleted, DateTimeOffset CompletedAt)
 {
     public int Total => Deleted.Sum(item => item.Count);
+    public int DeletedTotal => Deleted.Where(item => item.Action == YearEndResetActions.Delete).Sum(item => item.Count);
+    public int DeactivatedTotal => Deleted.Where(item => item.Action == YearEndResetActions.Deactivate).Sum(item => item.Count);
 }
 
 /// <summary>Sifirlamadan once alinan guvenlik yedegi; dosya adini doner. Basarisizsa istisna atar.</summary>

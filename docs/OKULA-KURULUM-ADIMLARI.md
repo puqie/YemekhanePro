@@ -140,12 +140,17 @@ ama cihazın kendi kayıtları yanlış saatle kalır.
 ## BÖLÜM D — Yıl sonu ve temizlik
 
 ### D1. Yıl sonu sıfırlama
-Ayarlar → **Yıl Sonu** sekmesi. "Silinecekleri Göster" sayımı verir; onay kutusuna `SIFIRLA`
-(Türkçe karakter olmadan, büyük harf) yazınca "Yılı Sıfırla" açılır. Silinen: öğrenciler, kartlar,
-veliler, hakedişler, yemek kullanımları, geçiş kayıtları, izinler, bakiye/tahsilat hareketleri,
-SMS ve toplu işlem geçmişi. Kalan: öğünler, sınıflar, cihazlar, kullanıcılar, tatil takvimi,
-şablonlar, ayarlar. Sıfırlamadan önce otomatik güvenlik yedeği alınır; alınamazsa hiçbir şey
-silinmez. Yeni yılın öğrenci listesi **Sicil Aktar** ile yüklenir.
+Ayarlar → **Yıl Sonu** sekmesi. "Etkilenecekleri Göster" sayımı verir; onay kutusuna `SIFIRLA`
+(Türkçe karakter olmadan, büyük harf) yazınca "Yılı Sıfırla" açılır. Silinen: kartlar, hakedişler,
+yemek kullanımları, geçiş kayıtları, hak devirleri, izinler, grup üyelikleri, SMS ve toplu işlem
+geçmişi. **Silinmeyen:** öğrenci sicilleri (pasife alınır), veliler, tahsilat ve bakiye hareketleri;
+veli 1-2 yıl önceki ödemesini sorarsa Raporlar → **Gelir** (tarih aralığı) ya da öğrenciyi
+"Pasif" filtresiyle bulup **Ödemeler** sekmesi. Kalan: öğünler, sınıflar, cihazlar, kullanıcılar,
+tatil takvimi, şablonlar, ayarlar. Sıfırlamadan önce otomatik güvenlik yedeği alınır; alınamazsa
+hiçbir şey değişmez. Yeni yılın öğrenci listesi **Sicil Aktar** ile yüklenir; listedeki numaralar
+aynı sicili yeniden aktif eder, kartlar dosyadaki kart sütunundan yeniden yazılır.
+Not: Okul öğrenci numarasını yeni bir öğrenciye yeniden verirse eski sicil o numarayla
+güncellenir; numaralar öğrenciye özel kalmalıdır.
 
 ### D2. Cihaz silme
 Cihazlar / Turnikeler → kartın üzerinde **Sil** → **Silmeyi Onayla**. Yanlış eklenen cihaz kalıcı
@@ -154,6 +159,34 @@ silinir. Geçiş kaydı olan cihaz silinmez (kayıtlar korunur); onu **Pasifleş
 ### D3. Öğrenci silme
 Öğrenciler → öğrenciyi açın → sicil kartında **Sil** → **Silmeyi Onayla**. Kayıt listelerden
 kaybolur; Sicil Aktar ile aynı numara yeniden yüklenirse geri gelir.
+
+### D4. Tatil ekleme ve silme
+Takvim → günü seçin → **Tatil oluştur**. Formda **Başlangıç** ve **Bitiş (dahil)** vardır; bayram
+veya yarıyıl için aralığı seçin, her gün ayrı kayıt olur ve "Tatiller" bloğundan **Bu günü sil**
+ya da **Tüm aralığı sil** ile kaldırılır (iki adımlı onay). Aynı gün ve kapsamda ikinci tatil
+kabul edilmez. Tatil kaydı hakları kendisi değiştirmez; **Hakediş etkilerini toplu uygula**
+sihirbazı aralığın tamamıyla açılır.
+
+## BÖLÜM E — SMS (Mutlucell)
+
+### E1. Sağlayıcıyı tanımlama
+Ayarlar → **SMS** → Sağlayıcı: **Mutlucell (XML SMS ağ geçidi)**. Kullanıcı adı (ka), API şifresi
+(pwd) ve Mutlucell'de onaylı başlık (org) girilir; adres boş bırakılır (smsgw.mutlucell.com
+kullanılır). **Kaydet**. Kuyruk gönderimi yeni ayarı uygulama yeniden başlatılınca kullanır.
+
+### E2. Test SMS ve kontör
+Aynı sekmede **SMS sınama** kartı: alıcı GSM yazıp **Test SMS Gönder**. Sonuç kutusunda
+sağlayıcının ham yanıtı görünür: `$88512` gibi bir değer paket numarasıdır (başarılı); `23`
+kullanıcı adı/şifre hatası, `21` başlık hesaba ait değil, `22` kontör yetersiz, `34` API kapalı.
+**Kontör Sorgula** kalan kontörü gösterir. Test kaydedilmiş ayarlarla gider; form kirliyse
+düğmeler kapalıdır.
+
+### E3. Şablonlar ve otomatik SMS
+SMS Merkezi → Şablonlar ilk açılışta 6 hazır şablonla gelir (Yemek Ücreti Hatırlatma, Yemek
+Hakkı Bitiyor, Ödeme Alındı, Yemekhane Girişi, Kart Yenilendi, Genel Bilgilendirme); silinen
+şablon geri gelmez. Veliye günlük hak uyarısının **gönderim saati** Ayarlar → SMS → Otomatik SMS
+→ "Gönderim saati (SS:dd)" alanındadır; program o saatte açık değilse ilk açılışta o günün
+uyarısı gider, ertesi güne sarkmaz.
 
 ## Sonraki makineler
 

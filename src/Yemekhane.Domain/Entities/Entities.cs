@@ -60,6 +60,8 @@ public sealed class SchoolClass : Entity
     public required string Name { get; set; }
     /// <summary>Türkçe normalleştirilmiş ad; arama bu sütun üzerinden yapılır.</summary>
     public string SearchName { get; set; } = string.Empty;
+    /// <summary>Normal ya da Anasinifi (bkz. <see cref="ClassKinds"/>).</summary>
+    public string Kind { get; set; } = ClassKinds.Normal;
     public bool IsActive { get; set; } = true;
 }
 public sealed class Section : Entity { public required string Name { get; set; } }
@@ -209,6 +211,8 @@ public sealed class Holiday : Entity
     public required string HolidayType { get; set; }
     public string? Description { get; set; }
     public required string TransferBehavior { get; set; }
+    /// <summary>Aralikli tatilin (bayram, yariyil) gunlerini baglar; tek gunluk tatilde null.</summary>
+    public Guid? GroupId { get; set; }
 }
 
 public sealed class HolidayScope : Entity

@@ -20,8 +20,10 @@ public interface IDefinitionsApiClient
     Task DeactivateMealTypeAsync(Guid id, CancellationToken cancellationToken = default);
     /// <param name="kind">classes | sections | departments | jobs</param>
     Task<IReadOnlyList<LookupRecord>> LookupsAsync(string kind, CancellationToken cancellationToken = default);
-    Task<LookupRecord> CreateLookupAsync(string kind, string name, CancellationToken cancellationToken = default);
-    Task<LookupRecord> RenameLookupAsync(string kind, Guid id, string name, CancellationToken cancellationToken = default);
+    /// <param name="classKind">Yalnizca classes icin: Normal | Anasinifi (bos → Normal).</param>
+    Task<LookupRecord> CreateLookupAsync(string kind, string name, string? classKind = null, CancellationToken cancellationToken = default);
+    /// <param name="classKind">Yalnizca classes icin; bos birakilirsa mevcut tur korunur.</param>
+    Task<LookupRecord> RenameLookupAsync(string kind, Guid id, string name, string? classKind = null, CancellationToken cancellationToken = default);
     Task DeleteLookupAsync(string kind, Guid id, CancellationToken cancellationToken = default);
 }
 
@@ -47,21 +49,15 @@ public sealed class DefinitionsApiClient(HttpClient client, IJwtSession session)
     public Task<IReadOnlyList<LookupRecord>> LookupsAsync(string kind, CancellationToken cancellationToken = default) =>
         SendAsync<IReadOnlyList<LookupRecord>>(Authorized(HttpMethod.Get, $"api/organization/{kind}/lookups"), cancellationToken);
 
-    public async Task<LookupRecord> CreateLookupAsync(string kind, string name, CancellationToken cancellationToken = default)
-    {
-        // Sinif ucu ESKI sozlesme: govde duz JSON dizge ("5A"), yanit ClassRecord (ogrenci
-        // sayisi yok). Diger tanimlar {"name": "..."} govdesiyle LookupRecord dondurur.
-        // Sozlesme degistirilmedi; ogrenci formundaki hizli ekleme de bu ucu kullanir.
-        if (kind == Classes)
-        {
-            var created = await SendAsync<ClassRecord>(Authorized(HttpMethod.Post, "api/organization/classes", JsonContent.Create(name)), cancellationToken);
-            return new LookupRecord(created.Id, created.Name, 0);
-        }
-        return await SendAsync<LookupRecord>(Authorized(HttpMethod.Post, $"api/organization/{kind}", JsonContent.Create(new SaveLookupRequest(name))), cancellationToken);
-    }
+    public Task<LookupRecord> CreateLookupAsync(string kind, string name, string? classKind = null, CancellationToken cancellationToken = default) =>
+        // Sinif turu (Normal / Anasinifi) yalnizca Tanimlar ekranindan secilir; bu yuzden sinif
+        // "classes/lookups" ucuna {"name","kind"} govdesiyle gider. Eski POST classes ucu
+        // (duz JSON dizge, ClassRecord yaniti) ogrenci formundaki hizli ekleme icin durur.
+        SendAsync<LookupRecord>(Authorized(HttpMethod.Post, kind == Classes ? "api/organization/classes/lookups" : $"api/organization/{kind}",
+            JsonContent.Create(new SaveLookupRequest(name, kind == Classes ? classKind : null))), cancellationToken);
 
-    public Task<LookupRecord> RenameLookupAsync(string kind, Guid id, string name, CancellationToken cancellationToken = default) =>
-        SendAsync<LookupRecord>(Authorized(HttpMethod.Put, $"api/organization/{kind}/{id:D}", JsonContent.Create(new SaveLookupRequest(name))), cancellationToken);
+    public Task<LookupRecord> RenameLookupAsync(string kind, Guid id, string name, string? classKind = null, CancellationToken cancellationToken = default) =>
+        SendAsync<LookupRecord>(Authorized(HttpMethod.Put, $"api/organization/{kind}/{id:D}", JsonContent.Create(new SaveLookupRequest(name, kind == Classes ? classKind : null))), cancellationToken);
 
     public Task DeleteLookupAsync(string kind, Guid id, CancellationToken cancellationToken = default) =>
         SendAsync(Authorized(HttpMethod.Delete, $"api/organization/{kind}/{id:D}"), cancellationToken);

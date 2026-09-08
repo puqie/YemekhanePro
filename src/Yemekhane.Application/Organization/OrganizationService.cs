@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Yemekhane.Application.Common;
+using Yemekhane.Domain.Entities;
 
 namespace Yemekhane.Application.Organization;
 
@@ -9,7 +10,11 @@ public sealed class OrganizationService(IOrganizationRepository repository)
     public Task<IReadOnlyList<GroupRecord>> ListGroupsAsync(CancellationToken cancellationToken = default) => repository.ListGroupsAsync(cancellationToken);
 
     public Task<ClassRecord> CreateClassAsync(string name, CancellationToken cancellationToken = default) =>
-        repository.AddClassAsync(ValidateName(name, "Sınıf"), cancellationToken);
+        CreateClassAsync(name, null, cancellationToken);
+
+    /// <param name="kind">Normal / Anasinifi; bos → Normal.</param>
+    public Task<ClassRecord> CreateClassAsync(string name, string? kind, CancellationToken cancellationToken = default) =>
+        repository.AddClassAsync(ValidateName(name, "Sınıf"), ValidateClassKind(kind), cancellationToken);
 
     public Task<GroupRecord> CreateGroupAsync(SaveGroupRequest request, CancellationToken cancellationToken = default)
     {
@@ -29,10 +34,20 @@ public sealed class OrganizationService(IOrganizationRepository repository)
         repository.ListLookupsAsync(kind, cancellationToken);
 
     public Task<LookupRecord> CreateLookupAsync(LookupKind kind, string name, CancellationToken cancellationToken = default) =>
-        repository.AddLookupAsync(kind, ValidateName(name, LookupLabel(kind)), cancellationToken);
+        CreateLookupAsync(kind, name, null, cancellationToken);
+
+    /// <param name="classKind">Sinif icin tur (bos → Normal); sube/bolum/gorevde yok sayilir.</param>
+    public Task<LookupRecord> CreateLookupAsync(LookupKind kind, string name, string? classKind, CancellationToken cancellationToken = default) =>
+        repository.AddLookupAsync(kind, ValidateName(name, LookupLabel(kind)),
+            kind == LookupKind.Class ? ValidateClassKind(classKind) : null, cancellationToken);
 
     public Task<LookupRecord> RenameLookupAsync(LookupKind kind, Guid id, string name, CancellationToken cancellationToken = default) =>
-        repository.RenameLookupAsync(kind, id, ValidateName(name, LookupLabel(kind)), cancellationToken);
+        RenameLookupAsync(kind, id, name, null, cancellationToken);
+
+    /// <param name="classKind">Sinif icin yeni tur; bos birakilirsa mevcut tur KORUNUR (yalnizca ad degisir).</param>
+    public Task<LookupRecord> RenameLookupAsync(LookupKind kind, Guid id, string name, string? classKind, CancellationToken cancellationToken = default) =>
+        repository.RenameLookupAsync(kind, id, ValidateName(name, LookupLabel(kind)),
+            kind == LookupKind.Class && !string.IsNullOrWhiteSpace(classKind) ? ValidateClassKind(classKind) : null, cancellationToken);
 
     public Task DeleteLookupAsync(LookupKind kind, Guid id, CancellationToken cancellationToken = default) =>
         repository.DeleteLookupAsync(kind, id, cancellationToken);
@@ -58,6 +73,11 @@ public sealed class OrganizationService(IOrganizationRepository repository)
 
     public Task ReplaceMembersAsync(Guid groupId, IReadOnlyCollection<Guid> studentIds, CancellationToken cancellationToken = default) =>
         repository.ReplaceMembersAsync(groupId, studentIds.Distinct().ToArray(), cancellationToken);
+
+    /// <summary>Bos tur Normal sayilir; bilinmeyen tur 400. Etiket degil anahtar beklenir ("Anasinifi").</summary>
+    public static string ValidateClassKind(string? kind) =>
+        ClassKinds.Normalize(kind) ?? throw new RequestValidationException(
+            $"Sınıf türü {string.Join(" veya ", ClassKinds.All)} olmalıdır.");
 
     private static string ValidateName(string name, string field)
     {

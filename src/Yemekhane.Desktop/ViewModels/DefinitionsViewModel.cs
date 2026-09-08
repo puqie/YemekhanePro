@@ -6,6 +6,7 @@ using System.Windows.Input;
 using Yemekhane.Application.Meals;
 using Yemekhane.Application.Organization;
 using Yemekhane.Desktop.Services;
+using Yemekhane.Domain.Entities;
 
 namespace Yemekhane.Desktop.ViewModels;
 
@@ -260,12 +261,20 @@ public sealed class MealTypeRow(MealTypeDetails details)
 /// fark API yolu (kind) ve etiketler. Silme iki adimlidir: ilk tiklama dugmeyi
 /// "Silmeyi Onayla"ya cevirir, ikincisi siler; "Vazgeç" geri alir.
 /// </summary>
+/// <summary>Sinif turu acilir kutusunun satiri: etiket Turkce, deger API anahtari.</summary>
+public sealed record ClassKindOption(string Label, string Value)
+{
+    public static readonly IReadOnlyList<ClassKindOption> All =
+        ClassKinds.All.Select(kind => new ClassKindOption(ClassKinds.Label(kind), kind)).ToArray();
+}
+
 public sealed class LookupTabViewModel : ObservableObject
 {
     private readonly IDefinitionsApiClient api;
     private readonly string kind;
     private LookupRecord? selectedItem;
     private string newName = "", renameName = "";
+    private string newClassKind = ClassKinds.Normal, renameClassKind = ClassKinds.Normal;
     private string? errorMessage, statusMessage;
     private bool isRenameOpen, isDeleteArmed, loaded;
 
@@ -309,6 +318,12 @@ public sealed class LookupTabViewModel : ObservableObject
         }
     }
     public string NewName { get => newName; set { if (Set(ref newName, value ?? "")) (AddCommand as AsyncCommand)?.Refresh(); } }
+    /// <summary>Yalnizca Siniflar sekmesi tur secer (Normal / Anasınıfı); digerlerinde kutu ve sutun gizlidir.</summary>
+    public bool IsClassTab => kind == DefinitionsApiClient.Classes;
+    // Auto-property (CA1822): WPF baglamalari static uyeleri cozemez, ornek uyesi kalmali.
+    public IReadOnlyList<ClassKindOption> ClassKindOptions { get; } = ClassKindOption.All;
+    public string NewClassKind { get => newClassKind; set => Set(ref newClassKind, string.IsNullOrWhiteSpace(value) ? ClassKinds.Normal : value); }
+    public string RenameClassKind { get => renameClassKind; set => Set(ref renameClassKind, string.IsNullOrWhiteSpace(value) ? ClassKinds.Normal : value); }
     public string RenameName { get => renameName; set { if (Set(ref renameName, value ?? "")) (SaveRenameCommand as AsyncCommand)?.Refresh(); } }
     public bool IsRenameOpen { get => isRenameOpen; private set { if (Set(ref isRenameOpen, value)) (SaveRenameCommand as AsyncCommand)?.Refresh(); } }
     public bool IsDeleteArmed
@@ -348,11 +363,11 @@ public sealed class LookupTabViewModel : ObservableObject
         if (name.Length is < 1 or > 100) { ErrorMessage = $"{Singular} adı 1-100 karakter olmalıdır."; return; }
         try
         {
-            var created = await api.CreateLookupAsync(kind, name);
+            var created = await api.CreateLookupAsync(kind, name, IsClassTab ? NewClassKind : null);
             NewName = "";
             await LoadAsync();
             SelectedItem = Items.FirstOrDefault(x => x.Id == created.Id);
-            StatusMessage = $"{created.Name} eklendi.";
+            StatusMessage = IsClassTab ? $"{created.Name} ({created.KindLabel}) eklendi." : $"{created.Name} eklendi.";
         }
         catch (Exception ex) { ErrorMessage = DefinitionsViewModel.Friendly(ex, $"{Singular} eklenemedi."); }
     }
@@ -360,7 +375,8 @@ public sealed class LookupTabViewModel : ObservableObject
     private void OpenRename()
     {
         if (SelectedItem is null) return;
-        RenameName = SelectedItem.Name; ErrorMessage = null; StatusMessage = null; IsDeleteArmed = false; IsRenameOpen = true;
+        RenameName = SelectedItem.Name; RenameClassKind = SelectedItem.Kind ?? ClassKinds.Normal;
+        ErrorMessage = null; StatusMessage = null; IsDeleteArmed = false; IsRenameOpen = true;
     }
 
     private async Task SaveRenameAsync()
@@ -372,7 +388,7 @@ public sealed class LookupTabViewModel : ObservableObject
         var id = SelectedItem.Id;
         try
         {
-            var renamed = await api.RenameLookupAsync(kind, id, name);
+            var renamed = await api.RenameLookupAsync(kind, id, name, IsClassTab ? RenameClassKind : null);
             IsRenameOpen = false;
             await LoadAsync();
             SelectedItem = Items.FirstOrDefault(x => x.Id == renamed.Id);

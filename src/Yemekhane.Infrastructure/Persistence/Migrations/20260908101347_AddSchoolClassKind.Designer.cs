@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Yemekhane.Infrastructure.Persistence;
 
@@ -10,9 +11,11 @@ using Yemekhane.Infrastructure.Persistence;
 namespace Yemekhane.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(YemekhaneDbContext))]
-    partial class YemekhaneDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260908101347_AddSchoolClassKind")]
+    partial class AddSchoolClassKind
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
@@ -450,9 +453,6 @@ namespace Yemekhane.Infrastructure.Persistence.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("GroupId")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("HolidayType")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -478,9 +478,6 @@ namespace Yemekhane.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Date");
-
-                    b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_holidays_group_id");
 
                     b.HasIndex("Name")
                         .HasDatabaseName("ix_holidays_name");

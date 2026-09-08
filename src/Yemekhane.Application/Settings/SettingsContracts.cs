@@ -3,8 +3,9 @@
 namespace Yemekhane.Application.Settings;
 
 public sealed record SchoolSettings(string Name, string? Address, string? Contact, string? LogoPath);
+/// <param name="Provider">"Http" (genel JSON servisi) ya da "Mutlucell" (XML ag gecidi; Username=ka, Secret=pwd, Sender=org).</param>
 public sealed record SmsProviderSettings(string? Endpoint, string AuthType, string? Username, string? Sender,
-    int TimeoutSeconds, bool SecretConfigured);
+    int TimeoutSeconds, bool SecretConfigured, string Provider = "Http");
 public sealed record BackupSettings(bool Enabled, string Frequency, DayOfWeek WeeklyDay, TimeOnly Time,
     int RetentionCount, string? Path);
 public sealed record SyncSettings(string? Endpoint, string? DeviceId, int IntervalMinutes, bool Enabled,
@@ -23,7 +24,7 @@ public sealed record SettingsDocument(SchoolSettings School, SmsProviderSettings
 
 public sealed record SaveSchoolSettings(string Name, string? Address, string? Contact, string? LogoPath);
 public sealed record SaveSmsProviderSettings(string? Endpoint, string AuthType, string? Username, string? Sender,
-    int TimeoutSeconds, string? Secret);
+    int TimeoutSeconds, string? Secret, string Provider = "Http");
 public sealed record SaveBackupSettings(bool Enabled, string Frequency, DayOfWeek WeeklyDay, TimeOnly Time,
     int RetentionCount, string? Path);
 public sealed record SaveSyncSettings(string? Endpoint, string? DeviceId, int IntervalMinutes, bool Enabled, string? Secret);
@@ -44,6 +45,7 @@ public sealed record BackupValidationResult(Guid BackupId, DateTimeOffset Create
 public static class SettingsValidation
 {
     private static readonly string[] AuthTypes = ["None", "Basic", "Bearer", "ApiKey"];
+    private static readonly string[] SmsProviders = ["Http", "Mutlucell"];
     private static readonly string[] Frequencies = ["Daily", "Weekly"];
     private static readonly string[] LogLevels = ["Trace", "Debug", "Information", "Warning", "Error", "Critical"];
 
@@ -55,6 +57,9 @@ public static class SettingsValidation
         Optional(request.School.LogoPath, 500, "Logo yolu");
         OptionalOutboundUri(request.Sms.Endpoint, "SMS endpoint");
         OneOf(request.Sms.AuthType, AuthTypes, "SMS kimlik doğrulama türü");
+        OneOf(request.Sms.Provider, SmsProviders, "SMS sağlayıcısı");
+        if (request.Sms.Provider == "Mutlucell" && string.IsNullOrWhiteSpace(request.Sms.Username))
+            throw new ArgumentException("Mutlucell için kullanıcı adı (ka) zorunludur.");
         Optional(request.Sms.Username, 200, "SMS kullanıcı adı"); Optional(request.Sms.Sender, 50, "SMS gönderici");
         Range(request.Sms.TimeoutSeconds, 1, 300, "SMS zaman aşımı");
         OneOf(request.Backup.Frequency, Frequencies, "Yedek sıklığı");

@@ -35,6 +35,57 @@ public sealed class CalendarDayViewModel(CalendarDaySummary value, bool currentM
 /// </summary>
 public sealed record CalendarOperationDisplay(string Title, string? Detail);
 
+/// <summary>
+/// Gun cekmecesindeki tatil satiri. Silme iki adimli ve dugmeye ozel silahlanir: "Bu günü sil"
+/// ile silahlanip "Tüm aralığı sil"e basmak araligi silmez, yeniden onay ister.
+/// </summary>
+public sealed class HolidayRowViewModel : ObservableObject
+{
+    private readonly CalendarViewModel owner;
+    private bool? armedRange;
+
+    public HolidayRowViewModel(CalendarHolidayItem item, CalendarViewModel owner, bool canManage)
+    {
+        Item = item; this.owner = owner; CanManage = canManage;
+        DeleteDayCommand = new AsyncCommand(() => DeleteAsync(false), () => CanManage);
+        DeleteRangeCommand = new AsyncCommand(() => DeleteAsync(true), () => CanManage && IsMultiDay);
+        CancelDeleteCommand = new RelayCommand(() => Armed = null, () => IsDeleteArmed);
+    }
+
+    public CalendarHolidayItem Item { get; }
+    public bool CanManage { get; }
+    public string Title => Item.Name;
+    public string Detail => string.Join(" · ", EnumTextConverter.Translate(Item.HolidayType, "HolidayType"),
+        string.Join(", ", Item.Scopes.Select(owner.ScopeName)), "Hak davranışı: " + EnumTextConverter.Translate(Item.TransferBehavior, "TransferBehavior"));
+    public bool IsMultiDay => Item.GroupDayCount > 1;
+    public string RangeText => IsMultiDay ? $"{Item.GroupDayCount} günlük tatil aralığının bir günü" : "";
+    public bool IsDeleteArmed => armedRange.HasValue;
+    public string DeleteDayText => armedRange == false ? "Bu günü silmeyi onayla" : "Bu günü sil";
+    public string DeleteRangeText => armedRange == true ? $"Tüm aralığı silmeyi onayla ({Item.GroupDayCount} gün)" : $"Tüm aralığı sil ({Item.GroupDayCount} gün)";
+    public ICommand DeleteDayCommand { get; }
+    public ICommand DeleteRangeCommand { get; }
+    public ICommand CancelDeleteCommand { get; }
+
+    private bool? Armed
+    {
+        get => armedRange;
+        set
+        {
+            if (armedRange == value) return;
+            armedRange = value;
+            Raise(nameof(IsDeleteArmed)); Raise(nameof(DeleteDayText)); Raise(nameof(DeleteRangeText));
+            (CancelDeleteCommand as RelayCommand)?.Refresh();
+        }
+    }
+
+    private async Task DeleteAsync(bool wholeRange)
+    {
+        if (armedRange != wholeRange) { Armed = wholeRange; return; }
+        Armed = null;
+        await owner.DeleteHolidayAsync(this, wholeRange);
+    }
+}
+
 public sealed class CalendarViewModel : ObservableObject
 {
     private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
@@ -46,6 +97,8 @@ public sealed class CalendarViewModel : ObservableObject
     private string? errorMessage, formMessage, infoMessage, pendingBehavior;
     private string holidayName = "", holidayType = "Official", transferBehavior = "Delete";
     private string exceptionType = "Special", exceptionBehavior = "Keep", exceptionDescription = "";
+    private DateTime? holidayStart, holidayEnd;
+    private DateOnly? pendingRangeEnd;
 
     public CalendarViewModel(ICalendarApiClient api, IEnumerable<string> permissions, DateOnly? today = null,
         BulkOperationWizardViewModel? bulkWizard = null)
@@ -59,7 +112,13 @@ public sealed class CalendarViewModel : ObservableObject
         ApplyScopeCommand = new AsyncCommand(LoadAsync, () => CanManage);
         SelectDayCommand = new RelayCommand<CalendarDayViewModel>(item => _ = SelectDayAsync(item.Date));
         CloseDrawerCommand = new RelayCommand(CloseDrawer);
-        OpenHolidayFormCommand = new RelayCommand(() => { HolidayScope = ScopeForForm(); IsHolidayFormOpen = true; FormMessage = null; InfoMessage = null; }, () => CanManage);
+        OpenHolidayFormCommand = new RelayCommand(() =>
+        {
+            HolidayScope = ScopeForForm();
+            // Aralik varsayilani secili gun: tek gunluk tatil icin ek tiklama gerekmez.
+            HolidayStart = HolidayEnd = SelectedDate.ToDateTime(TimeOnly.MinValue);
+            IsHolidayFormOpen = true; FormMessage = null; InfoMessage = null;
+        }, () => CanManage);
         CloseHolidayFormCommand = new RelayCommand(() => IsHolidayFormOpen = false);
         CreateHolidayCommand = new AsyncCommand(CreateHolidayAsync, () => CanManage);
         OpenExceptionFormCommand = new RelayCommand(() => { ExceptionScope = ScopeForForm(); IsExceptionFormOpen = true; FormMessage = null; InfoMessage = null; }, () => CanManage);
@@ -87,12 +146,25 @@ public sealed class CalendarViewModel : ObservableObject
     public CalendarScopeOption? ExceptionScope { get => exceptionScope; set => Set(ref exceptionScope, value); }
     public DateOnly SelectedDate { get => selectedDate; private set { if (Set(ref selectedDate, value)) Raise(nameof(SelectedDateTitle)); } }
     public string SelectedDateTitle => SelectedDate.ToDateTime(TimeOnly.MinValue).ToString("d MMMM yyyy, dddd", Turkish);
-    public CalendarDayDetails? SelectedDetails { get => selectedDetails; private set { if (Set(ref selectedDetails, value)) { Raise(nameof(HasDayDetails)); Raise(nameof(SelectedOperations)); Raise(nameof(HasNoOperations)); } } }
+    public CalendarDayDetails? SelectedDetails
+    {
+        get => selectedDetails;
+        private set
+        {
+            if (!Set(ref selectedDetails, value)) return;
+            RebuildHolidayRows();
+            Raise(nameof(HasDayDetails)); Raise(nameof(SelectedOperations)); Raise(nameof(HasNoOperations)); Raise(nameof(HasHolidayRows));
+        }
+    }
     public bool HasDayDetails => SelectedDetails is not null;
     /// <summary>Gunun olaylari Turkce baslik/aciklamayla.</summary>
     public IReadOnlyList<CalendarOperationDisplay> SelectedOperations =>
-        (SelectedDetails?.Operations ?? []).Select(Describe).ToArray();
-    public bool HasNoOperations => SelectedDetails is not null && SelectedDetails.Operations.Count == 0;
+        // Tatiller kendi bloklarinda (silme dugmeleriyle) listelenir; ayni satir iki kez gorunmesin.
+        (SelectedDetails?.Operations ?? []).Where(x => x.Kind != "Holiday" || (SelectedDetails?.Holidays.Count ?? 0) == 0).Select(Describe).ToArray();
+    public bool HasNoOperations => SelectedDetails is not null && SelectedDetails.Operations.Count == 0 && SelectedDetails.Holidays.Count == 0;
+    /// <summary>Secili gunun tatilleri: tur, kapsam, davranis ve silme (bu gun / tum aralik).</summary>
+    public ObservableCollection<HolidayRowViewModel> HolidayRows { get; } = [];
+    public bool HasHolidayRows => HolidayRows.Count > 0;
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) Raise(nameof(IsEmpty)); } }
     public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
     public string? ErrorMessage { get => errorMessage; private set { if (Set(ref errorMessage, value)) { Raise(nameof(HasError)); Raise(nameof(IsEmpty)); } } }
@@ -104,6 +176,16 @@ public sealed class CalendarViewModel : ObservableObject
     public string HolidayName { get => holidayName; set => Set(ref holidayName, value); }
     public string HolidayType { get => holidayType; set => Set(ref holidayType, value); }
     public string TransferBehavior { get => transferBehavior; set => Set(ref transferBehavior, value); }
+    /// <summary>Tatil araligi: bayram/yariyil icin gun gun eklemek yerine baslangic-bitis secilir; form acilinca ikisi de secili gundur.</summary>
+    public DateTime? HolidayStart { get => holidayStart; set { if (Set(ref holidayStart, value)) { Raise(nameof(HolidayDayCount)); Raise(nameof(HolidayRangeText)); } } }
+    public DateTime? HolidayEnd { get => holidayEnd; set { if (Set(ref holidayEnd, value)) { Raise(nameof(HolidayDayCount)); Raise(nameof(HolidayRangeText)); } } }
+    public int HolidayDayCount => HolidayStart is { } start && HolidayEnd is { } end && end.Date >= start.Date ? (end.Date - start.Date).Days + 1 : 0;
+    public string HolidayRangeText => HolidayDayCount switch
+    {
+        0 => "Bitiş, başlangıçtan önce olamaz.",
+        1 => "Tek gün.",
+        var days => $"{days} gün: her gün ayrı kayıt olur, gerekirse tek hamlede silinir."
+    };
     public string ExceptionType { get => exceptionType; set => Set(ref exceptionType, value); }
     public string ExceptionBehavior { get => exceptionBehavior; set => Set(ref exceptionBehavior, value); }
     public string ExceptionDescription { get => exceptionDescription; set => Set(ref exceptionDescription, value); }
@@ -194,13 +276,26 @@ public sealed class CalendarViewModel : ObservableObject
         {
             // Sunucu da dogrular; ama bos ad icin yolculuk sunucuya gitmeden de anlasilir olsun.
             if (string.IsNullOrWhiteSpace(HolidayName)) throw new InvalidOperationException("Tatil adı zorunludur (2-200 karakter).");
+            var start = DateOnly.FromDateTime(HolidayStart ?? SelectedDate.ToDateTime(TimeOnly.MinValue));
+            var end = DateOnly.FromDateTime(HolidayEnd ?? start.ToDateTime(TimeOnly.MinValue));
+            if (end < start) throw new InvalidOperationException("Tatil bitiş tarihi başlangıçtan önce olamaz.");
             var scope = HolidayScope ?? Scopes.FirstOrDefault() ?? new("AllSchool", null, "Tüm okul");
-            await api.CreateHolidayAsync(new CreateHolidayRequest(SelectedDate, HolidayName, HolidayType, null, TransferBehavior,
-                [new HolidayScopeRequest(scope.ScopeType, scope.ScopeId)]));
+            var created = await api.CreateHolidayAsync(new CreateHolidayRequest(start, HolidayName, HolidayType, null, TransferBehavior,
+                [new HolidayScopeRequest(scope.ScopeType, scope.ScopeId)], end > start ? end : null));
             var behavior = TransferBehavior;
-            IsHolidayFormOpen = false; HolidayName = ""; await RefreshAfterCreateAsync();
-            pendingBehavior = behavior;
-            InfoMessage = AfterCreateMessage("Tatil kaydedildi.", behavior);
+            IsHolidayFormOpen = false; HolidayName = "";
+            // Form baska bir gune/aya yazdiysa cekmece ve takvim o gune gider; aksi halde eski gun gorunur kalirdi.
+            if (start != SelectedDate)
+            {
+                SelectedDate = start;
+                if (new DateOnly(start.Year, start.Month, 1) != month) { month = new DateOnly(start.Year, start.Month, 1); Raise(nameof(MonthTitle)); }
+            }
+            await RefreshAfterCreateAsync();
+            pendingBehavior = behavior; pendingRangeEnd = end > start ? end : null;
+            var prefix = created.DayCount > 1
+                ? $"Tatil kaydedildi: {created.DayCount} gün ({start.ToDateTime(TimeOnly.MinValue).ToString("d MMM", Turkish)} – {end.ToDateTime(TimeOnly.MinValue).ToString("d MMM", Turkish)})."
+                : "Tatil kaydedildi.";
+            InfoMessage = AfterCreateMessage(prefix, behavior);
         }
         catch (Exception ex) { FormMessage = Friendly(ex, "Tatil oluşturulamadı."); }
     }
@@ -238,7 +333,31 @@ public sealed class CalendarViewModel : ObservableObject
             InfoMessage = info; pendingBehavior = behavior;
         }
     }
-    private void OpenBulk() { BulkWizard?.Preset(SelectedDate, transferBehavior: pendingBehavior); BulkWizard?.OpenCommand.Execute(null); }
+    private void OpenBulk() { BulkWizard?.Preset(SelectedDate, transferBehavior: pendingBehavior, endDate: pendingRangeEnd); BulkWizard?.OpenCommand.Execute(null); }
+
+    internal async Task DeleteHolidayAsync(HolidayRowViewModel row, bool wholeRange)
+    {
+        FormMessage = null; InfoMessage = null;
+        try
+        {
+            await api.DeleteHolidayAsync(row.Item.Id, wholeRange);
+            await RefreshAfterCreateAsync();
+            InfoMessage = wholeRange && row.Item.GroupDayCount > 1
+                ? $"{row.Item.GroupDayCount} günlük tatil aralığı silindi: {row.Item.Name}. Daha önce uygulanmış hak değişiklikleri geri alınmadı; gerekiyorsa sihirbazdan geri alın."
+                : $"Tatil silindi: {row.Item.Name}. Daha önce uygulanmış hak değişiklikleri geri alınmadı.";
+        }
+        catch (Exception ex) { FormMessage = Friendly(ex, "Tatil silinemedi."); }
+    }
+
+    internal string ScopeName(HolidayScopeRequest scope) => scope.ScopeType == "AllSchool" ? "Tüm okul"
+        : Scopes.FirstOrDefault(x => x.ScopeType == scope.ScopeType && x.ScopeId == scope.ScopeId)?.Name
+          ?? (scope.ScopeType == "Class" ? "Sınıf" : "Grup");
+
+    private void RebuildHolidayRows()
+    {
+        HolidayRows.Clear();
+        foreach (var item in SelectedDetails?.Holidays ?? []) HolidayRows.Add(new HolidayRowViewModel(item, this, CanManage));
+    }
     private CalendarScopeOption? FilterScope() => SelectedScope?.ScopeType == "AllSchool" ? null : SelectedScope;
     private CalendarScopeOption ScopeForForm() => SelectedScope ?? Scopes.FirstOrDefault() ?? new("AllSchool", null, "Tüm okul");
     private void HandleError(Exception ex) { IsOffline = ex is HttpRequestException or TaskCanceledException or InvalidDataException; ErrorMessage = Friendly(ex, "Takvim verisi alınamadı."); }

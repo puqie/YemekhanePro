@@ -101,8 +101,14 @@ public sealed class EfCalendarRepository(YemekhaneDbContext db, IAuditService au
             (s.ScopeType == "AllSchool" || (s.ScopeType == scope.ScopeType && s.ScopeId == scope.ScopeId))));
         var rows = await query.OrderBy(x => x.Date).ToListAsync(token); var ids = rows.Select(x => x.Id).ToArray();
         var scopes = await db.Set<HolidayScope>().AsNoTracking().Where(x => ids.Contains(x.HolidayId)).ToListAsync(token);
+        // Aralikli tatilin toplam gunu: ay disina tasan gunler de sayilir (bellekte gruplanir; GroupBy cevirisine girilmez).
+        var groupIds = rows.Where(x => x.GroupId.HasValue).Select(x => x.GroupId!.Value).Distinct().ToArray();
+        var groupCounts = groupIds.Length == 0 ? new Dictionary<Guid, int>()
+            : (await db.Holidays.AsNoTracking().Where(x => x.GroupId.HasValue && groupIds.Contains(x.GroupId.Value)).Select(x => x.GroupId!.Value).ToListAsync(token))
+                .GroupBy(x => x).ToDictionary(g => g.Key, g => g.Count());
         return rows.Select(x => (x.Date, new CalendarHolidayItem(x.Id, x.Name, x.HolidayType, x.TransferBehavior,
-            scopes.Where(y => y.HolidayId == x.Id).Select(y => new HolidayScopeRequest(y.ScopeType, y.ScopeId)).ToArray()))).ToList();
+            scopes.Where(y => y.HolidayId == x.Id).Select(y => new HolidayScopeRequest(y.ScopeType, y.ScopeId)).ToArray(),
+            x.GroupId, x.GroupId is { } group ? groupCounts.GetValueOrDefault(group, 1) : 1))).ToList();
     }
 
     private async Task<List<(DateOnly Date, CalendarExceptionItem Item)>> Exceptions(DateOnly first, DateOnly end, CalendarScope? scope, CancellationToken token)

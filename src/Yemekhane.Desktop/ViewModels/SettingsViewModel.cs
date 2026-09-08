@@ -28,6 +28,7 @@ public sealed record WeekDayOption(string Name, DayOfWeek Value);
 
 /// <summary>SMS saglayici kimlik dogrulama secenegi; Value SettingsValidation.AuthTypes ile aynidir.</summary>
 public sealed record SmsAuthTypeOption(string Name, string Value);
+public sealed record SmsProviderOption(string Name, string Value);
 
 public sealed class SettingsViewModel : ObservableObject
 {
@@ -54,6 +55,8 @@ public sealed class SettingsViewModel : ObservableObject
     private SmsAutomationStatus? automationOriginal;
     private bool autoEntitlementEnabled, autoIncomeEnabled, autoCardEnabled;
     private string autoEntitlementSendAt = "13:10", autoEntitlementDaysText = "2", autoEntitlementTemplate = "";
+    private string smsProvider = "Http", testSmsPhone = "";
+    private string? testSmsResultText, smsCreditText;
     private string autoIncomePhone = "", autoIncomeTemplate = "", autoCardTemplate = "", autoCardPhone = "";
     private string? entitlementRunText;
 
@@ -79,6 +82,9 @@ public sealed class SettingsViewModel : ObservableObject
         // Kayitli esik/sablonla kosar; kaydedilmemis degisiklik varken pasif -- aksi halde ekranda
         // gorunen degil, sunucudaki eski deger uygulanir ve kullanici bunu anlayamaz.
         RunEntitlementWarningCommand = new AsyncCommand(RunEntitlementWarningAsync, () => CanManage && !IsLoading && !IsDirty);
+        // Test SMS ve kontor KAYITLI ayarlarla gider: kirli formda dugme kapali, once Kaydet.
+        SendTestSmsCommand = new AsyncCommand(SendTestSmsAsync, () => CanManage && !IsLoading && !IsDirty && !string.IsNullOrWhiteSpace(TestSmsPhone));
+        QuerySmsCreditCommand = new AsyncCommand(QuerySmsCreditAsync, () => CanManage && !IsLoading && !IsDirty && IsMutlucell);
         LoadResetPreviewCommand = new AsyncCommand(LoadResetPreviewAsync, () => CanManage && !IsLoading);
         // Sifirlama ancak sayim goruldukten ve onay metni tam yazildiktan sonra aktiflesir.
         YearEndResetCommand = new AsyncCommand(YearEndResetAsync, () => CanManage && HasResetPreview && IsResetConfirmed && !IsLoading);
@@ -93,6 +99,10 @@ public sealed class SettingsViewModel : ObservableObject
 
     public bool CanRead { get; } public bool CanManage { get; } public bool CanNavigateUsers { get; }
     // Ekranda Turkce ad, API'ye SettingsValidation.AuthTypes'taki kod gider. Once ham "None" gorunuyordu.
+    public IReadOnlyList<SmsProviderOption> SmsProviders { get; } =
+    [
+        new("Mutlucell (XML SMS ağ geçidi)", "Mutlucell"), new("Genel HTTP (JSON)", "Http")
+    ];
     public IReadOnlyList<SmsAuthTypeOption> SmsAuthTypes { get; } =
     [
         new("Yok", "None"), new("Temel (kullanıcı adı / şifre)", "Basic"),
@@ -176,6 +186,27 @@ public sealed class SettingsViewModel : ObservableObject
     public string SchoolName { get => schoolName; set => Change(ref schoolName, value); } public string SchoolAddress { get => schoolAddress; set => Change(ref schoolAddress, value); }
     public string SchoolContact { get => schoolContact; set => Change(ref schoolContact, value); } public string LogoPath { get => logoPath; set => Change(ref logoPath, value); }
     public string SmsEndpoint { get => smsEndpoint; set => Change(ref smsEndpoint, value); } public string SmsAuthType { get => smsAuthType; set => Change(ref smsAuthType, value); }
+    public string SmsProvider
+    {
+        get => smsProvider;
+        set
+        {
+            Change(ref smsProvider, string.IsNullOrWhiteSpace(value) ? "Http" : value);
+            Raise(nameof(IsMutlucell)); Raise(nameof(IsGenericHttp)); Raise(nameof(SmsUsernameLabel)); Raise(nameof(SmsSenderLabel)); Raise(nameof(SmsSecretLabel));
+            RefreshCommands();
+        }
+    }
+    public bool IsMutlucell => SmsProvider == "Mutlucell";
+    public bool IsGenericHttp => !IsMutlucell;
+    // Ayni kutular iki saglayicida farkli anlam tasir; etiket saglayiciya gore degisir (ka / pwd / org).
+    public string SmsUsernameLabel => IsMutlucell ? "Kullanıcı adı (ka)" : "Kullanıcı adı";
+    public string SmsSenderLabel => IsMutlucell ? "Başlık / originatör (org) — Mutlucell'de onaylı olmalı" : "Gönderici adı (başlık)";
+    public string SmsSecretLabel => IsMutlucell ? "API şifresi (pwd) — boş bırakırsanız değişmez" : "Gizli bilgi: şifre / jeton / API anahtarı (boş bırakırsanız değişmez)";
+    public string TestSmsPhone { get => testSmsPhone; set { if (Set(ref testSmsPhone, value ?? "")) RefreshCommands(); } }
+    public string? TestSmsResultText { get => testSmsResultText; private set => Set(ref testSmsResultText, value); }
+    public string? SmsCreditText { get => smsCreditText; private set => Set(ref smsCreditText, value); }
+    public ICommand SendTestSmsCommand { get; }
+    public ICommand QuerySmsCreditCommand { get; }
     public string SmsUsername { get => smsUsername; set => Change(ref smsUsername, value); } public string SmsSender { get => smsSender; set => Change(ref smsSender, value); }
     public string SmsTimeoutText { get => smsTimeoutText; set => Change(ref smsTimeoutText, value); }
     public int SmsTimeoutSeconds { get => ParseOr(SmsTimeoutText, original?.Sms.TimeoutSeconds ?? 30); set => SmsTimeoutText = value.ToString(CultureInfo.InvariantCulture); }
@@ -263,6 +294,34 @@ public sealed class SettingsViewModel : ObservableObject
         Raise(nameof(IsDirty)); RefreshCommands();
     }
     public void Cancel() { saveFailed = false; if (original is not null) Apply(original); if (automationOriginal is not null) ApplyAutomation(automationOriginal); ErrorMessage = null; StatusMessage = "Değişiklikler geri alındı."; }
+    private async Task SendTestSmsAsync() => await Run(async () =>
+    {
+        TestSmsResultText = "Gönderiliyor…";
+        try { TestSmsResultText = FormatTestResult(await api.SendTestSmsAsync(TestSmsPhone.Trim())); }
+        catch { TestSmsResultText = null; throw; }
+    });
+
+    private async Task QuerySmsCreditAsync() => await Run(async () =>
+    {
+        var result = await api.QuerySmsCreditAsync();
+        SmsCreditText = result.Success ? result.Message
+            : "Sorgulanamadı: " + result.Message + (string.IsNullOrEmpty(result.RawResponse) ? "" : $" · Ham yanıt: {result.RawResponse}");
+    });
+
+    /// <summary>Saglayicinin dedigi ekranda aynen gorunur: sonuc, kod, paket/mesaj no ve ham yanit.</summary>
+    public static string FormatTestResult(SmsTestResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        var raw = string.IsNullOrEmpty(result.RawResponse) ? "(boş)" : result.RawResponse;
+        if (result.Success)
+            return $"Gönderildi ✓ {result.Phone} · Sağlayıcı: {result.Provider}"
+                + (string.IsNullOrEmpty(result.ProviderMessageId) ? "" : $" · Paket/mesaj no: {result.ProviderMessageId}")
+                + $" · Ham yanıt: {raw}";
+        return $"Gönderilemedi ✗ {result.Phone} · {result.ErrorMessage ?? result.ErrorCode ?? "bilinmeyen hata"}"
+            + (string.IsNullOrEmpty(result.ErrorCode) ? "" : $" · Kod: {result.ErrorCode}")
+            + $" · Ham yanıt: {raw}";
+    }
+
     private async Task RunEntitlementWarningAsync() => await Run(async () =>
     {
         var x = await api.RunEntitlementWarningAsync();
@@ -283,7 +342,7 @@ public sealed class SettingsViewModel : ObservableObject
         var result = await api.YearEndResetAsync(ResetConfirmation ?? "");
         resetPreview = null; ResetConfirmation = null;
         Raise(nameof(ResetItems)); Raise(nameof(ResetTotal)); Raise(nameof(HasResetPreview)); Raise(nameof(ResetConfirmationHint));
-        ResetResultMessage = $"Sıfırlama tamamlandı: {result.Total:N0} kayıt silindi. Güvenlik yedeği: {result.BackupFileName}. Yeni öğrenci listesini Sicil Aktar ile yükleyebilirsiniz.";
+        ResetResultMessage = $"Sıfırlama tamamlandı: {result.DeletedTotal:N0} kayıt silindi, {result.DeactivatedTotal:N0} öğrenci pasife alındı; tahsilat ve bakiye geçmişi korundu. Güvenlik yedeği: {result.BackupFileName}. Yeni öğrenci listesini Sicil Aktar ile yükleyebilirsiniz.";
         LastBackupFile = result.BackupFileName;
         RefreshCommands();
     });
@@ -331,6 +390,7 @@ public sealed class SettingsViewModel : ObservableObject
         var problems = new List<string>();
         if (string.IsNullOrWhiteSpace(SchoolName)) problems.Add("Okul adı boş olamaz.");
         CheckNumber(problems, SmsTimeoutText, 1, 300, "SMS zaman aşımı (saniye)");
+        if (IsMutlucell && string.IsNullOrWhiteSpace(SmsUsername)) problems.Add("Mutlucell için kullanıcı adı (ka) zorunludur.");
         CheckNumber(problems, BackupRetentionText, 1, 365, "Saklanacak yedek sayısı");
         CheckNumber(problems, SyncIntervalText, 1, 1440, "Eşitleme aralığı (dakika)");
         CheckNumber(problems, LogRetentionText, 1, 3650, "Log saklama süresi (gün)");
@@ -386,7 +446,7 @@ public sealed class SettingsViewModel : ObservableObject
     private void Apply(SettingsDocument x)
     {
         original = x; schoolName = x.School.Name; schoolAddress = x.School.Address ?? ""; schoolContact = x.School.Contact ?? ""; logoPath = x.School.LogoPath ?? "";
-        smsEndpoint = x.Sms.Endpoint ?? ""; smsAuthType = x.Sms.AuthType; smsUsername = x.Sms.Username ?? ""; smsSender = x.Sms.Sender ?? ""; smsTimeoutText = x.Sms.TimeoutSeconds.ToString(CultureInfo.InvariantCulture); smsSecret = null;
+        smsProvider = string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider; smsEndpoint = x.Sms.Endpoint ?? ""; smsAuthType = x.Sms.AuthType; smsUsername = x.Sms.Username ?? ""; smsSender = x.Sms.Sender ?? ""; smsTimeoutText = x.Sms.TimeoutSeconds.ToString(CultureInfo.InvariantCulture); smsSecret = null;
         backupEnabled = x.Backup.Enabled; backupFrequency = x.Backup.Frequency; backupWeeklyDay = x.Backup.WeeklyDay; backupTime = x.Backup.Time.ToString("HH:mm", CultureInfo.InvariantCulture); backupRetentionText = x.Backup.RetentionCount.ToString(CultureInfo.InvariantCulture); backupPath = x.Backup.Path ?? "";
         syncEnabled = x.Sync.Enabled; syncEndpoint = x.Sync.Endpoint ?? ""; syncDeviceId = x.Sync.DeviceId ?? ""; syncIntervalText = x.Sync.IntervalMinutes.ToString(CultureInfo.InvariantCulture); syncSecret = null;
         logLevel = x.Logs.Level; logRetentionText = x.Logs.RetentionDays.ToString(CultureInfo.InvariantCulture); logPath = x.Logs.Path ?? "";
@@ -406,8 +466,8 @@ public sealed class SettingsViewModel : ObservableObject
             ParseOr(AutoEntitlementDaysText, automationOriginal?.Settings.EntitlementWarning.DaysThreshold ?? 2), AutoEntitlementTemplate?.Trim() ?? ""),
         new IncomeNoticeRule(AutoIncomeEnabled, EmptyToNull(AutoIncomePhone), AutoIncomeTemplate?.Trim() ?? ""),
         new CardReplacementRule(AutoCardEnabled, AutoCardTemplate?.Trim() ?? "", EmptyToNull(AutoCardPhone)));
-    private SaveSettingsRequest BuildRequest() => new(new(SchoolName, EmptyToNull(SchoolAddress), EmptyToNull(SchoolContact), EmptyToNull(LogoPath)), new(EmptyToNull(SmsEndpoint), SmsAuthType, EmptyToNull(SmsUsername), EmptyToNull(SmsSender), SmsTimeoutSeconds, EmptyToNull(SmsSecret)), new(BackupEnabled, BackupFrequency, BackupWeeklyDay, TryParseTime(BackupTime, out var time) ? time : original?.Backup.Time ?? TimeOnly.MinValue, BackupRetentionCount, EmptyToNull(BackupPath)), new(EmptyToNull(SyncEndpoint), EmptyToNull(SyncDeviceId), SyncIntervalMinutes, SyncEnabled, EmptyToNull(SyncSecret)), new(LogLevel, LogRetentionDays, EmptyToNull(LogPath)));
-    private static SaveSettingsRequest ToRequest(SettingsDocument x) => new(new(x.School.Name, x.School.Address, x.School.Contact, x.School.LogoPath), new(x.Sms.Endpoint, x.Sms.AuthType, x.Sms.Username, x.Sms.Sender, x.Sms.TimeoutSeconds, null), new(x.Backup.Enabled, x.Backup.Frequency, x.Backup.WeeklyDay, x.Backup.Time, x.Backup.RetentionCount, x.Backup.Path), new(x.Sync.Endpoint, x.Sync.DeviceId, x.Sync.IntervalMinutes, x.Sync.Enabled, null), new(x.Logs.Level, x.Logs.RetentionDays, x.Logs.Path));
+    private SaveSettingsRequest BuildRequest() => new(new(SchoolName, EmptyToNull(SchoolAddress), EmptyToNull(SchoolContact), EmptyToNull(LogoPath)), new(EmptyToNull(SmsEndpoint), SmsAuthType, EmptyToNull(SmsUsername), EmptyToNull(SmsSender), SmsTimeoutSeconds, EmptyToNull(SmsSecret), SmsProvider), new(BackupEnabled, BackupFrequency, BackupWeeklyDay, TryParseTime(BackupTime, out var time) ? time : original?.Backup.Time ?? TimeOnly.MinValue, BackupRetentionCount, EmptyToNull(BackupPath)), new(EmptyToNull(SyncEndpoint), EmptyToNull(SyncDeviceId), SyncIntervalMinutes, SyncEnabled, EmptyToNull(SyncSecret)), new(LogLevel, LogRetentionDays, EmptyToNull(LogPath)));
+    private static SaveSettingsRequest ToRequest(SettingsDocument x) => new(new(x.School.Name, x.School.Address, x.School.Contact, x.School.LogoPath), new(x.Sms.Endpoint, x.Sms.AuthType, x.Sms.Username, x.Sms.Sender, x.Sms.TimeoutSeconds, null, string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider), new(x.Backup.Enabled, x.Backup.Frequency, x.Backup.WeeklyDay, x.Backup.Time, x.Backup.RetentionCount, x.Backup.Path), new(x.Sync.Endpoint, x.Sync.DeviceId, x.Sync.IntervalMinutes, x.Sync.Enabled, null), new(x.Logs.Level, x.Logs.RetentionDays, x.Logs.Path));
     // Yerel dogrulama hatasi gosterildikten sonra kullanici alani duzeltirse mesaj kalkar;
     // aksi halde "abc" uyarisi, kutu "2" yazarken bile ekranda asili kaliyordu.
     private bool validationErrorShown;
@@ -420,5 +480,5 @@ public sealed class SettingsViewModel : ObservableObject
         Raise(nameof(IsDirty)); Raise(nameof(HasInvalidInput)); RefreshCommands();
     }
     private static string? EmptyToNull(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-    private void RefreshCommands() { foreach (var c in new[] { SaveCommand, CancelCommand, RefreshCommand, BackupNowCommand, ChooseRestoreCommand, ValidateBackupCommand, RestoreCommand, SyncNowCommand, RefreshConflictsCommand, RequeueConflictCommand, RefreshLogsCommand, RunEntitlementWarningCommand, LoadResetPreviewCommand, YearEndResetCommand }) if (c is AsyncCommand a) a.Refresh(); else if (c is RelayCommand r) r.Refresh(); }
+    private void RefreshCommands() { foreach (var c in new[] { SaveCommand, CancelCommand, RefreshCommand, BackupNowCommand, ChooseRestoreCommand, ValidateBackupCommand, RestoreCommand, SyncNowCommand, RefreshConflictsCommand, RequeueConflictCommand, RefreshLogsCommand, RunEntitlementWarningCommand, SendTestSmsCommand, QuerySmsCreditCommand, LoadResetPreviewCommand, YearEndResetCommand }) if (c is AsyncCommand a) a.Refresh(); else if (c is RelayCommand r) r.Refresh(); }
 }

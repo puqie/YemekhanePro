@@ -22,6 +22,12 @@ public static class SmsRegistration
         services.AddHostedService<SmsBackgroundDispatcher>();
         // Gunluk hak uyarisi zamanlayicisi: dispatcher ile ayni kayit noktasi (Program.cs'e dokunulmaz).
         services.AddHostedService<SmsAutomationWorker>();
+        // Varsayilan toplu SMS sablonlari: tablo bosken acilista yazilir (Program.cs cagirir).
+        services.AddScoped<SmsTemplateSeeder>();
+
+        // Test SMS / kontor sorgusu: kayitli ayarlarla, kuyruktan bagimsiz (Mock ortaminda da calisir).
+        services.AddHttpClient(LiveSmsProviderProbe.HttpClientName).ConfigurePrimaryHttpMessageHandler(NoRedirect);
+        services.AddScoped<ISmsProviderProbe, LiveSmsProviderProbe>();
 
         var provider = section[nameof(SmsProviderOptions.Provider)];
         if (provider?.Equals("Mock", StringComparison.OrdinalIgnoreCase) == true)
@@ -33,8 +39,12 @@ public static class SmsRegistration
         }
 
         services.AddSingleton<ISmsResponseParser, JsonSmsResponseParser>();
-        services.AddHttpClient<ISmsProvider, HttpSmsProvider>()
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+        services.AddHttpClient<HttpSmsProvider>().ConfigurePrimaryHttpMessageHandler(NoRedirect);
+        services.AddHttpClient<MutlucellSmsProvider>().ConfigurePrimaryHttpMessageHandler(NoRedirect);
+        // Kuyruk tek ISmsProvider gorur; secim her gonderimde Sms:Provider'dan okunur (Http | Mutlucell).
+        services.AddTransient<ISmsProvider, SmsProviderRouter>();
         return services;
     }
+
+    private static HttpClientHandler NoRedirect() => new() { AllowAutoRedirect = false };
 }

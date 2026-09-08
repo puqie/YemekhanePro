@@ -332,6 +332,7 @@ await using (var scope = app.Services.CreateAsyncScope())
             .AcquireAsync(app.Lifetime.ApplicationStopping);
         await scope.ServiceProvider.GetRequiredService<LocalDatabaseInitializer>().InitializeAsync(app.Lifetime.ApplicationStopping);
         await scope.ServiceProvider.GetRequiredService<RbacSeeder>().SeedAsync(app.Lifetime.ApplicationStopping);
+        await scope.ServiceProvider.GetRequiredService<SmsTemplateSeeder>().SeedAsync(app.Lifetime.ApplicationStopping);
         var startupDb = scope.ServiceProvider.GetRequiredService<YemekhaneDbContext>();
         var hasBackupSettings = await startupDb.Set<SystemSetting>().AnyAsync(x => x.Key.StartsWith("Backup."));
         var hasSmsSettings = await startupDb.Set<SystemSetting>().AnyAsync(x => x.Key.StartsWith("Sms."));
@@ -347,17 +348,13 @@ await using (var scope = app.Services.CreateAsyncScope())
                 backupOptions.Time = persistedSettings.Backup.Time;
                 backupOptions.RetentionCount = persistedSettings.Backup.RetentionCount;
             }
-            if (hasSmsSettings && !string.IsNullOrWhiteSpace(persistedSettings.Sms.Endpoint))
+            if (hasSmsSettings)
             {
+                // Http icin adres, Mutlucell icin kullanici adi kayitli degilse appsettings degerleri kalir.
                 var smsOptions = scope.ServiceProvider.GetRequiredService<IOptions<SmsProviderOptions>>().Value;
-                smsOptions.Provider = "Http";
-                smsOptions.Endpoint = persistedSettings.Sms.Endpoint;
-                smsOptions.AuthType = persistedSettings.Sms.AuthType;
-                smsOptions.Username = persistedSettings.Sms.Username;
-                smsOptions.Sender = persistedSettings.Sms.Sender;
-                smsOptions.TimeoutSeconds = persistedSettings.Sms.TimeoutSeconds;
-                smsOptions.Secret = await scope.ServiceProvider.GetRequiredService<ISettingsService>()
+                var smsSecret = await scope.ServiceProvider.GetRequiredService<ISettingsService>()
                     .GetSecretAsync(Yemekhane.Infrastructure.Settings.SettingsService.SmsSecretKey);
+                SmsStartupOptions.Apply(smsOptions, persistedSettings.Sms, smsSecret);
             }
         }
         await scope.ServiceProvider.GetRequiredService<InitialAdminBootstrapper>().BootstrapAsync(

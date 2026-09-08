@@ -125,9 +125,14 @@ public sealed class BulkOperationWizardViewModel : ObservableObject
     /// ogrenciler (listede secili satirlar) ve hak davranisi (yeni olusturulan tatilin
     /// davranisi -- tatil kaydi haklari kendisi degistirmez, bu sihirbaz degistirir).
     /// </summary>
-    public void Preset(DateOnly? date = null, IReadOnlyCollection<Guid>? studentIds = null, string? transferBehavior = null)
+    /// <param name="endDate">Aralikli tatilden gelen bitis: sihirbaz tum araligi tek seferde isler.</param>
+    public void Preset(DateOnly? date = null, IReadOnlyCollection<Guid>? studentIds = null, string? transferBehavior = null, DateOnly? endDate = null)
     {
-        if (date.HasValue) StartsOn = EndsOn = date.Value.ToDateTime(TimeOnly.MinValue);
+        if (date.HasValue)
+        {
+            StartsOn = date.Value.ToDateTime(TimeOnly.MinValue);
+            EndsOn = (endDate is { } end && end >= date.Value ? end : date.Value).ToDateTime(TimeOnly.MinValue);
+        }
         if (studentIds?.Count > 0)
         {
             SelectedScope = Scopes.FirstOrDefault(x => x.ScopeType == "Manual") ?? new("Manual", null, "Manuel öğrenciler");

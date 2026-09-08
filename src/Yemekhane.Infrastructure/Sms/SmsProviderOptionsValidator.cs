@@ -15,8 +15,20 @@ public sealed class SmsProviderOptionsValidator : IValidateOptions<SmsProviderOp
             return ValidateOptionsResult.Fail("Sms:Provider yapılandırılmalıdır; varsayılan sahte başarı kullanılmaz.");
         if (options.Provider.Equals("Mock", StringComparison.OrdinalIgnoreCase))
             return ValidateOptionsResult.Success;
+        if (SmsProviders.IsMutlucell(options.Provider))
+        {
+            // Kimlik bilgileri (ka/pwd) gonderimde denetlenir: acilista eksik olmalari API'yi durdurmamali.
+            if (options.TimeoutSeconds is < 1 or > 300)
+                return ValidateOptionsResult.Fail("Sms:TimeoutSeconds 1-300 aralığında olmalıdır.");
+            if (!string.IsNullOrWhiteSpace(options.Endpoint) && !options.Endpoint.Contains("sms.invalid", StringComparison.OrdinalIgnoreCase))
+            {
+                try { OutboundEndpointPolicy.ValidateSyntax(options.Endpoint, options.AllowHttp, options.AllowPrivateNetworks); }
+                catch (RequestValidationException exception) { return ValidateOptionsResult.Fail(exception.Message); }
+            }
+            return ValidateOptionsResult.Success;
+        }
         if (!options.Provider.Equals("Http", StringComparison.OrdinalIgnoreCase))
-            return ValidateOptionsResult.Fail("Sms:Provider yalnız Http veya Mock olabilir.");
+            return ValidateOptionsResult.Fail("Sms:Provider yalnız Http, Mutlucell veya Mock olabilir.");
         try { OutboundEndpointPolicy.ValidateSyntax(options.Endpoint, options.AllowHttp, options.AllowPrivateNetworks); }
         catch (RequestValidationException exception) { return ValidateOptionsResult.Fail(exception.Message); }
         if (string.IsNullOrWhiteSpace(options.Method))

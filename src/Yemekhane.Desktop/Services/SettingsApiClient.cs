@@ -30,6 +30,10 @@ public interface ISettingsApiClient
     Task<YearEndResetPreview> GetYearEndResetPreviewAsync(CancellationToken cancellationToken = default);
     /// <summary>Onay metniyle yil sonu sifirlamasi; sunucu once guvenlik yedegi alir.</summary>
     Task<YearEndResetResult> YearEndResetAsync(string confirmation, CancellationToken cancellationToken = default);
+    /// <summary>Kuyruga girmeden, kayitli ayarlarla test SMS; saglayicinin ham yaniti dahil doner.</summary>
+    Task<SmsTestResult> SendTestSmsAsync(string phone, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    /// <summary>Mutlucell kontor sorgusu (kayitli ayarlarla).</summary>
+    Task<SmsCreditResult> QuerySmsCreditAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
 
 public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : ISettingsApiClient
@@ -45,6 +49,10 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
     public Task<YearEndResetResult> YearEndResetAsync(string confirmation, CancellationToken cancellationToken = default) =>
         SendAsync<YearEndResetResult>(HttpMethod.Post, "api/maintenance/year-end-reset",
             JsonContent.Create(new YearEndResetRequest(confirmation)), cancellationToken);
+    public Task<SmsTestResult> SendTestSmsAsync(string phone, CancellationToken cancellationToken = default) =>
+        SendAsync<SmsTestResult>(HttpMethod.Post, "api/settings/sms/test", JsonContent.Create(new SmsTestRequest(phone)), cancellationToken);
+    public Task<SmsCreditResult> QuerySmsCreditAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<SmsCreditResult>(HttpMethod.Get, "api/settings/sms/credit", null, cancellationToken);
     public Task<SyncRunResult> RunSyncAsync(CancellationToken cancellationToken = default) =>
         SendAsync<SyncRunResult>(HttpMethod.Post, "api/settings/sync/run", null, cancellationToken);
 

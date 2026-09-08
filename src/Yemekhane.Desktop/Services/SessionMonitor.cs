@@ -7,7 +7,8 @@ namespace Yemekhane.Desktop.Services;
 /// BIR KEZ tetikler; oturum yenilenince (Set ile ileri bir ExpiresAt) yeniden silahlanir.
 /// </summary>
 /// <remarks>
-/// API belirteci 15 dakikada dolar ve yenileme ucu yoktur. Onceden ekranlar tek tek
+/// API belirteci 12 saatte dolar (Authentication:Jwt:AccessTokenMinutes) ve yenileme ucu
+/// yoktur. Onceden 15 dakikaydi ve ekranlar tek tek
 /// "oturum gerekiyor" hatasi veriyor, tek cikis yolu uygulamayi kapatip acmakti; acik
 /// formdaki veri gidiyordu. Bu izleyici kabuk duzeyinde tek bir "yeniden giris" katmani
 /// acilmasini saglar. Zamani belirtecin kendisinden okur; API'ye istek atmaz.

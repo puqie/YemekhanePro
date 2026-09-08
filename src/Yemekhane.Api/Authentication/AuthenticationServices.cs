@@ -15,7 +15,12 @@ public sealed class JwtOptions
     public string SigningKey { get; set; } = string.Empty;
     public string Issuer { get; set; } = string.Empty;
     public string Audience { get; set; } = string.Empty;
-    public int AccessTokenMinutes { get; set; } = 15;
+    /// <summary>
+    /// 12 saat: okul memuru sabah giris yapar, ogle arasi ve bos derslerde makineyi kullanmadan
+    /// birakir. Onceki 15 dakika her bosluktan sonra "oturum sona erdi" penceresi cikariyordu.
+    /// Yenileme ucu yoktur; belirtec dolunca kabuk yeniden giris ister (SessionMonitor).
+    /// </summary>
+    public int AccessTokenMinutes { get; set; } = 720;
 }
 
 public sealed class LoginLockoutOptions

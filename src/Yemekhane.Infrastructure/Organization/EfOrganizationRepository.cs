@@ -10,13 +10,13 @@ public sealed class EfOrganizationRepository(YemekhaneDbContext dbContext) : IOr
 {
     public async Task<IReadOnlyList<ClassRecord>> ListClassesAsync(CancellationToken cancellationToken) =>
         await dbContext.Set<SchoolClass>().AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name)
-            .Select(x => new ClassRecord(x.Id, x.Name, x.IsActive)).ToListAsync(cancellationToken);
+            .Select(x => new ClassRecord(x.Id, x.Name, x.IsActive, x.Kind)).ToListAsync(cancellationToken);
 
-    public async Task<ClassRecord> AddClassAsync(string name, CancellationToken cancellationToken)
+    public async Task<ClassRecord> AddClassAsync(string name, string kind, CancellationToken cancellationToken)
     {
         if (await dbContext.Set<SchoolClass>().AnyAsync(x => x.Name == name, cancellationToken)) throw new EntityConflictException("Sınıf zaten kayıtlı.");
-        var item = new SchoolClass { Name = name }; dbContext.Add(item); await dbContext.SaveChangesAsync(cancellationToken);
-        return new ClassRecord(item.Id, item.Name, item.IsActive);
+        var item = new SchoolClass { Name = name, Kind = kind }; dbContext.Add(item); await dbContext.SaveChangesAsync(cancellationToken);
+        return new ClassRecord(item.Id, item.Name, item.IsActive, item.Kind);
     }
 
     public async Task<GroupRecord> AddGroupAsync(SaveGroupRequest request, CancellationToken cancellationToken)
@@ -44,22 +44,23 @@ public sealed class EfOrganizationRepository(YemekhaneDbContext dbContext) : IOr
         var counts = await StudentCountsAsync(kind, cancellationToken);
         var rows = kind switch
         {
-            LookupKind.Class => await dbContext.Set<SchoolClass>().AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(cancellationToken),
-            LookupKind.Section => await dbContext.Set<Section>().AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(cancellationToken),
-            LookupKind.Department => await dbContext.Set<Department>().AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(cancellationToken),
-            LookupKind.Job => await dbContext.Set<Job>().AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(cancellationToken),
+            // Tur yalnizca sinifta dolu; diger turlerde null (ayni anonim tip icin acikca yazilir).
+            LookupKind.Class => await dbContext.Set<SchoolClass>().AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, Kind = (string?)x.Kind }).ToListAsync(cancellationToken),
+            LookupKind.Section => await dbContext.Set<Section>().AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, Kind = (string?)null }).ToListAsync(cancellationToken),
+            LookupKind.Department => await dbContext.Set<Department>().AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, Kind = (string?)null }).ToListAsync(cancellationToken),
+            LookupKind.Job => await dbContext.Set<Job>().AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Name, Kind = (string?)null }).ToListAsync(cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(kind))
         };
-        return rows.Select(x => new LookupRecord(x.Id, x.Name, counts.GetValueOrDefault(x.Id))).ToList();
+        return rows.Select(x => new LookupRecord(x.Id, x.Name, counts.GetValueOrDefault(x.Id), x.Kind)).ToList();
     }
 
-    public async Task<LookupRecord> AddLookupAsync(LookupKind kind, string name, CancellationToken cancellationToken)
+    public async Task<LookupRecord> AddLookupAsync(LookupKind kind, string name, string? classKind, CancellationToken cancellationToken)
     {
         if (await NameExistsAsync(kind, name, null, cancellationToken))
             throw new EntityConflictException($"{OrganizationService.LookupLabel(kind)} adı zaten kayıtlı.");
         Entity item = kind switch
         {
-            LookupKind.Class => new SchoolClass { Name = name },
+            LookupKind.Class => new SchoolClass { Name = name, Kind = classKind ?? ClassKinds.Normal },
             LookupKind.Section => new Section { Name = name },
             LookupKind.Department => new Department { Name = name },
             LookupKind.Job => new Job { Name = name },
@@ -67,10 +68,10 @@ public sealed class EfOrganizationRepository(YemekhaneDbContext dbContext) : IOr
         };
         dbContext.Add(item);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return new LookupRecord(item.Id, name, 0);
+        return new LookupRecord(item.Id, name, 0, KindOf(item));
     }
 
-    public async Task<LookupRecord> RenameLookupAsync(LookupKind kind, Guid id, string name, CancellationToken cancellationToken)
+    public async Task<LookupRecord> RenameLookupAsync(LookupKind kind, Guid id, string name, string? classKind, CancellationToken cancellationToken)
     {
         var item = await FindLookupAsync(kind, id, cancellationToken)
             ?? throw new EntityNotFoundException($"{OrganizationService.LookupLabel(kind)} bulunamadı.");
@@ -78,15 +79,17 @@ public sealed class EfOrganizationRepository(YemekhaneDbContext dbContext) : IOr
             throw new EntityConflictException($"{OrganizationService.LookupLabel(kind)} adı zaten kayıtlı.");
         switch (item)
         {
-            case SchoolClass c: c.Name = name; break;
+            case SchoolClass c: c.Name = name; if (classKind is not null) c.Kind = classKind; break;
             case Section x: x.Name = name; break;
             case Department x: x.Name = name; break;
             case Job x: x.Name = name; break;
         }
         await dbContext.SaveChangesAsync(cancellationToken);
         var counts = await StudentCountsAsync(kind, cancellationToken);
-        return new LookupRecord(id, name, counts.GetValueOrDefault(id));
+        return new LookupRecord(id, name, counts.GetValueOrDefault(id), KindOf(item));
     }
+
+    private static string? KindOf(Entity item) => item is SchoolClass schoolClass ? schoolClass.Kind : null;
 
     /// <summary>
     /// Kullanilan tanim SILINMEZ: ogrenci FK'si SetNull oldugu icin silme sessizce

@@ -61,20 +61,38 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Style="{StaticResource TabBody}">
                         <Border Style="{StaticResource SettingsCard}"><StackPanel>
                             <TextBlock Text="SMS sağlayıcısı" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock Text="Veli bildirimlerinin gönderileceği HTTP SMS servisi. Boş bırakılırsa SMS gönderilmez." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,6" TextWrapping="Wrap"/>
-                            <TextBlock Style="{StaticResource Label}" Text="Sunucu adresi (https://...)"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsEndpoint, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="Veli bildirimlerinin gönderileceği SMS servisi. Sağlayıcıyı seçip bilgileri girin; boş bırakılırsa SMS gönderilmez." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,6" TextWrapping="Wrap"/>
+                            <!-- Saglayici: Mutlucell (XML ag gecidi) ya da genel HTTP/JSON. Alan etiketleri saglayiciya gore degisir. -->
+                            <TextBlock Style="{StaticResource Label}" Text="Sağlayıcı"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding SmsProviders}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding SmsProvider}" IsEnabled="{Binding CanManage}" AutomationProperties.Name="SMS sağlayıcısı"/>
+                            <TextBlock Text="Mutlucell: panelinizdeki API kullanıcı adı (ka), API şifresi (pwd) ve onaylı başlık (org) girilir. Adres boş bırakılırsa smsgw.mutlucell.com ağ geçidi kullanılır; Türkçe karakter (charset=turkish) açıktır, tek SMS 150 karakterdir." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,6" TextWrapping="Wrap" Visibility="{Binding IsMutlucell, Converter={StaticResource Bool}}"/>
+                            <StackPanel Visibility="{Binding IsGenericHttp, Converter={StaticResource Bool}}">
+                                <TextBlock Style="{StaticResource Label}" Text="Sunucu adresi (https://...)"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsEndpoint, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <!-- Kimlik dogrulama: ekranda Turkce ad, API'ye "None/Basic/Bearer/ApiKey". Once ham kod gorunuyordu. -->
-                                <StackPanel><TextBlock Style="{StaticResource Label}" Text="Kimlik doğrulama"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding SmsAuthTypes}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding SmsAuthType}"/></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Kullanıcı adı"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsUsername, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                <StackPanel><TextBlock Style="{StaticResource Label}" Text="{Binding SmsUsernameLabel}"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsUsername, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMS kullanıcı adı"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="{Binding SmsSenderLabel}"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsSender, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="SMS başlık"/></StackPanel>
                             </Grid>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Style="{StaticResource Label}" Text="Gönderici adı (başlık)"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsSender, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                <!-- Kimlik dogrulama yalnizca genel HTTP icin: ekranda Turkce ad, API'ye "None/Basic/Bearer/ApiKey". -->
+                                <StackPanel Visibility="{Binding IsGenericHttp, Converter={StaticResource Bool}}"><TextBlock Style="{StaticResource Label}" Text="Kimlik doğrulama"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding SmsAuthTypes}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding SmsAuthType}"/></StackPanel>
                                 <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Zaman aşımı (saniye, 1-300)"/><TextBox Style="{StaticResource Field}" Text="{Binding SmsTimeoutText, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                             </Grid>
-                            <TextBlock Style="{StaticResource Label}" Text="Gizli bilgi: şifre / jeton / API anahtarı (boş bırakırsanız değişmez)"/><PasswordBox x:Name="SmsSecretBox" Height="30" Margin="0,3,0,3" PasswordChanged="SmsSecretChanged"/>
+                            <TextBlock Style="{StaticResource Label}" Text="{Binding SmsSecretLabel}"/><PasswordBox x:Name="SmsSecretBox" Height="30" Margin="0,3,0,3" PasswordChanged="SmsSecretChanged"/>
                             <TextBlock Text="Gizli bilgi yapılandırıldı" Foreground="{StaticResource AccentBrush}" Visibility="{Binding SmsSecretConfigured, Converter={StaticResource Bool}}"/>
-                            <TextBlock Text="Sağlayıcı değişiklikleri uygulama yeniden başlatıldığında uygulanır." Foreground="{StaticResource WarningBrush}" Margin="0,12,0,0"/>
+                            <TextBlock Text="Kuyruk gönderimi için sağlayıcı değişiklikleri uygulama yeniden başlatıldığında uygulanır; Test SMS ise kaydedilmiş ayarlarla hemen gider." Foreground="{StaticResource WarningBrush}" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                        </StackPanel></Border>
+                        <!-- Test SMS: kuyruga girmez, kayitli ayarlarla gider; saglayicinin ham yaniti aynen gosterilir. -->
+                        <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                            <TextBlock Text="SMS sınama" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="Test SMS kuyruğa girmeden, KAYDEDİLMİŞ ayarlarla gönderilir; sağlayıcının verdiği yanıt aşağıda aynen gösterilir. Değişiklik yaptıysanız önce Kaydet'e basın." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,8" TextWrapping="Wrap"/>
+                            <WrapPanel>
+                                <StackPanel Width="220" Margin="0,0,8,0"><TextBlock Style="{StaticResource Label}" Text="Alıcı GSM (05xx xxx xx xx)"/><TextBox Style="{StaticResource Field}" Text="{Binding TestSmsPhone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Test SMS alıcısı"/></StackPanel>
+                                <Button Content="Test SMS Gönder" Command="{Binding SendTestSmsCommand}" Style="{StaticResource Primary}" VerticalAlignment="Bottom" Margin="0,0,8,3"/>
+                                <Button Content="Kontör Sorgula" Command="{Binding QuerySmsCreditCommand}" Style="{StaticResource Action}" VerticalAlignment="Bottom" Margin="0,0,0,3" Visibility="{Binding IsMutlucell, Converter={StaticResource Bool}}"/>
+                            </WrapPanel>
+                            <TextBlock Style="{StaticResource Label}" Text="Sonuç ve sağlayıcı yanıtı" Margin="0,8,0,0"/>
+                            <TextBox Style="{StaticResource Field}" Text="{Binding TestSmsResultText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="56" VerticalContentAlignment="Top" AutomationProperties.Name="Test SMS sonucu"/>
+                            <TextBlock Text="{Binding SmsCreditText}" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="{Binding IsMutlucell, Converter={StaticResource Bool}}"/>
                         </StackPanel></Border>
                         <!-- Otomatik SMS kurallari (eski programdaki "Sms Sistemi Tanımları" sag paneli): uc kural
                              yan yana; her biri onay kutusu + alanlar + sablon. Kaydet/Iptal sayfanin ortak
@@ -166,14 +184,14 @@
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                             <Border Style="{StaticResource SettingsCard}"><StackPanel>
                                 <TextBlock Text="Yıl sonu sıfırlama" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="Yeni eğitim yılına boş öğrenci listesiyle başlamak için öğrencilere bağlı her şey silinir: öğrenciler, kartlar, veliler, hakedişler, yemek kullanımları, geçiş kayıtları, izinler, bakiye ve tahsilat hareketleri, SMS ve toplu işlem geçmişi." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,8" TextWrapping="Wrap"/>
-                                <TextBlock Text="KALIR: öğün tanımları, sınıflar, cihazlar, kullanıcılar ve yetkiler, tatil takvimi, SMS şablonları, ayarlar." FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <TextBlock Text="Yeni eğitim yılına temiz başlamak için işletim verileri silinir: kartlar, hakedişler, yemek kullanımları, geçiş kayıtları, hak devirleri, izinler, grup üyelikleri, SMS ve toplu işlem geçmişi. Öğrenciler silinmez, PASİFE alınır; Sicil Aktar ile yüklenen yeni listedeki öğrenciler yeniden aktif olur." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,8" TextWrapping="Wrap"/>
+                                <TextBlock Text="KORUNUR: tahsilat ve bakiye hareketleri, veliler, öğrenci sicilleri (pasif) — veli 1-2 yıl önceki ödemesini sorduğunda Raporlar → Gelir ve öğrencinin Ödemeler sekmesi bunları gösterir. KALIR: öğün tanımları, sınıflar, cihazlar, kullanıcılar ve yetkiler, tatil takvimi, SMS şablonları, ayarlar." FontWeight="SemiBold" TextWrapping="Wrap"/>
                                 <TextBlock Text="Sıfırlamadan önce otomatik güvenlik yedeği alınır; yedek alınamazsa hiçbir şey silinmez. Yedekten geri yükleme Yedekleme sekmesindedir." Foreground="{StaticResource WarningBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
                             </StackPanel></Border>
                             <Border Grid.Column="2" Style="{StaticResource SettingsCard}"><StackPanel>
                                 <TextBlock Text="Sıfırla" FontSize="16" FontWeight="SemiBold"/>
-                                <TextBlock Text="Önce silinecek kayıtların sayımını alın, sonra onay metnini yazın." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
-                                <Button Content="Silinecekleri Göster" Command="{Binding LoadResetPreviewCommand}" Style="{StaticResource Action}" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Önce etkilenecek kayıtların sayımını alın, sonra onay metnini yazın." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
+                                <Button Content="Etkilenecekleri Göster" Command="{Binding LoadResetPreviewCommand}" Style="{StaticResource Action}" HorizontalAlignment="Left"/>
                                 <ItemsControl ItemsSource="{Binding ResetItems}" Margin="0,10,0,0" Visibility="{Binding HasResetPreview, Converter={StaticResource Bool}}">
                                     <ItemsControl.ItemTemplate><DataTemplate>
                                         <Grid Margin="0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="200"/><ColumnDefinition/></Grid.ColumnDefinitions>
@@ -181,7 +199,7 @@
                                         </Grid>
                                     </DataTemplate></ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Text="{Binding ResetTotal, StringFormat=Toplam {0:N0} kayıt silinecek.}" FontWeight="SemiBold" Margin="0,8,0,0" Visibility="{Binding HasResetPreview, Converter={StaticResource Bool}}"/>
+                                <TextBlock Text="{Binding ResetTotal, StringFormat=Toplam {0:N0} kayıt etkilenecek (öğrenciler pasife alınır).}" FontWeight="SemiBold" Margin="0,8,0,0" Visibility="{Binding HasResetPreview, Converter={StaticResource Bool}}"/>
                                 <Separator Margin="0,12,0,10"/>
                                 <!-- Onay metni ASCII "SIFIRLA": geri yukleme onayiyla ayni gerekce (klavye duzeni, I/ı). -->
                                 <TextBlock Style="{StaticResource Label}" Text="Sıfırlama onayı"/>

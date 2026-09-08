@@ -209,7 +209,7 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         {
             message.Content = JsonContent.Create(name);
             var created = await SendAsync<ClassRecord>(message, cancellationToken);
-            return new LookupRecord(created.Id, created.Name, 0);
+            return new LookupRecord(created.Id, created.Name, 0, created.Kind);
         }
         message.Content = JsonContent.Create(new SaveLookupRequest(name));
         return await SendAsync<LookupRecord>(message, cancellationToken);

@@ -141,6 +141,8 @@ public sealed class CalendarViewModelTests
             if (HolidayError is not null) throw HolidayError;
             HolidayCalls++; LastHoliday = request; return Task.FromResult(new HolidayDetails(Guid.NewGuid(), request.Date, request.Name, request.HolidayType, request.Description, request.TransferBehavior, request.Scopes));
         }
+        public List<(Guid Id, bool WholeRange)> Deleted = [];
+        public Task DeleteHolidayAsync(Guid id, bool wholeRange, CancellationToken cancellationToken = default) { Deleted.Add((id, wholeRange)); return Task.CompletedTask; }
         public Task<CalendarExceptionItem> CreateExceptionAsync(CreateScheduleExceptionRequest request, CancellationToken cancellationToken = default) =>
             Task.FromResult(new CalendarExceptionItem(Guid.NewGuid(), request.ExceptionType, request.ScopeType, request.ScopeId, request.EntitlementBehavior, request.TargetDate, request.Description));
     }

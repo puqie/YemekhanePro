@@ -15,6 +15,14 @@ public sealed class OrganizationController(OrganizationService service) : Contro
     [PermissionAuthorize(Permissions.StudentsWrite)]
     public Task<ClassRecord> CreateClass([FromBody] string name, CancellationToken cancellationToken) => service.CreateClassAsync(name, cancellationToken);
     /// <summary>
+    /// Tanimlar ekraninin sinif eklemesi: {"name","kind"} govdesi (kind: Normal | Anasinifi, bos → Normal).
+    /// Eski POST classes ucu (duz dizge govde) ogrenci formundaki hizli ekleme icin oldugu gibi kalir.
+    /// </summary>
+    [HttpPost("classes/lookups")]
+    [PermissionAuthorize(Permissions.StudentsWrite)]
+    public Task<LookupRecord> CreateClassLookup(SaveLookupRequest request, CancellationToken cancellationToken) =>
+        service.CreateLookupAsync(LookupKind.Class, request.Name, request.Kind, cancellationToken);
+    /// <summary>
     /// Tanimlar: /api/organization/{classes|sections|departments|jobs}/lookups liste,
     /// POST {kind}, PUT/DELETE {kind}/{id}. Eski programdaki dort "Tanim" ekraninin
     /// karsiligi; masaustu Tanimlar ekrani ve ogrenci formundaki "+" hizli ekleme kullanir.
@@ -30,7 +38,7 @@ public sealed class OrganizationController(OrganizationService service) : Contro
     [HttpPut("{kind:regex(^(classes|sections|departments|jobs)$)}/{id:guid}")]
     [PermissionAuthorize(Permissions.StudentsWrite)]
     public Task<LookupRecord> RenameLookup(string kind, Guid id, SaveLookupRequest request, CancellationToken cancellationToken) =>
-        service.RenameLookupAsync(OrganizationService.ParseKind(kind), id, request.Name, cancellationToken);
+        service.RenameLookupAsync(OrganizationService.ParseKind(kind), id, request.Name, request.Kind, cancellationToken);
     [HttpDelete("{kind:regex(^(classes|sections|departments|jobs)$)}/{id:guid}")]
     [PermissionAuthorize(Permissions.StudentsWrite)]
     public async Task<IActionResult> DeleteLookup(string kind, Guid id, CancellationToken cancellationToken)

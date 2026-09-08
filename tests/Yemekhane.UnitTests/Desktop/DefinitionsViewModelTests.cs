@@ -348,30 +348,36 @@ public sealed class DefinitionsViewModelTests
     // ------------------------------------------------------------------ HTTP sozlesmesi
 
     [Fact]
-    public async Task ClassCreateSendsPlainJsonStringWhileOthersSendNameObject()
+    public async Task ClassCreateSendsNameAndKindToLookupsRouteWhileOthersSendNameObject()
     {
         var requests = new List<(HttpMethod Method, string Path, string Body)>();
         var handler = new RecordingHandler(async request =>
         {
             var body = request.Content is null ? "" : await request.Content.ReadAsStringAsync();
             requests.Add((request.Method, request.RequestUri!.PathAndQuery, body));
-            var json = request.RequestUri.AbsolutePath.EndsWith("/classes", StringComparison.Ordinal)
-                ? JsonSerializer.Serialize(new { id = Guid.NewGuid(), name = "5A", isActive = true })
+            var json = request.RequestUri.AbsolutePath.EndsWith("/classes/lookups", StringComparison.Ordinal)
+                ? JsonSerializer.Serialize(new { id = Guid.NewGuid(), name = "Anasınıfı A", studentCount = 0, kind = "Anasinifi" })
                 : JsonSerializer.Serialize(new { id = Guid.NewGuid(), name = "Fen", studentCount = 0 });
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         });
         var client = new DefinitionsApiClient(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }, new StaticSession());
 
-        var created = await client.CreateLookupAsync("classes", "5A");
-        await client.CreateLookupAsync("departments", "Fen");
+        var created = await client.CreateLookupAsync("classes", "Anasınıfı A", "Anasinifi");
+        await client.CreateLookupAsync("departments", "Fen", "Anasinifi");
         await client.RenameLookupAsync("jobs", Guid.Empty, "Aşçı");
 
-        Assert.Equal("5A", created.Name);
-        Assert.Equal(0, created.StudentCount);
-        Assert.Equal("/api/organization/classes", requests[0].Path);
-        Assert.Equal("\"5A\"", requests[0].Body);
+        Assert.Equal("Anasınıfı A", created.Name);
+        Assert.Equal("Anasinifi", created.Kind);
+        Assert.Equal("Anasınıfı", created.KindLabel);
+        Assert.Equal("/api/organization/classes/lookups", requests[0].Path);
+        var classBody = JsonDocument.Parse(requests[0].Body).RootElement;
+        Assert.Equal("Anasınıfı A", classBody.GetProperty("name").GetString());
+        Assert.Equal("Anasinifi", classBody.GetProperty("kind").GetString());
         Assert.Equal("/api/organization/departments", requests[1].Path);
-        Assert.Equal("{\"name\":\"Fen\"}", requests[1].Body);
+        // Sinif disi tanimlara tur GONDERILMEZ: sube/bolum icin anlamsizdir.
+        var departmentBody = JsonDocument.Parse(requests[1].Body).RootElement;
+        Assert.Equal("Fen", departmentBody.GetProperty("name").GetString());
+        Assert.True(!departmentBody.TryGetProperty("kind", out var departmentKind) || departmentKind.ValueKind == JsonValueKind.Null);
         Assert.Equal(HttpMethod.Put, requests[2].Method);
         Assert.Equal("/api/organization/jobs/00000000-0000-0000-0000-000000000000", requests[2].Path);
         // System.Text.Json Turkce harfleri \u kacisiyla yazar; ayristirip karsilastirmak yeterli.
@@ -493,8 +499,12 @@ public sealed class DefinitionsViewModelTests
         Assert.NotEmpty(inputs);
         Assert.All(inputs, t => Assert.True(t.ActualWidth >= 80, $"dar kutu: {t.ActualWidth:F0}px"));
         var lookupGrid = Descendants(view).OfType<DataGrid>().Single(g => g.ActualWidth > 0 && g != mealGrid);
-        Assert.Equal(2, lookupGrid.Columns.Count);
+        Assert.Equal(3, lookupGrid.Columns.Count);
+        // TÜR sutunu yalnizca Siniflar sekmesinde gorunur (BindingProxy uzerinden IsClassTab).
+        Assert.Equal(Visibility.Visible, lookupGrid.Columns.Single(c => (string)c.Header == "TÜR").Visibility);
         AssertHeadersFit(lookupGrid);
+        var kindCombos = Descendants(view).OfType<ComboBox>().Where(c => c.ActualWidth > 0 && c.SelectedValue is string).ToList();
+        Assert.Contains(kindCombos, c => c.SelectedValue is "Normal");
         var empty = Descendants(view).OfType<TextBlock>().Single(t => t.Text == "Henüz kayıt yok" && t.IsDescendantOf(lookupGrid.Parent));
         Assert.Equal(Visibility.Collapsed, empty.Visibility);
 
@@ -502,6 +512,8 @@ public sealed class DefinitionsViewModelTests
         vm.SelectedTabIndex = 3; Layout(host);
         var emptyDepartments = Descendants(view).OfType<TextBlock>().Where(t => t.Text == "Henüz kayıt yok" && t.ActualWidth > 0).ToList();
         Assert.Single(emptyDepartments);
+        var departmentsGrid = Descendants(view).OfType<DataGrid>().Single(g => g.ActualWidth > 0 && g != mealGrid);
+        Assert.Equal(Visibility.Collapsed, departmentsGrid.Columns.Single(c => (string)c.Header == "TÜR").Visibility);
 
         // Cekmece acilinca alanlar olculebilir ve etiketli.
         vm.SelectedTabIndex = 0; vm.OpenNewMealCommand.Execute(null); Layout(host);
@@ -573,6 +585,8 @@ public sealed class DefinitionsViewModelTests
         public List<Guid> DeactivatedMeals { get; } = [];
         public (string Kind, string Name)? LastCreate { get; private set; }
         public (string Kind, Guid Id, string Name)? LastRename { get; private set; }
+        public string? LastCreateClassKind { get; private set; }
+        public string? LastRenameClassKind { get; private set; }
         public bool FailLoad { get; init; }
         public Exception? CreateError { get; init; }
         public Exception? DeleteError { get; init; }
@@ -610,18 +624,18 @@ public sealed class DefinitionsViewModelTests
             LoadedKinds.Add(kind);
             return Task.FromResult<IReadOnlyList<LookupRecord>>(lookups[kind].ToList());
         }
-        public Task<LookupRecord> CreateLookupAsync(string kind, string name, CancellationToken cancellationToken = default)
+        public Task<LookupRecord> CreateLookupAsync(string kind, string name, string? classKind = null, CancellationToken cancellationToken = default)
         {
             if (CreateError is not null) throw CreateError;
-            LastCreate = (kind, name);
-            var created = new LookupRecord(Guid.NewGuid(), name, 0);
+            LastCreate = (kind, name); LastCreateClassKind = classKind;
+            var created = new LookupRecord(Guid.NewGuid(), name, 0, kind == "classes" ? classKind ?? "Normal" : null);
             lookups[kind].Add(created); return Task.FromResult(created);
         }
-        public Task<LookupRecord> RenameLookupAsync(string kind, Guid id, string name, CancellationToken cancellationToken = default)
+        public Task<LookupRecord> RenameLookupAsync(string kind, Guid id, string name, string? classKind = null, CancellationToken cancellationToken = default)
         {
-            LastRename = (kind, id, name);
+            LastRename = (kind, id, name); LastRenameClassKind = classKind;
             var list = lookups[kind]; var index = list.FindIndex(x => x.Id == id);
-            list[index] = list[index] with { Name = name }; return Task.FromResult(list[index]);
+            list[index] = list[index] with { Name = name, Kind = classKind ?? list[index].Kind }; return Task.FromResult(list[index]);
         }
         public Task DeleteLookupAsync(string kind, Guid id, CancellationToken cancellationToken = default)
         {

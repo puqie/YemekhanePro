@@ -15,6 +15,8 @@ public interface ICalendarApiClient
     Task<IReadOnlyCollection<CalendarScopeOption>> GetScopesAsync(CancellationToken cancellationToken = default);
     Task<HolidayDetails> CreateHolidayAsync(CreateHolidayRequest request, CancellationToken cancellationToken = default);
     Task<CalendarExceptionItem> CreateExceptionAsync(CreateScheduleExceptionRequest request, CancellationToken cancellationToken = default);
+    /// <summary>Tatil satirini, <paramref name="wholeRange"/> ile ayni araligin tum gunlerini siler (204).</summary>
+    Task DeleteHolidayAsync(Guid id, bool wholeRange, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 }
 
 public sealed class CalendarApiClient(HttpClient client, IJwtSession session) : ICalendarApiClient
@@ -29,6 +31,15 @@ public sealed class CalendarApiClient(HttpClient client, IJwtSession session) : 
         PostAsync<CreateHolidayRequest, HolidayDetails>("api/holidays", request, cancellationToken);
     public Task<CalendarExceptionItem> CreateExceptionAsync(CreateScheduleExceptionRequest request, CancellationToken cancellationToken = default) =>
         PostAsync<CreateScheduleExceptionRequest, CalendarExceptionItem>("api/calendar/exceptions", request, cancellationToken);
+
+    public async Task DeleteHolidayAsync(Guid id, bool wholeRange, CancellationToken cancellationToken = default)
+    {
+        // 204 NoContent doner; govde okuyan SendAsync<T> kullanilamaz.
+        using var request = Authorized(HttpMethod.Delete, $"api/holidays/{id:D}?wholeRange={(wholeRange ? "true" : "false")}");
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
+        if (!response.IsSuccessStatusCode) throw await ApiErrors.ReadAsync(response, cancellationToken);
+    }
 
     private static string ScopeQuery(CalendarScopeOption? scope) => scope is null || scope.ScopeType == "AllSchool" ? "" :
         $"&scopeType={Uri.EscapeDataString(scope.ScopeType)}&scopeId={scope.ScopeId:D}";
