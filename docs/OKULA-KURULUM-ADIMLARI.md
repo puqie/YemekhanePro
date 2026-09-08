@@ -21,7 +21,11 @@ Bir kez basılır, ömür boyu aynı çift kullanılır.
 
 > **Dikkat:** Sonradan "Yeni çift üret" derseniz daha önce sattığınız **tüm lisanslar geçersiz olur**. Program bunu sorar.
 >
-> Özel anahtar yalnızca **sizin Windows hesabınızda** çözülür. Bilgisayar değiştirirseniz yeni çift üretip yeni kurulum dağıtmanız gerekir.
+> Özel anahtar yalnızca **sizin Windows hesabınızda** çözülür. Anahtar çifti ayrıca depoda
+> `secrets/lisans-anahtar-cifti.key` dosyasında tutulur (sahibin kararı). Bilgisayar değiştirince
+> yeni çift üretmeyin: yeni bilgisayarda `scripts\lisans-anahtar-geri-yukle.ps1` çalıştırın, aynı
+> çiftle devam edin; dağıtılmış lisanslar geçerli kalır. **Bu dosyaya erişen herkes lisans
+> üretebilir; depoyu özel tutun.**
 
 ### A3. "Kurulum exesi üret"
 

@@ -25,6 +25,17 @@ param(
     [switch]$SkipInstallCheck
 )
 
+# Acik anahtar verilmediyse depodaki anahtar ciftinden okunur (secrets/lisans-anahtar-cifti.key,
+# tek satir "ozel|acik"). Sahibin karariyla cift depoda tutulur; kurulum uretmek icin anahtari
+# elle gecmek gerekmez. Yalnizca ACIK parca alinir; ozel parca kuruluma asla gitmez.
+if ([string]::IsNullOrWhiteSpace($LicensingPublicKey)) {
+    $pairFile = Join-Path $PSScriptRoot '..\secrets\lisans-anahtar-cifti.key'
+    if (Test-Path $pairFile) {
+        $pairParts = (Get-Content -Raw -Encoding UTF8 $pairFile).Trim().Split('|')
+        if ($pairParts.Count -eq 2) { $LicensingPublicKey = $pairParts[1].Trim() }
+    }
+}
+
 # Acik anahtar verildiyse HMAC sirri GEREKMEZ ve kuruluma konmaz.
 if (-not [string]::IsNullOrWhiteSpace($LicensingPublicKey)) {
     # Ozel anahtarin yanlislikla buraya verilmesi felakettir: musteri onunla kendine
