@@ -10,7 +10,7 @@
     <!-- Surum ve urun bilgisi tum projelere damgalanir; boylece exe ozelliklerinde, Programlar
          listesinde ve uygulama arayuzunde ayni deger gorunur. Yayin sirasinda
          -p:Version=x.y.z ile gecersiz kilinir. -->
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Product>YemekhanePro</Product>
     <Company>YemekhanePro</Company>
     <Authors>YemekhanePro</Authors>
