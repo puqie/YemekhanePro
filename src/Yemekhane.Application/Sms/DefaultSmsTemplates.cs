@@ -1,10 +1,10 @@
-namespace Yemekhane.Application.Sms;
+﻿namespace Yemekhane.Application.Sms;
 
 /// <summary>
 /// Toplu SMS ekraninin varsayilan sablonlari. Okul programi ilk kez acinca sablon listesi
-/// bos geliyordu; memur her mesaji sifirdan yazmak zorundaydi. Bu liste yalnizca
-/// <c>sms_templates</c> tablosu TAMAMEN bosken (pasif kayit dahil hicbir sablon yokken)
-/// tohumlanir: kullanicinin sildigi/duzenledigi sablonlar geri gelmez.
+/// bos geliyordu; memur her mesaji sifirdan yazmak zorundaydi. Liste kurulum basina bir
+/// kez tohumlanir (ayni adli sablon varsa atlanir); kullanicinin sonradan sildigi/
+/// duzenledigi sablonlar geri gelmez.
 ///
 /// Degiskenler toplu gonderim sozdizimiyle ({{Ad}}) yazilir; izin verilenler
 /// <see cref="SmsTemplateRenderer"/>'daki kumeyle sinirlidir. {{StudentName}} ve

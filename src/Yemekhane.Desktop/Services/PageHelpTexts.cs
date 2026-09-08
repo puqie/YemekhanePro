@@ -1,4 +1,4 @@
-namespace Yemekhane.Desktop.Services;
+﻿namespace Yemekhane.Desktop.Services;
 
 /// <summary>
 /// F1 yardim penceresinin ust bolumunde gosterilen, sayfaya ozel kullanim
@@ -16,19 +16,19 @@ public static class PageHelpTexts
             "Canlı Geçişler tablosu turnikeden son 20 geçişi anlık gösterir.",
             "Cihaz Durumu kartından turnikelerin çevrimiçi/çevrimdışı/hatalı sayısını görürsünüz; Yönet ile Cihazlar ekranına geçersiniz.",
             "Hızlı İşlemler satırındaki düğmeler en sık kullanılan ekranlara doğrudan götürür.",
-            "Yenile ile veriler elle tazelenir; ekran ayrıca kendiliğinden periyodik güncellenir.",
+            "Geçişler ve cihaz durumu canlı bağlantıyla anında gelir; bağlantı kopunca \"Çevrimdışı\" rozeti çıkar, o zaman Yenile ile tazeleyin.",
         ]),
         [ShellRoutes.DailyTracking] = new("Günlük Takip",
         [
             "Seçilen tarihte hangi öğrencinin yemek yiyip yemediğini, hangi öğünde okutma yaptığını listeler.",
-            "Öğün dışı (yanlış saatte) okutmalar ayrıca işaretlenir; bu bir hata değil, bilgi amaçlıdır.",
-            "Filtrelerle sınıf veya öğrenciye göre daraltabilirsiniz.",
+            "Reddedilen geçişin gerekçesi Neden sütunundadır (örn. öğün saati dışı okutma).",
+            "Ara kutusu ve Karar/Öğün/Cihaz/Sınıf filtreleriyle daraltabilirsiniz; en eski kayıtlar için alttaki \"Daha eski kayıtları yükle\" düğmesini kullanın.",
         ]),
         [ShellRoutes.Students] = new("Öğrenciler",
         [
             "Öğrenci arama, yeni öğrenci ekleme ve kart atama/değiştirme işlemleri burada yapılır.",
             "Yeni kaydedilen bir öğrenciye kart atamak için kartı burada okutun; ekran hem ilk atamayı hem değişimi aynı akışla yönetir.",
-            "F3 ile kart okuma moduna, F2 ile hızlı arama kutusuna geçebilirsiniz (izniniz varsa).",
+            "F2 arama kutusuna odaklanır. F3 \"Kartla Öğrenci Bul\" penceresini açar; bunun için kart yetkisi (cards.manage) ve bağlı bir kart okuyucu gerekir.",
             "Bir öğrenciye tıklayınca detay panelinde hakediş, ödeme ve geçiş geçmişi görünür.",
         ]),
         [ShellRoutes.Cash] = new("Kasa",
@@ -47,25 +47,27 @@ public static class PageHelpTexts
         [
             "Resmi tatil ve okul tatillerini tanımladığınız, kullanılmayan hakların sonraki güne devredildiği ekrandır.",
             "Çok günlü bir tatilde her günün hakkı kendi sırasına göre ayrı bir sonraki boş iş gününe devredilir; hepsi tek güne yığılmaz.",
-            "Belirli bir tarihe devir istiyorsanız (ör. okul kararıyla) 'Tarih belirle' seçeneğini kullanın; bu durumda yığılma sizin isteğinizdir.",
+            "Belirli bir güne devir istiyorsanız Hak davranışı olarak \"Belirli bir tarihe aktar\" seçip Hedef tarih girin; bu durumda yığılma sizin isteğinizdir.",
+            "Tatil, kaydedildiğinde hakları kendisi değiştirmez; seçtiğiniz davranış \"Hakediş etkilerini toplu uygula\" ile uygulanır.",
+            "Çok günlü tatil her gün için ayrı satır oluşturur; Tatiller bloğundan tek günü ya da tüm aralığı silebilirsiniz.",
         ]),
         [ShellRoutes.StudentImport] = new("Sicil Aktar",
         [
             "Excel/CSV dosyasından toplu öğrenci içe aktarma ekranıdır.",
             "Yıl sonu sıfırlamasından sonra buradan yüklenen öğrenciler otomatik olarak yeniden aktif hale gelir.",
-            "İçe aktarmadan önce örnek şablonu indirip sütun sırasını bozmadan doldurmanız önerilir.",
+            "Dosyada NO, Kart No, Ad, Soyad, Sınıf ve Veli telefonu sütunları bulunmalı (.xlsx veya .csv, en fazla 10 MB). Hatalı satırlar için \"Hata Raporunu İndir\" düğmesi vardır.",
         ]),
         [ShellRoutes.Definitions] = new("Tanımlar",
         [
             "Sınıf, öğün türü ve diğer temel tanımların yönetildiği ekrandır.",
-            "F2 ile seçili tanımı yeniden adlandırabilirsiniz.",
-            "Bir tanımı silmek yerine pasife almayı düşünün; geçmiş kayıtlar tanıma referans verebilir.",
+            "Sınıf, şube, bölüm ve görev sekmelerinde F2 seçili tanımı yeniden adlandırır; Öğünler sekmesinde F2 öğünü düzenlemeye açar.",
+            "Öğünler pasife alınır; sınıf/şube/bölüm/görev ise yalnızca silinir ve öğrencide kullanılan tanım silinemez (önce öğrencileri taşıyın).",
         ]),
         [ShellRoutes.Devices] = new("Cihazlar / Turnikeler",
         [
             "Turnike ve kart okuyucu cihazlarının bağlantı durumunu, günlüklerini ve ayarlarını yönetir.",
             "Bir cihaz turnike komutunu hiç alamazsa (bağlantı koptu, kapasite yok) yemek hakkı otomatik iade edilir; belirsiz durumlarda (yazarken bağlantı koptu gibi) inceleme için kayıt bırakılır ve iade edilmez — bu kayıtları takip edin.",
-            "Cihaz Günlükleri sekmesinden son hataları inceleyebilirsiniz.",
+            "Cihaz satırındaki Loglar düğmesi o cihazın günlüğünü açar; uygulama geneli kayıtlar Ayarlar > Loglar'dadır.",
         ]),
         [ShellRoutes.DeviceCards] = new("Kart Yükleme Durumu",
         [
@@ -74,21 +76,22 @@ public static class PageHelpTexts
         ]),
         [ShellRoutes.Sms] = new("SMS Merkezi",
         [
-            "Velilere gönderilen SMS'lerin geçmişini ve tekil gönderim ekranını içerir.",
+            "Üç sekme: Gönder (alıcıları önizleyip SMS'leri kuyruğa alır), Şablonlar (hazır metinler, kurulumla birlikte örnekler gelir) ve Geçmiş.",
             "Geçmişte 'Kaynak' sütunu SMS'in elle mi yoksa Ayarlar'daki otomatik kurallardan mı gönderildiğini gösterir.",
             "SMS sağlayıcısı Ayarlar → SMS sekmesinde yapılandırılmadan gönderim yapılamaz.",
         ]),
         [ShellRoutes.Reports] = new("Raporlar",
         [
             "Gelir, kullanım ve sicil listesi gibi raporları filtreleyip PDF/Excel olarak dışa aktarabilirsiniz.",
-            "Ctrl+P ile PDF, Ctrl+E ile Excel dışa aktarımı kısayolla tetiklenir (izniniz varsa).",
+            "Ctrl+P ile PDF, Ctrl+E ile Excel dışa aktarımı yalnızca bu ekranda, rapor hazırlandıktan sonra ve dışa aktarma izniyle çalışır.",
+            "Bölüm, Görev, Veli ve TC Kimlik sütunları varsayılan gizlidir; Kolonlar düğmesinden açılır.",
             "Yıl sonu sıfırlamasından sonra da geçmiş tahsilat ve gelir raporlarına erişebilirsiniz; bu veriler silinmez.",
         ]),
         [ShellRoutes.Settings] = new("Ayarlar",
         [
-            "Okul bilgileri, SMS sağlayıcısı, yedekleme, senkronizasyon, günlükler ve yıl sonu sıfırlama burada yönetilir.",
+            "Okul bilgileri, yönetim ekranı bağlantıları, SMS sağlayıcısı, yedekleme, yıl sonu sıfırlama, senkronizasyon ve günlükler burada yönetilir.",
             "Yardım / AI Kılavuzu sekmesinde, uygulamanın tamamını bir yapay zekaya anlatan hazır bir metin bulabilir, kopyalayıp kullanabilirsiniz.",
-            "Değişikliklerin çoğu Kaydet'e basılınca hemen geçerli olur; zamanlama (yedekleme/senkronizasyon sıklığı) gibi bazı ayarlar uygulama yeniden başlatılınca uygulanır.",
+            "Değişikliklerin çoğu Kaydet'e basılınca hemen geçerli olur; yedekleme/senkronizasyon zamanlaması, kuyruk için SMS sağlayıcı değişikliği ve geri yükleme uygulama yeniden başlatılınca uygulanır.",
         ]),
     };
 }

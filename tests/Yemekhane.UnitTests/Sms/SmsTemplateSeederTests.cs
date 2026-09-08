@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Sms;
 using Yemekhane.Domain.Entities;
@@ -8,9 +8,9 @@ using Yemekhane.Infrastructure.Sms;
 namespace Yemekhane.UnitTests.Sms;
 
 /// <summary>
-/// Toplu SMS ekrani ilk acilista bos sablon listesiyle geliyordu. Varsayilanlar yalnizca
-/// tablo tamamen bosken tohumlanir; kullanicinin sildigi (pasif) sablon bile "liste
-/// sekillendirilmis" sayilir ve hicbir sey eklenmez.
+/// Toplu SMS ekrani ilk acilista bos sablon listesiyle geliyordu. Varsayilanlar kurulum
+/// basina bir kez tohumlanir (SystemSetting bayragi); eksik adlar eklenir, sonraki
+/// calismalarda kullanicinin sildigi sablon geri gelmez.
 /// </summary>
 public sealed class SmsTemplateSeederTests : IAsyncDisposable
 {
@@ -52,27 +52,49 @@ public sealed class SmsTemplateSeederTests : IAsyncDisposable
         Assert.Equal(DefaultSmsTemplates.All.Count, await db.Set<SmsTemplate>().CountAsync());
     }
 
+    /// <summary>Eski kurulum: okulun kendi sablonu varken varsayilanlar da eklenir, kullanicininki kalir.</summary>
     [Fact]
-    public async Task UserCreatedTemplateBlocksSeeding()
+    public async Task ExistingUserTemplateIsKeptAndDefaultsAreAddedBesideIt()
     {
         db.Add(new SmsTemplate { Name = "Okulun kendi şablonu", Body = "Merhaba {{ParentName}}" });
         await db.SaveChangesAsync();
 
         var added = await Seeder().SeedAsync();
 
-        Assert.Equal(0, added);
-        Assert.Equal(1, await db.Set<SmsTemplate>().CountAsync());
+        Assert.Equal(DefaultSmsTemplates.All.Count, added);
+        Assert.Equal(DefaultSmsTemplates.All.Count + 1, await db.Set<SmsTemplate>().CountAsync());
+        Assert.Contains(await db.Set<SmsTemplate>().ToListAsync(), x => x.Name == "Okulun kendi şablonu");
     }
 
-    /// <summary>Silinen (pasif) sablon da "liste kullanicinin" demektir; geri gelmez.</summary>
+    /// <summary>Ayni adli sablon (buyuk/kucuk harf farkli, pasif bile olsa) varsa o varsayilan atlanir; kopya olusmaz.</summary>
     [Fact]
-    public async Task DeactivatedOnlyTableStillBlocksSeeding()
+    public async Task SameNamedTemplateIsNotDuplicated()
     {
-        db.Add(new SmsTemplate { Name = "Silinmiş", Body = "Merhaba", IsActive = false });
+        db.Add(new SmsTemplate { Name = "yemek ücreti hatırlatma", Body = "Kendi metnim {{ParentName}}", IsActive = false });
         await db.SaveChangesAsync();
 
-        Assert.Equal(0, await Seeder().SeedAsync());
-        Assert.Equal(1, await db.Set<SmsTemplate>().CountAsync());
+        var added = await Seeder().SeedAsync();
+
+        Assert.Equal(DefaultSmsTemplates.All.Count - 1, added);
+        var rows = (await db.Set<SmsTemplate>().ToListAsync()).Where(x => string.Equals(x.Name, "Yemek Ücreti Hatırlatma", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Single(rows);
+        Assert.Equal("Kendi metnim {{ParentName}}", rows[0].Body);
+    }
+
+    /// <summary>Tohumlama bir kez yapilir: kullanici varsayilani silerse (pasif) veya yeniden adlandirirsa geri gelmez.</summary>
+    [Fact]
+    public async Task DeletedDefaultDoesNotComeBackOnLaterRuns()
+    {
+        await Seeder().SeedAsync();
+        var row = await db.Set<SmsTemplate>().SingleAsync(x => x.Name == "Kart Yenilendi");
+        db.Remove(row);
+        await db.SaveChangesAsync();
+
+        var added = await Seeder().SeedAsync();
+
+        Assert.Equal(0, added);
+        Assert.False(await db.Set<SmsTemplate>().AnyAsync(x => x.Name == "Kart Yenilendi"));
+        Assert.True(await db.Set<SystemSetting>().AnyAsync(x => x.Key == SmsTemplateSeeder.SeededSettingKey));
     }
 
     /// <summary>Her varsayilan, toplu gonderimin izin verdigi degiskenlerle ve tekil adla yazilmis olmali.</summary>

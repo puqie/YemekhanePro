@@ -1,4 +1,4 @@
-namespace Yemekhane.Desktop.Services;
+﻿namespace Yemekhane.Desktop.Services;
 
 /// <summary>
 /// Ayarlar -> Yardım / AI Kılavuzu sekmesinde kopyalanabilir olarak sunulan, tum
@@ -38,16 +38,42 @@ public static class AiUserGuidePrompt
         / Turnikeler, Kart Yükleme Durumu, SMS Merkezi, Raporlar, Ayarlar). Her
         ekranın üstünde başlık/alt başlık satırı, sağ üstte gerekiyorsa işlem
         düğmeleri, altta gerekiyorsa hata/durum mesajı ve sayfalama bulunur. Sol
-        alt köşede "Kısayollar F1" düğmesi vardır: F1 tuşuna basıldığında hem o
-        an açık olan ekrana özel kısa bir kullanım açıklaması hem de klavye
-        kısayolları listesi açılır. Ekranın en altında "OTURUM" başlığı altında
-        giriş yapan kullanıcının adı görünür.
+        alt köşede "Kısayollar F1" düğmesi vardır: F1 tuşuna basıldığında, o
+        ekran için hazır not varsa ekrana özel kısa bir kullanım açıklaması ve
+        her zaman klavye kısayolları listesi açılır. Kenar çubuğunun en altında
+        "OTURUM" başlığı altında giriş yapan kullanıcının adı görünür. Sağ
+        üstte bildirim (zil) simgesi vardır; tıklayınca "Bildirimler" paneli
+        açılır ("Tümünü okundu işaretle" düğmesiyle). Programın her yerinde
+        Ctrl+K ile ekranın ortasında "Global arama" paleti açılır: "Öğrenci,
+        kart, sınıf, tarih veya modül ara..." kutusuna yazılır, ok tuşlarıyla
+        seçilir, Enter açar, Esc kapatır. Ekranda ayrı bir arama kutusu YOKTUR;
+        arama yalnızca bu kısayolla açılır.
+
+        GİRİŞ, LİSANS VE PAROLA SIFIRLAMA
+        - Program ilk açılışta lisans ister ("YemekhanePro • Lisans" penceresi,
+          "Lisans etkinleştirme"): "Lisans anahtarı" kutusuna satıcıdan alınan
+          anahtar yazılıp "Etkinleştir"e basılır; internet gerekmez. Satıcı bu
+          bilgisayara özel .lic dosyası verdiyse "Lisans dosyası yükle (.lic)"
+          kullanılır. "Bilgisayar kimliği" kutusundaki kod "Makine kodunu
+          kopyala" ile kopyalanıp satıcıya gönderilir.
+        - Giriş penceresi ("YemekhanePro • Giriş"): "Kullanıcı adı", "Parola",
+          "Giriş yap" düğmesi. Parola alanının yanındaki göz simgesi parolayı
+          gösterir. Esc programdan çıkar.
+        - "Parolamı unuttum" düğmesi "YemekhanePro • Parola sıfırlama"
+          penceresini açar; üç adım: "1 • Lisans dosyası" ("Lisans dosyası seç
+          (.lic)" — dosya bu bilgisayara ait değilse sıfırlama yapılmaz),
+          "2 • Sıfırlanacak kullanıcı adı", "3 • Yeni parola" (en az 12
+          karakter, "Yeni parola (tekrar)"), sonra "Parolayı sıfırla".
+          Sıfırlama kayıt altına alınır ve o hesabın önceki oturumları geçersiz
+          olur. Oturum, kullanılmasa da 12 saat açık kalır.
 
         YETKİ (İZİN) SİSTEMİ
         Kenar çubuğundaki bazı menü öğeleri ve ekran içindeki bazı düğmeler
         yalnızca kullanıcının ilgili izni varsa görünür/etkindir. Programın
         tanıdığı izin kodları şunlardır: students.read, students.write,
-        students.deactivate (öğrenci okuma/yazma/pasifleştirme), cards.manage
+        students.deactivate (öğrenci okuma/yazma/pasifleştirme),
+        students.sensitive.read (TC kimlik gibi hassas alanları görme; Rapor
+        Merkezi'nde "TC KİMLİK" sütunu yalnızca bununla açılır), cards.manage
         (kart atama/değiştirme), entitlements.manage, entitlements.bulk (tekil
         ve toplu hakediş işlemleri), calendar.manage (takvim/tatil/toplu takvim
         işlemleri), devices.read, devices.manage (cihaz görüntüleme/yönetme),
@@ -61,11 +87,12 @@ public static class AiUserGuidePrompt
         okulun kendi yöneticisi tarafından tanımlanır; sabit/varsayılan rol
         adı (ör. "Kasiyer") programda YOKTUR, izinler serbestçe bir araya
         getirilerek roller oluşturulur. NOT: "Kullanıcılar / Roller" ekranı
-        şu an masaüstü uygulamasında AYRI BİR SAYFA OLARAK YAPILMAMIŞTIR;
-        Ayarlar > Bağlantılar sekmesindeki "Kullanıcılar / Roller" düğmesi
-        yalnızca `users.manage` izniyle görünür ama hedef ekran henüz
-        eklenmemiştir — kullanıcı bunu sorarsa bu durumu olduğu gibi söyle,
-        var olmayan bir ekranı tarif etme.
+        şu an masaüstü uygulamasında YOKTUR; kullanıcı ve rol tanımları
+        yalnızca sunucu API'si üzerinden yapılır. Ayarlar > Bağlantılar
+        sekmesinde bu ad için hazırlanmış düğme, hedef ekran kayıtlı olmadığı
+        için hiçbir kullanıcıya GÖRÜNMEZ (users.manage izni olsa bile) —
+        kullanıcı bunu sorarsa bu durumu olduğu gibi söyle, var olmayan bir
+        ekranı tarif etme.
 
         Önemli bağımlılık: Kasa ekranında bir tahsilat girmeden önce "Öğrenci
         Doğrula" adımı çalışır ve bu adım öğrenci kayıtlarını okuma iznine
@@ -77,17 +104,24 @@ public static class AiUserGuidePrompt
         ================================================================
         1. GENEL BAKIŞ (Dashboard) — kenar çubuğunda "Genel Bakış"
         ================================================================
-        Programın ana ekranıdır, giriş yapınca buraya düşülür.
+        Programın ana ekranıdır, giriş yapınca buraya düşülür. Başlık:
+        "Operasyon Genel Bakış", alt başlık: "Bugünün yemekhane görünümü •
+        Europe/Istanbul".
         - Üstte yedi kutucuk: AKTİF ÖĞRENCİ, HAK SAHİBİ, HAKEDİŞ, KULLANILAN,
           KALAN, İZİNLİ, REDDEDİLEN.
         - "Hızlı İşlemler" satırı en sık kullanılan ekranlara tek tıkla götürür.
-        - "Canlı Geçişler" tablosu turnikeden son 20 geçişi (saat, öğrenci,
-          sınıf no, cihaz, karar, ret nedeni) gösterir.
-        - "Cihaz Durumu" kartı çevrimiçi/çevrimdışı/hatalı cihaz sayısını ve
-          "Yönet" düğmesiyle Cihazlar ekranına geçişi sağlar.
-        - Alt kısımda "Sınıf Kullanım Özeti" ve "Son Hatalar" tabloları vardır.
-        - Sağ üstte "Yenile" düğmesi ve bildirim (zil) simgesi vardır; zile
-          tıklayınca sağdan bildirim paneli açılır.
+        - "Canlı Geçişler" tablosu turnikeden son 20 geçişi gösterir; sütunlar:
+          Saat, Öğrenci, No, Cihaz, Karar, Neden. Kayıt yoksa "Bugün henüz
+          geçiş kaydı yok." yazar.
+        - "Cihaz Durumu" kartı "Çevrimiçi" / "Çevrimdışı" / "Hata" sayılarını
+          ve "Yönet" düğmesiyle Cihazlar ekranına geçişi sağlar.
+        - Alt kısımda "Sınıf Kullanım Özeti" (Sınıf, Kullanılan, Hakediş) ve
+          "Son Hatalar" (Zaman, Cihaz, Seviye, Mesaj) tabloları vardır.
+        - Sağ üstte "Yenile" düğmesi vardır. Ekran zamanlayıcıyla değil, canlı
+          bağlantıyla (anlık geçiş ve cihaz olayları) güncellenir; bağlantı
+          kopunca "Çevrimdışı" rozeti çıkar ve ekran kendiliğinden yenilenmez,
+          "Yenile"ye basılır. API'ye ulaşılamazsa "Dashboard kullanılamıyor"
+          + "Tekrar dene" görünür.
 
         ================================================================
         2. GÜNLÜK TAKİP — kenar çubuğunda "Günlük Takip"
@@ -106,8 +140,8 @@ public static class AiUserGuidePrompt
         - Kayıt yoksa: "Bugün bu filtrelerle eşleşen geçiş kaydı yok."
         - Yetkisiz kullanıcıya: "Günlük takip için geçerli bir oturum ve
           access.read izni gerekiyor."
-        - "Öğün dışı" (yanlış saatte) okutmalar ayrıca işaretlenir; bu bir hata
-          değil, bilgilendirmedir.
+        - Altta "Daha eski kayıtları yükle" düğmesi vardır. Reddedilen geçişin
+          gerekçesi "Neden" sütununda okunur (örn. öğün saati dışı okutma).
 
         ================================================================
         3. ÖĞRENCİLER — kenar çubuğunda "Öğrenciler"
@@ -139,8 +173,8 @@ public static class AiUserGuidePrompt
         - "İzin Ver" — öğrenciye izin/mazeret kaydı ekler.
         - "SMS Gönder" — sms.send izniyle, SMS Merkezi'ne öğrenci seçili
           yönlendirir.
-        - "Hakediş Ver" — entitlements.bulk gerekir; yoksa "Toplu hakediş
-          yetkisi gerekiyor." mesajı çıkar; Hakedişler ekranına yönlendirir.
+        - "Hakediş Ver" — entitlements.bulk gerekir; izin yoksa düğme hiç
+          görünmez. Hakedişler ekranına öğrenci seçili yönlendirir.
         - "Sil" → "Silmeyi Onayla" → "Vazgeç" (iki adımlı silme). "Kayıt
           silinir ve listelerden kaybolur; Sicil Aktar ile yeniden içe
           aktarılırsa geri gelir."
@@ -151,14 +185,16 @@ public static class AiUserGuidePrompt
           düğmesinden yapılır — ayrı bir "ilk kart atama" ekranı yoktur.
 
         Detay sekmeleri (sabit sıralı şerit): "Genel", "Kartlar", "Veliler",
-        "Hakedişler", "Erişim Geçmişi", "İzinler", "Tatil/Aktarım", "Ödemeler",
+        "Hakedişler", "Geçiş Geçmişi", "İzinler", "Tatil/Aktarım", "Ödemeler",
         "Bakiye" ("GÜNCEL BAKİYE" başlığıyla tutar gösterir), "SMS Geçmişi",
         "Denetim".
 
         "Öğrenci Kartı" çekmecesi (Yeni Öğrenci / Düzenle): zorunlu alanlar
         "Öğrenci NO", "Ad", "Soyad"; diğerleri "TC Kimlik No" (tam 11 rakam,
-        boş olabilir), "Doğum tarihi", "Kart No", "Baskı No", "Fotoğraf" (JPG/
-        PNG, en fazla 2 MB), Sınıf/Şube/Bölüm/Görev (açılır kutu + yeşil "+"
+        boş olabilir), "Doğum tarihi", "Kart No", "Baskı No", fotoğraf ("Resim
+        Seç" / "Kaldır" düğmeleri; yalnızca JPG ve PNG, en fazla 2 MB — aksi
+        halde "Yalnızca JPG ve PNG dosyaları seçilebilir." ya da "Fotoğraf en
+        fazla 2 MB olabilir."), Sınıf/Şube/Bölüm/Görev (açılır kutu + yeşil "+"
         ile satır içi yeni tanım ekleme), "Veli adı", "Veli telefonu" (örn.
         5321234567 — otomatik SMS bu numaraya gider), "Adres", "Parmak izi
         ID", "PI ID", "Not". Alt: "Kaydet" / "İptal".
@@ -175,10 +211,13 @@ public static class AiUserGuidePrompt
           (örn. 5321234567)." (veli adı veya telefonu girildiyse ikisi de
           zorunlu hale gelir)
 
-        Kart okuma modalı ("Kartla Öğrenci Bul"): "Kart numarasını yazın ve
-        Ara'ya basın. Masa tipi okuyucu bağlıysa Okuyucuyu Bekle ile
-        okutabilirsiniz." Eşleşme yoksa: "Bu karta atanmış öğrenci
-        bulunamadı. Bir öğrenci açarak kartı atayabilirsiniz."
+        Kart okuma modalı ("Kartla Öğrenci Bul", F3 ile de açılır; cards.manage
+        izni ve bağlı kart okuyucu gerekir): "Kart numarasını yazın ve Ara'ya
+        basın. Masa tipi okuyucu bağlıysa Okuyucuyu Bekle ile okutabilirsiniz."
+        Eşleşme yoksa: "Bu karta atanmış öğrenci bulunamadı. Bir öğrenci açarak
+        kartı atayabilirsiniz." — pencereyi kapatıp öğrenci kartındaki Kart No
+        alanına bu numarayı yazın. Diğer kart hataları: "Yeni kart numarası
+        zorunludur.", "Kart işlemi için cards.manage izni gerekiyor."
 
         ADIM ADIM: Yeni öğrenciye kart atama
         1. "Yeni Öğrenci" düğmesine bas.
@@ -230,12 +269,14 @@ public static class AiUserGuidePrompt
         denetim izi korunarak iptal edilir." İptal nedeni zorunludur, onay
         kutusu işaretlenmeden "Onayla ve İptal Et" (Destructive) çalışmaz.
 
-        Doğrulama hataları: "Tek seferde en fazla {n} ₺ yüklenebilir.",
-        "Açıklama en fazla 500 karakter olmalıdır.", "Bitiş tarihi bugünden
-        önce olamaz.", "Öğrenci veya kart doğrulaması zorunludur.", "Saat
-        SS:dd biçiminde olmalıdır.", "Aktif gelir türü seçin.", "İptal nedeni"
-        boş bırakılamaz, "Filtre başlangıcı bitişten sonra olamaz.", "Gelir
-        türü adı 2-100 karakter olmalıdır."
+        Doğrulama hataları: "Tutar sıfırdan büyük ve en fazla iki ondalıklı
+        olmalıdır (örn. 125,50 veya 1.250,50).", "Tek seferde en fazla {n} ₺
+        yüklenebilir.", "Açıklama en fazla 500 karakter olmalıdır.", "Bitiş
+        tarihi bugünden önce olamaz.", "Öğrenci veya kart doğrulaması
+        zorunludur.", "Saat SS:dd biçiminde olmalıdır.", "Aktif gelir türü
+        seçin.", "Filtre başlangıcı bitişten sonra olamaz.", "Gelir türü adı
+        2-100 karakter olmalıdır." İptal çekmecesinde "İptal nedeni (zorunlu)"
+        alanı boşken hata mesajı çıkmaz, "Onayla ve İptal Et" düğmesi gri kalır.
 
         ================================================================
         5. YEMEK HAKEDİŞLERİ — kenar çubuğunda "Yemek Hakedişleri"
@@ -259,7 +300,7 @@ public static class AiUserGuidePrompt
         Kademe / Grup / Tüm aktif öğrenciler). Manuel'de listeden seçim
         varsa "Seçili {n} öğrenciye verilecek." yoksa "Öğrenci numaraları"
         kutusu (virgülle ayrılmış, örn. "5012, 5013"). "Öğün" seçilince
-        ücreti varsa "Öğün bedeli: ₺X,XX" görünür. "Başlangıç" tarihi, "Kaç
+        ücreti varsa "Öğün bedeli: 250,00 ₺" biçiminde görünür. "Başlangıç" tarihi, "Kaç
         gün" (bitiş tarihi değil GÜN SAYISI, iş günü esaslı), "Günlük adet
         (1-10)", "Cumartesi dahil"/"Pazar dahil" onay kutuları. "Etkileri
         Önizle" düğmesi uygulamadan önce "{n} öğrenci • {n} gün • {n} hak
@@ -295,10 +336,12 @@ public static class AiUserGuidePrompt
         kayıtları). Alt düğmeler: "Tatil oluştur", "Özel istisna", "Hakediş
         etkilerini toplu uygula" (Toplu İşlem Sihirbazını ön ayarlı açar).
 
-        "Yeni Tatil" formu: "Ad", "Başlangıç"/"Bitiş (dahil)" (aralık gün
-        sayısı canlı gösterilir), "Tür" (Resmi/İdari/Gezi/Diğer), "Kapsam",
-        "Hak davranışı" (Sil / Sonraki iş gününe aktar / Belirli tarihe
-        aktar / Yanmasına izin ver). ÖNEMLİ: "Tatil kaydı hakları kendisi
+        "Yeni Tatil" formu: "Ad", "Başlangıç"/"Bitiş (dahil)" (altında canlı
+        metin: "Tek gün." ya da "{n} gün: her gün ayrı kayıt olur, gerekirse
+        tek hamlede silinir."), "Tür" ("Resmî tatil" / "İdari tatil" / "Gezi"
+        / "Diğer"), "Kapsam", "Hak davranışı" ("Hakları iptal et" / "Sonraki
+        iş gününe aktar" / "Belirli bir tarihe aktar" / "Hakları yak (iade
+        yok)"), "Oluştur" / "Vazgeç". ÖNEMLİ: "Tatil kaydı hakları kendisi
         değiştirmez; seçilen davranış kayıt sonrası 'Hakediş etkilerini
         toplu uygula' ile uygulanır ve geri alınabilir."
 
@@ -306,8 +349,19 @@ public static class AiUserGuidePrompt
         AYRI bir sonraki BOŞ iş gününe devredilir; hepsi tek güne yığılmaz
         (ör. 5 günlük tatilde 5 farklı öğrenci hakkı 5 farklı sonraki güne
         dağılır, tek güne toplanmaz). Belirli bir güne devretmek isteniyorsa
-        "Belirli tarihe aktar" seçilir; bu durumda yığılma kullanıcının
-        bilinçli tercihidir.
+        "Belirli bir tarihe aktar" seçilir ve çıkan "Hedef tarih" doldurulur;
+        bu durumda yığılma kullanıcının bilinçli tercihidir.
+
+        Tatil silme: "Gün Operasyonları" çekmecesindeki "Tatiller" bloğunda
+        her tatilin yanında "Bu günü sil" → "Bu günü silmeyi onayla" ve çok
+        günlü aralıkta ek olarak "Tüm aralığı sil ({n} gün)" → "Tüm aralığı
+        silmeyi onayla ({n} gün)" düğmeleri vardır; "Vazgeç" geri alır. Aynı
+        güne aynı kapsamda ikinci tatil eklenemez (çakışma hatası).
+
+        "Özel istisna" formu (aynı çekmecede): "Tür" (Gezi / Özel gün /
+        Program değişikliği), "Kapsam", "Hak davranışı" (Hakları koru /
+        Hakları iptal et / Sonraki iş gününe aktar / Belirli bir tarihe aktar /
+        Hakları yak (iade yok)), "Açıklama", "Oluştur" / "Vazgeç".
 
         Doğrulama: "Tatil adı zorunludur (2-200 karakter)." / "Tatil bitiş
         tarihi başlangıçtan önce olamaz." Kayıttan sonra: "Bu güne ait aktif
@@ -322,7 +376,11 @@ public static class AiUserGuidePrompt
         ekranı kullanmak için öğrenci yazma yetkisi gereklidir."
 
         Adım 1 "1 · Dosya seçin": "Dosya Seç…" düğmesi, "Önizle" düğmesi.
-        Desteklenen biçimler: .xlsx ve .csv, en fazla 10 MB.
+        "Desteklenen biçimler: .xlsx ve .csv · En fazla 10 MB". Sağ üstte
+        "Baştan Başla" düğmesi akışı sıfırlar. Programda indirilebilir örnek
+        şablon dosyası YOKTUR; sütun adları önizleme tablosundakiyle aynı
+        olacak şekilde dosya hazırlanır (NO, Kart No, Ad, Soyad, Sınıf, Veli
+        telefonu).
 
         Adım 2 "2 · Uygulamadan önce kontrol edin": "Okunan satır", "Yeni
         kayıt", "Güncellenecek", "Hatalı satır" sayaçları. Hata varsa:
@@ -330,7 +388,7 @@ public static class AiUserGuidePrompt
         Raporunu İndir" düğmesi. "İçe Aktar" düğmesi.
 
         Önizleme tablosu sütunları: Satır, NO, Kart No, Ad, Soyad, Sınıf,
-        Veli telefonu, Durum (Yeni/Güncelleme/Hata), Açıklama. YIL SONU
+        Veli telefonu, Durum (Yeni / Güncellenecek / Hatalı), Açıklama. YIL SONU
         SIFIRLAMASINDAN SONRA buradan yüklenen öğrenciler otomatik olarak
         yeniden AKTİF hale gelir (daha önce pasife alınmış olsalar bile).
 
@@ -338,29 +396,40 @@ public static class AiUserGuidePrompt
         8. TANIMLAR — kenar çubuğunda "Tanımlar"
         ================================================================
         Başlık: "Tanımlar", alt başlık: "Öğün, sınıf, şube, bölüm ve görev
-        tanımları". F2 tuşu seçili tanımı yeniden adlandırma kutusunu açar.
+        tanımları". Sınıf/Şube/Bölüm/Görev sekmelerinde F2 seçili tanımı
+        yeniden adlandırma kutusunu açar; "Öğünler" sekmesinde F2 (ve Enter)
+        seçili öğünün düzenleme penceresini açar.
 
-        Sekmeler: "Öğünler", "Sınıflar", "Şubeler", "Bölümler", "Görevler".
+        Sekmeler: "Öğünler" (entitlements.manage gerekir), "Sınıflar",
+        "Şubeler", "Bölümler", "Görevler" (öğrenci okuma/yazma izni gerekir).
 
         "Öğünler" sekmesi: "Yeni Öğün", "Düzenle", "Pasifleştir" ("Öğün
         listelerde kalır ama yeni hakediş verilemez"). Sütunlar: AD,
         BAŞLANGIÇ, BİTİŞ, ÜCRET, DURUM.
 
-        "Öğün formu": "Öğün adı" (2-100 karakter), "Başlangıç saati"/"Bitiş
-        saati" (SS:dd, boş bırakılabilir), "Ücret (₺)" (örn. "250,50", sıfır
-        = ücretsiz öğün; hakediş verirken toplam bedel hesabında kullanılır),
-        "Aktif" onay kutusu.
+        Öğün penceresi ("Yeni Öğün" / "Öğünü Düzenle"): "Öğün adı" (2-100
+        karakter), "Başlangıç saati"/"Bitiş saati" (SS:dd, ikisi birlikte boş
+        bırakılabilir), "Ücret (₺)" (örn. "250,50", sıfır = ücretsiz öğün;
+        hakediş verirken toplam bedel hesabında kullanılır), "Aktif" onay
+        kutusu, "Kaydet" / "Vazgeç".
 
-        Sınıf/Şube/Bölüm/Görev sekmeleri ortak şablonu paylaşır: yeni ekleme
-        kutusu + "Ekle" (Enter da çalışır; Sınıf'ta ek "Tür" seçimi var:
-        anasınıfı / normal sınıf), "Yeniden Adlandır" (F2), "Sil" → "Silmeyi
-        Onayla" → "Vazgeç" ("Öğrencide kullanılan tanım silinemez; önce
-        öğrencileri başka bir tanıma taşıyın."). Liste: AD, TÜR (yalnızca
-        Sınıflar), ÖĞRENCİ SAYISI.
+        Sınıf/Şube/Bölüm/Görev sekmeleri ortak şablonu paylaşır: "Yeni Sınıf"
+        (ya da Yeni Şube/Bölüm/Görev) kutusu + "Ekle" (Enter da çalışır;
+        Sınıflar'da ek "Tür" seçimi: "Normal sınıf" / "Anasınıfı"), "Yeniden
+        Adlandır" (F2; panelde "Yeni ad", Sınıflar'da "Tür", "Kaydet" /
+        "İptal"), "Sil" → "Silmeyi Onayla" → "Vazgeç". Bu tanımlar
+        PASİFE ALINAMAZ, yalnızca silinir; öğrencide kullanılan tanım
+        silinemez ("Sınıf {n} öğrencide kullanılıyor; önce öğrencileri başka
+        bir tanıma taşıyın."). Liste: AD, TÜR (yalnızca Sınıflar), ÖĞRENCİ
+        SAYISI.
 
         Doğrulama: "Öğün adı 2-100 karakter olmalıdır.", "Başlangıç saati
-        SS:dd biçiminde olmalıdır (örn. 11:30).", "Bitiş saati başlangıçtan
-        sonra olmalıdır.", "Öğün ücreti 0 ile 100.000 ₺ arasında olmalıdır."
+        SS:dd biçiminde olmalıdır (örn. 11:30).", "Bitiş saati SS:dd
+        biçiminde olmalıdır (örn. 13:30).", "Başlangıç ve bitiş saati
+        birlikte girilmelidir.", "Bitiş saati başlangıçtan sonra
+        olmalıdır.", "Ücret 0 ya da en fazla iki ondalıklı bir tutar olmalıdır
+        (örn. 250,50).", "Öğün ücreti 0 ile 100.000 ₺ arasında olmalıdır.",
+        sınıf/şube/bölüm/görev için "{Tanım} adı 1-100 karakter olmalıdır."
 
         ================================================================
         9. CİHAZLAR / TURNİKELER — kenar çubuğunda "Cihazlar / Turnikeler"
@@ -379,10 +448,12 @@ public static class AiUserGuidePrompt
         tüm kullanıcı ve kart kayıtlarını siler; cihaz kendi başına geçiş
         vermez, geçişler bu programdan yönetilir").
 
-        "Cihaz ayarları"/"Yeni cihaz" modalı: "Ad", "Tür" (SF300/SC403/
-        ComReader/EthernetReader — Simulator yalnızca development ortamında),
-        Ethernet için "IP adresi"/"Port", COM için "COM portu"/"Baud",
-        "Konum", "Yön" (Giriş/Çıkış/Çift yönlü), "Aktif", "Otomatik bağlan",
+        "Yeni cihaz"/"Cihaz ayarları" modalı ("Kaydet" ile kapanır): "Ad",
+        "Tür" (SF300/SC403/ComReader/EthernetReader — Simulator yalnızca
+        development ortamında), SF300/SC403/EthernetReader için "IP adresi"/
+        "Port", ComReader için "COM portu"/"Baud", "Konum", "Yön" (seçenekler
+        ekranda İngilizce yazılır: Entry = giriş, Exit = çıkış, Bidirectional
+        = çift yönlü), "Aktif", "Otomatik bağlan",
         "Turnike bağlı" onay kutuları; turnike bağlıysa "Röle darbe süresi
         (ms, 50-5000)" ve "Turnike çift yönlü sürülebiliyor" alanları (not:
         "Bu değerler üretici dokümanında belgelenmemiştir; kurulumda cihaz
@@ -392,30 +463,35 @@ public static class AiUserGuidePrompt
         (bağlantı kesin olarak kopuk, yön desteklenmiyor gibi NET durumlarda)
         tüketilen yemek hakkı OTOMATİK iade edilir. Ancak sonucun BELİRSİZ
         olduğu durumlarda (örn. komut yazılırken bağlantı koptu, cihazdan
-        yanıt gelmedi) hak iade EDİLMEZ, yalnızca inceleme kaydı bırakılır;
-        bu tür kayıtlar "Cihaz Günlükleri" sekmesinden takip edilmelidir —
-        kullanıcı "öğrencinin hakkı yanlış düştü" derse önce buraya bakılmalı.
+        yanıt gelmedi) hak iade EDİLMEZ, yalnızca inceleme kaydı bırakılır.
+        Bu ekranda "Cihaz Günlükleri" adlı bir sekme YOKTUR: cihaz satırındaki
+        "Loglar" düğmesi o cihazın "Cihaz logları" penceresini açar; uygulama
+        genelindeki kayıtlar Ayarlar > Loglar sekmesindedir — kullanıcı
+        "öğrencinin hakkı yanlış düştü" derse önce bu iki yere bakılmalı.
 
         ================================================================
         10. KART YÜKLEME DURUMU — kenar çubuğunda "Kart Yükleme Durumu"
         ================================================================
-        Başlık: "Kart Yükleme Durumu"; alt başlık dinamiktir, örn: "{n} kart
-        {n} cihazda bekliyor." veya "{n} cihazın tüm kartları güncel."
+        Başlık: "Kart Yükleme Durumu"; alt başlık dinamiktir: "{n} kart {n}
+        cihazda bekliyor.", "{n} cihazın tüm kartları güncel." veya "Kart
+        yükleyen cihaz tanımlı değil."
 
         Üst düğmeler: "{n} kart bekliyor" rozeti, "Yenile", "Şimdi yükle"
         (sıradaki kart yüklemesini beklemeden hemen çalıştırır).
 
-        Her cihaz kartında 3 sayaç: "Yüklü", "Bekliyor", "Hatalı"; SC403
-        cihazında not: "Kart yüklenmez; geçiş kararı programda" (bu cihaz
-        tipi karta yüklemez, karar sunucuda/programda verilir). Düğmeler:
+        Her cihaz kartında 3 sayaç: "Yüklü", "Bekliyor", "Hatalı"; kart
+        saklamayan cihazda (SC403) not: "Kart yüklenmez; geçiş kararı
+        programda". Düğmeler:
         "Cihazdaki kartlar", "Bekleyen kartları göster".
 
         Seçili cihaz panelinde iki sekme: "Cihazdaki kartlar ({n})" (arama:
         öğrenci no/ad soyad/kart no baştan eşleşir; sütunlar NO, AD SOYAD,
         SINIF, KART NO, DURUM [Yüklendi/Bekliyor/Siliniyor/Hata/Silindi],
-        SON SENKRON, HATA, ve hatalı kartta etkin "Yeniden yükle" düğmesi) ve
-        "Bekleyen kartlar ({n})" (öğrenci, işlem türü [Yükleniyor/Siliniyor],
-        deneme sayısı).
+        SON SENKRON, HATA, ve her satırda görünen ama yalnızca hatalı kartta
+        etkin olan "Yeniden yükle" düğmesi; arama kutusu + "Ara"; sayfada 50
+        kart, "Önceki"/"Sonraki") ve "Bekleyen kartlar ({n})" (öğrenci, işlem
+        türü [Yükleniyor/Siliniyor], "İlk deneme" ya da "{n} başarısız
+        deneme").
 
         KART-CİHAZ İLİŞKİSİ: Bir kart birden çok cihaza AYRI AYRI yüklenir;
         her cihaz-kart çifti kendi durumunu taşır (bir cihazda "Yüklendi"
@@ -427,37 +503,57 @@ public static class AiUserGuidePrompt
         Başlık: "SMS Merkezi", alt başlık: "Veli bildirimlerini önizleyin,
         kuyruğa alın ve teslimatı izleyin".
 
+        Bu ekran tekil değil TOPLU/kuyruklu gönderim yapar: alıcılar
+        önizlenir, onay kutusu işaretlenir, SMS'ler kuyruğa alınır.
+
         Sekme "Gönder" (sms.send): sol sütun "1. Alıcı kapsamı" — "Hedef
-        türü" (Manuel/Sınıf/Grup/Filtre), "Öğrenci ara" + "Ara", ilgili
-        hedefte "Sınıf"/"Grup" seçimi, öğrenci listesi (çoklu seçim), "{n}
-        öğrenci seçili" + "Seçimi temizle". "2. Mesaj" — "Şablon kullan" onay
-        kutusu + şablon seçimi, değişken alanları ("Son tarih (gg.aa.yyyy)",
-        "Giriş saati (SS:dd)", "Tutar (₺)"), "Mesaj metni (şablon
-        kullanılmıyorsa)", karakter/segment sayacı, "Alıcıları ve mesajı
+        türü" ("Manuel seçim" / "Sınıf" / "Grup" / "Tüm öğrenciler" / "Arama
+        filtresi"), "Öğrenci ara (no, ad, soyad)" + "Ara", ilgili hedefte
+        "Sınıf"/"Grup" seçimi, öğrenci listesi (Seç/No/Öğrenci/Sınıf/Şube,
+        çoklu seçim), "Seçili: {n} öğrenci" (ya da "Seçili öğrenci yok") +
+        "Seçimi temizle". "2. Mesaj" — "Şablon kullan" onay kutusu + şablon
+        seçimi, "Şablon değişkenleri (şablonda kullanılıyorsa doldurun)"
+        altında "Son tarih (gg.aa.yyyy)", "Giriş saati (SS:dd)", "Tutar (₺)"
+        (yalnızca şablon kullanılırken etkin), "Mesaj metni (şablon
+        kullanılmıyorsa)", "{n} karakter • {n} SMS segmenti" sayacı (Türkçe
+        karakter varsa segment 70, yoksa 160 karakter), "Alıcıları ve mesajı
         önizle". Sağ panel "Gönderim önizlemesi": "Önizleme oluşturmadan
         hiçbir SMS kuyruğa alınmaz." — EŞLEŞEN/ALICI/TELEFON YOK/MÜKERRER
-        sayaçları; not: "Telefonu olmayan veya aynı telefonu paylaşan
-        öğrencilere SMS gitmez." Onay kutusu işaretlenmeden "SMS'leri
-        kuyruğa al" çalışmaz.
+        sayaçları, "Örnek mesajlar (ilk 5 alıcı)"; not: "Telefonu olmayan
+        veya aynı telefonu paylaşan öğrencilere SMS gitmez; alıcı sayısı bu
+        yüzden eşleşenden az olabilir." Onay kutusu ("Alıcı sayısını ve örnek
+        mesajları kontrol ettim; kuyruğa alınmasını onaylıyorum")
+        işaretlenmeden "SMS'leri kuyruğa al" çalışmaz.
 
-        Sekme "Şablonlar" (sms.manage): liste + "Yeni şablon"/"Seçileni
-        düzenle"; düzenleyicide "Ad", "Metin", değişken jetonları (örn.
-        {{StudentName}}, {{ParentName}}, {{ExpiryDate}}) tıklanınca metne
-        eklenir.
+        Sekme "Şablonlar" (sms.manage): liste (Ad, Metin, Aktif) + "Yeni
+        şablon" / "Seçileni düzenle" (çift tıklama da açar) / "Pasifleri
+        göster" / "Yenile"; düzenleyicide "Ad", "Metin", "Kaydet",
+        "Pasifleştir" ve değişken düğmeleri "Öğrenci adı", "Veli adı", "Son
+        tarih", "Giriş saati", "Tutar" (tıklanınca metne {{StudentName}},
+        {{ParentName}}, {{ExpiryDate}}, {{EntryTime}}, {{Amount}} eklenir).
+        Kurulumla birlikte hazır şablonlar gelir: "Yemek Ücreti Hatırlatma",
+        "Yemek Hakkı Bitiyor", "Ödeme Alındı", "Yemekhane Girişi", "Kart
+        Yenilendi", "Genel Bilgilendirme"; silinen hazır şablon geri gelmez.
 
         Sekme "Geçmiş" (sms.read): filtreler "Başlangıç"/"Bitiş", "Öğrenci",
-        "Telefon", "Sağlayıcı", "Durum", "Kaynak" (elle/toplu/otomatik
-        kural). Sütunlar: Tarih, Telefon, Sağlayıcı, Kaynak, Durum (Sent/
-        Failed/RetryScheduled/Sending), Mesaj, Hata, Deneme; başarısız
-        kayıtta "Tekrar dene" düğmesi.
+        "Telefon", "Sağlayıcı", "Durum" (Tümü / Bekliyor / Gönderiliyor /
+        Gönderildi / Başarısız / Yeniden denenecek), "Kaynak" ("Tümü",
+        "Elle", "Toplu", "Otomatik: hak uyarısı", "Otomatik: gelir
+        bildirimi", "Otomatik: kart yenileme"), "Filtrele / Yenile". Sütunlar:
+        Tarih, Telefon, Sağlayıcı, Kaynak, Durum (Türkçe), Mesaj, Hata,
+        Deneme, İşlem (başarısız kayıtta "Tekrar dene"). Sayfada 50 kayıt,
+        "Önceki"/"Sonraki"; liste 15 saniyede bir kendiliğinden yenilenir.
 
         Doğrulama: "En az bir öğrenci seçin: listedeki 'Seç' kutusunu
-        işaretleyin.", "Sınıf hedefi için bir sınıf seçin.", "Bir şablon
-        seçin ya da 'Şablon kullan' işaretini kaldırıp mesajı elle yazın.",
-        "Mesaj metni boş olamaz.", "Mesaj en fazla 1600 karakter olabilir."
-        Şablon değişkeni kullanılıp doldurulmazsa: "Şablon 'Son tarih'
-        değişkeni kullanıyor; gg.aa.yyyy biçiminde bir tarih girin." (aynısı
-        Giriş saati ve Tutar için de geçerlidir).
+        işaretleyin.", "Sınıf hedefi için bir sınıf seçin.", "Grup hedefi için
+        bir grup seçin.", "Arama filtresi hedefi için arama metni girin.",
+        "Bir şablon seçin ya da 'Şablon kullan' işaretini kaldırıp mesajı elle
+        yazın.", "Mesaj metni boş olamaz.", "Mesaj en fazla 1600 karakter
+        olabilir." Şablon değişkeni kullanılıp doldurulmazsa: "Şablon 'Son
+        tarih' değişkeni kullanıyor; gg.aa.yyyy biçiminde bir tarih girin.",
+        "Şablon 'Giriş saati' değişkeni kullanıyor; SS:dd biçiminde bir saat
+        girin.", "Şablon 'Tutar' değişkeni kullanıyor; sayısal bir tutar girin
+        (örn. 250,50)."
 
         SMS göndermek için önce Ayarlar > SMS sekmesinde bir sağlayıcı
         yapılandırılmış olmalıdır; aksi halde gönderim yapılamaz.
@@ -472,19 +568,27 @@ public static class AiUserGuidePrompt
         Reddedilen Geçiş, Kart Hareketleri, Tatil / Aktarım, Bakiye
         Hareketleri.
 
-        Üst düğmeler: "PDF" (Ctrl+P — "Geçerli filtrelerin tamamını PDF
-        dosyasına kaydeder. Yazıcıya göndermez; kaydedilen dosyayı açıp
-        oradan yazdırın."), "Excel" (Ctrl+E), "CSV".
+        Üst düğmeler: "PDF" ("Geçerli filtrelerin tamamını PDF dosyasına
+        kaydeder. Yazıcıya göndermez; kaydedilen dosyayı açıp oradan
+        yazdırın."), "Excel", "CSV". Ctrl+P (PDF) ve Ctrl+E (Excel) kısayolları
+        yalnızca Raporlar ekranında, rapor hazırlandıktan sonra ve
+        reports.export izniyle çalışır; bir metin kutusuna yazarken
+        çalışmaz. Kaydedince "Rapor kaydedildi: {yol}" yazar.
 
-        Filtreler rapor türüne göre değişir: "Başlangıç"/"Bitiş", "Durum",
-        "Öğrenci no", "Kart no", "Ad", "Soyad", "Sınıf", "Şube", "Bölüm",
-        "Görev", "Öğün", "Cihaz", "Karar" (Tümü/İzin Verildi/Reddedildi/
-        Hata), "Sıfırla"/"Uygula".
+        Filtreler rapor türüne göre değişir: "Başlangıç"/"Bitiş", "Durum"
+        (Sicil Listesi'nde Tümü/Aktif/Pasif seçimi, diğerlerinde serbest
+        metin), "Öğrenci no", "Kart no", "Ad", "Soyad", "Sınıf", "Şube",
+        "Bölüm", "Görev", "Öğün", "Cihaz", "Karar" (Tümü/İzin Verildi/
+        Reddedildi/Hata), "Sıfırla"/"Uygula". "Başlangıç tarihi bitiş
+        tarihinden sonra olamaz." hatası verilebilir.
 
         Sonuç tablosu üstünde özet metni (örn. Sicil Listesi'nde "Toplam {n}
-        • Aktif {n} • Pasif {n}"), "Seçilenleri Kopyala", "Kolonlar" (sütun
-        göster/gizle). Boş sonuçta: "Bu filtrelerle kayıt bulunamadı. Tarih
-        aralığını veya filtreleri değiştirin." Sayfa boyutu 25/50/100/200.
+        • Aktif {n} • Pasif {n}"), "Seçilenleri Kopyala" (Ctrl+C), "Kolonlar"
+        (sütun göster/gizle; BÖLÜM, GÖREV, VELİ ve TC KİMLİK sütunları
+        varsayılan gizlidir, TC KİMLİK yalnızca students.sensitive.read
+        izniyle açılır). Boş sonuçta: "Bu filtrelerle kayıt bulunamadı. Tarih
+        aralığını veya filtreleri değiştirin." Sayfa boyutu 25/50/100/200
+        (varsayılan 50).
 
         YIL SONU SIFIRLAMASINDAN SONRA da geçmiş gelir ve tahsilat raporlarına
         erişilebilir; bu veriler silinmez.
@@ -498,21 +602,23 @@ public static class AiUserGuidePrompt
         İKİSİ BİRDEN varsa açılabilir. Başlık: "Toplu Takvim İşlemi", alt
         başlık "Adım {n} / 7":
         1. "1. İşlem türü" — Hakları İptal Et / Tatil / Gezi / İzin / Aktarım.
-        2. "2. Kapsam" — Manuel seçiliyse "Öğrenci numaraları" (virgülle
-           ayrılmış, örn. "5012, 5013"); Hakedişler listesinden satır
-           seçilerek açıldıysa seçim otomatik gelir.
+        2. "2. Kapsam" — Manuel seçiliyse "Öğrenci numaraları" (virgül,
+           boşluk ya da satırla ayrılmış, örn. "5012, 5013"); Hakedişler
+           listesinden satır seçilerek açıldıysa seçim otomatik gelir.
         3. "3. Tarihler ve öğün" — Başlangıç/Bitiş, ek tarih listesi, Öğün.
-        4. "4. Hak davranışı" — Sil / Yanmasına izin ver / Sonraki iş gününe
-           aktar / Belirli tarihe aktar (bu seçilirse "Hedef tarih" çıkar).
+        4. "4. Hak davranışı" — "Hakları iptal et" / "Hakları yak (iade yok)" /
+           "Sonraki iş gününe aktar" / "Belirli bir tarihe aktar" (bu
+           seçilirse "Hedef tarih" çıkar).
         5. "5. Kesin önizleme" — etkilenecek öğrenci/hak/iptal/aktarım
            sayıları ve tablo.
         6. "6. Onay" — özet metni ve onay.
         7. "7. Sonuç" — sonuç mesajı; not: "Bu işlem Geçmiş penceresinden
            geri alınabilir."
 
-        "Toplu İşlem Geçmişi" (calendar.manage ile ayrı modal): TARİH, İŞLEM,
-        ÖĞRENCİ, HAK, DURUM sütunları; geri alınabilir kayıtlarda "Geri Al"
-        düğmesi.
+        "Toplu İşlem Geçmişi" (sihirbazın altındaki "Geçmiş" düğmesiyle
+        açılır; calendar.manage yeter): TARİH, İŞLEM, ÖĞRENCİ, HAK, DURUM
+        sütunları; geri alınabilir kayıtlarda "Geri Al" düğmesi — bu düğme
+        ayrıca entitlements.bulk ister, yoksa gri kalır.
 
         ================================================================
         14. AYARLAR — kenar çubuğunda "Ayarlar"
@@ -522,12 +628,28 @@ public static class AiUserGuidePrompt
 
         - "Okul": okul adı, adres, iletişim, logo yolu; raporların ve
           fişlerin başlığında kullanılır.
-        - "Bağlantılar": Cihazlar, Yemek Türleri, Tatiller/Takvim ve
-          (users.manage ile) Kullanıcılar/Roller ekranlarına kısayollar
-          (Kullanıcılar/Roller ekranı henüz yapılmadı, yukarıda belirtildi).
-        - "SMS": sağlayıcı seçimi (Mutlucell veya genel HTTP), kimlik
-          bilgileri, test SMS gönderme, otomatik SMS kuralları (yemek hakkı
-          uyarısı, gelir girişi bildirimi, kart yenileme bildirimi).
+        - "Bağlantılar" ("Yönetim ekranları"): "Cihazlar / Kart Okuyucular"
+          (kayıt sayısı ve listesiyle), "Yemek Türleri" (aktif tür sayısıyla),
+          "Tatiller / Takvim" düğmeleri. "Kullanıcılar / Roller" düğmesi
+          hedef ekran olmadığı için görünmez (yukarıda belirtildi).
+        - "SMS": "SMS sağlayıcısı" kartında "Sağlayıcı" seçimi (Mutlucell
+          veya genel HTTP); alan adları sağlayıcıya göre değişir — Mutlucell'de
+          kullanıcı adı (ka), API şifresi (pwd) ve onaylı başlık (org); genel
+          HTTP'de ek olarak "Sunucu adresi (https://...)" ve "Kimlik
+          doğrulama"; ortak "Zaman aşımı (saniye, 1-300)". Kaydedilmiş gizli
+          bilgi varsa "Gizli bilgi yapılandırıldı" yazar. "SMS sınama" kartı:
+          "Alıcı GSM (05xx xxx xx xx)" + "Test SMS Gönder" (kaydedilmiş
+          ayarlarla, kuyruğa girmeden gider; "Sonuç ve sağlayıcı yanıtı"
+          altında ham yanıt gösterilir) ve yalnızca Mutlucell'de "Kontör
+          Sorgula". "Otomatik SMS" kartı üç kural: "Veliye yemek hakkı
+          uyarısı" ("Kaç gün hak kaldığında (1-30)", "Mesaj şablonu", "Her
+          gün belirlenen saatte gönder", "Gönderim saati (SS:dd)", "Şimdi
+          gönder (hak uyarısı)" — aynı gün aynı öğrenciye ikinci SMS gitmez),
+          "Gelir girişinde yetkiliye bildirim" ("Kasaya gelir girildiğinde
+          SMS gönder", "Yetkili GSM no"), "Kart yenileme" ("Kart
+          atanınca/değişince veliye SMS gönder", "Yetkiliye de gönder (GSM
+          no, isteğe bağlı)"). Gönderim saati yalnızca hak uyarısı kuralında
+          vardır.
         - "Yedekleme": otomatik yedekleme sıklığı/saati/saklama sayısı ve
           elle "Şimdi Yedekle", "Yedek Dosyası Seç", "Yedeği Doğrula", "Geri
           Yükle". Geri yükleme öncesi otomatik güvenlik yedeği alınır; bu
@@ -546,28 +668,37 @@ public static class AiUserGuidePrompt
           alınamazsa hiçbir şey silinmez.
         - "Senkronizasyon": yerel işlemlerin merkez sunucuya periyodik
           gönderilmesini yapılandırır; sunucu adresi ve cihaz kimliği
-          zorunludur. Çakışan kayıtlar "Çözüm bekleyen çakışmalar"
-          listesinde görünür, "Seçileni Yeniden Kuyruğa Al" ile tekrar
-          gönderilir.
-        - "Loglar": uygulama günlüklerini seviye, saklama süresi ve dosya
-          yoluna göre görüntüler/filtreler.
+          zorunludur. "Şimdi Senkronize Et" ve "Çakışmaları Yenile"
+          düğmeleri; çakışan kayıtlar "Çözüm bekleyen çakışmalar" listesinde
+          (Zaman, Kayıt, İşlem, Deneme, Neden) görünür, "Seçileni Yeniden
+          Kuyruğa Al" ile tekrar gönderilir.
+        - "Loglar": günlük seviyesi, saklama süresi ve dosya yolu burada
+          AYARLANIR (filtre değildir); kayıt listesi "Logları Yenile"
+          düğmesiyle çekilir (Zaman, Seviye, Kaynak, Mesaj, Özellikler).
         - "Yardım / AI Kılavuzu": bu metnin bulunduğu sekme; "Panoya
           Kopyala" düğmesiyle bu kılavuz metni kopyalanabilir.
 
-        Değişikliklerin çoğu "Kaydet"e basılınca hemen geçerli olur; zamanlama
-        (yedekleme/senkronizasyon sıklığı gibi) ayarları uygulama yeniden
-        başlatılınca uygulanır.
+        Değişikliklerin çoğu "Kaydet"e basılınca hemen geçerli olur. Uygulama
+        YENİDEN BAŞLATILINCA uygulananlar: yedekleme ve senkronizasyon
+        zamanlaması, kuyruk gönderimi için SMS sağlayıcı değişikliği (Test
+        SMS ise hemen yeni ayarla gider) ve yedekten geri yükleme. Sekmede
+        kaydedilmemiş değişiklik varsa "Kaydedilmemiş değişiklikler" uyarısı
+        görünür.
 
         GENEL İPUÇLARI
         - Bir menü öğesi göze çarpmıyorsa önce kullanıcının izinlerinin
           kontrol edilmesi gerekir (bkz. YETKİ SİSTEMİ bölümü).
-        - F1 her ekranda o ekrana özel kısa açıklama ve genel klavye
-          kısayollarını birlikte gösterir.
-        - Genel arama (sağ üst) öğrenci, kart, sınıf, tarih veya modül adına
-          göre programın her yerinde hızlı arama yapar.
+        - F1 klavye kısayollarını, hazır notu olan ekranlarda ise o ekrana
+          özel kısa açıklamayı da gösterir.
+        - Klavye kısayolları: Ctrl+K global arama, F2 Öğrenciler ve arama
+          odağı (Tanımlar ekranında yeniden adlandırır), F3 kart okuma
+          (cards.manage ve bağlı okuyucu ister), F4 Günlük Takip, F5 geçerli
+          görünümü yenile, Ctrl+P / Ctrl+E rapor dışa aktarma (yalnızca
+          Raporlar'da), Esc en üstteki pencereyi kapatır, F1 yardım.
         - Bir işlemin "silinemiyor" görünmesi çoğu zaman kasıtlıdır: program
           geçmiş kayıtları korumak için silme yerine PASİFLEŞTİRME veya
-          İPTAL akışlarını tercih eder (öğrenci, cihaz, tanım, kasa işlemi,
-          hakediş hepsinde bu örüntü tekrarlanır).
+          İPTAL akışlarını tercih eder (öğrenci, cihaz, öğün, kasa işlemi,
+          hakediş). İstisna: sınıf/şube/bölüm/görev tanımları pasife
+          alınamaz, yalnızca kullanılmıyorsa silinir.
         """;
 }
