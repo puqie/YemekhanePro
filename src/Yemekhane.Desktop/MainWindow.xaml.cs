@@ -432,6 +432,17 @@ public partial class MainWindow : Window, IShortcutCommandTarget
     {
         if (shortcuts is null) return;
         ShortcutHelpList.ItemsSource = shortcuts.GetHelpItems();
+        if (PageHelpTexts.ByRoute.TryGetValue(BaseRoute(currentRoute), out var help))
+        {
+            ShortcutHelpHost.Title = help.Title;
+            PageHelpList.ItemsSource = help.Bullets;
+            PageHelpSection.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            ShortcutHelpHost.Title = "Yardım";
+            PageHelpSection.Visibility = Visibility.Collapsed;
+        }
         ShortcutHelpHost.IsOpen = true;
     }
 }

@@ -11,4 +11,10 @@ public partial class SettingsView : UserControl
     { if (DataContext is SettingsViewModel vm && sender is PasswordBox box) vm.SetSmsSecret(box.Password); }
     private void SyncSecretChanged(object sender, RoutedEventArgs e)
     { if (DataContext is SettingsViewModel vm && sender is PasswordBox box) vm.SetSyncSecret(box.Password); }
+
+    private void CopyAiGuide(object sender, RoutedEventArgs e)
+    {
+        Clipboard.SetText(Services.AiUserGuidePrompt.Text);
+        AiGuideCopiedText.Visibility = Visibility.Visible;
+    }
 }

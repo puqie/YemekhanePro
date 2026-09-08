@@ -5,6 +5,7 @@
     xmlns:vm="clr-namespace:Yemekhane.Desktop.ViewModels"
     xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
     xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
+    xmlns:services="clr-namespace:Yemekhane.Desktop.Services"
     FontFamily="Segoe UI" FontSize="12">
 
     <UserControl.Resources>
@@ -255,6 +256,24 @@
                              paylasir, ToolTip'te tam metin durur. -->
                         <Grid Grid.Row="1"><DataGrid ItemsSource="{Binding Logs}" AutoGenerateColumns="False" IsReadOnly="True" Margin="0,12,0,0" Padding="0,0,0,14"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" Width="Auto" MinWidth="145"/><DataGridTextColumn Header="Seviye" Binding="{Binding Level, Converter={StaticResource EnumText}, ConverterParameter=LogLevel}" Width="Auto" MinWidth="70"/><DataGridTextColumn Header="Kaynak" Binding="{Binding Source}" Width="Auto" MinWidth="160"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="2*"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="ToolTip" Value="{Binding Message}"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn><DataGridTextColumn Header="Özellikler" Binding="{Binding Properties}" Width="*"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="ToolTip" Value="{Binding Properties}"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn></DataGrid.Columns></DataGrid>
                         <TextBlock Text="Henüz log kaydı yok. 'Logları Yenile' ile tekrar deneyin." Foreground="{StaticResource FaintBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasLogs, Converter={x:Static local:InverseBooleanToVisibilityConverter.Instance}}"/></Grid>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Yardım / AI Kılavuzu">
+                    <Grid Margin="18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <StackPanel Margin="0,0,0,10">
+                            <TextBlock Text="Yapay zeka kullanım kılavuzu" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,8" MaxWidth="1080">
+                                Aşağıdaki metin, YemekhanePro'nun tüm ekranlarını, menülerini ve düğmelerini
+                                ayrıntılı biçimde anlatır. Kopyalayıp bir yapay zeka sohbetine (ör. ChatGPT,
+                                Claude) yapıştırırsanız, "şu işlemi nasıl yaparım" diye sorduğunuzda size
+                                programdaki gerçek menü ve düğme adlarıyla adım adım yol tarif edebilir.
+                            </TextBlock>
+                            <Button Content="Panoya Kopyala" Click="CopyAiGuide" Style="{StaticResource Primary}" HorizontalAlignment="Left"/>
+                            <TextBlock x:Name="AiGuideCopiedText" Text="Kopyalandı." Foreground="{StaticResource AccentBrush}" Margin="0,6,0,0" Visibility="Collapsed"/>
+                        </StackPanel>
+                        <TextBox x:Name="AiGuideTextBox" Grid.Row="1" Text="{x:Static services:AiUserGuidePrompt.Text}" IsReadOnly="True" TextWrapping="Wrap"
+                                 AcceptsReturn="True" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                 FontFamily="Consolas" Padding="10" AutomationProperties.Name="Yapay zeka kullanım kılavuzu metni"/>
                     </Grid>
                 </TabItem>
             </TabControl>

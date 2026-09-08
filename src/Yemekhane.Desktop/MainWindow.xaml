@@ -354,10 +354,24 @@
         </Grid>
         <!-- Kisayol yardimi: ortak Modal (genis). Durum sutunu 190 px'te metinleri kesiyordu; 270 px ve sarmalanir. -->
         <controls:Modal x:Name="ShortcutHelpHost" Grid.ColumnSpan="2" Panel.ZIndex="200" Style="{StaticResource ModalWide}" ModalWidth="700"
-                        Title="Klavye Kısayolları" Subtitle="Durumlar geçerli ekran ve oturum yetkilerine göre güncellenir.">
-                    <ItemsControl x:Name="ShortcutHelpList" Margin="0,2,0,0">
-                        <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions><Border Background="{StaticResource HoverBrush}" CornerRadius="4" Padding="7,4" HorizontalAlignment="Left" VerticalAlignment="Center"><TextBlock Text="{Binding Gesture}" FontFamily="Consolas" FontWeight="SemiBold"/></Border><TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextAlignment="Right" TextWrapping="Wrap"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                        Title="Yardım" Subtitle="Durumlar geçerli ekran ve oturum yetkilerine göre güncellenir.">
+            <StackPanel>
+                <!-- Bu sayfa nasil kullanilir: rotaya ozel PageHelpTexts girisi varsa gorunur,
+                     yoksa bolum tamamen coker (her rotada yardim metni yok, orn. cihaz detayi). -->
+                <StackPanel x:Name="PageHelpSection" Margin="0,0,0,16">
+                    <TextBlock Text="Bu sayfa nasıl kullanılır?" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8"/>
+                    <ItemsControl x:Name="PageHelpList">
+                        <ItemsControl.ItemTemplate><DataTemplate>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,6"><Run Text="•  "/><Run Text="{Binding Mode=OneWay}"/></TextBlock>
+                        </DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <Separator Margin="0,4,0,0"/>
+                </StackPanel>
+                <TextBlock Text="Klavye Kısayolları" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,8"/>
+                <ItemsControl x:Name="ShortcutHelpList" Margin="0,2,0,0">
+                    <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions><Border Background="{StaticResource HoverBrush}" CornerRadius="4" Padding="7,4" HorizontalAlignment="Left" VerticalAlignment="Center"><TextBlock Text="{Binding Gesture}" FontFamily="Consolas" FontWeight="SemiBold"/></Border><TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextAlignment="Right" TextWrapping="Wrap"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
             <controls:Modal.Footer>
                 <TextBlock Text="Enter, çok satırlı metin alanlarında satır eklemeyi korur." Foreground="{StaticResource MutedBrush}"/>
             </controls:Modal.Footer>
