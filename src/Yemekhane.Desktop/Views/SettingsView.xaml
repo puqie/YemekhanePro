@@ -161,6 +161,38 @@
                         </Grid>
                     </StackPanel></ScrollViewer>
                 </TabItem>
+                <TabItem Header="Yıl Sonu">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Style="{StaticResource TabBody}">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                                <TextBlock Text="Yıl sonu sıfırlama" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Yeni eğitim yılına boş öğrenci listesiyle başlamak için öğrencilere bağlı her şey silinir: öğrenciler, kartlar, veliler, hakedişler, yemek kullanımları, geçiş kayıtları, izinler, bakiye ve tahsilat hareketleri, SMS ve toplu işlem geçmişi." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,8" TextWrapping="Wrap"/>
+                                <TextBlock Text="KALIR: öğün tanımları, sınıflar, cihazlar, kullanıcılar ve yetkiler, tatil takvimi, SMS şablonları, ayarlar." FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <TextBlock Text="Sıfırlamadan önce otomatik güvenlik yedeği alınır; yedek alınamazsa hiçbir şey silinmez. Yedekten geri yükleme Yedekleme sekmesindedir." Foreground="{StaticResource WarningBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                            </StackPanel></Border>
+                            <Border Grid.Column="2" Style="{StaticResource SettingsCard}"><StackPanel>
+                                <TextBlock Text="Sıfırla" FontSize="16" FontWeight="SemiBold"/>
+                                <TextBlock Text="Önce silinecek kayıtların sayımını alın, sonra onay metnini yazın." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,10" TextWrapping="Wrap"/>
+                                <Button Content="Silinecekleri Göster" Command="{Binding LoadResetPreviewCommand}" Style="{StaticResource Action}" HorizontalAlignment="Left"/>
+                                <ItemsControl ItemsSource="{Binding ResetItems}" Margin="0,10,0,0" Visibility="{Binding HasResetPreview, Converter={StaticResource Bool}}">
+                                    <ItemsControl.ItemTemplate><DataTemplate>
+                                        <Grid Margin="0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="200"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Label}"/><TextBlock Grid.Column="1" Text="{Binding Count, StringFormat={}{0:N0}}" FontWeight="SemiBold"/>
+                                        </Grid>
+                                    </DataTemplate></ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding ResetTotal, StringFormat=Toplam {0:N0} kayıt silinecek.}" FontWeight="SemiBold" Margin="0,8,0,0" Visibility="{Binding HasResetPreview, Converter={StaticResource Bool}}"/>
+                                <Separator Margin="0,12,0,10"/>
+                                <!-- Onay metni ASCII "SIFIRLA": geri yukleme onayiyla ayni gerekce (klavye duzeni, I/ı). -->
+                                <TextBlock Style="{StaticResource Label}" Text="Sıfırlama onayı"/>
+                                <TextBox Style="{StaticResource Field}" Text="{Binding ResetConfirmation, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Sıfırlama onayı"/>
+                                <TextBlock Text="{Binding ResetConfirmationHint}" Foreground="{StaticResource FaintBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <Button Content="Yılı Sıfırla" Command="{Binding YearEndResetCommand}" Style="{StaticResource Destructive}" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                                <TextBlock Text="{Binding ResetResultMessage}" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                            </StackPanel></Border>
+                        </Grid>
+                    </StackPanel></ScrollViewer>
+                </TabItem>
                 <TabItem Header="Senkronizasyon">
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Style="{StaticResource TabBody}">
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>

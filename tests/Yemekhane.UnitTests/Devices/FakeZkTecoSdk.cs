@@ -111,6 +111,14 @@ internal sealed class FakeZkTecoSdk : IZkTecoSdk
         return Task.FromResult(CommandResult);
     }
 
+    public int ClearedUsers { get; set; }
+
+    public Task<int> ClearUsersAsync(CancellationToken cancellationToken)
+    {
+        Calls.Add("ClearUsers");
+        return Task.FromResult(ClearedUsers);
+    }
+
     public Task<DeviceUser?> GetUserInfoAsync(string externalUserId, CancellationToken cancellationToken)
     {
         Calls.Add($"{nameof(GetUserInfoAsync)}:{externalUserId}");
@@ -123,6 +131,17 @@ internal sealed class FakeZkTecoSdk : IZkTecoSdk
         Calls.Add($"{nameof(GetUserIdByCardAsync)}:{cardNumber}");
         ThrowIfScripted();
         return Task.FromResult(CardOwner);
+    }
+
+    /// <summary>Surulen role darbeleri; turnike testleri bunu dogrular.</summary>
+    public List<TimeSpan> Unlocks { get; } = [];
+
+    public Task<DeviceCommandResult?> UnlockAsync(TimeSpan pulse, CancellationToken cancellationToken)
+    {
+        Calls.Add($"{nameof(UnlockAsync)}:{pulse.TotalMilliseconds:0}");
+        ThrowIfScripted();
+        Unlocks.Add(pulse);
+        return Task.FromResult(CommandResult);
     }
 
     public ValueTask DisposeAsync()

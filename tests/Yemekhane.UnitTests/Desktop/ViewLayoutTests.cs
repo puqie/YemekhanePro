@@ -180,7 +180,20 @@ public sealed class ViewLayoutTests
         host.Measure(new Size(width, height));
         host.Arrange(new Rect(0, 0, width, height));
         host.UpdateLayout();
+        // Ortalanmis diyaloglar (controls:Modal) varsayilan olarak KAPALIDIR ve kapali
+        // diyalogdaki kontroller olculmez; cihaz duzenleyicisi ve toplu islem sihirbazi
+        // tamamen diyalogdadir. Diyaloglar acilip yerlesim yenilenir ki icerikleri de (once
+        // elle yazilmis, DataContext'siz kurulumda hep gorunur Border'lardaydilar) denetlensin.
+        OpenModals((FrameworkElement)host.Child);
         return ((FrameworkElement)host.Child, width, height);
+    }
+
+    private static void OpenModals(FrameworkElement element)
+    {
+        var modals = Descendants(element).OfType<Yemekhane.Desktop.Controls.Modal>().ToArray();
+        if (modals.Length == 0) return;
+        foreach (var modal in modals) modal.IsOpen = true;
+        element.UpdateLayout();
     }
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)

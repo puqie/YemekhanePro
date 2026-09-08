@@ -55,7 +55,11 @@ public sealed class StudentDetailTabViewModel(string key, Func<Task<IReadOnlyLis
         if (IsLoaded || IsLoading) return;
         IsLoading = true; Error = null;
         try { foreach (var item in await loader()) Items.Add(item); IsLoaded = true; }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or LoginRequiredException) { Error = "Sekme verisi alınamadı."; }
+        // HER hata gorunur olmali: once yalnizca uc tur yakalaniyordu; sunucunun 4xx cevabi
+        // (ApiRequestException) ya da beklenmeyen yanit bicimi ates-ve-unut yoldan sessizce
+        // yutuluyor, sekme bombos kaliyordu (sahada "tiklayinca hicbir sey olmuyor").
+        catch (LoginRequiredException) { Error = "Bu sekme için yetkiniz yok veya oturum sona erdi."; }
+        catch (Exception ex) { Error = "Sekme verisi alınamadı: " + ex.Message; }
         finally { IsLoading = false; Raise(nameof(IsEmpty)); }
     }
 
@@ -165,7 +169,10 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         [new("Tümü", null), new("Aktif", true), new("Pasif", false)];
     public string? Search { get => search; set { if (Set(ref search, value)) DebounceSearch(); } }
     public string? StudentNo { get => studentNo; set => Set(ref studentNo, value); }
-    public string? CardNumber { get => cardNumber; set => Set(ref cardNumber, value); }
+    public string? CardNumber { get => cardNumber; set { if (Set(ref cardNumber, value)) (SearchByReadCardCommand as AsyncCommand)?.Refresh(); } }
+
+    /// <summary>Masa tipi okuyucu bagli mi. Cogu okulda yoktur; kart numarasi elle yazilir.</summary>
+    public bool HasCardReader => cardReadSource.IsAvailable;
     public string? FirstName { get => firstName; set => Set(ref firstName, value); }
     public string? LastName { get => lastName; set => Set(ref lastName, value); }
     public string? ClassId { get => classId; set => Set(ref classId, value); }
@@ -916,7 +923,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         if (!CanManageCards) { CardWorkflowMessage = "Kart işlemi için cards.manage izni gerekiyor."; return; }
         if (!cardReadSource.IsAvailable)
         {
-            CardWorkflowMessage = "Bağlı ve aktif kart okuyucu bulunamadı. Cihaz bağlantısını kontrol edin.";
+            // Okuyucusu olmayan okul icin bu bir hata DEGIL: numara elle yazilir. Once "okuyucu
+            // bulunamadi, cihaz baglantisini kontrol edin" deniyordu; okul "okuyucumuz yok ki" dedi.
+            CardWorkflowMessage = "Kart numarasını yazıp Ara'ya basın.";
             return;
         }
         if (cardReadOperation is not null) return;

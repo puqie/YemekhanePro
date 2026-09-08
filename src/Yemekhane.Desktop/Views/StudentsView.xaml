@@ -15,6 +15,7 @@
                 <!-- Ogrenci Karti cekmecesi DrawerWide stilini kullanir; Drawer.xaml BURADA
                      merge edilmezse StaticResource cozulemez ve ekran hic acilmaz. -->
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Drawer.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Modal.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <local:InverseBooleanConverter x:Key="InverseBool"/>
@@ -317,7 +318,7 @@
                         <TextBlock Text="Yeni kart no" Style="{StaticResource Label}" Margin="0,2,0,3"/>
                         <WrapPanel>
                             <TextBox Width="118" Margin="0,0,7,0" Text="{Binding NewCardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Yeni kart numarası" AutomationProperties.Name="Yeni kart numarası"/>
-                            <Button Style="{StaticResource Action}" Content="Okuyucudan Al" Command="{Binding ReadCardCommand}" ToolTip="Bağlı aktif okuyucu yoksa F3 kart akışı ayrıntılı durum gösterir" ToolTipService.ShowOnDisabled="True"/>
+                            <Button Style="{StaticResource Action}" Content="Okuyucudan Al" Command="{Binding ReadCardCommand}" Visibility="{Binding HasCardReader, Converter={StaticResource BoolToVisibility}}" ToolTip="Masa tipi okuyucudan kart numarasını alır"/>
                             <Button Style="{StaticResource Action}" Content="{Binding CardActionText}" Command="{Binding ReplaceCardCommand}" Margin="0"/>
                         </WrapPanel>
                         </StackPanel>
@@ -381,21 +382,21 @@
              genislik sinirlanir ve kesilir. -->
         <Grid Grid.Row="3" Margin="0,9,0,0"><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,320,0"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PageText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel></Grid>
 
-        <Border x:Name="CardWorkflowHost" Grid.RowSpan="4" Visibility="{Binding IsCardWorkflowOpen, Converter={StaticResource BoolToVisibility}}" Panel.ZIndex="40">
-          <Grid>
-            <Border Background="{StaticResource ScrimBrush}" controls:WindowScrim.Extend="True"/>
-            <Border Width="510" Padding="22" Background="White" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel>
-                    <Grid><TextBlock Text="Kart Oku" FontSize="20" FontWeight="SemiBold"/><Button Content="Kapat" Command="{Binding CloseCardWorkflowCommand}" Style="{StaticResource Action}" HorizontalAlignment="Right"/></Grid>
-                    <TextBlock Text="Aktif cihazdan gerçek kart olayı beklenir; kart numarası uydurulmaz." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,10"/>
-                    <TextBox Text="{Binding CardNumber, UpdateSourceTrigger=PropertyChanged}" Height="32" AutomationProperties.Name="Okunan veya aranacak kart numarası"/>
-                    <TextBlock Text="{Binding CardWorkflowMessage}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,9,0,12"/>
-                    <WrapPanel><Button Content="Okuyucuyu Bekle" Command="{Binding OpenCardWorkflowCommand}" Style="{StaticResource Action}"/><Button Content="Kartla Ara" Command="{Binding SearchByReadCardCommand}" Style="{StaticResource Action}"/></WrapPanel>
-                    <TextBlock Text="Eşleşme yoksa pencereyi kapatıp öğrenci detayından bu kartı atayabilirsiniz." Foreground="{StaticResource MutedBrush}" Margin="0,10,0,0"/>
-                </StackPanel>
-            </Border>
-          </Grid>
-        </Border>
+        <!-- Kart okuma: ortak Modal (once elle yazilmis Border + karartma). -->
+        <controls:Modal x:Name="CardWorkflowHost" Grid.RowSpan="4" Panel.ZIndex="40" Style="{StaticResource ModalMedium}" Title="Kartla Öğrenci Bul"
+                        Subtitle="Kart numarasını yazın ve Ara'ya basın. Masa tipi okuyucu bağlıysa Okuyucuyu Bekle ile okutabilirsiniz."
+                        IsOpen="{Binding IsCardWorkflowOpen, Mode=OneWay}" CloseCommand="{Binding CloseCardWorkflowCommand}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Label}" Text="Kart numarası"/>
+                <TextBox Style="{StaticResource Field}" Text="{Binding CardNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart numarası"/>
+                <TextBlock Text="{Binding CardWorkflowMessage}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <WrapPanel>
+                    <Button Content="Ara" Command="{Binding SearchByReadCardCommand}" Style="{StaticResource Primary}" IsDefault="True"/>
+                    <Button Content="Okuyucuyu Bekle" Command="{Binding OpenCardWorkflowCommand}" Style="{StaticResource Action}" Visibility="{Binding HasCardReader, Converter={StaticResource BoolToVisibility}}"/>
+                </WrapPanel>
+                <TextBlock Text="Eşleşme yoksa pencereyi kapatıp öğrenci kartındaki Kart No alanına bu numarayı yazın." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+            </StackPanel>
+        </controls:Modal>
 
         <!-- OGRENCI KARTI: eski programdaki "Sicil Karti" formunun tamami. "Yeni Ogrenci" ve
              "Duzenle" bu genis cekmeceyi acar; sag panel ozet/eylem/sekme olarak kalir.

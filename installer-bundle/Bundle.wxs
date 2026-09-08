@@ -21,9 +21,27 @@
     </BootstrapperApplication>
 
     <Chain>
+      <!--
+        MSIFASTINSTALL=7: SISTEM GERI YUKLEME NOKTASI OLUSTURULMAZ.
+
+        Windows Installer varsayilan olarak her kurulumdan once bir geri yukleme
+        noktasi olusturur. Bu adim ("Creating system restore point") ESKI ya da
+        yavas diskli bir bilgisayarda 15+ dakika surebiliyor ve kullanici ilerleme
+        cubugu hic kimildamadigi icin kurulumun dondugunu saniyor (sahada goruldu).
+
+        Deger 7 = 1 (geri yukleme noktasi yok) + 2 (rollback verisi tutma)
+                + 4 (dosya maliyeti hesabini atla).
+
+        Guvenli: bu program SISTEM dosyalarina dokunmaz, yalnizca Program Files
+        altina yazar ve MSI'nin kendi kaldirma mekanizmasi calismaya devam eder.
+        Geri yukleme noktasinin korudugu senaryo (bozuk kurulum sistemi etkiler)
+        burada zaten olusmaz.
+      -->
       <MsiPackage SourceFile="$(var.MsiPath)"
                   Vital="yes"
-                  Compressed="yes" />
+                  Compressed="yes">
+        <MsiProperty Name="MSIFASTINSTALL" Value="7" />
+      </MsiPackage>
     </Chain>
   </Bundle>
 </Wix>

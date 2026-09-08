@@ -122,6 +122,71 @@ public sealed class DevicesViewModelTests
         Assert.True(condition());
     }
 
+    /// <summary>Silme iki adimlidir; ilk basis yalnizca isaretler, ikincisi siler ve karti listeden kaldirir.</summary>
+    [Fact]
+    public async Task DeleteIsTwoStepAndRemovesTheCardOnConfirmation()
+    {
+        var api = new FakeApi();
+        using var viewModel = new DevicesViewModel(api, new FakeRealtime(), new HashSet<string> { "devices.manage" });
+        await viewModel.InitializeAsync();
+        var card = viewModel.Devices.Single();
+
+        viewModel.DeleteCommand.Execute(card);
+        Assert.True(card.IsDeleteArmed);
+        Assert.Equal("Silmeyi Onayla", card.DeleteButtonText);
+        Assert.Empty(api.Deleted);
+        Assert.Single(viewModel.Devices);
+
+        viewModel.CancelDeleteCommand.Execute(card);
+        Assert.False(card.IsDeleteArmed);
+        Assert.Equal("Sil", card.DeleteButtonText);
+
+        viewModel.DeleteCommand.Execute(card);
+        viewModel.DeleteCommand.Execute(card);
+        await WaitUntilAsync(() => api.Deleted.Count == 1);
+        Assert.Empty(viewModel.Devices);
+        Assert.True(viewModel.ShowEmpty);
+    }
+
+    /// <summary>Bellek temizleme yalnizca SC403'te sunulur ve iki adimlidir; ikinci basis "clear-users" eylemini gonderir.</summary>
+    [Fact]
+    public async Task ClearingDeviceMemoryIsTwoStepAndOnlyForSc403()
+    {
+        var api = new FakeApi { Items = [FakeApi.Item() with { DeviceType = "SC403" }] };
+        using var viewModel = new DevicesViewModel(api, new FakeRealtime(), new HashSet<string> { "devices.manage" });
+        await viewModel.InitializeAsync();
+        var card = viewModel.Devices.Single();
+        Assert.True(card.SupportsClearUsers);
+        Assert.False(new DeviceCardViewModel(FakeApi.Item()).SupportsClearUsers);
+
+        viewModel.ClearUsersCommand.Execute(card);
+        Assert.True(card.IsClearArmed);
+        Assert.Equal("Temizlemeyi Onayla", card.ClearButtonText);
+        Assert.Empty(api.Actions);
+
+        viewModel.ClearUsersCommand.Execute(card);
+        await WaitUntilAsync(() => api.Actions.Count == 1);
+        Assert.Equal("clear-users", api.Actions.Single());
+        Assert.False(card.IsClearArmed);
+    }
+
+    /// <summary>Sunucu reddederse (gecis kaydi var) kart kalir ve sunucu mesaji kartta gorunur.</summary>
+    [Fact]
+    public async Task ServerRejectionKeepsTheCardAndShowsTheReason()
+    {
+        var api = new FakeApi { DeleteError = "Okuyucu cihazının 12 geçiş kaydı var; kayıtlar korunur, cihaz silinemez. Bunun yerine pasifleştirin." };
+        using var viewModel = new DevicesViewModel(api, new FakeRealtime(), new HashSet<string> { "devices.manage" });
+        await viewModel.InitializeAsync();
+        var card = viewModel.Devices.Single();
+
+        viewModel.DeleteCommand.Execute(card);
+        viewModel.DeleteCommand.Execute(card);
+        await WaitUntilAsync(() => !card.IsDeleteArmed && card.OperationMessage is not null && card.OperationMessage.Contains("geçiş kaydı", StringComparison.Ordinal));
+
+        Assert.Single(viewModel.Devices);
+        Assert.Contains("pasifleştirin", card.OperationMessage, StringComparison.Ordinal);
+    }
+
     private sealed class FakeApi : IDeviceApiClient
     {
         public bool SimulatorAllowed { get; init; } = true;
@@ -134,11 +199,20 @@ public sealed class DevicesViewModelTests
             "Ana giriş", "Entry", status, null, null, null, null, null, false);
         public Task<IReadOnlyList<DeviceItem>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult(Items ?? [Item()]);
         public Task<DeviceCapabilities> CapabilitiesAsync(CancellationToken cancellationToken = default) => Task.FromResult(new DeviceCapabilities(SimulatorAllowed));
-        public Task<DeviceActionResponse> ActionAsync(Guid id, string action, CancellationToken cancellationToken = default) { ActionCalls++; return Action?.Invoke(id) ?? Task.FromResult(ActionResult ?? new DeviceActionResponse(true, "Connected", "Gerçek adapter sonucu", null, Item(status: "Connected"))); }
+        public List<string> Actions { get; } = [];
+        public Task<DeviceActionResponse> ActionAsync(Guid id, string action, CancellationToken cancellationToken = default) { ActionCalls++; Actions.Add(action); return Action?.Invoke(id) ?? Task.FromResult(ActionResult ?? new DeviceActionResponse(true, "Connected", "Gerçek adapter sonucu", null, Item(status: "Connected"))); }
         public Task<IReadOnlyList<DeviceLogItem>> LogsAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<DeviceLogItem>>([]);
         public Task<DeviceItem> CreateAsync(DeviceWriteModel model, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<DeviceItem> UpdateAsync(Guid id, DeviceWriteModel model, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<DeviceItem> DeactivateAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public List<Guid> Deleted { get; } = [];
+        public string? DeleteError { get; init; }
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            if (DeleteError is not null) throw new System.Net.Http.HttpRequestException(DeleteError);
+            Deleted.Add(id);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeRealtime : IDashboardRealtimeClient

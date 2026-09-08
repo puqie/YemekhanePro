@@ -99,6 +99,39 @@ public sealed partial class DeviceAdministrationService(
         return ToDto(entity);
     }
 
+    /// <summary>
+    /// Cihazi KALICI siler. Gecis kayitlari (AccessLog, TurnstileEvent) denetim gecmisidir ve
+    /// cihaza Restrict ile baglidir; onlari da silmek gecmisi yok ederdi. Boyle cihaz silinmez,
+    /// pasiflestirilir. Baglanti gunlugu (DeviceEvent) ve kart-cihaz durumlari cihazla gider.
+    /// </summary>
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var entity = await FindAsync(id, cancellationToken);
+        var accessLogs = await db.AccessLogs.CountAsync(x => x.DeviceId == id, cancellationToken);
+        var turnstileEvents = await db.TurnstileEvents.CountAsync(x => x.DeviceId == id, cancellationToken);
+        if (accessLogs + turnstileEvents > 0)
+        {
+            throw new RequestValidationException(
+                $"{entity.Name} cihazının {accessLogs + turnstileEvents} geçiş kaydı var; kayıtlar korunur, cihaz silinemez. Bunun yerine pasifleştirin.");
+        }
+
+        await manager.UnregisterAsync(id, cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.DeviceEvents.Where(x => x.DeviceId == id).ExecuteDeleteAsync(cancellationToken);
+        await db.DeviceCardStates.Where(x => x.DeviceId == id).ExecuteDeleteAsync(cancellationToken);
+        // ExecuteDelete izleyiciyi guncellemez: ayni baglamda izlenen bagimlilar kalirsa EF, Restrict
+        // iliskisi koptu diye Remove'u reddeder. Izlenenler ayrilir; veritabaninda zaten silindiler.
+        foreach (var tracked in db.ChangeTracker.Entries<DeviceEvent>().Where(x => x.Entity.DeviceId == id).ToList())
+            tracked.State = EntityState.Detached;
+        foreach (var tracked in db.ChangeTracker.Entries<DeviceCardState>().Where(x => x.Entity.DeviceId == id).ToList())
+            tracked.State = EntityState.Detached;
+        db.Devices.Remove(entity);
+        audit.Record(new AuditEntry("Device.Delete", nameof(Device), id.ToString(),
+            $"{entity.Name} cihazı kalıcı olarak silindi.", Before: ToDto(entity)));
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     public async Task<DeviceActionResult> ExecuteAsync(Guid id, string action, CancellationToken cancellationToken)
     {
         var entity = await FindAsync(id, cancellationToken);
@@ -134,6 +167,17 @@ public sealed partial class DeviceAdministrationService(
                     entity.ConnectionStatus = StatusName(status.State);
                     entity.LastStatusAt = status.CheckedAt;
                     message = status.Message ?? "Cihaz durumu alındı.";
+                    break;
+                case "clear-users":
+                    // Cihaz kart tutarsa kendi basina karar verir ("Tesekkurler"); karar sunucudadir.
+                    if (!manager.TryGetDevice(id, out var runtime) || runtime is not IDeviceMemoryStore memory)
+                        throw new RequestValidationException("Bu cihaz bellek temizlemeyi desteklemiyor.");
+                    var cleared = await memory.ClearUsersAsync(cancellationToken);
+                    if (!cleared.Succeeded) throw new RequestValidationException(cleared.Message);
+                    entity.LastStatusAt = timeProvider.GetUtcNow();
+                    message = cleared.Message;
+                    audit.Record(new AuditEntry("Device.ClearUsers", nameof(Device), id.ToString(),
+                        $"{entity.Name}: {cleared.Message}"));
                     break;
                 default:
                     throw new RequestValidationException("Desteklenmeyen cihaz işlemi.");

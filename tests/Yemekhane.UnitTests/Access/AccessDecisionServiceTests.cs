@@ -49,6 +49,31 @@ public sealed class AccessDecisionServiceTests
             });
     }
 
+    /// <summary>
+    /// Kartin ustunde "0008247129" yazar, okul boyle girer; SC403 ise 8247129 bildirir.
+    /// Iki bicim ayni kart sayilmali, yoksa elle girilen kart turnikede "Kart tanimsiz" olur.
+    /// </summary>
+    [Fact]
+    public async Task CardStoredWithLeadingZerosMatchesTheDeviceReading()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
+        await using var context = CreateContext(connection); await context.Database.MigrateAsync();
+        var student = new Student { StudentNo = "111", FirstName = "Test", LastName = "Test" };
+        var card = new StudentCard { StudentId = student.Id, CardNumber = "0008247129", ValidFrom = DateTimeOffset.UtcNow };
+        var meal = new MealType { Name = "Öğle" }; var device = new Device { Name = "Yemekhane Turnikesi", DeviceType = "SC403", ConnectionType = "Ethernet", Direction = "Entry", ConnectionStatus = "Connected" };
+        var timestamp = new DateTimeOffset(2026, 9, 14, 12, 0, 0, TimeSpan.FromHours(3));
+        var right = new MealEntitlement { StudentId = student.Id, MealTypeId = meal.Id, EntitlementDate = new(2026, 9, 14), Quantity = 1, Status = "Active" };
+        context.AddRange(student, card, meal, device, right); await context.SaveChangesAsync();
+        var service = new AccessDecisionService(new EfAccessDecisionRepository(context), new BusinessDayService(new OpenCalendar(), new WeekendPolicy()), new RecordingRealtimeEventPublisher());
+
+        var decision = await service.CheckAccessAsync(new AccessCheckRequest("8247129", device.Id, meal.Id, timestamp, ReaderSource: "SC403"));
+
+        Assert.Equal("ALLOW", decision.Decision);
+        Assert.Equal(student.Id, decision.StudentId);
+        var unknown = await service.CheckAccessAsync(new AccessCheckRequest("999", device.Id, meal.Id, timestamp));
+        Assert.Equal("Kart tanımsız", unknown.Reason);
+    }
+
     [Fact]
     public async Task GroupScopedHolidayClosesTheDayForItsMembersOnly()
     {

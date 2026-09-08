@@ -198,12 +198,14 @@ public sealed class HardwareIntegrationTests
     // ---- Uctan uca: yemek hakki iadesi ----------------------------------------------------
 
     /// <summary>
-    /// Turnike fiziksel olarak acilamadiginda tuketilen yemek hakki IADE EDILMELIDIR.
+    /// Turnike fiziksel olarak acilamadiginda (role komutu cihazda basarisiz) tuketilen yemek
+    /// hakki IADE EDILMELIDIR.
     ///
     /// TurnstileService iadeyi yalnizca komut BASARISIZ SONUC dondurdugunde ister
     /// (compensateConsumption: isAllowed). Adaptor bunun yerine istisna atarsa akis genel catch
     /// bloguna duser ve orada iade istenmez; ogrenci turnikeden gecemedigi halde hakkini kaybeder.
-    /// Bu test gercek Sc403AccessController ile gercek TurnstileService'i birlikte kosar.
+    /// Bu test gercek Sc403AccessController ile gercek TurnstileService'i birlikte kosar; SDK'nin
+    /// role cagrisi bilerek dusurulur.
     /// </summary>
     [Fact]
     public async Task UndrivableTurnstileRefundsConsumedMealCredit()
@@ -213,6 +215,8 @@ public sealed class HardwareIntegrationTests
             new DeviceEndpoint("Ethernet", IpAddress: "192.168.1.201", IpPort: Sc403Adapter.DefaultPort),
             new OzakTurnstileProfile(), sdk, TimeSpan.FromSeconds(1));
         await controller.ConnectAsync(CancellationToken.None);
+        sdk.FailNext(new ZkTecoProtocolException("Kapı rölesi yanıt vermedi.", isTransient: false,
+            ZkTecoErrorCodes.ProtocolError));
 
         var events = new CompensationRecordingEventStore { CompensationResult = true };
         var registry = new TurnstileRegistry();

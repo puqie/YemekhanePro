@@ -4,6 +4,7 @@
         xmlns:views="clr-namespace:Yemekhane.Desktop.Views"
         xmlns:desktop="clr-namespace:Yemekhane.Desktop"
         xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
+        xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
         Title="YemekhanePro • Operasyon Merkezi" Icon="pack://application:,,,/Yemekhane.Desktop;component/Assets/logo-256.png" Width="1440" Height="900"
         MinWidth="1024" MinHeight="640" WindowStartupLocation="CenterScreen"
          Language="tr-TR" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12"
@@ -12,6 +13,9 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
+                <!-- Kisayol yardimi ve oturum diyaloglari ortak Modal'i kullanir; stil burada da merge
+                     edilmezse StaticResource cozulemez (App olmadan kurulan testler dahil). -->
+                <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Modal.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <!-- Cihaz durumlari API'den ham Ingilizce gelir (Error, Reconnecting, Offline).
@@ -64,7 +68,11 @@
                         <TextBlock Text="Yemekhane yönetimi" Foreground="{StaticResource FaintBrush}" Margin="0,5,0,0" />
                     </StackPanel>
                 </StackPanel>
-                <StackPanel x:Name="NavigationButtons" Grid.Row="2">
+                <!-- 640 px yukseklikte menu sigmiyor, alttaki "Ayarlar" ve "Raporlar" ekran
+                     disinda kaliyordu; dikey kaydirma eklendi. Yatay kaydirma kapali. -->
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Focusable="False" Margin="0,0,-8,0" Padding="0,0,8,0">
+                <StackPanel x:Name="NavigationButtons">
                     <TextBlock Text="GÜNLÜK İŞ" Style="{StaticResource NavGroupTitle}"/>
                     <Button Tag="dashboard" Style="{StaticResource NavItem}" Content="Genel Bakış"
                             Command="{Binding NavigateDashboardCommand}"
@@ -118,6 +126,7 @@
                             AutomationProperties.Name="Sistem ayarlarını aç"
                             Visibility="{Binding CanNavigateSettings, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </StackPanel>
+                </ScrollViewer>
                 <Border Grid.Row="3" BorderBrush="{StaticResource NavyLiftBrush}" BorderThickness="0,1,0,0" Padding="4,14,0,0">
                     <StackPanel>
                         <Button Content="Kısayollar  F1" Click="OpenShortcutHelp" Foreground="{StaticResource SidebarTextBrush}" Background="Transparent" BorderBrush="{StaticResource NavyLiftBrush}" Padding="8,5" Margin="0,0,0,12" Cursor="Hand" AutomationProperties.Name="Klavye kısayollarını göster"/>
@@ -343,35 +352,28 @@
                 </Grid>
             </Border>
         </Grid>
-        <Grid x:Name="ShortcutHelpHost" Grid.ColumnSpan="2" Panel.ZIndex="200" Visibility="Collapsed">
-            <Border Background="{StaticResource ScrimStrongBrush}" MouseLeftButtonDown="CloseShortcutHelp"/>
-            <!-- Durum sutunu 190 px'te "Yalnızca Raporlar ve ..." gibi metinleri kesiyordu; genisletildi ve sarmalanir. -->
-            <Border Width="700" MaxHeight="680" Background="White" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="10" Padding="22" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <Grid><StackPanel><TextBlock Text="Klavye Kısayolları" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Durumlar geçerli ekran ve oturum yetkilerine göre güncellenir." Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/></StackPanel><Button Content="Kapat" Click="CloseShortcutHelp" Style="{StaticResource Action}" HorizontalAlignment="Right"/></Grid>
-                    <ItemsControl x:Name="ShortcutHelpList" Grid.Row="1" Margin="0,16,0,10">
+        <!-- Kisayol yardimi: ortak Modal (genis). Durum sutunu 190 px'te metinleri kesiyordu; 270 px ve sarmalanir. -->
+        <controls:Modal x:Name="ShortcutHelpHost" Grid.ColumnSpan="2" Panel.ZIndex="200" Style="{StaticResource ModalWide}" ModalWidth="700"
+                        Title="Klavye Kısayolları" Subtitle="Durumlar geçerli ekran ve oturum yetkilerine göre güncellenir.">
+                    <ItemsControl x:Name="ShortcutHelpList" Margin="0,2,0,0">
                         <ItemsControl.ItemTemplate><DataTemplate><Grid Margin="0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/><ColumnDefinition Width="270"/></Grid.ColumnDefinitions><Border Background="{StaticResource HoverBrush}" CornerRadius="4" Padding="7,4" HorizontalAlignment="Left" VerticalAlignment="Center"><TextBlock Text="{Binding Gesture}" FontFamily="Consolas" FontWeight="SemiBold"/></Border><TextBlock Grid.Column="1" Text="{Binding Description}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextAlignment="Right" TextWrapping="Wrap"><TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></Grid></DataTemplate></ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Grid.Row="2" Text="Enter, çok satırlı metin alanlarında satır eklemeyi korur." Foreground="{StaticResource MutedBrush}"/>
-                </Grid>
-            </Border>
-        </Grid>
+            <controls:Modal.Footer>
+                <TextBlock Text="Enter, çok satırlı metin alanlarında satır eklemeyi korur." Foreground="{StaticResource MutedBrush}"/>
+            </controls:Modal.Footer>
+        </controls:Modal>
         <!-- Oturum suresi dolunca ekranin ustune cikar; alttaki ekranlar ve formlar
              oldugu gibi kalir. Kisayol katmanlarindan (200) ustte: Esc bunu kapatamaz,
              cunku kapatmanin tek yolu yeniden giris ya da uygulamadan cikistir. -->
-        <Grid x:Name="SessionExpiredHost" Grid.ColumnSpan="2" Panel.ZIndex="300" Visibility="Collapsed">
-            <Border Background="{StaticResource ScrimStrongBrush}"/>
-            <Border Width="480" Background="White" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" CornerRadius="10" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel>
-                    <TextBlock Text="Oturum süresi doldu" FontSize="21" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
-                    <TextBlock Text="Güvenlik için oturumunuz kapatıldı. Yeniden giriş yaptığınızda açık ekranlar ve doldurduğunuz formlar kaldığı yerden devam eder." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" LineHeight="19" Margin="0,10,0,20"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Uygulamayı kapat" Click="CloseApplication" Style="{StaticResource Action}" Margin="0,0,10,0" AutomationProperties.Name="Uygulamayı kapat"/>
-                        <Button x:Name="ReloginButton" Content="Yeniden giriş yap" Click="RequestRelogin" Style="{StaticResource Primary}" IsDefault="True" AutomationProperties.Name="Yeniden giriş yap"/>
-                    </StackPanel>
+        <controls:Modal x:Name="SessionExpiredHost" Grid.ColumnSpan="2" Panel.ZIndex="300" Style="{StaticResource ModalNarrow}" ModalWidth="480"
+                        Title="Oturum süresi doldu" CanClose="False">
+            <TextBlock Text="Güvenlik için oturumunuz kapatıldı. Yeniden giriş yaptığınızda açık ekranlar ve doldurduğunuz formlar kaldığı yerden devam eder." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" LineHeight="19"/>
+            <controls:Modal.Footer>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Uygulamayı kapat" Click="CloseApplication" Style="{StaticResource Action}" Margin="0,0,10,0" AutomationProperties.Name="Uygulamayı kapat"/>
+                    <Button x:Name="ReloginButton" Content="Yeniden giriş yap" Click="RequestRelogin" Style="{StaticResource Primary}" IsDefault="True" AutomationProperties.Name="Yeniden giriş yap"/>
                 </StackPanel>
-            </Border>
-        </Grid>
+            </controls:Modal.Footer>
+        </controls:Modal>
     </Grid>
 </Window>

@@ -96,6 +96,11 @@ public sealed class Task064FinalIntegrationTests
                 var firstOperation = Guid.NewGuid();
                 await using (var scope = factory.Services.CreateAsyncScope())
                 {
+                    // Okuyucu iscisinin kullandigi isleyici gercek DI grafiginden cozulmeli; eksik bir
+                    // kayit (ogun deposu, yon dizini, turnike servisi) ilk okutmada patlardi.
+                    Assert.NotNull(scope.ServiceProvider.GetRequiredService<ITurnstileCardHandler>());
+                    Assert.Contains(factory.Services.GetServices<IHostedService>(),
+                        service => service is TurnstileCardReadWorker);
                     var turnstile = scope.ServiceProvider.GetRequiredService<TurnstileService>();
                     var first = await turnstile.ProcessCardReadAsync(new AccessCheckRequest(
                         cardEvents.Current.CardNumber, device.Id, meal.Id, IstanbulNoon(today), OperationId: firstOperation));

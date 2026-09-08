@@ -29,7 +29,8 @@ public sealed class StudentsUiSmokeTests
                 // panelinde ve detay sekmelerinde zaten gorunuyor.
                 Assert.Equal(7, grid.Columns.Count);
                 Assert.IsType<TextBox>(view.FindName("StudentSearchBox"));
-                Assert.IsType<Border>(view.FindName("CardWorkflowHost"));
+                // Kart okuma diyalogu artik ortak Modal kontrolu (once elle yazilmis Border).
+                Assert.IsType<Yemekhane.Desktop.Controls.Modal>(view.FindName("CardWorkflowHost"));
             }
             catch (Exception ex) { failure = ex; }
         });

@@ -21,6 +21,22 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         // Surum baslikta gorunur: kullanici destek isterken hangi surumu kullandigini okuyabilmeli.
         Title = $"YemekhanePro {AppVersion.Display} • Operasyon Merkezi";
         PreviewKeyDown += HandleShortcutKey;
+        ApplyWorkAreaFit(SystemParameters.WorkArea);
+    }
+
+    /// <summary>
+    /// Acilis boyutunu calisma alanina sigdirir. XAML'deki 1440x900 tercih edilen boyuttur;
+    /// 1366x768 dizustunde gorev cubugu dusulunce pencere alttan tasiyordu. Show'dan ONCE
+    /// cagrilir ki CenterScreen sigdirilmis boyutla ortalasin.
+    /// </summary>
+    internal void ApplyWorkAreaFit(Rect workArea)
+    {
+        var fit = WindowSizing.FitToWorkArea(Width, Height, MinWidth, MinHeight, workArea.Width, workArea.Height);
+        MinWidth = fit.MinWidth;
+        MinHeight = fit.MinHeight;
+        Width = fit.Width;
+        Height = fit.Height;
+        if (fit.Maximize) WindowState = WindowState.Maximized;
     }
 
     public void ConfigureShortcuts(IReadOnlySet<string> grantedPermissions)
@@ -305,7 +321,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
 
     private bool HasClosableLayer()
     {
-        if (ShortcutHelpHost.Visibility == Visibility.Visible || GlobalSearchDataContext is GlobalSearchViewModel { IsOpen: true }) return true;
+        if (ShortcutHelpHost.IsOpen || GlobalSearchDataContext is GlobalSearchViewModel { IsOpen: true }) return true;
         return HasContextLayer();
     }
 
@@ -336,8 +352,8 @@ public partial class MainWindow : Window, IShortcutCommandTarget
     private void CloseTopmost()
     {
         var paletteOpen = GlobalSearchDataContext is GlobalSearchViewModel { IsOpen: true };
-        var layer = ShortcutLayerPriority.Resolve(ShortcutHelpHost.Visibility == Visibility.Visible, paletteOpen, HasContextLayer());
-        if (layer == ShortcutLayer.Help) { ShortcutHelpHost.Visibility = Visibility.Collapsed; return; }
+        var layer = ShortcutLayerPriority.Resolve(ShortcutHelpHost.IsOpen, paletteOpen, HasContextLayer());
+        if (layer == ShortcutLayer.Help) { ShortcutHelpHost.IsOpen = false; return; }
         if (layer == ShortcutLayer.Palette && GlobalSearchDataContext is GlobalSearchViewModel search) { search.Close(); return; }
         if (layer == ShortcutLayer.None) return;
         switch (BaseRoute(currentRoute))
@@ -404,18 +420,18 @@ public partial class MainWindow : Window, IShortcutCommandTarget
     /// yerden devam eder. Onceden tek yol uygulamayi kapatip acmakti (15 dk'lik token
     /// her seferinde yarim kalan formu sildiriyordu).
     /// </summary>
-    public bool IsSessionExpiredVisible => SessionExpiredHost.Visibility == Visibility.Visible;
-    public void ShowSessionExpired() => SessionExpiredHost.Visibility = Visibility.Visible;
-    public void HideSessionExpired() => SessionExpiredHost.Visibility = Visibility.Collapsed;
+    public bool IsSessionExpiredVisible => SessionExpiredHost.IsOpen;
+    public void ShowSessionExpired() => SessionExpiredHost.IsOpen = true;
+    public void HideSessionExpired() => SessionExpiredHost.IsOpen = false;
     private void RequestRelogin(object sender, RoutedEventArgs e) => ReloginRequested?.Invoke(this, EventArgs.Empty);
     private void CloseApplication(object sender, RoutedEventArgs e) => Close();
 
     private void OpenShortcutHelp(object sender, RoutedEventArgs e) => ShowShortcutHelp();
-    private void CloseShortcutHelp(object sender, RoutedEventArgs e) => ShortcutHelpHost.Visibility = Visibility.Collapsed;
+    private void CloseShortcutHelp(object sender, RoutedEventArgs e) => ShortcutHelpHost.IsOpen = false;
     private void ShowShortcutHelp()
     {
         if (shortcuts is null) return;
         ShortcutHelpList.ItemsSource = shortcuts.GetHelpItems();
-        ShortcutHelpHost.Visibility = Visibility.Visible;
+        ShortcutHelpHost.IsOpen = true;
     }
 }

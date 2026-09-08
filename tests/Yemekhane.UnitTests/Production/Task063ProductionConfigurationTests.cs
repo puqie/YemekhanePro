@@ -58,6 +58,10 @@ public sealed class Task063ProductionConfigurationTests
         Assert.Equal(1, Count(program, "AddHostedService<NotificationRetentionWorker>"));
         Assert.Equal(1, Count(program, "AddHostedService<SettingsSyncBackgroundWorker>"));
         Assert.Equal(1, Count(program, "AddHostedService<DeviceRuntimePersistenceService>"));
+        Assert.Equal(1, Count(program, "AddHostedService<DeviceCardPushWorker>"));
+        // Turnikeye bagli okuyucularin okutmalarini boru hattina veren isci. Kayitli degilse
+        // TurnstileService'in uretimde hicbir cagirani kalmaz (2026-09-08'e kadar boyleydi).
+        Assert.Equal(1, Count(program, "AddHostedService<TurnstileCardReadWorker>"));
     }
 
     [Fact]

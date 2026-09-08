@@ -101,6 +101,42 @@ public sealed class InstallerUpgradeTests
         Assert.Contains(document.Descendants(), element => element.Name.LocalName == "MsiPackage");
     }
 
+    /// <summary>
+    /// Kurulum SISTEM GERI YUKLEME NOKTASI olusturmamalidir.
+    ///
+    /// <para>
+    /// Windows Installer varsayilan olarak her kurulumdan once bir geri yukleme
+    /// noktasi olusturur. Bu adim eski/yavas diskli bir bilgisayarda 15+ dakika
+    /// surebiliyor ve ilerleme cubugu hic kimildamadigi icin kullanici kurulumun
+    /// dondugunu saniyor -- sahada tam olarak bu yasandi ("Creating system restore
+    /// point" ekraninda 15 dakika beklendi).
+    /// </para>
+    /// <para>
+    /// MSIFASTINSTALL=7 bunu kapatir. Bu bir HIZ ayari degil, KULLANILABILIRLIK
+    /// ayaridir: okul bilgisayarlari cogunlukla eskidir.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void KurulumSistemGeriYuklemeNoktasiOlusturmaz()
+    {
+        var document = XDocument.Load(
+            Path.Combine(FindRoot(), "installer-bundle", "Bundle.wxs"));
+
+        var property = document.Descendants()
+            .Where(element => element.Name.LocalName == "MsiProperty")
+            .SingleOrDefault(element => (string?)element.Attribute("Name") == "MSIFASTINSTALL");
+
+        Assert.True(property is not null,
+            "Bundle.wxs icinde MSIFASTINSTALL yok: Windows kurulumdan once sistem geri "
+            + "yukleme noktasi olusturur ve eski bilgisayarlarda kurulum 15+ dakika "
+            + "donmus gibi gorunur.");
+        // 1 biti (geri yukleme noktasi yok) MUTLAKA acik olmalidir; 7 = 1+2+4.
+        var value = int.Parse((string?)property!.Attribute("Value") ?? "0",
+            System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True((value & 1) == 1,
+            $"MSIFASTINSTALL={value}: geri yukleme noktasini atlayan 1 biti kapali.");
+    }
+
     [Fact]
     public void BuildScriptProducesTheExeAlongsideTheMsi()
     {

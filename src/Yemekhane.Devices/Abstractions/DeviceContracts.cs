@@ -50,3 +50,13 @@ public interface IAccessController : ICardReader, ITurnstile, IDeviceCapabilityP
     Task<DeviceUser?> ReadUserAsync(string externalUserId, CancellationToken cancellationToken);
     Task<string?> ReadCardAsync(string cardNumber, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// Bellegindeki kullanici/kart tablosunu topluca silebilen cihaz (SC403). Karar sunucuda verilir;
+/// cihaz kart tutarsa kendi basina "Tesekkurler" deyip gecis verir (sahada eski programin yukledigi
+/// 444 kullanici bunu yapti). Silinen sayi sonucun mesajinda bildirilir.
+/// </summary>
+public interface IDeviceMemoryStore
+{
+    Task<DeviceCommandResult> ClearUsersAsync(CancellationToken cancellationToken);
+}

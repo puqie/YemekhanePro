@@ -29,6 +29,8 @@ public interface IDeviceApiClient
     Task<DeviceItem> CreateAsync(DeviceWriteModel model, CancellationToken cancellationToken = default);
     Task<DeviceItem> UpdateAsync(Guid id, DeviceWriteModel model, CancellationToken cancellationToken = default);
     Task<DeviceItem> DeactivateAsync(Guid id, CancellationToken cancellationToken = default);
+    /// <summary>Kalici silme (DELETE api/devices/{id}/permanent). Sunucu gecis kaydi olan cihazi reddeder.</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<DeviceActionResponse> ActionAsync(Guid id, string action, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DeviceLogItem>> LogsAsync(Guid id, CancellationToken cancellationToken = default);
 }
@@ -45,6 +47,10 @@ public sealed class DeviceApiClient(HttpClient client, IJwtSession session) : ID
         SendAsync<DeviceItem>(HttpMethod.Put, $"api/devices/{id}", model, cancellationToken);
     public Task<DeviceItem> DeactivateAsync(Guid id, CancellationToken cancellationToken = default) =>
         SendAsync<DeviceItem>(HttpMethod.Delete, $"api/devices/{id}", null, cancellationToken);
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        using var response = await SendCoreAsync(HttpMethod.Delete, $"api/devices/{id}/permanent", null, cancellationToken);
+    }
     public Task<DeviceActionResponse> ActionAsync(Guid id, string action, CancellationToken cancellationToken = default) =>
         SendAsync<DeviceActionResponse>(HttpMethod.Post, $"api/devices/{id}/{action}", null, cancellationToken);
     public Task<IReadOnlyList<DeviceLogItem>> LogsAsync(Guid id, CancellationToken cancellationToken = default) =>
@@ -52,15 +58,24 @@ public sealed class DeviceApiClient(HttpClient client, IJwtSession session) : ID
 
     private async Task<T> SendAsync<T>(HttpMethod method, string url, object? body, CancellationToken token)
     {
+        using var response = await SendCoreAsync(method, url, body, token);
+        return await response.Content.ReadFromJsonAsync<T>(cancellationToken: token)
+            ?? throw new InvalidDataException("Cihaz API yanıtı boş döndü.");
+    }
+
+    /// <summary>Basarili yaniti doner; hata durumunda sunucu mesajiyla HttpRequestException atar.</summary>
+    private async Task<HttpResponseMessage> SendCoreAsync(HttpMethod method, string url, object? body, CancellationToken token)
+    {
         if (!session.IsAuthenticated) throw new LoginRequiredException();
         using var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
         if (body is not null) request.Content = JsonContent.Create(body);
-        using var response = await client.SendAsync(request, token);
-        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
-        if (!response.IsSuccessStatusCode)
+        var response = await client.SendAsync(request, token);
+        if (response.IsSuccessStatusCode) return response;
+        using (response)
+        {
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) throw new LoginRequiredException();
             throw new HttpRequestException(await response.Content.ReadAsStringAsync(token), null, response.StatusCode);
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken: token)
-            ?? throw new InvalidDataException("Cihaz API yanıtı boş döndü.");
+        }
     }
 }

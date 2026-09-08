@@ -17,7 +17,7 @@ namespace Yemekhane.Devices.ZkTeco;
 /// SC403 tek basina bir turnike DEGILDIR; kapi rolesi/Wiegand cikisi uzerinden bir turnikeyi surer.
 /// Turnike surumu icin <see cref="Sc403AccessController"/> kullanilir.
 /// </summary>
-public class Sc403Adapter : ICardReader, IDeviceCapabilityProvider
+public class Sc403Adapter : ICardReader, IDeviceCapabilityProvider, IDeviceMemoryStore
 {
     /// <summary>SC403 ID kart kapasitesi (uretici urun sayfasi §01.2).</summary>
     public const int MaxCardCapacity = 30_000;
@@ -255,6 +255,14 @@ public class Sc403Adapter : ICardReader, IDeviceCapabilityProvider
             token => RequireSdk().DeleteUserInfoAsync(cardNumber, token), "kart silme", cancellationToken);
     }
 
+    /// <summary>Cihaz bellegindeki TUM kullanicilari siler (bkz. <see cref="IDeviceMemoryStore"/>).</summary>
+    public Task<DeviceCommandResult> ClearUsersAsync(CancellationToken cancellationToken) =>
+        ExecuteResultAsync(DeviceCapability.DeleteCard, async token =>
+        {
+            var count = await RequireSdk().ClearUsersAsync(token).ConfigureAwait(false);
+            return new DeviceCommandResult(true, $"Cihaz belleğindeki {count} kullanıcı silindi; cihaz artık kendi başına geçiş vermez.");
+        }, "bellek temizleme", cancellationToken);
+
     public async Task<DeviceUser?> ReadUserAsync(string externalUserId, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(externalUserId);
@@ -476,7 +484,7 @@ public class Sc403Adapter : ICardReader, IDeviceCapabilityProvider
 
         if (endpoint.IpPort is null or <= IPEndPoint.MinPort or > IPEndPoint.MaxPort)
         {
-            throw new ArgumentOutOfRangeException(nameof(endpoint), "TCP portu açıkça belirtilmeli ve geçerli olmalıdır.");
+            throw new ArgumentOutOfRangeException(nameof(endpoint), "UDP portu (varsayılan 4370) açıkça belirtilmeli ve geçerli olmalıdır.");
         }
     }
 

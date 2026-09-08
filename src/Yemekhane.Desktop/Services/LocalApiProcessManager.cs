@@ -8,7 +8,23 @@ namespace Yemekhane.Desktop.Services;
 
 public sealed class LocalApiProcessManager : IAsyncDisposable
 {
-    private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
+    /// <summary>
+    /// Yerel API'nin hazir olmasi icin beklenen UST SINIR.
+    ///
+    /// <para>
+    /// 30 saniye -> 30 DAKIKA (kullanici karari): ILK acilista API veritabanini
+    /// olusturur ve gocleri uygular; cok eski/yavas diskli bir okul bilgisayarinda
+    /// bu 30 saniyeyi asiyor ve program HIC acilmiyordu. Okulun beklemesi, programin
+    /// hic acilmamasindan iyidir.
+    /// </para>
+    /// <para>
+    /// Bu bir GECIKME degil UST SINIRDIR: bekleme her 250 ms'de bir saglik kontroluyle
+    /// biter, yani hizli makinede kullanici bu sureyi hic gormez. API surec olarak
+    /// COKERSE bekleme de hemen biter (HasExited kontrolu) -- yani 30 dakika yalnizca
+    /// "API hala aciliyor ama daha hazir degil" durumunda beklenir.
+    /// </para>
+    /// </summary>
+    private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(30);
     private readonly Uri baseUri;
     private readonly HttpClient healthClient;
     private readonly CancellationTokenSource stopping = new();
@@ -152,9 +168,28 @@ public sealed class LocalApiProcessManager : IAsyncDisposable
             if (await IsHealthyAsync(timeout.Token).ConfigureAwait(false)) return;
             if (process is { HasExited: true })
                 throw new InvalidOperationException($"Yerel API beklenmedik biçimde kapandı (çıkış kodu {process.ExitCode}).");
-            await Task.Delay(250, timeout.Token).ConfigureAwait(false);
+            try
+            {
+                await Task.Delay(250, timeout.Token).ConfigureAwait(false);
+            }
+            // Sure dolunca Task.Delay TaskCanceledException firlatir ve bu, asagidaki
+            // ANLASILIR Turkce mesaja ulasmadan disari sizardi: kullanici sebebini
+            // soylemeyen "A task was canceled" goruyordu (sahada goruldu). Iptal
+            // yutulur, dongu biter ve gercek sebep asagida soylenir.
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                break;
+            }
         }
-        throw new TimeoutException($"Yerel API {StartupTimeout.TotalSeconds:0} saniye içinde hazır olmadı: {baseUri}");
+
+        // Kullanicinin ISTEGIYLE iptal edildiyse bu bir hata degildir; oldugu gibi
+        // yukari birakilir ve "baslatilamadi" penceresi gosterilmez.
+        cancellationToken.ThrowIfCancellationRequested();
+
+        throw new TimeoutException(
+            $"Yerel API {StartupTimeout.TotalSeconds:0} saniye içinde hazır olmadı. "
+            + "Bilgisayar yavaşsa ilk açılış uzun sürebilir; programı kapatıp yeniden açmayı deneyin. "
+            + "Sorun sürerse virüs programının Yemekhane.Api.exe dosyasını engellemediğinden emin olun.");
     }
 
     private async Task<bool> IsHealthyAsync(CancellationToken cancellationToken)

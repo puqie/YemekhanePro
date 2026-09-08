@@ -14,7 +14,18 @@ public sealed class DeviceCardViewModel : ObservableObject
     private string? operationMessage;
     private DateTimeOffset? lastAttemptAt;
     private DateTimeOffset? nextRetryAt;
+    private bool isDeleteArmed;
     public DeviceCardViewModel(DeviceItem value) => item = value;
+
+    /// <summary>Silme iki adimlidir: "Sil" once bunu isaretler, ikinci basis kalici siler.</summary>
+    public bool IsDeleteArmed { get => isDeleteArmed; set { if (Set(ref isDeleteArmed, value)) Raise(nameof(DeleteButtonText)); } }
+    public string DeleteButtonText => IsDeleteArmed ? "Silmeyi Onayla" : "Sil";
+
+    private bool isClearArmed;
+    /// <summary>Bellek temizleme de iki adimlidir; yalnizca SC403 (karar sunucuda, cihaz kart tutmamali).</summary>
+    public bool IsClearArmed { get => isClearArmed; set { if (Set(ref isClearArmed, value)) Raise(nameof(ClearButtonText)); } }
+    public string ClearButtonText => IsClearArmed ? "Temizlemeyi Onayla" : "Belleği Temizle";
+    public bool SupportsClearUsers => Item.DeviceType == "SC403";
     public DeviceItem Item { get => item; private set { Set(ref item, value); RaiseAll(); } }
     public Guid Id => Item.Id;
     public string Name => Item.Name;
@@ -95,6 +106,10 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
         TestCommand = CardAction("test"); ReconnectCommand = CardAction("reconnect");
         EditCommand = new RelayCommand<DeviceCardViewModel>(OpenEdit, _ => canManage);
         DeactivateCommand = new RelayCommand<DeviceCardViewModel>(card => _ = DeactivateAsync(card), _ => canManage);
+        DeleteCommand = new RelayCommand<DeviceCardViewModel>(card => _ = DeleteAsync(card), card => canManage && !card.IsBusy);
+        CancelDeleteCommand = new RelayCommand<DeviceCardViewModel>(card => card.IsDeleteArmed = false, card => card.IsDeleteArmed);
+        ClearUsersCommand = new RelayCommand<DeviceCardViewModel>(card => _ = ClearUsersAsync(card), card => canManage && !card.IsBusy && card.Item.IsActive);
+        CancelClearCommand = new RelayCommand<DeviceCardViewModel>(card => card.IsClearArmed = false, card => card.IsClearArmed);
         LogsCommand = new RelayCommand<DeviceCardViewModel>(card => _ = OpenLogsAsync(card));
         realtime.DeviceStatusChanged += OnDeviceStatusChanged;
         realtime.StateChanged += OnRealtimeStateChanged;
@@ -139,6 +154,8 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
     public ICommand CloseEditorCommand { get; } public ICommand CloseLogsCommand { get; }
     public ICommand ConnectCommand { get; } public ICommand DisconnectCommand { get; } public ICommand TestCommand { get; }
     public ICommand ReconnectCommand { get; } public ICommand EditCommand { get; } public ICommand DeactivateCommand { get; } public ICommand LogsCommand { get; }
+    public ICommand DeleteCommand { get; } public ICommand CancelDeleteCommand { get; }
+    public ICommand ClearUsersCommand { get; } public ICommand CancelClearCommand { get; }
 
     public async Task InitializeAsync() => await LoadAsync();
     public async Task LoadAsync()
@@ -185,6 +202,48 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
         finally { IsLoading = false; }
     }
     private async Task DeactivateAsync(DeviceCardViewModel card) { try { card.Update(await api.DeactivateAsync(card.Id)); } catch { card.OperationMessage = "Cihaz pasifleştirilemedi."; } }
+
+    /// <summary>
+    /// Cihaz bellegini temizleme iki adimlidir. Eski programin cihaza yukledigi kartlar cihazin
+    /// kendi basina "Tesekkurler" deyip gecis vermesine yol acar; karar bu programdadir.
+    /// </summary>
+    private async Task ClearUsersAsync(DeviceCardViewModel card)
+    {
+        if (!card.IsClearArmed)
+        {
+            card.IsClearArmed = true;
+            card.OperationMessage = "Cihaz belleğindeki TÜM kullanıcı ve kart kayıtları silinecek (eski programın yükledikleri dahil). Cihaz artık kendi başına geçiş vermez; geçişler bu programdan yönetilir. Onaylamak için Temizlemeyi Onayla düğmesine basın.";
+            return;
+        }
+
+        card.IsClearArmed = false;
+        await ExecuteAsync(card, "clear-users");
+    }
+
+    /// <summary>
+    /// Kalici silme iki adimlidir (ogrenci kartindaki gibi): ilk basis isaretler, ikincisi siler.
+    /// Sunucu gecis kaydi olan cihazi reddeder; mesaji oldugu gibi kartta gosterilir.
+    /// </summary>
+    private async Task DeleteAsync(DeviceCardViewModel card)
+    {
+        if (!card.IsDeleteArmed)
+        {
+            card.IsDeleteArmed = true;
+            card.OperationMessage = "Cihaz ve bağlantı günlüğü kalıcı olarak silinecek; geri alınamaz. Onaylamak için Silmeyi Onayla düğmesine basın.";
+            return;
+        }
+
+        card.IsBusy = true;
+        try
+        {
+            await api.DeleteAsync(card.Id);
+            Devices.Remove(card);
+            Raise(nameof(ShowEmpty));
+        }
+        catch (LoginRequiredException) { card.OperationMessage = "Bu işlem için devices.manage yetkisi gerekir."; }
+        catch (HttpRequestException ex) { card.OperationMessage = string.IsNullOrWhiteSpace(ex.Message) ? "Cihaz silinemedi." : ex.Message; }
+        finally { card.IsBusy = false; card.IsDeleteArmed = false; }
+    }
     private async Task OpenLogsAsync(DeviceCardViewModel card) { try { Logs.Clear(); foreach (var log in await api.LogsAsync(card.Id)) Logs.Add(log); IsLogsOpen = true; } catch { card.OperationMessage = "Loglar alınamadı."; } }
     private void OnDeviceStatusChanged(object? sender, DeviceStatusChangedEvent value) => RunOnUi(() =>
     {

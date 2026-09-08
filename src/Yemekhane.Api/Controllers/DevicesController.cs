@@ -32,7 +32,16 @@ public sealed class DevicesController(DeviceAdministrationService service) : Con
     [PermissionAuthorize(Permissions.DevicesManage)]
     public Task<DeviceDto> Deactivate(Guid id, CancellationToken cancellationToken) => service.DeactivateAsync(id, cancellationToken);
 
-    [HttpPost("{id:guid}/{operation:regex(^(connect|disconnect|test|reconnect|status)$)}")]
+    /// <summary>Kalici silme; gecis kaydi olan cihaz 400 ile reddedilir (pasiflestirme onerilir).</summary>
+    [HttpDelete("{id:guid}/permanent")]
+    [PermissionAuthorize(Permissions.DevicesManage)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        await service.DeleteAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/{operation:regex(^(connect|disconnect|test|reconnect|status|clear-users)$)}")]
     [PermissionAuthorize(Permissions.DevicesManage)]
     public Task<DeviceActionResult> Action(Guid id, string operation, CancellationToken cancellationToken) =>
         service.ExecuteAsync(id, operation.ToLowerInvariant(), cancellationToken);

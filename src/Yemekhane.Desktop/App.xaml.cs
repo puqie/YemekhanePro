@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using Microsoft.Extensions.Configuration;
 using System.Globalization;
 using System.Net.Http;
@@ -138,7 +138,23 @@ public partial class App : System.Windows.Application, IDisposable
             baseUri,
             configuration["Licensing:PublicKey"],
             string.Join('|', new WindowsHardwareFingerprintReader().Read().Hashes));
-        await localApi.EnsureReadyAsync();
+
+        // ACILIS EKRANI: ilk acilista API veritabanini olusturup gocleri uygular ve
+        // bu, yavas diskli bir bilgisayarda DAKIKALAR surebilir. Ekranda hicbir sey
+        // olmadigi icin kullanici programin dondugunu saniyordu (sahada goruldu).
+        // Pencere ne olup bittigini ve beklemenin uzun surebilecegini soyler.
+        var startup = new StartupWindow();
+        startup.Show();
+        try
+        {
+            await localApi.EnsureReadyAsync();
+        }
+        finally
+        {
+            // API hazir olsa da olmasa da kapatilir: acik kalirsa hata penceresinin
+            // arkasinda durur ve kullanici hala "aciliyor" saniyordu.
+            startup.Close();
+        }
 
         var session = new MutableJwtSession();
         var httpClient = new HttpClient { BaseAddress = baseUri, Timeout = TimeSpan.FromSeconds(15) };

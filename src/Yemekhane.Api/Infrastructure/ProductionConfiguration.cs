@@ -24,6 +24,25 @@ public sealed class DeviceRuntimeOptions
 {
     public int HealthIntervalSeconds { get; init; } = 30;
     public int OperationTimeoutSeconds { get; init; } = 15;
+
+    /// <summary>
+    /// ZKTeco cihazlarin iletisim sifresi (comm key). 0 = sifresiz. Cihaz CONNECT'e ACK_UNAUTH
+    /// dondugunde bu degerle AUTH yapilir; yanlissa baglanti "iletisim sifresi reddedildi" der.
+    /// </summary>
+    public int ZkCommKey { get; init; }
+
+    /// <summary>
+    /// ZK cihazindan tek bir komut yanitinin beklenecegi sure. OperationTimeoutSeconds'tan KISA
+    /// olmalidir: UDP'de kaybolan datagram bu sure sonunda gecici hata olur ve adaptor yeniden
+    /// dener; adaptorun zaman asimi once dolarsa yeniden deneme hic olmaz.
+    /// </summary>
+    public int ZkReplyTimeoutSeconds { get; init; } = 3;
+
+    /// <summary>
+    /// ZK kullanici kaydi boyutu: 28 (eski firmware) ya da 72 (yeni). Bos birakilirsa cihazdan
+    /// olculur; yalnizca olcum yanlis cikarsa sahada zorlamak icin.
+    /// </summary>
+    public int? ZkUserRecordSize { get; init; }
 }
 
 public sealed class SchedulerOptions
@@ -59,6 +78,10 @@ public static class ProductionConfiguration
             errors.Add("Deployment:TimeZone Europe/Istanbul olmalıdır.");
         if (devices.HealthIntervalSeconds is < 5 or > 3600) errors.Add("Devices:HealthIntervalSeconds 5-3600 olmalıdır.");
         if (devices.OperationTimeoutSeconds is < 1 or > 300) errors.Add("Devices:OperationTimeoutSeconds 1-300 olmalıdır.");
+        if (devices.ZkReplyTimeoutSeconds is < 1 or > 60) errors.Add("Devices:ZkReplyTimeoutSeconds 1-60 olmalıdır.");
+        if (devices.ZkReplyTimeoutSeconds >= devices.OperationTimeoutSeconds)
+            errors.Add("Devices:ZkReplyTimeoutSeconds, OperationTimeoutSeconds'tan küçük olmalıdır; aksi halde UDP kaybında yeniden deneme hiç olmaz.");
+        if (devices.ZkUserRecordSize is not (null or 28 or 72)) errors.Add("Devices:ZkUserRecordSize 28, 72 ya da boş olmalıdır.");
         if (schedulers.NotificationRetentionHours is < 1 or > 168) errors.Add("Schedulers:NotificationRetentionHours 1-168 olmalıdır.");
         if (logging.RetentionDays is < 1 or > 3650) errors.Add("Logging:File:RetentionDays 1-3650 olmalıdır.");
         if (logging.FileSizeLimitBytes is < 1_048_576 or > 1_073_741_824) errors.Add("Logging:File:FileSizeLimitBytes 1 MiB-1 GiB olmalıdır.");

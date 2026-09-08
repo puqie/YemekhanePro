@@ -35,12 +35,15 @@ using Yemekhane.Application.Dashboard;
 using Yemekhane.Application.DailyTracking;
 using Yemekhane.Application.BulkOperations;
 using Yemekhane.Api.Devices;
+using Yemekhane.Application.Maintenance;
+using Yemekhane.Infrastructure.Maintenance;
 using Yemekhane.Application.Settings;
 using Microsoft.Extensions.Options;
 using Yemekhane.Application.Notifications;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Yemekhane.Devices.ZkTeco.Protocol;
 using Microsoft.AspNetCore.HttpOverrides;
 using Serilog;
 
@@ -112,14 +115,28 @@ builder.Services.AddSingleton<IDeviceAdapterFactory>(_ => new DeviceAdapterFacto
         ? new Sf300Protocol(new Sf300TcpTransport(),
             TimeSpan.FromSeconds(production.Devices.OperationTimeoutSeconds))
         : null,
-    // ZKTeco SC403 icin SDK baglamasi (zkemkeeper.dll) bu kurulumda YOKTUR: 32-bit COM bileseni
-    // makineye ayrica kaydedilmelidir. Null birakmak sessiz basarisizlik degildir; adaptor her
-    // komutu ZK_SDK_NOT_CONFIGURED ile reddeder, boylece kart "yuklendi" sanilmaz.
-    _ => null));
+    // ZKTeco SC403: ham ZK protokolu, UDP 4370 (pyzk/node-zklib referansi). Once burada `null`
+    // veriliyordu ("zkemkeeper.dll yok") ve adaptor aga tek bayt gondermeden her komutu
+    // ZK_SDK_NOT_CONFIGURED ile reddediyordu -- sahada "cihaz baglanamiyor" bunun sonucuydu.
+    // Her cihaz kendi soketini alir; SF300 ile ayni gerekce.
+    configuration => configuration.DeviceType == "SC403"
+        ? new ZkProtocolSdk(new ZkUdpTransport(), production.Devices.ZkCommKey,
+            TimeSpan.FromSeconds(production.Devices.ZkReplyTimeoutSeconds),
+            userRecordSize: production.Devices.ZkUserRecordSize)
+        : null));
 builder.Services.AddScoped<DeviceAdministrationService>();
 builder.Services.AddHostedService<DeviceRuntimePersistenceService>();
 builder.Services.AddSingleton(builder.Configuration.GetSection("Devices:CardPush").Get<DeviceCardPushOptions>() ?? new DeviceCardPushOptions());
 builder.Services.AddHostedService<DeviceCardPushWorker>();
+// Turnikeye bagli okuyucularin okutmalarini gecis boru hattina (karar -> hak dusumu -> role) verir.
+// Bu isci olmadan TurnstileService'in HICBIR uretim cagirani yoktu; kart okunsa bile turnike acilmiyordu.
+builder.Services.AddSingleton(builder.Configuration.GetSection("Devices:TurnstileReader").Get<TurnstileReaderOptions>() ?? new TurnstileReaderOptions());
+builder.Services.AddScoped<ITurnstileDeviceDirectory, EfTurnstileDeviceDirectory>();
+builder.Services.AddScoped<ITurnstileCardHandler, TurnstileCardHandler>();
+builder.Services.AddHostedService<TurnstileCardReadWorker>();
+// Yil sonu sifirlamasi: once guvenlik yedegi (BackupService), sonra ogrenciye bagli tum veriler.
+builder.Services.AddScoped<IYearEndBackup, BackupServiceYearEndBackup>();
+builder.Services.AddScoped<IYearEndResetService, EfYearEndResetService>();
 builder.Services.AddYemekhaneRealtime();
 builder.Services.AddSingleton(builder.Configuration.GetSection("Calendar:WeekendPolicy").Get<WeekendPolicy>() ?? new WeekendPolicy());
 builder.Services.AddSingleton(TimeProvider.System);

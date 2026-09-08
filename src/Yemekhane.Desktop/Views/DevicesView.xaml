@@ -1,16 +1,21 @@
 ﻿<UserControl x:Class="Yemekhane.Desktop.Views.DevicesView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
     Background="{DynamicResource CanvasBrush}" FontFamily="Segoe UI" FontSize="12">
 
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
+                <!-- Duzenleyici Modal, log paneli Drawer stillerini kullanir; bu sozlukler BURADA merge
+                     edilmezse StaticResource cozulemez ve ekran hic acilmaz (StudentsView ile ayni). -->
+                <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Drawer.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Modal.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
-            </ResourceDictionary>
-</UserControl.Resources>
+            <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
     <Grid Margin="22,18">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <Grid>
@@ -27,13 +32,35 @@
                 <ItemsControl ItemsSource="{Binding Devices}" Visibility="{Binding ShowContent, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate><DataTemplate>
-                        <Border Width="350" MinHeight="220" Margin="0,0,12,12" Padding="15" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7">
-                            <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="{Binding Model}" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/></StackPanel><Border Grid.Column="1" CornerRadius="12" Padding="9,4" Background="{StaticResource SunkenBrush}"><StackPanel Orientation="Horizontal"><Ellipse Width="8" Height="8" Margin="0,0,6,0"><Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{StaticResource FaintBrush}"/><Style.Triggers><DataTrigger Binding="{Binding IsConnected}" Value="True"><Setter Property="Fill" Value="{StaticResource SuccessBrush}"/></DataTrigger><DataTrigger Binding="{Binding IsError}" Value="True"><Setter Property="Fill" Value="{StaticResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style></Ellipse><TextBlock Text="{Binding StatusText}" Foreground="{StaticResource InkBrush}"/></StackPanel></Border></Grid>
+                        <Border Width="350" MinHeight="220" Margin="0,0,12,12" Padding="15" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7">
+                            <!-- Satirlar: baslik, ayrac, bilgi, baglanti dugmeleri, yonetim dugmeleri, durum mesaji.
+                                 Durum mesaji once dugmelerle AYNI satirdaydi ve sag ustte dugmelerin ustune biniyordu;
+                                 artik kendi satirinda, tam genislikte sarilir. -->
+                            <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/><TextBlock Text="{Binding Model}" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/></StackPanel><Border Grid.Column="1" CornerRadius="12" Padding="9,4" Background="{StaticResource SunkenBrush}" VerticalAlignment="Top"><StackPanel Orientation="Horizontal"><Ellipse Width="8" Height="8" Margin="0,0,6,0"><Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{StaticResource FaintBrush}"/><Style.Triggers><DataTrigger Binding="{Binding IsConnected}" Value="True"><Setter Property="Fill" Value="{StaticResource SuccessBrush}"/></DataTrigger><DataTrigger Binding="{Binding IsError}" Value="True"><Setter Property="Fill" Value="{StaticResource DangerBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style></Ellipse><TextBlock Text="{Binding StatusText}" Foreground="{StaticResource InkBrush}"/></StackPanel></Border></Grid>
                                 <Separator Grid.Row="1" Margin="0,12,0,10"/>
                                 <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions><TextBlock Text="Bağlantı" Foreground="{StaticResource FaintBrush}"/><TextBlock Grid.Column="1" Text="{Binding Endpoint}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Row="1" Text="Konum" Foreground="{StaticResource FaintBrush}" Margin="0,7,0,0"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Location}" Margin="0,7,0,0"/></Grid>
-                                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,13,0,0"><Button Style="{StaticResource Action}" Content="Bağlan" Command="{Binding DataContext.ConnectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/><Button Style="{StaticResource Action}" Content="Kes" Command="{Binding DataContext.DisconnectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/><Button Style="{StaticResource Action}" Content="Test" Command="{Binding DataContext.TestCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/><Button Style="{StaticResource Action}" Content="Yeniden" Command="{Binding DataContext.ReconnectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/></StackPanel>
-                                <Grid Grid.Row="4" Margin="0,8,0,0"><StackPanel Orientation="Horizontal"><Button Style="{StaticResource Action}" Content="Ayarlar" Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/><Button Style="{StaticResource Action}" Content="Loglar" Command="{Binding DataContext.LogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/><Button Style="{StaticResource Action}" Content="Pasifleştir" Command="{Binding DataContext.DeactivateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/></StackPanel><StackPanel HorizontalAlignment="Right"><ProgressBar IsIndeterminate="True" Width="55" Height="3" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/><TextBlock Text="{Binding OperationMessage}" Foreground="{StaticResource MutedBrush}" FontSize="10" MaxWidth="160" TextWrapping="Wrap" ToolTip="{Binding OperationMessage}"/></StackPanel></Grid>
+                                <WrapPanel Grid.Row="3" Margin="0,13,0,0">
+                                    <Button Style="{StaticResource Action}" Content="Bağlan" Command="{Binding DataContext.ConnectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                    <Button Style="{StaticResource Action}" Content="Kes" Command="{Binding DataContext.DisconnectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                    <Button Style="{StaticResource Action}" Content="Test" Command="{Binding DataContext.TestCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                    <Button Style="{StaticResource Action}" Content="Yeniden" Command="{Binding DataContext.ReconnectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                </WrapPanel>
+                                <WrapPanel Grid.Row="4" Margin="0,6,0,0">
+                                    <Button Style="{StaticResource Action}" Content="Ayarlar" Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                    <Button Style="{StaticResource Action}" Content="Loglar" Command="{Binding DataContext.LogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                    <Button Style="{StaticResource Action}" Content="Pasifleştir" Command="{Binding DataContext.DeactivateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                    <!-- Silme iki adimli: "Sil" -> "Silmeyi Onayla" + "Vazgeç". Gecis kaydi olan cihazi sunucu reddeder. -->
+                                    <Button Style="{StaticResource Destructive}" Content="{Binding DeleteButtonText}" Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Cihaz ve bağlantı günlüğü kalıcı olarak silinir; geçiş kayıtları olan cihaz silinemez, pasifleştirilir"/>
+                                    <Button Style="{StaticResource Action}" Content="Vazgeç" Command="{Binding DataContext.CancelDeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Visibility="{Binding IsDeleteArmed, Converter={StaticResource BoolToVisibility}}"/>
+                                    <!-- Yalnizca SC403: cihaz bellegindeki kullanicilar (eski programdan kalanlar dahil) silinir; karar sunucudadir. -->
+                                    <Button Style="{StaticResource Destructive}" Content="{Binding ClearButtonText}" Command="{Binding DataContext.ClearUsersCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Visibility="{Binding SupportsClearUsers, Converter={StaticResource BoolToVisibility}}" ToolTip="Cihaz belleğindeki tüm kullanıcı ve kart kayıtlarını siler; cihaz kendi başına geçiş vermez, geçişler bu programdan yönetilir"/>
+                                    <Button Style="{StaticResource Action}" Content="Vazgeç" Command="{Binding DataContext.CancelClearCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Visibility="{Binding IsClearArmed, Converter={StaticResource BoolToVisibility}}"/>
+                                </WrapPanel>
+                                <StackPanel Grid.Row="5" Margin="0,10,0,0">
+                                    <ProgressBar IsIndeterminate="True" Height="3" Margin="0,0,0,6" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                                    <TextBlock Text="{Binding OperationMessage}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" ToolTip="{Binding OperationMessage}"/>
+                                </StackPanel>
                             </Grid>
                         </Border>
                     </DataTemplate></ItemsControl.ItemTemplate>
@@ -41,28 +68,57 @@
             </ScrollViewer>
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="240" Height="3"/><TextBlock Text="Cihazlar yükleniyor..." Foreground="{StaticResource MutedBrush}" Margin="0,12,0,0"/></StackPanel>
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding ShowEmpty, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Kayıtlı cihaz yok" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="İlk cihazı ekleyerek bağlantı yönetimine başlayın." Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0"/></StackPanel>
-            <Border Width="460" Padding="24" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"><StackPanel><TextBlock Text="Cihazlar kullanılamıyor" FontSize="19" FontWeight="SemiBold"/><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,9,0,13"/><Button Style="{StaticResource Action}" Content="Tekrar dene" Command="{Binding RefreshCommand}" HorizontalAlignment="Left"/></StackPanel></Border>
+            <Border Width="460" Padding="24" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="7" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"><StackPanel><TextBlock Text="Cihazlar kullanılamıyor" FontSize="19" FontWeight="SemiBold"/><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,9,0,13"/><Button Style="{StaticResource Action}" Content="Tekrar dene" Command="{Binding RefreshCommand}" HorizontalAlignment="Left"/></StackPanel></Border>
         </Grid>
 
-        <Border Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibility}}" Panel.ZIndex="20">
-            <Border Width="510" MaxHeight="760" Padding="22" Background="White" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-                <Grid><TextBlock Text="{Binding EditorTitle}" FontSize="20" FontWeight="SemiBold"/><Button Content="Kapat" Command="{Binding CloseEditorCommand}" Style="{StaticResource Action}" HorizontalAlignment="Right"/></Grid>
-                <TextBlock Text="Ad" Margin="0,16,0,0"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
-                <TextBlock Text="Tür"/><ComboBox Margin="0,3,0,9" MinHeight="30" ItemsSource="{Binding DeviceTypes}" SelectedItem="{Binding SelectedType}"/>
-                <StackPanel Visibility="{Binding IsEthernet, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="IP adresi"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding IpAddress}"/><TextBlock Text="Port"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding Port}"/></StackPanel>
-                <StackPanel Visibility="{Binding IsCom, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="COM portu"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding ComPort}"/><TextBlock Text="Baud"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding BaudRate}"/></StackPanel>
-                <TextBlock Text="Konum"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding Location}"/><TextBlock Text="Yön"/><ComboBox Margin="0,3,0,9" MinHeight="30" ItemsSource="{Binding Directions}" SelectedItem="{Binding Direction}"/>
+        <!-- Cihaz duzenleyicisi: ortak Modal (karartma pencere geneline yayilir, Esc kapatir, icerik kaydirilir,
+             Kaydet alt satirda sabit). Once elle yazilmis bir Border'di ve yalnizca sayfayi karartiyordu. -->
+        <controls:Modal Grid.RowSpan="3" Style="{StaticResource ModalMedium}" Title="{Binding EditorTitle}"
+                        IsOpen="{Binding IsEditorOpen, Mode=OneWay}" CloseCommand="{Binding CloseEditorCommand}" Panel.ZIndex="20">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Label}" Text="Ad"/><TextBox Style="{StaticResource Field}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cihaz adı"/>
+                <TextBlock Style="{StaticResource Label}" Text="Tür"/><ComboBox Margin="0,0,0,10" MinHeight="30" ItemsSource="{Binding DeviceTypes}" SelectedItem="{Binding SelectedType}" AutomationProperties.Name="Cihaz türü"/>
+                <StackPanel Visibility="{Binding IsEthernet, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Label}" Text="IP adresi"/><TextBox Style="{StaticResource Field}" Text="{Binding IpAddress}" AutomationProperties.Name="IP adresi"/>
+                    <TextBlock Style="{StaticResource Label}" Text="Port"/><TextBox Style="{StaticResource Field}" Text="{Binding Port}" AutomationProperties.Name="Port"/>
+                </StackPanel>
+                <StackPanel Visibility="{Binding IsCom, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Style="{StaticResource Label}" Text="COM portu"/><TextBox Style="{StaticResource Field}" Text="{Binding ComPort}" AutomationProperties.Name="COM portu"/>
+                    <TextBlock Style="{StaticResource Label}" Text="Baud"/><TextBox Style="{StaticResource Field}" Text="{Binding BaudRate}" AutomationProperties.Name="Baud"/>
+                </StackPanel>
+                <TextBlock Style="{StaticResource Label}" Text="Konum"/><TextBox Style="{StaticResource Field}" Text="{Binding Location}" AutomationProperties.Name="Konum"/>
+                <TextBlock Style="{StaticResource Label}" Text="Yön"/><ComboBox Margin="0,0,0,10" MinHeight="30" ItemsSource="{Binding Directions}" SelectedItem="{Binding Direction}" AutomationProperties.Name="Geçiş yönü"/>
                 <WrapPanel><CheckBox Content="Aktif" IsChecked="{Binding IsActive}" Margin="0,5,18,10"/><CheckBox Content="Otomatik bağlan" IsChecked="{Binding AutoConnect}" Margin="0,5,18,10"/><CheckBox Content="Turnike bağlı" IsChecked="{Binding HasTurnstile}" Margin="0,5,0,10"/></WrapPanel>
                 <Border Background="{StaticResource InfoSoftBrush}" Padding="11" Margin="0,0,0,10" CornerRadius="5" Visibility="{Binding HasTurnstile, Converter={StaticResource BoolToVisibility}}"><StackPanel>
                     <TextBlock Text="Turnike sürüş ayarları" FontWeight="SemiBold"/>
                     <TextBlock Text="Bu değerler üretici dokümanında belgelenmemiştir; kurulumda cihaz başında doğrulayın." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,8"/>
-                    <TextBlock Text="Röle darbe süresi (ms, 50-5000)"/><TextBox Margin="0,3,0,9" MinHeight="30" Text="{Binding RelayPulseMs}"/>
+                    <TextBlock Style="{StaticResource Label}" Text="Röle darbe süresi (ms, 50-5000)"/><TextBox Style="{StaticResource Field}" Text="{Binding RelayPulseMs}" AutomationProperties.Name="Röle darbe süresi"/>
                     <CheckBox Content="Turnike çift yönlü sürülebiliyor" IsChecked="{Binding TurnstileBidirectional}" Margin="0,2,0,0"/>
                 </StackPanel></Border>
                 <Border Background="{StaticResource WarningSoftBrush}" Padding="9" Margin="0,0,0,10" Visibility="{Binding IsSimulator, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Development simulator: üretimde oluşturulamaz." Foreground="{StaticResource WarningBrush}"/></Border>
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,0,0,8"/><Button Content="Kaydet" Command="{Binding SaveCommand}" Padding="15,8" HorizontalAlignment="Right" Background="{StaticResource AccentBrush}" Foreground="White" BorderThickness="0"/>
-            </StackPanel></ScrollViewer></Border>
-        </Border>
-        <Border Grid.RowSpan="3" Width="470" HorizontalAlignment="Right" Background="White" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1,0,0,0" Padding="20" Visibility="{Binding IsLogsOpen, Converter={StaticResource BoolToVisibility}}" Panel.ZIndex="30"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><Grid><TextBlock Text="Cihaz logları" FontSize="20" FontWeight="SemiBold"/><Button Content="Kapat" Command="{Binding CloseLogsCommand}" Style="{StaticResource Action}" HorizontalAlignment="Right"/></Grid><ListView Grid.Row="1" ItemsSource="{Binding Logs}" Margin="0,14,0,0" BorderThickness="0"><ListView.ItemTemplate><DataTemplate><Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,8"><StackPanel><Grid><TextBlock Text="{Binding EventType}" FontWeight="SemiBold"/><TextBlock Text="{Binding Timestamp, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" HorizontalAlignment="Right" Foreground="{StaticResource FaintBrush}"/></Grid><TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource InkBrush}" Margin="0,4,0,0"/></StackPanel></Border></DataTemplate></ListView.ItemTemplate></ListView></Grid></Border>
+            </StackPanel>
+            <controls:Modal.Footer>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Button Grid.Column="1" Content="Kaydet" Command="{Binding SaveCommand}" Style="{StaticResource Primary}" IsDefault="True"/>
+                </Grid>
+            </controls:Modal.Footer>
+        </controls:Modal>
+
+        <!-- Cihaz loglari: ortak Drawer (once karartmasiz, elle yazilmis sag paneldi). -->
+        <controls:Drawer Grid.RowSpan="3" Style="{StaticResource DrawerMedium}" Title="Cihaz logları"
+                         IsOpen="{Binding IsLogsOpen, Mode=OneWay}" CloseCommand="{Binding CloseLogsCommand}" Panel.ZIndex="30">
+            <ItemsControl ItemsSource="{Binding Logs}">
+                <ItemsControl.ItemTemplate><DataTemplate>
+                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                        <StackPanel>
+                            <Grid><TextBlock Text="{Binding EventType}" FontWeight="SemiBold"/><TextBlock Text="{Binding Timestamp, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" HorizontalAlignment="Right" Foreground="{StaticResource FaintBrush}"/></Grid>
+                            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource InkBrush}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate></ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </controls:Drawer>
     </Grid>
 </UserControl>

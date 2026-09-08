@@ -37,6 +37,10 @@ public sealed class EfAccessDecisionRepository(
             return cached;
         }
 
+        // Cihaz kart numarasini bastaki sifirlar OLMADAN bildirir (SC403: 8247129); kartin uzerinde
+        // ise "0008247129" basilidir ve okul boyle girebilir. Iki bicim de ayni kartla eslesmeli;
+        // aksi halde elle girilen kart turnikede "Kart tanimsiz" olur.
+        var digits = cardNumber.Length > 0 && cardNumber.All(char.IsAsciiDigit) ? cardNumber.TrimStart('0') : null;
         var snapshot = await (from card in dbContext.StudentCards.AsNoTracking()
             join studentValue in dbContext.Students.IgnoreQueryFilters().AsNoTracking() on card.StudentId equals studentValue.Id into students
             from student in students.DefaultIfEmpty()
@@ -44,7 +48,7 @@ public sealed class EfAccessDecisionRepository(
                     .Where(x => x.MealTypeId == mealTypeId && x.EntitlementDate == calendarDate)
                 on card.StudentId equals rightValue.StudentId into rights
             from right in rights.DefaultIfEmpty()
-            where card.CardNumber == cardNumber
+            where card.CardNumber == cardNumber || (digits != null && card.CardNumber.TrimStart('0') == digits)
             select new AccessSnapshot(true, card.IsActive, card.StudentId,
                 student == null ? null : student.FirstName + " " + student.LastName,
                 student == null ? null : student.ClassId, student != null && student.IsActive && !student.IsDeleted,
@@ -206,7 +210,8 @@ public sealed class EfAccessDecisionRepository(
     private static AccessLog CreateLog(AccessCheckRequest request, AccessDecision decision) => new()
     {
         Timestamp = request.Timestamp, CardNumber = request.CardNumber, StudentId = decision.StudentId,
-        DeviceId = request.DeviceId, MealTypeId = request.MealTypeId, Decision = decision.Decision,
+        // Guid.Empty = ogun secilemedi (turnike okutmasi ogun penceresi disinda); sutun bos kalir.
+        DeviceId = request.DeviceId, MealTypeId = request.MealTypeId == Guid.Empty ? null : request.MealTypeId, Decision = decision.Decision,
         Reason = decision.Reason, Direction = request.Direction, ReaderSource = request.ReaderSource,
         OperatorId = request.OperatorId, OperationId = decision.OperationId
     };

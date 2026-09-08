@@ -87,12 +87,20 @@ public sealed partial class DeviceRuntimePersistenceService(
             }
 
             var message = change.Status?.Message ?? change.Exception?.Message ?? $"Durum: {status}";
-            db.DeviceEvents.Add(new DeviceEvent { DeviceId = change.DeviceId, Timestamp = change.OccurredAt,
-                EventType = "status", Severity = change.State == DeviceConnectionState.Faulted ? "Error" : "Information",
-                Message = message, PayloadJson = JsonSerializer.Serialize(new { Previous = change.PreviousState.ToString(),
-                    Current = change.State.ToString(), ErrorCode = change.Status?.ErrorCode }) });
+            // Saglik yoklamasi her 30 sn'de "Bagli -> Bagli" yayinlar; bunu olay olarak yazmak cihaz
+            // gunlugunu "Kullanici 444/30000, kayit 29389/1500" satirlariyla dolduruyordu (sahada
+            // goruldu: gunde ~2900 satir). Yalnizca durum DEGISIMI ya da hata gunluge girer; damga ve
+            // model bilgisi yine guncellenir.
+            var heartbeat = IsHeartbeat(change);
+            if (!heartbeat)
+            {
+                db.DeviceEvents.Add(new DeviceEvent { DeviceId = change.DeviceId, Timestamp = change.OccurredAt,
+                    EventType = "status", Severity = change.State == DeviceConnectionState.Faulted ? "Error" : "Information",
+                    Message = message, PayloadJson = JsonSerializer.Serialize(new { Previous = change.PreviousState.ToString(),
+                        Current = change.State.ToString(), ErrorCode = change.Status?.ErrorCode }) });
+            }
             await db.SaveChangesAsync();
-            var notification = NotificationFor(change, device.Name, status, message);
+            var notification = heartbeat ? null : NotificationFor(change, device.Name, status, message);
             if (notification is not null)
                 await scope.ServiceProvider.GetRequiredService<NotificationService>().CreateAsync(notification);
         }
@@ -101,6 +109,10 @@ public sealed partial class DeviceRuntimePersistenceService(
             LogPersistenceFailure(logger, change.DeviceId, exception);
         }
     }
+
+    /// <summary>Saglik yoklamasinin "Bagli -> Bagli" tekrari: durum degismedi, hata yok; gunluge yazilmaz.</summary>
+    public static bool IsHeartbeat(DeviceStateChange change) =>
+        change.PreviousState == change.State && change.State == DeviceConnectionState.Connected && change.Exception is null;
 
     private static CreateNotification? NotificationFor(DeviceStateChange change, string deviceName,
         string status, string message)

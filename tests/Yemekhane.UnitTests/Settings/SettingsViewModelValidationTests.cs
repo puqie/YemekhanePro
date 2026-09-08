@@ -198,6 +198,11 @@ public sealed class SettingsViewModelValidationTests
         public Task<Yemekhane.Application.Sms.SmsAutomationStatus> GetSmsAutomationAsync(CancellationToken cancellationToken = default) => Task.FromResult(new Yemekhane.Application.Sms.SmsAutomationStatus(automation, DateTimeOffset.UtcNow, null));
         public Task<Yemekhane.Application.Sms.SmsAutomationStatus> SaveSmsAutomationAsync(Yemekhane.Application.Sms.SmsAutomationSettings settings, CancellationToken cancellationToken = default) { automation = settings; return GetSmsAutomationAsync(cancellationToken); }
         public Task<Yemekhane.Application.Sms.EntitlementWarningRunResult> RunEntitlementWarningAsync(CancellationToken cancellationToken = default) => Task.FromResult(new Yemekhane.Application.Sms.EntitlementWarningRunResult(DateOnly.FromDateTime(DateTime.Today), 0, 0, 0, 0));
+
+        public Task<Yemekhane.Application.Maintenance.YearEndResetPreview> GetYearEndResetPreviewAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Yemekhane.Application.Maintenance.YearEndResetPreview([]));
+        public Task<Yemekhane.Application.Maintenance.YearEndResetResult> YearEndResetAsync(string confirmation, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Yemekhane.Application.Maintenance.YearEndResetResult("yedek.zip", [], DateTimeOffset.UtcNow));
         private static SettingsDocument Document() => new(new("Okul", null, null, null), new(null, "None", null, null, 30, false), new(false, "Daily", DayOfWeek.Sunday, new TimeOnly(2, 0), 14, null), new(null, null, 5, false, false, new("Disabled", 0, 0, null, null)), new("Information", 30, null), new(0, [], 0, []), false);
     }
 }

@@ -131,6 +131,27 @@ public sealed class StudentsViewModelTests
         Assert.Equal(2, routes.Count);
     }
 
+    /// <summary>
+    /// Sunucu sekme verisini reddederse (4xx) hata GORUNMELI. Once yalnizca uc istisna turu
+    /// yakalaniyor, ApiRequestException ates-ve-unut yoldan yutuluyor ve sekme bombos kaliyordu
+    /// (sahada "sekmeye tiklayinca hicbir sey olmuyor").
+    /// </summary>
+    [Fact]
+    public async Task DetailTabShowsTheServerErrorInsteadOfStayingBlank()
+    {
+        var api = new FakeApi { TabFailure = new ApiRequestException("Veli bilgisi için students.sensitive.read yetkisi gerekir.", System.Net.HttpStatusCode.BadRequest) };
+        using var vm = Create(api); var row = Row();
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.IsDetailOpen);
+
+        vm.SelectedTab = vm.Tabs[2];
+        await Until(() => vm.Tabs[2].Error is not null);
+
+        Assert.Contains("students.sensitive.read", vm.Tabs[2].Error);
+        Assert.False(vm.Tabs[2].IsLoaded);
+        Assert.False(vm.Tabs[2].IsEmpty);
+    }
+
     [Fact]
     public async Task CardWorkflowShowsHardwareMessageWhenReaderIsUnavailable()
     {
@@ -140,7 +161,9 @@ public sealed class StudentsViewModelTests
         await vm.OpenCardWorkflowAsync();
 
         Assert.True(vm.IsCardWorkflowOpen);
-        Assert.Contains("aktif kart okuyucu bulunamadı", vm.CardWorkflowMessage);
+        // Okuyucusu olmayan okul icin hata DEGIL, yonlendirme: numara elle yazilir.
+        Assert.Contains("Kart numarasını yazıp Ara", vm.CardWorkflowMessage);
+        Assert.False(vm.HasCardReader);
     }
 
     [Fact]
@@ -407,7 +430,8 @@ public sealed class StudentsViewModelTests
             return Task.FromResult(Details);
         }
         public Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default) { DeactivateCount++; DeactivatedId = id; return Task.CompletedTask; }
-        public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default) { TabCount++; return Task.FromResult<IReadOnlyList<object>>([new StudentDetailRow(tab)]); }
+        public Exception? TabFailure { get; set; }
+        public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default) { TabCount++; if (TabFailure is not null) throw TabFailure; return Task.FromResult<IReadOnlyList<object>>([new StudentDetailRow(tab)]); }
         public int LeaveCount, ReplaceCount, AssignCount;
         public SaveStudentRequest? LastSaveRequest;
         public Exception? ReplaceFailure;

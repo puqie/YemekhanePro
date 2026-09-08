@@ -144,6 +144,11 @@ public sealed class SmsAutomationViewModelTests
             AutomationSaveCalls++; LastAutomation = settings; automation = settings; return GetSmsAutomationAsync(cancellationToken);
         }
         public Task<EntitlementWarningRunResult> RunEntitlementWarningAsync(CancellationToken cancellationToken = default) => Task.FromResult(RunResult);
+
+        public Task<Yemekhane.Application.Maintenance.YearEndResetPreview> GetYearEndResetPreviewAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Yemekhane.Application.Maintenance.YearEndResetPreview([]));
+        public Task<Yemekhane.Application.Maintenance.YearEndResetResult> YearEndResetAsync(string confirmation, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Yemekhane.Application.Maintenance.YearEndResetResult("yedek.zip", [], DateTimeOffset.UtcNow));
         public Task<BackupCommandResult> BackupNowAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<BackupValidationResult> ValidateBackupAsync(string path, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<RestoreResult> RestoreAsync(string path, string confirmation, CancellationToken cancellationToken = default) => throw new NotSupportedException();

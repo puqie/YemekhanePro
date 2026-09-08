@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Yemekhane.Application.Common;
+using Yemekhane.Application.Maintenance;
 using Yemekhane.Application.Settings;
 using Yemekhane.Application.Sms;
 using Yemekhane.Infrastructure.Backup;
@@ -25,6 +26,10 @@ public interface ISettingsApiClient
     Task<SmsAutomationStatus> GetSmsAutomationAsync(CancellationToken cancellationToken = default);
     Task<SmsAutomationStatus> SaveSmsAutomationAsync(SmsAutomationSettings settings, CancellationToken cancellationToken = default);
     Task<EntitlementWarningRunResult> RunEntitlementWarningAsync(CancellationToken cancellationToken = default);
+    /// <summary>Yil sonu sifirlamasinda silinecek kayitlarin sayimi (hicbir sey silmez).</summary>
+    Task<YearEndResetPreview> GetYearEndResetPreviewAsync(CancellationToken cancellationToken = default);
+    /// <summary>Onay metniyle yil sonu sifirlamasi; sunucu once guvenlik yedegi alir.</summary>
+    Task<YearEndResetResult> YearEndResetAsync(string confirmation, CancellationToken cancellationToken = default);
 }
 
 public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : ISettingsApiClient
@@ -35,6 +40,11 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
         SendAsync<SaveSettingsResult>(HttpMethod.Put, "api/settings", JsonContent.Create(request), cancellationToken);
     public Task<BackupCommandResult> BackupNowAsync(CancellationToken cancellationToken = default) =>
         SendAsync<BackupCommandResult>(HttpMethod.Post, "api/settings/backup", null, cancellationToken);
+    public Task<YearEndResetPreview> GetYearEndResetPreviewAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<YearEndResetPreview>(HttpMethod.Get, "api/maintenance/year-end-reset/preview", null, cancellationToken);
+    public Task<YearEndResetResult> YearEndResetAsync(string confirmation, CancellationToken cancellationToken = default) =>
+        SendAsync<YearEndResetResult>(HttpMethod.Post, "api/maintenance/year-end-reset",
+            JsonContent.Create(new YearEndResetRequest(confirmation)), cancellationToken);
     public Task<SyncRunResult> RunSyncAsync(CancellationToken cancellationToken = default) =>
         SendAsync<SyncRunResult>(HttpMethod.Post, "api/settings/sync/run", null, cancellationToken);
 

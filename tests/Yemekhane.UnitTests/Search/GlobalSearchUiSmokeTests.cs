@@ -19,7 +19,8 @@ public sealed class GlobalSearchUiSmokeTests
                 Assert.IsType<Grid>(window.FindName("GlobalSearchHost"));
                 Assert.IsType<TextBox>(window.FindName("GlobalSearchBox"));
                 Assert.IsType<ListBox>(window.FindName("SearchResults"));
-                Assert.IsType<Grid>(window.FindName("ShortcutHelpHost"));
+                // Kisayol yardimi artik ortak Modal kontrolu (once elle yazilmis Grid + karartma).
+                Assert.IsType<Yemekhane.Desktop.Controls.Modal>(window.FindName("ShortcutHelpHost"));
                 Assert.IsType<ItemsControl>(window.FindName("ShortcutHelpList"));
                 window.Close();
             }

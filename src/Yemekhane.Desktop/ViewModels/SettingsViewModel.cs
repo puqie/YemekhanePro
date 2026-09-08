@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Globalization;
 using System.Windows.Input;
+using Yemekhane.Application.Maintenance;
 using Yemekhane.Application.Settings;
 using Yemekhane.Application.Sms;
 using Yemekhane.Desktop.Converters;
@@ -78,6 +79,9 @@ public sealed class SettingsViewModel : ObservableObject
         // Kayitli esik/sablonla kosar; kaydedilmemis degisiklik varken pasif -- aksi halde ekranda
         // gorunen degil, sunucudaki eski deger uygulanir ve kullanici bunu anlayamaz.
         RunEntitlementWarningCommand = new AsyncCommand(RunEntitlementWarningAsync, () => CanManage && !IsLoading && !IsDirty);
+        LoadResetPreviewCommand = new AsyncCommand(LoadResetPreviewAsync, () => CanManage && !IsLoading);
+        // Sifirlama ancak sayim goruldukten ve onay metni tam yazildiktan sonra aktiflesir.
+        YearEndResetCommand = new AsyncCommand(YearEndResetAsync, () => CanManage && HasResetPreview && IsResetConfirmed && !IsLoading);
         NavigateDevicesCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Devices), () => navigation.IsAvailable(ShellRoutes.Devices));
         // "Yemek Türleri" artik Tanimlar ekranina gider: ogun ekleme/duzenleme/ucret orada.
         // Onceden Hakedisler ekranina gidiyordu; orada ogun TANIMLANAMAZ, yalnizca secilir.
@@ -152,6 +156,22 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>"Şimdi gönder" sonucu: kac SMS kuyruklandi, kac aday telefonsuz/bugun zaten gonderilmis.</summary>
     public string? EntitlementRunText { get => entitlementRunText; private set => Set(ref entitlementRunText, value); }
     public ICommand RunEntitlementWarningCommand { get; }
+
+    // ---- Yil sonu sifirlama ----
+    private YearEndResetPreview? resetPreview;
+    private string? resetConfirmation, resetResultMessage;
+    public ICommand LoadResetPreviewCommand { get; }
+    public ICommand YearEndResetCommand { get; }
+    public IReadOnlyList<YearEndResetItem> ResetItems => resetPreview?.Items ?? [];
+    public int ResetTotal => resetPreview?.Total ?? 0;
+    public bool HasResetPreview => resetPreview is not null;
+    public string? ResetResultMessage { get => resetResultMessage; private set => Set(ref resetResultMessage, value); }
+    public string? ResetConfirmation { get => resetConfirmation; set { if (Set(ref resetConfirmation, value)) { Raise(nameof(IsResetConfirmed)); Raise(nameof(ResetConfirmationHint)); RefreshCommands(); } } }
+    public bool IsResetConfirmed => YearEndReset.IsConfirmed(ResetConfirmation);
+    public string ResetConfirmationHint => !HasResetPreview
+        ? "Önce \"Silinecekleri Göster\" ile sayımı alın."
+        : string.IsNullOrEmpty(ResetConfirmation) ? $"Sıfırlamak için kutuya tam olarak {YearEndReset.ConfirmationPhrase} yazın (Türkçe karakter kullanmadan, büyük harfle)."
+        : IsResetConfirmed ? "Onay alındı; Yılı Sıfırla düğmesi aktif." : $"Onay metni eşleşmiyor. Tam olarak {YearEndReset.ConfirmationPhrase} yazın.";
     public bool HasInvalidInput => Validate().Count > 0;
     public string SchoolName { get => schoolName; set => Change(ref schoolName, value); } public string SchoolAddress { get => schoolAddress; set => Change(ref schoolAddress, value); }
     public string SchoolContact { get => schoolContact; set => Change(ref schoolContact, value); } public string LogoPath { get => logoPath; set => Change(ref logoPath, value); }
@@ -251,6 +271,22 @@ public sealed class SettingsViewModel : ObservableObject
     });
     public void SetSmsSecret(string value) => SmsSecret = value; public void SetSyncSecret(string value) => SyncSecret = value;
     private async Task BackupNowAsync() => await Run(async () => { var x = await api.BackupNowAsync(); LastBackupFile = x.FileName; StatusMessage = $"Yedek oluşturuldu: {x.FileName} ({x.CreatedAt.ToLocalTime():dd.MM.yyyy HH:mm}). Şema sürümü {x.SchemaVersion}, uygulama {x.AppVersion}."; });
+    private async Task LoadResetPreviewAsync() => await Run(async () =>
+    {
+        resetPreview = await api.GetYearEndResetPreviewAsync();
+        ResetResultMessage = null;
+        Raise(nameof(ResetItems)); Raise(nameof(ResetTotal)); Raise(nameof(HasResetPreview)); Raise(nameof(ResetConfirmationHint));
+        RefreshCommands();
+    });
+    private async Task YearEndResetAsync() => await Run(async () =>
+    {
+        var result = await api.YearEndResetAsync(ResetConfirmation ?? "");
+        resetPreview = null; ResetConfirmation = null;
+        Raise(nameof(ResetItems)); Raise(nameof(ResetTotal)); Raise(nameof(HasResetPreview)); Raise(nameof(ResetConfirmationHint));
+        ResetResultMessage = $"Sıfırlama tamamlandı: {result.Total:N0} kayıt silindi. Güvenlik yedeği: {result.BackupFileName}. Yeni öğrenci listesini Sicil Aktar ile yükleyebilirsiniz.";
+        LastBackupFile = result.BackupFileName;
+        RefreshCommands();
+    });
     private async Task ValidateBackupAsync() => await Run(async () => { var x = await api.ValidateBackupAsync(RestorePath!); StatusMessage = $"Yedek doğrulandı: {x.CreatedAt.ToLocalTime():dd.MM.yyyy HH:mm} tarihli, şema sürümü {x.SchemaVersion}, uygulama {x.AppVersion}."; });
     private async Task RestoreAsync() => await Run(async () => { var x = await api.RestoreAsync(RestorePath!, RestoreConfirmation!); StatusMessage = x.RestartRequired ? "Geri yükleme tamamlandı. Uygulama yeniden başlatılmalıdır." : "Geri yükleme tamamlandı."; RestoreConfirmation = null; });
     private async Task SyncNowAsync() => await Run(async () => { var x = await api.RunSyncAsync(); StatusMessage = $"Eşitleme tamamlandı: {x.Succeeded} başarılı, {x.RetryPending} bekliyor, {x.Conflicts} çakışma."; await LoadAsync(); await LoadConflictsAsync(); });
@@ -384,5 +420,5 @@ public sealed class SettingsViewModel : ObservableObject
         Raise(nameof(IsDirty)); Raise(nameof(HasInvalidInput)); RefreshCommands();
     }
     private static string? EmptyToNull(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-    private void RefreshCommands() { foreach (var c in new[] { SaveCommand, CancelCommand, RefreshCommand, BackupNowCommand, ChooseRestoreCommand, ValidateBackupCommand, RestoreCommand, SyncNowCommand, RefreshConflictsCommand, RequeueConflictCommand, RefreshLogsCommand, RunEntitlementWarningCommand }) if (c is AsyncCommand a) a.Refresh(); else if (c is RelayCommand r) r.Refresh(); }
+    private void RefreshCommands() { foreach (var c in new[] { SaveCommand, CancelCommand, RefreshCommand, BackupNowCommand, ChooseRestoreCommand, ValidateBackupCommand, RestoreCommand, SyncNowCommand, RefreshConflictsCommand, RequeueConflictCommand, RefreshLogsCommand, RunEntitlementWarningCommand, LoadResetPreviewCommand, YearEndResetCommand }) if (c is AsyncCommand a) a.Refresh(); else if (c is RelayCommand r) r.Refresh(); }
 }

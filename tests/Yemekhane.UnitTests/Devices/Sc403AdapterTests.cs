@@ -241,26 +241,56 @@ public sealed class Sc403AdapterTests
     }
 
     /// <summary>
-    /// Kapi rolesini suren SDK cagrisi uretici dokumaninda yer almadigindan, komut sessizce
-    /// basarili sayilmak yerine cihaz dogrulamasi gerektigini bildirmelidir (donanim dok. §08).
-    ///
-    /// Sonuc ATILMAZ, BASARISIZ olarak DONDURULUR. TurnstileService yalnizca basarisiz donen
-    /// sonucta tuketilen yemek hakkini iade eder (compensateConsumption: isAllowed); atilan bir
-    /// istisna genel catch bloguna duser ve orada iade YAPILMAZ. Yani burada istisna atmak,
-    /// turnike hic donmedigi halde ogrencinin hakkini yakardi.
+    /// Olumlu kararda kapi rolesi, profildeki darbe suresiyle surulur (SDK ACUnlock / CMD_UNLOCK).
+    /// Once bu yol "kilavuzda yok" diye sabit basarisiz donuyordu ve turnike HIC acilmiyordu.
     /// </summary>
     [Fact]
-    public async Task RelayDriveReportsValidationRequiredAsFailedResultSoCreditIsRefunded()
+    public async Task RelayIsPulsedForConfiguredDurationOnGrant()
     {
         var sdk = new FakeZkTecoSdk();
-        await using var controller = Controller(sdk);
+        await using var controller = new Sc403AccessController(Guid.NewGuid(), "SC403 Giris", Endpoint(),
+            new OzakTurnstileProfile(TimeSpan.FromMilliseconds(700)), sdk, TimeSpan.FromSeconds(1));
         await controller.ConnectAsync(CancellationToken.None);
 
         var result = await controller.GrantAccessAsync(TurnstileDirection.Entry, CancellationToken.None);
 
+        Assert.True(result.Succeeded);
+        Assert.Equal([TimeSpan.FromMilliseconds(700)], sdk.Unlocks);
+    }
+
+    /// <summary>
+    /// Role surulemezse sonuc ATILMAZ, BASARISIZ olarak DONDURULUR. TurnstileService yalnizca
+    /// basarisiz donen sonucta tuketilen yemek hakkini iade eder (compensateConsumption: isAllowed);
+    /// atilan bir istisna genel catch bloguna duser ve orada iade YAPILMAZ. Yani burada istisna
+    /// atmak, turnike hic donmedigi halde ogrencinin hakkini yakardi.
+    /// </summary>
+    [Fact]
+    public async Task RelayFailureIsReportedAsFailedResultSoCreditIsRefunded()
+    {
+        var sdk = new FakeZkTecoSdk();
+        await using var controller = Controller(sdk);
+        await controller.ConnectAsync(CancellationToken.None);
+        sdk.FailNext(new ZkTecoProtocolException("Röle yanıt vermedi.", isTransient: false, ZkTecoErrorCodes.ProtocolError));
+
+        var result = await controller.GrantAccessAsync(TurnstileDirection.Entry, CancellationToken.None);
+
         Assert.False(result.Succeeded);
-        Assert.Equal(ZkTecoErrorCodes.ValidationRequired, result.ErrorCode);
-        Assert.True(DeviceErrorCodes.IsPermanent(result.ErrorCode));
+        Assert.Equal(ZkTecoErrorCodes.ProtocolError, result.ErrorCode);
+        Assert.Contains("Röle yanıt vermedi", result.Message, StringComparison.Ordinal);
+        Assert.Empty(sdk.Unlocks);
+    }
+
+    /// <summary>
+    /// Kart itme dongusu yalnizca IAccessController tasiyan cihazlara kart gonderir. SC403 bunu
+    /// ilan etmiyordu ve kuyrukta sessizce atlaniyordu -- cihaza hic kart gitmeyecekti.
+    /// </summary>
+    [Fact]
+    public async Task ControllerIsResolvableAsAccessControllerSoCardsArePushed()
+    {
+        var sdk = new FakeZkTecoSdk();
+        await using var controller = Controller(sdk);
+
+        Assert.IsAssignableFrom<IAccessController>(controller);
     }
 
     [Fact]
