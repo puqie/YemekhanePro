@@ -21,6 +21,16 @@ public sealed class JwtOptions
     /// Yenileme ucu yoktur; belirtec dolunca kabuk yeniden giris ister (SessionMonitor).
     /// </summary>
     public int AccessTokenMinutes { get; set; } = 720;
+
+    /// <summary>Ust sinir 24 saat: daha uzunu calinan belirteci gunlerce gecerli kilar.</summary>
+    public const int MaxAccessTokenMinutes = 1440;
+
+    /// <summary>Program.cs acilista cagirir; sinir disi deger API'yi baslatmaz (yanlis ayar sessizce calismasin).</summary>
+    public void EnsureValid()
+    {
+        if (AccessTokenMinutes is < 1 or > MaxAccessTokenMinutes)
+            throw new InvalidOperationException($"Authentication:Jwt:AccessTokenMinutes 1 ile {MaxAccessTokenMinutes} arasında olmalıdır.");
+    }
 }
 
 public sealed class LoginLockoutOptions

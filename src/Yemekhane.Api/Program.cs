@@ -168,8 +168,9 @@ if (string.IsNullOrWhiteSpace(signingKey) || Encoding.UTF8.GetByteCount(signingK
 var jwtOptions = jwtSection.Get<JwtOptions>() ?? new JwtOptions();
 if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) || string.IsNullOrWhiteSpace(jwtOptions.Audience))
     throw new InvalidOperationException("Authentication:Jwt:Issuer ve Audience boş olamaz.");
-if (jwtOptions.AccessTokenMinutes is < 1 or > 60)
-    throw new InvalidOperationException("Authentication:Jwt:AccessTokenMinutes 1 ile 60 arasında olmalıdır.");
+// Sinir JwtOptions'ta: 12 saatlik oturum (720) 60 dakikalik eski ust sinira takilip API'yi hic baslatmiyordu;
+// birim testleri Program.cs'i gormedigi icin bunu ancak kurulum smoke'u yakaladi.
+jwtOptions.EnsureValid();
 jwtOptions.SigningKey = signingKey;
 var lockoutOptions = builder.Configuration.GetSection("Authentication:Lockout").Get<LoginLockoutOptions>()
     ?? new LoginLockoutOptions();
