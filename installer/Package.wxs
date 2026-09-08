@@ -24,7 +24,7 @@
     <!-- ARPCOMMENTS: Programlar listesinde surum ve amac gorunur. -->
     <Property Id="ARPCOMMENTS" Value="YemekhanePro yemekhane yönetim sistemi - sürüm $(var.ProductVersion)" />
     <Property Id="ARPCONTACT" Value="puyi.com.tr" />
-    <Property Id="ARPHELPTELEPHONE" Value="0552 999 96 96" />
+    <Property Id="ARPHELPTELEPHONE" Value="0552 999 96 96 / 0507 609 66 91" />
     <Property Id="ARPHELPLINK" Value="https://puyi.com.tr" />
     <!-- Olmazsa Programlar listesinde genel bir MSI kutusu simgesi cikar. -->
     <Icon Id="ProductIcon" SourceFile="$(var.PublishDir)\Yemekhane.Desktop.exe" />

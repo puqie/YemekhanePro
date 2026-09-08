@@ -10,6 +10,7 @@ public static class DeveloperContact
 {
     public const string Website = "puyi.com.tr";
     public const string Phone = "0552 999 96 96";
+    public const string Phone2 = "0507 609 66 91";
     public const string Label = "Yazılım desteği";
-    public const string Line = Label + ": " + Website + " • " + Phone;
+    public const string Line = Label + ": " + Website + " • " + Phone + " • " + Phone2;
 }

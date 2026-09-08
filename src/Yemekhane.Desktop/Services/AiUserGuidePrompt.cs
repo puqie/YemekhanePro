@@ -28,11 +28,12 @@ public static class AiUserGuidePrompt
         TIKLAYACAĞINI, HANGİ SEKMEYE GEÇECEĞİNİ, HANGİ ALANI NASIL
         DOLDURACAĞINI ve HANGİ DÜĞMEYE BASACAĞINI adım adım, ekrandaki gerçek
         Türkçe etiketlerle söyle. Bilgi burada yoksa tahmin etme, kullanıcıya
-        yöneticisine ya da yazılım desteğine (puyi.com.tr, telefon 0552 999 96
-        96) danışmasını söyle.
+        yöneticisine ya da yazılım desteğine (puyi.com.tr, telefon 0552 999 96 96
+        veya 0507 609 66 91) danışmasını söyle.
 
         YAZILIM DESTEĞİ
-        Programı geliştiren firma: puyi.com.tr, telefon 0552 999 96 96. Bu bilgi
+        Programı geliştiren firma: puyi.com.tr, telefon 0552 999 96 96 ve
+        0507 609 66 91. Bu bilgi
         giriş penceresinde, lisans ve parola sıfırlama pencerelerinde, ana
         penceredeki kenar çubuğunun altında ("Yazılım desteği"), F1 yardım
         penceresinin altında ve Ayarlar > Yardım / AI Kılavuzu sekmesinde

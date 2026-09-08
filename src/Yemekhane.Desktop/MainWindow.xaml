@@ -138,6 +138,7 @@
                         <TextBlock Text="{x:Static services:DeveloperContact.Label}" Foreground="{StaticResource FaintBrush}" FontSize="10" FontWeight="SemiBold" Margin="0,14,0,0"/>
                         <TextBlock Text="{x:Static services:DeveloperContact.Website}" Foreground="{StaticResource SidebarTextBrush}" Margin="0,5,0,0" AutomationProperties.Name="Yazılım desteği web sitesi"/>
                         <TextBlock Text="{x:Static services:DeveloperContact.Phone}" Foreground="{StaticResource SidebarTextBrush}" Margin="0,2,0,0" AutomationProperties.Name="Yazılım desteği telefonu"/>
+                        <TextBlock Text="{x:Static services:DeveloperContact.Phone2}" Foreground="{StaticResource SidebarTextBrush}" Margin="0,2,0,0" AutomationProperties.Name="Yazılım desteği ikinci telefonu"/>
                     </StackPanel>
                 </Border>
             </Grid>

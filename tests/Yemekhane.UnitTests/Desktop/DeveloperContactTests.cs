@@ -22,7 +22,8 @@ public sealed class DeveloperContactTests
     {
         Assert.Equal("puyi.com.tr", DeveloperContact.Website);
         Assert.Equal("0552 999 96 96", DeveloperContact.Phone);
-        Assert.Equal("Yazılım desteği: puyi.com.tr • 0552 999 96 96", DeveloperContact.Line);
+        Assert.Equal("0507 609 66 91", DeveloperContact.Phone2);
+        Assert.Equal("Yazılım desteği: puyi.com.tr • 0552 999 96 96 • 0507 609 66 91", DeveloperContact.Line);
     }
 
     [Theory]
@@ -32,6 +33,7 @@ public sealed class DeveloperContactTests
     [InlineData("src/Yemekhane.Desktop/Views/SettingsView.xaml", "DeveloperContact.Line")]
     [InlineData("src/Yemekhane.Desktop/MainWindow.xaml", "DeveloperContact.Website")]
     [InlineData("src/Yemekhane.Desktop/MainWindow.xaml", "DeveloperContact.Phone")]
+    [InlineData("src/Yemekhane.Desktop/MainWindow.xaml", "DeveloperContact.Phone2")]
     [InlineData("src/Yemekhane.Desktop/MainWindow.xaml", "DeveloperContact.Line")]
     public void EveryWindowBindsTheContact(string file, string binding) =>
         Assert.Contains("{x:Static services:" + binding + "}", File.ReadAllText(Path.Combine(Root, file)), StringComparison.Ordinal);
@@ -40,10 +42,11 @@ public sealed class DeveloperContactTests
     public void GuideAndInstallerCarryTheSameContact()
     {
         Assert.Contains(DeveloperContact.Website, AiUserGuidePrompt.Text, StringComparison.Ordinal);
-        Assert.Contains("0552 999 96", AiUserGuidePrompt.Text, StringComparison.Ordinal);
+        Assert.Contains("0552 999 96 96", AiUserGuidePrompt.Text, StringComparison.Ordinal);
+        Assert.Contains(DeveloperContact.Phone2, AiUserGuidePrompt.Text, StringComparison.Ordinal);
         var wxs = File.ReadAllText(Path.Combine(Root, "installer", "Package.wxs"));
         Assert.Contains("Value=\"" + DeveloperContact.Website + "\"", wxs, StringComparison.Ordinal);
-        Assert.Contains("Value=\"" + DeveloperContact.Phone + "\"", wxs, StringComparison.Ordinal);
+        Assert.Contains(DeveloperContact.Phone + " / " + DeveloperContact.Phone2, wxs, StringComparison.Ordinal);
         Assert.DoesNotContain("github.com/YemekhanePro", wxs, StringComparison.Ordinal);
     }
 }
