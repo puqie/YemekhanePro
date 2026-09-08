@@ -18,6 +18,10 @@ public sealed class CardsController(CardService service) : ControllerBase
     [HttpPost("students/{studentId:guid}/cards")]
     public Task<CardDetails> Assign(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken) => service.AssignAsync(studentId, request, cancellationToken);
 
+    /// <summary>Aktif kartin ON yuzundeki baski numarasini gunceller; kart degismez.</summary>
+    [HttpPut("students/{studentId:guid}/cards/printed-number")]
+    public Task<CardDetails> SetPrintedNumber(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken) => service.SetPrintedNumberAsync(studentId, request, cancellationToken);
+
     [HttpPost("students/{studentId:guid}/cards/replace")]
     public Task<CardDetails> Replace(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken) => service.ReplaceAsync(studentId, request, cancellationToken);
 

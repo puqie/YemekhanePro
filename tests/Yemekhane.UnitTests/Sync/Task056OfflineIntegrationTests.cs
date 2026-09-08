@@ -164,7 +164,7 @@ public sealed class Task056OfflineIntegrationTests
         var studentId = await students.AddAsync(new SaveStudentRequest("OFF-056", "Çevrim", "Dışı"), default);
         await students.UpdateAsync(studentId, new SaveStudentRequest("OFF-056", "Çevrimdışı", "Öğrenci"), default);
         await provider.GetRequiredService<ICardRepository>()
-            .AssignAsync(studentId, "CARD-056", DateTimeOffset.UtcNow, default);
+            .AssignAsync(studentId, "CARD-056", null, DateTimeOffset.UtcNow, default);
         await provider.GetRequiredService<IMealEntitlementRepository>()
             .UpsertBulkAsync([studentId], mealType.Id, [today], 1, "Offline", null, default);
 

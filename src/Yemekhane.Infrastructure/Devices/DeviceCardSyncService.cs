@@ -123,7 +123,8 @@ public sealed class DeviceCardSyncService(YemekhaneDbContext db, TimeProvider cl
                    db.DeviceCardStates.Count(x => x.DeviceId == device.Id && x.Status == DeviceCardSyncStatus.Loaded),
                    db.DeviceCardStates.Count(x => x.DeviceId == device.Id
                        && (x.Status == DeviceCardSyncStatus.Pending || x.Status == DeviceCardSyncStatus.PendingRemoval)),
-                   db.DeviceCardStates.Count(x => x.DeviceId == device.Id && x.Status == DeviceCardSyncStatus.Failed)))
+                   db.DeviceCardStates.Count(x => x.DeviceId == device.Id && x.Status == DeviceCardSyncStatus.Failed),
+                   device.DeviceType == "SF300"))
             .ToListAsync(cancellationToken);
 
     private async Task<List<Guid>> ActiveCardDeviceIdsAsync(CancellationToken cancellationToken) =>

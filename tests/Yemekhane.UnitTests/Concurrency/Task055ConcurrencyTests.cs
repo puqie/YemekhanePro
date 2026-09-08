@@ -93,7 +93,7 @@ public sealed class Task055ConcurrencyTests
             await using var context = database.CreateContext();
             try
             {
-                await new EfCardRepository(context).AssignAsync(database.StudentId, $"card-{index}",
+                await new EfCardRepository(context).AssignAsync(database.StudentId, $"card-{index}", null,
                     database.Timestamp.AddMilliseconds(index), default);
                 return true;
             }

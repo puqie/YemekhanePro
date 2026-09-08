@@ -22,6 +22,9 @@ public sealed class DeviceCardSummaryViewModel(DeviceCardSummary value)
 
     public string StatusText => value switch
     {
+        // SC403: kart cihaza yuklenmez, okutma sunucuya gelir ve karar orada verilir. "Tum kartlar
+        // yuklu" demek okulu "turnikeye gitmiyor" diye endiselendiriyordu.
+        { StoresCards: false } => "Kart yüklenmez; geçiş kararı programda",
         { Failed: > 0, Pending: > 0 } => $"{value.Pending} bekliyor, {value.Failed} hatalı",
         { Failed: > 0 } => $"{value.Failed} kart yüklenemedi",
         { Pending: > 0 } => $"{value.Pending} kart bekliyor",

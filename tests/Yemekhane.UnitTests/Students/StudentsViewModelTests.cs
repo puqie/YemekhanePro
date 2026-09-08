@@ -131,6 +131,22 @@ public sealed class StudentsViewModelTests
         Assert.Equal(2, routes.Count);
     }
 
+    /// <summary>"Kart Ata" baski numarasini da gonderir: kayip kart bulununca sahibi bununla aranir.</summary>
+    [Fact]
+    public async Task AssigningACardSendsThePrintedNumberToo()
+    {
+        var api = new FakeApi(); using var vm = Create(api, "cards.manage"); var row = Row() with { CardNumber = null };
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.IsDetailOpen);
+
+        vm.NewCardNumber = "8247129"; vm.NewPrintedNumber = "6296";
+        vm.ReplaceCardCommand.Execute(null);
+        await Until(() => api.LastAssign is not null);
+
+        Assert.Equal("8247129", api.LastAssign!.CardNumber);
+        Assert.Equal("6296", api.LastAssign.PrintedNumber);
+    }
+
     /// <summary>
     /// Sunucu sekme verisini reddederse (4xx) hata GORUNMELI. Once yalnizca uc istisna turu
     /// yakalaniyor, ApiRequestException ates-ve-unut yoldan yutuluyor ve sekme bombos kaliyordu
@@ -438,7 +454,10 @@ public sealed class StudentsViewModelTests
         public Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default) { LeaveCount++; return Task.CompletedTask; }
         public Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
         { ReplaceCount++; return ReplaceFailure is null ? Task.CompletedTask : Task.FromException(ReplaceFailure); }
-        public Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default) { AssignCount++; return Task.CompletedTask; }
+        public Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default) { AssignCount++; LastAssign = request; return Task.CompletedTask; }
+        public AssignCardRequest? LastAssign { get; private set; }
+        public SetPrintedNumberRequest? LastPrinted { get; private set; }
+        public Task SetPrintedNumberAsync(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken = default) { LastPrinted = request; return Task.CompletedTask; }
     }
 
     private sealed class FakeCardSource(bool available) : ICardReadEventSource

@@ -32,7 +32,8 @@ public sealed record StudentListItem(
     bool IsActive,
     int TodayEntitlement,
     bool HasEnteredToday,
-    DateTimeOffset? LastEntryAt);
+    DateTimeOffset? LastEntryAt,
+    string? PrintedNumber = null);
 
 public sealed record StudentDetails(
     Guid Id,

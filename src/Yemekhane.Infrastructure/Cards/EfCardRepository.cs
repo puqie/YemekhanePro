@@ -13,9 +13,12 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
 {
     public EfCardRepository(YemekhaneDbContext dbContext)
         : this(dbContext, new AuditService(new EfAuditRepository(dbContext, TimeProvider.System), new SystemAuditContext())) { }
-    public Task<CardDetails?> FindByNumberAsync(string cardNumber, CancellationToken cancellationToken) =>
-        Project(dbContext.StudentCards.AsNoTracking().Where(x => x.CardNumber == cardNumber))
-            .SingleOrDefaultAsync(cancellationToken);
+    public async Task<CardDetails?> FindByNumberAsync(string cardNumber, CancellationToken cancellationToken) =>
+        await Project(dbContext.StudentCards.AsNoTracking().Where(x => x.CardNumber == cardNumber))
+            .SingleOrDefaultAsync(cancellationToken)
+        // Kayip kart elde: uzerinde yalnizca ON yuzdeki baski numarasi okunur; aktif kartlar arasinda aranir.
+        ?? await Project(dbContext.StudentCards.AsNoTracking().Where(x => x.IsActive && x.PrintedNumber == cardNumber))
+            .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<IReadOnlyList<CardDetails>> GetHistoryAsync(Guid studentId, CancellationToken cancellationToken)
     {
@@ -24,13 +27,13 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
         return history.OrderByDescending(x => x.ValidFrom).ToArray();
     }
 
-    public async Task<CardDetails> AssignAsync(Guid studentId, string cardNumber, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
+    public async Task<CardDetails> AssignAsync(Guid studentId, string cardNumber, string? printedNumber, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         await EnsureStudentAndCardAvailable(studentId, cardNumber, cancellationToken);
         if (await dbContext.StudentCards.AnyAsync(x => x.StudentId == studentId && x.IsActive, cancellationToken))
             throw new EntityConflictException("Öğrencinin aktif kartı var; kart değiştirme işlemini kullanın.");
-        var card = CreateCard(studentId, cardNumber, effectiveAt);
+        var card = CreateCard(studentId, cardNumber, printedNumber, effectiveAt);
         dbContext.StudentCards.Add(card);
         LocalOutbox.Enqueue(dbContext, card, LocalOutbox.UpdateCard, card, timestamp: effectiveAt);
         auditService.Record(new AuditEntry("CardAssigned", nameof(StudentCard), card.Id.ToString(), "Öğrenciye kart atandı.", After: card));
@@ -38,14 +41,14 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
         return await GetRequired(card.Id, cancellationToken);
     }
 
-    public async Task<CardDetails> ReplaceAsync(Guid studentId, string cardNumber, string reason, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
+    public async Task<CardDetails> ReplaceAsync(Guid studentId, string cardNumber, string? printedNumber, string reason, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         await EnsureStudentAndCardAvailable(studentId, cardNumber, cancellationToken);
         var activeCards = await dbContext.StudentCards.Where(x => x.StudentId == studentId && x.IsActive).ToListAsync(cancellationToken);
         if (activeCards.Count == 0) throw new EntityNotFoundException("Öğrencinin değiştirilecek aktif kartı bulunamadı.");
         foreach (var oldCard in activeCards) { oldCard.IsActive = false; oldCard.ValidTo = effectiveAt; oldCard.ReplacementReason = reason; oldCard.UpdatedAt = effectiveAt; }
-        var card = CreateCard(studentId, cardNumber, effectiveAt);
+        var card = CreateCard(studentId, cardNumber, printedNumber, effectiveAt);
         dbContext.StudentCards.Add(card);
         foreach (var oldCard in activeCards)
             LocalOutbox.Enqueue(dbContext, oldCard, LocalOutbox.UpdateCard, oldCard, timestamp: effectiveAt);
@@ -53,6 +56,18 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
         auditService.Record(new AuditEntry("CardReplaced", nameof(StudentCard), card.Id.ToString(), "Öğrenci kartı değiştirildi.",
             activeCards.Count + 1, activeCards.Select(Snapshot).ToArray(), Snapshot(card)));
         await dbContext.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+        return await GetRequired(card.Id, cancellationToken);
+    }
+
+    public async Task<CardDetails?> SetPrintedNumberAsync(Guid studentId, string? printedNumber, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
+    {
+        var card = await dbContext.StudentCards.SingleOrDefaultAsync(x => x.StudentId == studentId && x.IsActive, cancellationToken);
+        if (card is null) return null;
+        var before = Snapshot(card);
+        card.PrintedNumber = printedNumber; card.UpdatedAt = effectiveAt;
+        LocalOutbox.Enqueue(dbContext, card, LocalOutbox.UpdateCard, card, timestamp: effectiveAt);
+        auditService.Record(new AuditEntry("CardPrintedNumberSet", nameof(StudentCard), card.Id.ToString(), "Kartın baskı numarası güncellendi.", Before: before, After: Snapshot(card)));
+        await dbContext.SaveChangesAsync(cancellationToken);
         return await GetRequired(card.Id, cancellationToken);
     }
 
@@ -82,12 +97,12 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
         from card in cards
         join student in dbContext.Students.AsNoTracking() on card.StudentId equals student.Id
         select new CardDetails(card.Id, student.Id, student.StudentNo, student.FirstName + " " + student.LastName,
-            card.CardNumber, card.ValidFrom, card.ValidTo, card.ReplacementReason, card.IsActive);
+            card.CardNumber, card.ValidFrom, card.ValidTo, card.ReplacementReason, card.IsActive, card.PrintedNumber);
 
-    private static StudentCard CreateCard(Guid studentId, string cardNumber, DateTimeOffset effectiveAt) => new()
+    private static StudentCard CreateCard(Guid studentId, string cardNumber, string? printedNumber, DateTimeOffset effectiveAt) => new()
     {
-        StudentId = studentId, CardNumber = cardNumber, ValidFrom = effectiveAt, IsActive = true
+        StudentId = studentId, CardNumber = cardNumber, PrintedNumber = printedNumber, ValidFrom = effectiveAt, IsActive = true
     };
 
-    private static object Snapshot(StudentCard x) => new { x.Id, x.StudentId, x.CardNumber, x.ValidFrom, x.ValidTo, x.ReplacementReason, x.IsActive };
+    private static object Snapshot(StudentCard x) => new { x.Id, x.StudentId, x.CardNumber, x.PrintedNumber, x.ValidFrom, x.ValidTo, x.ReplacementReason, x.IsActive };
 }

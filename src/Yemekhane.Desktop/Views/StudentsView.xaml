@@ -317,7 +317,8 @@
                         <StackPanel Visibility="{Binding CanManageCards, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="Yeni kart no" Style="{StaticResource Label}" Margin="0,2,0,3"/>
                         <WrapPanel>
-                            <TextBox Width="118" Margin="0,0,7,0" Text="{Binding NewCardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Yeni kart numarası" AutomationProperties.Name="Yeni kart numarası"/>
+                            <TextBox Width="118" Margin="0,0,7,0" Text="{Binding NewCardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Yeni kart numarası (çip numarası, kartın arkasında)" AutomationProperties.Name="Yeni kart numarası"/>
+                            <TextBox Width="88" Margin="0,0,7,0" Text="{Binding NewPrintedNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Baskı no: kartın ön yüzündeki basılı numara (örn. 6296), isteğe bağlı; kayıp kartı bulmak için" AutomationProperties.Name="Baskı numarası"/>
                             <Button Style="{StaticResource Action}" Content="Okuyucudan Al" Command="{Binding ReadCardCommand}" Visibility="{Binding HasCardReader, Converter={StaticResource BoolToVisibility}}" ToolTip="Masa tipi okuyucudan kart numarasını alır"/>
                             <Button Style="{StaticResource Action}" Content="{Binding CardActionText}" Command="{Binding ReplaceCardCommand}" Margin="0"/>
                         </WrapPanel>
@@ -426,7 +427,7 @@
                         </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                             <TextBlock Text="Doğum tarihi" Style="{StaticResource Label}" Margin="0,6,0,3"/>
                             <DatePicker Grid.Row="1" SelectedDate="{Binding FormBirthDate}" MinWidth="0" Margin="0,0,0,4" AutomationProperties.Name="Doğum tarihi"/>
                             <TextBlock Grid.Column="2" Text="Kart No" Style="{StaticResource Label}" Margin="0,6,0,3"/>
@@ -439,6 +440,13 @@
                                      Text="{Binding FormCardNumber, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="Kart numarasını yazın; kayıtla birlikte atanır. Boş bırakılırsa kart işlemi yapılmaz."
                                      AutomationProperties.Name="Kart No"/>
+                            <!-- Kartin ON yuzundeki basili kisa numara (6296): cip numarasi DEGIL. Kayip kart
+                                 bulununca elde yalnizca bu numara vardir; arama kutusu bununla da eslesir. -->
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="Baskı No" Style="{StaticResource Label}" Margin="0,6,0,3"/>
+                            <TextBox Grid.Row="3" Grid.Column="2" Style="{StaticResource Field}" MinWidth="0"
+                                     Text="{Binding FormPrintedNumber, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Kartın ön yüzündeki basılı numara (örn. 6296). Çip numarası değildir; kayıp kart bulununca sahibini bulmak için aranır. İsteğe bağlı."
+                                     AutomationProperties.Name="Baskı No"/>
                         </Grid>
                     </StackPanel>
                     <!-- Fotograf: 96px onizleme; yoksa gri siluet. Dosya bellekten gosterilir, disk kilidi kalmaz. -->

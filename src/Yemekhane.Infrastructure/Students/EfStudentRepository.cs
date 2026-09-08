@@ -59,7 +59,8 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         if (!string.IsNullOrWhiteSpace(query.CardNumber))
         {
             var card = query.CardNumber.Trim();
-            students = students.Where(student => dbContext.StudentCards.Any(x => x.StudentId == student.Id && x.IsActive && x.CardNumber == card));
+            // Cip numarasi ya da ON yuzdeki baski numarasi: kayip kart bulununca elde yalnizca baski numarasi vardir.
+            students = students.Where(student => dbContext.StudentCards.Any(x => x.StudentId == student.Id && x.IsActive && (x.CardNumber == card || x.PrintedNumber == card)));
         }
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -70,7 +71,8 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
             var lastNameTerm = " " + normalized;
             students = students.Where(x => x.StudentNo.StartsWith(term)
                 || x.SearchName.StartsWith(normalized) || x.SearchName.Contains(lastNameTerm)
-                || dbContext.StudentCards.Any(card => card.StudentId == x.Id && card.IsActive && card.CardNumber.StartsWith(term)));
+                || dbContext.StudentCards.Any(card => card.StudentId == x.Id && card.IsActive
+                    && (card.CardNumber.StartsWith(term) || (card.PrintedNumber != null && card.PrintedNumber.StartsWith(term)))));
         }
 
         var total = await students.CountAsync(cancellationToken);
@@ -94,7 +96,8 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
                     && YemekhaneDbContext.JulianDay(x.Timestamp) < YemekhaneDbContext.JulianDay(dayEnd)),
                 dbContext.AccessLogs.Where(x => x.StudentId == student.Id && x.Decision == "ALLOW")
                     .OrderByDescending(x => YemekhaneDbContext.JulianDay(x.Timestamp))
-                    .Select(x => (DateTimeOffset?)x.Timestamp).FirstOrDefault()))
+                    .Select(x => (DateTimeOffset?)x.Timestamp).FirstOrDefault(),
+                dbContext.StudentCards.Where(card => card.StudentId == student.Id && card.IsActive).Select(card => card.PrintedNumber).FirstOrDefault()))
             .ToListAsync(cancellationToken);
         return new PagedResult<StudentListItem>(items, query.Page, query.PageSize, total);
     }

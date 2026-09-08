@@ -25,6 +25,13 @@ public interface IStudentApiClient
     Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default);
     Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default);
     /// <summary>
+    /// Aktif kartin on yuzundeki baski numarasini gunceller (PUT .../cards/printed-number).
+    /// Varsayilan govde AssignCardAsync ile ayni gerekceyle: yalnizca arama icin kullanan sahte
+    /// istemciler bunu uygulamak zorunda kalmasin.
+    /// </summary>
+    Task SetPrintedNumberAsync(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci baskı numarası güncellemeyi desteklemiyor.");
+    /// <summary>
     /// Aktif karti OLMAYAN ogrenciye ilk kartini atar (POST /students/{id}/cards).
     /// Varsayilan govde: baska ekranlarin (SMS gibi) yalnizca arama icin kullandigi
     /// sahte istemciler bu ucu uygulamak zorunda kalmasin; gercek istemci ve ogrenci
@@ -152,6 +159,14 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
     public async Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default)
     {
         using var message = Authorized(HttpMethod.Post, $"api/students/{studentId:D}/cards");
+        message.Content = JsonContent.Create(request);
+        using var response = await client.SendAsync(message, cancellationToken);
+        await EnsureAsync(response, cancellationToken);
+    }
+
+    public async Task SetPrintedNumberAsync(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Put, $"api/students/{studentId:D}/cards/printed-number");
         message.Content = JsonContent.Create(request);
         using var response = await client.SendAsync(message, cancellationToken);
         await EnsureAsync(response, cancellationToken);

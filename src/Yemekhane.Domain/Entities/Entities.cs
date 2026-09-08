@@ -34,6 +34,11 @@ public sealed class StudentCard : Entity
 {
     public Guid StudentId { get; set; }
     public required string CardNumber { get; set; }
+    /// <summary>
+    /// Kartin ON yuzune basili kisa numara (orn. 6296). Cipin numarasi DEGILDIR; kayip kart
+    /// bulununca sahibini bulmak icin aranir. Okul kartlarinda iki numara birden yazar.
+    /// </summary>
+    public string? PrintedNumber { get; set; }
     public DateTimeOffset ValidFrom { get; set; }
     public DateTimeOffset? ValidTo { get; set; }
     public string? ReplacementReason { get; set; }

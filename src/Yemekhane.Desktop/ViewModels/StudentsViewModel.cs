@@ -115,7 +115,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private DateTime? formBirthDate;
     private string formStudentNo = "", formFirstName = "", formLastName = "";
     private string? formNationalId, formAddress, formNotes, formFingerprintId, formPid;
-    private string? formCardNumber;
+    private string? formCardNumber, formPrintedNumber;
     // Veli: sicil kartindan girilir. Ogrenciyle birlikte kaydedilir (bkz. CommitParentAsync).
     private string? formParentName, formParentPhone;
     private Guid? parentId;
@@ -340,6 +340,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     /// </para>
     /// </summary>
     public string? FormCardNumber { get => formCardNumber; set => Set(ref formCardNumber, value); }
+    /// <summary>Kartin ON yuzundeki basili numara (orn. 6296); kayip kart bulununca sahibini bulmak icin.</summary>
+    public string? FormPrintedNumber { get => formPrintedNumber; set => Set(ref formPrintedNumber, value); }
     /// <summary>Sicil karti alanlari (eski programdaki form): dogum tarihi, parmak izi, PI ID ve dort tanim.</summary>
     public DateTime? FormBirthDate { get => formBirthDate; set { if (Set(ref formBirthDate, value)) ClearValidationError(); } }
     public string? FormFingerprintId { get => formFingerprintId; set => Set(ref formFingerprintId, value); }
@@ -362,6 +364,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public string? DetailJobName => FormJob.NameOf(Details?.JobId);
     /// <summary>Cekmecedeki salt okunur Kart No: yalnizca secim ve detay AYNI ogrenciyken (bkz. SameStudent).</summary>
     public string? DetailCardNumber => Details is not null && SelectedStudent?.Id == Details.Id ? SelectedStudent.CardNumber : null;
+    public string? DetailPrintedNumber => Details is not null && SelectedStudent?.Id == Details.Id ? SelectedStudent.PrintedNumber : null;
     /// <summary>Cekmecedeki 96px onizleme; fotograf yoksa null ve gri siluet gorunur.</summary>
     public ImageSource? PhotoImage { get => photoImage; private set { if (Set(ref photoImage, value)) { Raise(nameof(HasPhoto)); (RemovePhotoCommand as RelayCommand)?.Refresh(); } } }
     public bool HasPhoto => PhotoImage is not null;
@@ -376,6 +379,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public DateTime LeaveEndsOn { get; set; } = DateTime.Today;
     public string LeaveBehavior { get; set; } = "Keep";
     public string NewCardNumber { get; set; } = "";
+    public string NewPrintedNumber { get; set; } = "";
     public string CardReplacementReason { get; set; } = "Kayıp/hasarlı kart";
 
     public ICommand SearchCommand { get; }
@@ -643,23 +647,31 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private async Task CommitCardAsync(Guid id)
     {
         var number = FormCardNumber?.Trim() ?? "";
+        var printed = string.IsNullOrWhiteSpace(FormPrintedNumber) ? null : FormPrintedNumber.Trim();
         // Bos birakmak "karti kaldir" demek DEGILDIR: kart kaldirma ayri bir eylemdir
         // (Kartlar sekmesi). Sessizce pasiflestirmek, adini duzelten kullanicinin
         // kartini yok ederdi.
         if (number.Length == 0) return;
         // Zaten ayni numara atanmissa bos yere istek gonderilmez; sunucu bunu
         // "bu kart zaten kullaniliyor" diye reddederdi.
-        if (string.Equals(number, DetailCardNumber?.Trim(), StringComparison.Ordinal)) return;
+        if (string.Equals(number, DetailCardNumber?.Trim(), StringComparison.Ordinal))
+        {
+            // Ayni kart; yalnizca baski numarasi degismis olabilir (kart degistirmeden guncellenir).
+            var current = string.IsNullOrWhiteSpace(DetailPrintedNumber) ? null : DetailPrintedNumber.Trim();
+            if (!string.Equals(printed, current, StringComparison.Ordinal))
+                await api.SetPrintedNumberAsync(id, new SetPrintedNumberRequest(printed));
+            return;
+        }
 
         if (HasActiveCard)
         {
-            try { await api.ReplaceCardAsync(id, new ReplaceCardRequest(number, CardReplacementReason.Trim())); }
+            try { await api.ReplaceCardAsync(id, new ReplaceCardRequest(number, CardReplacementReason.Trim(), printed)); }
             // Liste eski kalmis olabilir (kart baska yerden pasiflestirilmis): atama ile devam.
             catch (ApiRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            { await api.AssignCardAsync(id, new AssignCardRequest(number)); }
+            { await api.AssignCardAsync(id, new AssignCardRequest(number, printed)); }
         }
-        else await api.AssignCardAsync(id, new AssignCardRequest(number));
-        FormCardNumber = null;
+        else await api.AssignCardAsync(id, new AssignCardRequest(number, printed));
+        FormCardNumber = null; FormPrintedNumber = null;
     }
 
     private async Task EnsureLookupsAsync(bool refresh = false)
@@ -679,6 +691,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         // Mevcut kart numarasi forma tasinir: bos gelseydi kullanici karti olan bir
         // ogrenciyi duzenlerken alani bos gorup "kart yok" sanirdi.
         FormCardNumber = SelectedStudent?.Id == d.Id ? SelectedStudent.CardNumber : null;
+        FormPrintedNumber = SelectedStudent?.Id == d.Id ? SelectedStudent.PrintedNumber : null;
         RaiseForm();
     }
 
@@ -881,14 +894,15 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         try
         {
             var id = Details.Id; var number = NewCardNumber.Trim();
+            var printed = string.IsNullOrWhiteSpace(NewPrintedNumber) ? null : NewPrintedNumber.Trim();
             if (HasActiveCard)
             {
-                try { await api.ReplaceCardAsync(id, new ReplaceCardRequest(number, CardReplacementReason.Trim())); }
+                try { await api.ReplaceCardAsync(id, new ReplaceCardRequest(number, CardReplacementReason.Trim(), printed)); }
                 // Liste eski kalmis olabilir (kart baska yerden pasiflestirilmis): atama ile devam.
-                catch (ApiRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound) { await api.AssignCardAsync(id, new AssignCardRequest(number)); }
+                catch (ApiRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound) { await api.AssignCardAsync(id, new AssignCardRequest(number, printed)); }
             }
-            else await api.AssignCardAsync(id, new AssignCardRequest(number));
-            NewCardNumber = ""; Raise(nameof(NewCardNumber)); ErrorMessage = null;
+            else await api.AssignCardAsync(id, new AssignCardRequest(number, printed));
+            NewCardNumber = ""; Raise(nameof(NewCardNumber)); NewPrintedNumber = ""; Raise(nameof(NewPrintedNumber)); ErrorMessage = null;
             await RefreshAfterWriteAsync(id);
             await ReloadTabAsync("Cards");
         }
@@ -1002,7 +1016,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     {
         FormStudentNo = FormFirstName = FormLastName = ""; FormNationalId = FormAddress = FormNotes = FormFingerprintId = FormPid = null;
         FormParentName = FormParentPhone = null; parentId = null; savedParentName = savedParentPhone = null;
-        FormCardNumber = null;
+        FormCardNumber = null; FormPrintedNumber = null;
         FormBirthDate = null; FormClass.Select(null); FormSection.Select(null); FormDepartment.Select(null); FormJob.Select(null);
         RaiseForm();
     }
@@ -1012,7 +1026,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         Raise(nameof(FormFingerprintId)); Raise(nameof(FormPid)); Raise(nameof(FormBirthDate)); Raise(nameof(FormSubtitle));
         // Kart numarasi da bildirilmeli: unutulursa form doldurulur ama kutu ekranda
         // ESKI degeri gosterir ve kullanici yanlis karti kaydeder.
-        Raise(nameof(FormCardNumber));
+        Raise(nameof(FormCardNumber)); Raise(nameof(FormPrintedNumber));
         RaiseParentForm();
     }
     private void CloseDrawers() { IsQuickDetailOpen = IsDetailOpen = IsFormOpen = false; }

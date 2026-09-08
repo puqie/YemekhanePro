@@ -10,6 +10,38 @@ namespace Yemekhane.UnitTests.Cards;
 
 public sealed class CardServiceTests
 {
+    /// <summary>
+    /// Kartin ON yuzundeki basili numara (6296) cipin numarasi degildir ama kayip kart bulununca
+    /// sahibini bulmak icin aranir: kart bulma, ogrenci arama ve kart filtresi bununla da eslesir;
+    /// kart degistirmeden guncellenebilir.
+    /// </summary>
+    [Fact]
+    public async Task PrintedNumberIsStoredSearchableAndUpdatable()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.MigrateAsync();
+        var student = await AddStudent(context, "111");
+        var service = new CardService(new EfCardRepository(context), TimeProvider.System);
+
+        var card = await service.AssignAsync(student.Id, new AssignCardRequest("8247129", " 6296 "));
+        Assert.Equal("6296", card.PrintedNumber);
+        Assert.Equal(card.Id, (await service.FindAsync("6296")).Id);
+        Assert.Equal(card.Id, (await service.FindAsync("8247129")).Id);
+
+        var students = new Yemekhane.Infrastructure.Students.EfStudentRepository(context);
+        Assert.Single((await students.SearchAsync(new Yemekhane.Application.Students.StudentQuery(Search: "6296"), default)).Items);
+        Assert.Single((await students.SearchAsync(new Yemekhane.Application.Students.StudentQuery(CardNumber: "6296"), default)).Items);
+        Assert.Equal("6296", (await students.SearchAsync(new Yemekhane.Application.Students.StudentQuery(Search: "111"), default)).Items.Single().PrintedNumber);
+
+        var updated = await service.SetPrintedNumberAsync(student.Id, new SetPrintedNumberRequest("6300"));
+        Assert.Equal("6300", updated.PrintedNumber);
+        Assert.Null((await service.SetPrintedNumberAsync(student.Id, new SetPrintedNumberRequest("  "))).PrintedNumber);
+        await Assert.ThrowsAsync<RequestValidationException>(
+            () => service.SetPrintedNumberAsync(student.Id, new SetPrintedNumberRequest(new string('9', 33))));
+    }
+
     [Fact]
     public async Task ReplacementPreservesHistoryAndActivatesOnlyNewCard()
     {

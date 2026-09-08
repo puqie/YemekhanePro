@@ -70,6 +70,7 @@ public static class StudentTabFormatter
         ["Cards"] =
         [
             new("cardNumber", "Kart No"),
+            new("printedNumber", "Baskı No"),
             new("isActive", "Durum", FieldKind.YesNo, TrueText: "Aktif", FalseText: "Pasif"),
             new("validFrom", "Başlangıç", FieldKind.DateTime),
             new("validTo", "Bitiş", FieldKind.DateTime),

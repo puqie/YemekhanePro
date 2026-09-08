@@ -125,8 +125,12 @@ Bundan sonra kararı yalnızca bu program verir; cihaz kart tutmaz.
 ### C3a. Kart numarası hangisi?
 Kartın **arkasındaki** uzun sayı (örnek `0008247129 125,55129`): virgülden önceki sayı, baştaki
 sıfırlar olsa da olmasa da olur (`8247129` ya da `0008247129`). Öndeki kısa sayı (örnek 6296)
-okulun bastığı sıra numarasıdır, çipin numarası değildir. Öğrenci kartındaki Kart No alanına
-yazın; masa tipi okuyucu gerekmez.
+okulun bastığı sıra numarasıdır, çipin numarası değildir. Öğrenci kartındaki **Kart No** alanına
+çip numarasını, **Baskı No** alanına öndeki kısa numarayı yazın; masa tipi okuyucu gerekmez.
+Kayıp bir kart bulununca arama kutusuna öndeki numarayı (6296) yazın; sahibi çıkar.
+
+**Kart Yükleme Durumu sayfası** SC403 için "Kart yüklenmez; geçiş kararı programda" der. Bu
+normaldir: SC403'e kart yüklenmez, okutma programa gelir ve karar orada verilir.
 
 ### C4. Deneyin
 Kayıtlı bir kart okutun: Günlük Takip ekranında geçiş görünür, turnike döner. Kayıtsız kart

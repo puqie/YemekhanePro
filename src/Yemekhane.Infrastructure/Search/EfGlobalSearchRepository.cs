@@ -47,7 +47,7 @@ public sealed class EfGlobalSearchRepository(YemekhaneDbContext db, TimeProvider
         var normalized = TurkishSearchText.Normalize(term);
         var values = await db.Students.AsNoTracking()
             .Where(student => student.StudentNo == term
-                || db.StudentCards.Any(card => card.StudentId == student.Id && card.IsActive && card.CardNumber == term)
+                || db.StudentCards.Any(card => card.StudentId == student.Id && card.IsActive && (card.CardNumber == term || card.PrintedNumber == term))
                 || general && (student.SearchName.StartsWith(normalized)
                     || student.SearchName.Contains(" " + normalized)))
             .OrderBy(student => student.StudentNo == term ? 0 : 1)

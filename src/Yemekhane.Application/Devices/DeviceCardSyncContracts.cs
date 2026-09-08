@@ -33,7 +33,8 @@ public sealed record DeviceCardStatusRow(Guid DeviceId, string DeviceName, strin
     DateTimeOffset? LastSyncedAt, int AttemptCount, string? LastError);
 
 /// <summary>Bir cihazin kart yukleme ozeti.</summary>
-public sealed record DeviceCardSummary(Guid DeviceId, string DeviceName, int Loaded, int Pending, int Failed);
+/// <summary>StoresCards=false: cihaz kart tutmaz (SC403: karar sunucuda, kart yuklenmez); sayaclar anlamsizdir.</summary>
+public sealed record DeviceCardSummary(Guid DeviceId, string DeviceName, int Loaded, int Pending, int Failed, bool StoresCards = true);
 
 public interface IDeviceCardSyncService
 {
