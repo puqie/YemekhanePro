@@ -23,12 +23,14 @@
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
     <!-- ARPCOMMENTS: Programlar listesinde surum ve amac gorunur. -->
     <Property Id="ARPCOMMENTS" Value="YemekhanePro yemekhane yönetim sistemi - sürüm $(var.ProductVersion)" />
-    <Property Id="ARPCONTACT" Value="YemekhanePro" />
+    <Property Id="ARPCONTACT" Value="puyi.com.tr" />
+    <Property Id="ARPHELPTELEPHONE" Value="0552 999 96 96" />
+    <Property Id="ARPHELPLINK" Value="https://puyi.com.tr" />
     <!-- Olmazsa Programlar listesinde genel bir MSI kutusu simgesi cikar. -->
     <Icon Id="ProductIcon" SourceFile="$(var.PublishDir)\Yemekhane.Desktop.exe" />
     <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
-    <Property Id="ARPURLINFOABOUT" Value="https://github.com/YemekhanePro" />
-    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/YemekhanePro" />
+    <Property Id="ARPURLINFOABOUT" Value="https://puyi.com.tr" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://puyi.com.tr" />
 
     <!-- Kurulum sihirbazi: hos geldiniz -> klasor secimi -> kurulum -> bitti.
          Bu olmadan MSI "basic UI" moduna duser ve kullanici yalnizca bir ilerleme cubugu gorur. -->

@@ -1,6 +1,7 @@
 <Window x:Class="Yemekhane.Desktop.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:services="clr-namespace:Yemekhane.Desktop.Services"
         xmlns:views="clr-namespace:Yemekhane.Desktop.Views"
         xmlns:desktop="clr-namespace:Yemekhane.Desktop"
         xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
@@ -133,6 +134,10 @@
                         <TextBlock Text="OTURUM" Foreground="{StaticResource FaintBrush}" FontSize="10" FontWeight="SemiBold" />
                         <!-- Memur "JWT" bilmez; kim giris yapmis onu gormek ister. -->
                         <TextBlock x:Name="SessionUserText" Text="Güvenli yerel bağlantı" Foreground="{StaticResource SidebarTextBrush}" Margin="0,5,0,0" TextTrimming="CharacterEllipsis" />
+                        <!-- Okul sorun yasayinca kime ulasacagini her zaman gorsun. -->
+                        <TextBlock Text="{x:Static services:DeveloperContact.Label}" Foreground="{StaticResource FaintBrush}" FontSize="10" FontWeight="SemiBold" Margin="0,14,0,0"/>
+                        <TextBlock Text="{x:Static services:DeveloperContact.Website}" Foreground="{StaticResource SidebarTextBrush}" Margin="0,5,0,0" AutomationProperties.Name="Yazılım desteği web sitesi"/>
+                        <TextBlock Text="{x:Static services:DeveloperContact.Phone}" Foreground="{StaticResource SidebarTextBrush}" Margin="0,2,0,0" AutomationProperties.Name="Yazılım desteği telefonu"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -373,7 +378,10 @@
                 </ItemsControl>
             </StackPanel>
             <controls:Modal.Footer>
-                <TextBlock Text="Enter, çok satırlı metin alanlarında satır eklemeyi korur." Foreground="{StaticResource MutedBrush}"/>
+                <StackPanel>
+                    <TextBlock Text="Enter, çok satırlı metin alanlarında satır eklemeyi korur." Foreground="{StaticResource MutedBrush}"/>
+                    <TextBlock Text="{x:Static services:DeveloperContact.Line}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                </StackPanel>
             </controls:Modal.Footer>
         </controls:Modal>
         <!-- Oturum suresi dolunca ekranin ustune cikar; alttaki ekranlar ve formlar

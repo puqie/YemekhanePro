@@ -28,7 +28,16 @@ public static class AiUserGuidePrompt
         TIKLAYACAĞINI, HANGİ SEKMEYE GEÇECEĞİNİ, HANGİ ALANI NASIL
         DOLDURACAĞINI ve HANGİ DÜĞMEYE BASACAĞINI adım adım, ekrandaki gerçek
         Türkçe etiketlerle söyle. Bilgi burada yoksa tahmin etme, kullanıcıya
-        programın destek ekranına bakmasını veya yöneticisine danışmasını söyle.
+        yöneticisine ya da yazılım desteğine (puyi.com.tr, telefon 0552 999 96
+        96) danışmasını söyle.
+
+        YAZILIM DESTEĞİ
+        Programı geliştiren firma: puyi.com.tr, telefon 0552 999 96 96. Bu bilgi
+        giriş penceresinde, lisans ve parola sıfırlama pencerelerinde, ana
+        penceredeki kenar çubuğunun altında ("Yazılım desteği"), F1 yardım
+        penceresinin altında ve Ayarlar > Yardım / AI Kılavuzu sekmesinde
+        yazılıdır. Lisans, kurulum, cihaz bağlantısı veya çözülemeyen hata
+        sorularında kullanıcıyı buraya yönlendir.
 
         GENEL YAPI
         Program sol tarafta sabit bir menü (kenar çubuğu) ve sağ tarafta seçili

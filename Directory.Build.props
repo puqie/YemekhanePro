@@ -12,8 +12,8 @@
          -p:Version=x.y.z ile gecersiz kilinir. -->
     <Version>1.2.0</Version>
     <Product>YemekhanePro</Product>
-    <Company>YemekhanePro</Company>
+    <Company>puyi.com.tr</Company>
     <Authors>YemekhanePro</Authors>
-    <Copyright>© 2026 YemekhanePro</Copyright>
+    <Copyright>© 2026 puyi.com.tr • 0552 999 96 96</Copyright>
   </PropertyGroup>
 </Project>
