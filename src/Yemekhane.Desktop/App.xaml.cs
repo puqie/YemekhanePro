@@ -198,7 +198,16 @@ public partial class App : System.Windows.Application, IDisposable
             ? new DeviceCardsViewModel(new DeviceCardsApiClient(httpClient, session))
             : null;
         sms = new SmsViewModel(new SmsApiClient(httpClient, session), permissions);
-        cash = new CashViewModel(new CashApiClient(httpClient, session), permissions, navigation: navigation);
+        // Ucret plani ve ekstre kasanin sekmeleridir; yetkisi olmayana hic olusturulmaz.
+        var tuitionApi = new TuitionApiClient(httpClient, session);
+        var tuition = permissions.Contains("cash.read")
+            ? new TuitionViewModel(tuitionApi, permissions, new DefinitionsApiClient(httpClient, session))
+            : null;
+        var statement = permissions.Contains("cash.read")
+            ? new StudentStatementViewModel(tuitionApi, new StatementFileDialog(), permissions.Contains("reports.export"))
+            : null;
+        cash = new CashViewModel(new CashApiClient(httpClient, session), permissions, navigation: navigation,
+            tuition: tuition, statement: statement);
         reports = new ReportsViewModel(new ReportApiClient(httpClient, session), permissions);
         settings = new SettingsViewModel(new SettingsApiClient(httpClient, session), navigation, permissions);
         studentImport = permissions.Contains("students.write")

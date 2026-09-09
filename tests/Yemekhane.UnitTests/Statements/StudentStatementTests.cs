@@ -141,7 +141,7 @@ public sealed class StudentStatementTests : IAsyncDisposable
 
         var statement = await BuildAsync(new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31));
 
-        Assert.Single(statement.Lines.Where(x => x.Section == StatementSections.Payment));
+        Assert.Single(statement.Lines, x => x.Section == StatementSections.Payment);
         Assert.Equal(700m, statement.TotalPaid);
     }
 

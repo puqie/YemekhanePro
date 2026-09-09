@@ -36,6 +36,10 @@ public static class PageHelpTexts
             "Nakit/bakiye tahsilatı, bakiye yükleme ve iptal (void) işlemleri burada yapılır.",
             "Tahsilat öncesi öğrenci doğrulaması gerekir; bu adım öğrenci kayıtlarını okuma izni ister — kasiyer rolüne bu izin verilmemişse doğrulama sessizce başarısız olur.",
             "Bir işlemi iptal etmek (Void) tutarı geri almaz, yalnızca kaydı geçersiz işaretler ve gerekçesini tutar.",
+            "Gelir Ekle'de öğrenciyi ad, soyad, numara ya da kartla arayıp listeden seçebilirsiniz; numara ezberlemeniz gerekmez.",
+            "Kantin, bağış gibi gelirler için \"Öğrenciye bağlı olmayan gelir\" kutusunu işaretleyin; öğrenci seçilmez.",
+            "Anasınıfı Ücretleri sekmesinde sınıfa toplam/taksitli, aylık ya da günlük ücret tanımlanır; taksitler otomatik oluşur.",
+            "Öğrenci Ekstresi sekmesi bir öğrencinin ödemelerini, bakiyesini, taksit borcunu ve yemek kullanımını tarih aralığıyla verir; PDF olarak kaydedilir.",
         ]),
         [ShellRoutes.Entitlements] = new("Yemek Hakedişleri",
         [

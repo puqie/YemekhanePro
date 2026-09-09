@@ -35,6 +35,63 @@ public sealed class BindingIntegrityTests
     };
 
     /// <summary>
+    /// DataContext'i degistiren bolgeler: bir sekme kendi ViewModel'ine baglanir
+    /// (orn. Kasa > Anasınıfı Ücretleri -> TuitionViewModel). Bu bolgelerin
+    /// baglamalari dis ViewModel'de ARANMAZ; kendi tipinde dogrulanir. Kapsam
+    /// yoksayilsaydi sekmenin butun baglamalari denetimsiz kalirdi.
+    /// </summary>
+    public static TheoryData<string, string, string> NestedDataContexts() => new()
+    {
+        { "CashView.xaml", "Tuition", nameof(TuitionViewModel) },
+        { "CashView.xaml", "Statement", nameof(StudentStatementViewModel) },
+    };
+
+    [Theory]
+    [MemberData(nameof(NestedDataContexts))]
+    public void NestedDataContextRegionsBindToTheirOwnViewModel(string view, string property, string viewModel)
+    {
+        var type = FindViewModelType(viewModel);
+        var xaml = File.ReadAllText(Path.Combine(ViewsDirectory(), view));
+        var region = NestedRegion(xaml, property);
+        Assert.False(string.IsNullOrWhiteSpace(region), $"{view}: DataContext=\"{{Binding {property}}}\" bölgesi bulunamadı.");
+
+        var broken = new List<string>();
+        foreach (var (control, attribute, path) in InputBindings(region!))
+            if (!Resolves(type, path)) broken.Add($"<{control} {attribute}=\"{{Binding {path}}}\">");
+        foreach (Match match in Regex.Matches(StripItemScopes(region!),
+                     @"(?:Command|Visibility|Text|IsEnabled|ItemsSource|SelectedItem|Content|ToolTip)=""\{Binding\s+([^}""]+)\}"""))
+        {
+            var path = CleanPath(match.Groups[1].Value);
+            // RelativeSource ile dis ViewModel'e cikan baglamalar bu kapsamda degildir.
+            if (path is null || match.Value.Contains("RelativeSource", StringComparison.Ordinal)) continue;
+            if (!Resolves(type, path)) broken.Add(path);
+        }
+
+        Assert.True(broken.Count == 0,
+            $"{view} ({property} bölgesi): {viewModel} üzerinde bulunmayan {broken.Count} bağlama:{Environment.NewLine}" +
+            string.Join(Environment.NewLine, broken.Distinct()));
+    }
+
+    /// <summary>DataContext="{Binding X}" tasiyan ogeyi ve govdesini dondurur (etiket eslemeli).</summary>
+    private static string? NestedRegion(string xaml, string property)
+    {
+        var start = xaml.IndexOf($"DataContext=\"{{Binding {property}}}\"", StringComparison.Ordinal);
+        if (start < 0) return null;
+        var open = xaml.LastIndexOf('<', start);
+        if (open < 0) return null;
+        var tagMatch = Regex.Match(xaml[open..], @"^<([\w.:]+)");
+        if (!tagMatch.Success) return null;
+        var tag = tagMatch.Groups[1].Value;
+        var depth = 0;
+        foreach (Match token in Regex.Matches(xaml[open..], $@"<{Regex.Escape(tag)}\b|</{Regex.Escape(tag)}>"))
+        {
+            depth += token.Value.StartsWith("</", StringComparison.Ordinal) ? -1 : 1;
+            if (depth == 0) return xaml.Substring(open, token.Index + token.Length);
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Kullanicinin VERI GIRDIGI denetimler. Bunlarda yanlis bir yol, girilen
     /// verinin sessizce kaybolmasi demektir -- en sinsi hata turu.
     /// </summary>
@@ -141,8 +198,20 @@ public sealed class BindingIntegrityTests
     /// tipidir (ornegin Columns -> ReportColumnViewModel). Onlari dis
     /// ViewModel'e gore cozmeye calismak YANLIS POZITIF uretir.
     /// </summary>
+    /// <summary>DataContext'i degistiren bolgeleri cikarir; onlar kendi testinde dogrulanir.</summary>
+    private static string StripNestedDataContexts(string xaml)
+    {
+        foreach (Match match in Regex.Matches(xaml, @"DataContext=""\{Binding\s+(\w+)\}"""))
+        {
+            var region = NestedRegion(xaml, match.Groups[1].Value);
+            if (region is not null) xaml = xaml.Replace(region, string.Empty, StringComparison.Ordinal);
+        }
+        return xaml;
+    }
+
     private static string StripItemScopes(string xaml)
     {
+        xaml = StripNestedDataContexts(xaml);
         string[] tags =
         [
             "DataTemplate", "ItemContainerStyle", "CellTemplate", "ItemTemplate",

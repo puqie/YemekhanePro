@@ -260,13 +260,52 @@ public static class AiUserGuidePrompt
         - "Gelir Türleri" (cash.manage): tür listesi + "Yeni"/"Seçileni
           Düzenle"/"Kaydet"/"Pasifleştir".
 
-        "Gelir Ekle" çekmecesi: önce "Öğrenci no" veya "Kart no" (yalnızca
-        biri) + "Doğrula" düğmesi ile öğrenci doğrulanır (bu adım
-        students.read gerektirir — izin yoksa doğrulama sürekli başarısız
-        olur). Sonra "Gelir türü", "Tarih ve saat", "Tutar" (örn. "125,50 ₺"),
+        "Gelir Ekle" çekmecesi: öğrenci İKİ yoldan seçilebilir.
+        1) "Öğrenci ara (ad, soyad, no ya da kart)" kutusuna en az 2 karakter
+           yazıp "Ara"ya (ya da Enter'a) basılır; eşleşenler alttaki listede
+           çıkar ve tıklanarak seçilir. Tek eşleşme varsa kendiliğinden
+           seçilir. Numara ezberlemek gerekmez.
+        2) Tam numara biliniyorsa "Öğrenci no" veya "Kart no" (yalnızca biri)
+           + "Doğrula" düğmesi kullanılır.
+        Her iki yol da students.read izni ister; izin yoksa arama/doğrulama
+        sürekli başarısız olur.
+        "Öğrenciye bağlı olmayan gelir" onay kutusu işaretlenirse öğrenci hiç
+        seçilmez (kantin geliri, bağış, personel yemeği gibi); arama ve
+        doğrulama alanları kapanır ve kayıt öğrencisiz gider.
+        Sonra "Gelir türü", "Tarih ve saat", "Tutar" (örn. "125,50 ₺"),
         "Açıklama". Onay kutusu zorunlu: "Öğrenci, tür, tarih ve tutarı
         kontrol ederek kaydı onaylıyorum." işaretlenmeden "Onayla ve Kaydet"
-        düğmesi çalışmaz.
+        düğmesi çalışmaz. Öğrenci seçilmemiş ve kutu da işaretlenmemişse
+        "Öğrenci seçin, ya da "Öğrenciye bağlı olmayan gelir" kutusunu
+        işaretleyin." uyarısı çıkar.
+
+        Sekme "Anasınıfı Ücretleri" (cash.read görür, cash.manage değiştirir):
+        anasınıfı sınıflarına ücret planı tanımlanır. Solda plan listesi ve
+        "Yenile" / "Yeni Plan" düğmeleri; sağda form. Alanlar: "Sınıf"
+        (yalnızca anasınıfı sınıfları listelenir), "Ücretlendirme" ("Toplam
+        ücret + taksit" / "Aylık sabit ücret" / "Günlük ücret"), "Dönem"
+        (örn. 2026-2027), tutar alanı (seçime göre "Toplam ücret (₺)",
+        "Aylık ücret (₺)" ya da "Günlük ücret (₺)"), "Peşinat (₺)" (yalnızca
+        toplam+taksitte), "Taksit sayısı", "Ayın günü" (1-28; 29-31 her ayda
+        bulunmaz), "İlk taksit ayı", "Açıklama". "Planı Kaydet" ile taksitler
+        OTOMATİK oluşur ve alttaki tabloda TAKSİT / VADE / TUTAR / ÖDENEN /
+        KALAN / DURUM sütunlarıyla listelenir; gecikmiş taksit kırmızı yazılır.
+        Bölünmeyen kuruş ilk taksite eklenir, toplam her zaman girilen tutarı
+        verir. "Planı Sil" iki adımlıdır ("Silmeyi Onayla" / "Vazgeç");
+        tahsilatı olan plan SİLİNMEZ, pasife alınır. Sınıf planı o sınıftaki
+        aktif öğrencilerin hepsine uygulanır; bir öğrenciye özel plan
+        tanımlanırsa sınıfınkini ezer (kardeş indirimi, burslu öğrenci).
+
+        Sekme "Öğrenci Ekstresi" (cash.read): bir öğrencinin seçilen tarih
+        aralığındaki bütün hareketleri tek listede. "Başlangıç" / "Bitiş"
+        seçilip "Getir"e basılır; üstte özet satırı (tahsil edilen, güncel
+        bakiye, kalan borç, gecikmiş borç, yenen öğün), altta TARİH / BÖLÜM /
+        AÇIKLAMA / AYRINTI / TUTAR / DURUM sütunlu tablo. Bölümler: Ödemeler,
+        Ücret ve taksitler, Bakiye hareketleri, Yemek kullanımı. İptal edilmiş
+        satırlar soluk yazılır. "PDF Kaydet" düğmesi (reports.export izni)
+        belgeyi veliye verilecek biçimde kaydeder. Gelir Ekle'de doğrulanan
+        öğrenci bu sekmeye kendiliğinden taşınır. Geçmiş yıllar sorgulanabilir:
+        yıl sonu sıfırlaması mali kayıtları silmez.
 
         "Bakiye Yükle" çekmecesi: "Para yükle: tüm öğünler için geçerlidir.
         Günlük hakkı olmayan öğrenci, öğün ücreti bakiyesinden düşülerek

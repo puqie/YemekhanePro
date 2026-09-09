@@ -45,8 +45,13 @@ public sealed class CashViewModel : ObservableObject
     private Guid? editingTypeId;
 
     public CashViewModel(ICashApiClient api, IEnumerable<string> permissions, TimeProvider? clock = null,
-        bool reportCenterAvailable = false, IShellNavigationService? navigation = null)
+        bool reportCenterAvailable = false, IShellNavigationService? navigation = null,
+        TuitionViewModel? tuition = null, StudentStatementViewModel? statement = null)
     {
+        // Ucret plani ve ekstre ayri ekran degil, kasanin sekmeleri: memur tahsilati, borcu
+        // ve ogrencinin gecmisini ayni yerde gorur. Istemci verilmezse sekme gorunmez.
+        Tuition = tuition;
+        Statement = statement;
         this.api = api; this.permissions = permissions.ToHashSet(StringComparer.Ordinal); this.clock = clock ?? TimeProvider.System;
         IsExportAvailable = reportCenterAvailable || navigation?.IsAvailable(ShellRoutes.Reports) == true;
         OpenReportsCommand = new RelayCommand(() => navigation?.Navigate(ShellRoutes.Reports), () => IsExportAvailable);
@@ -91,6 +96,12 @@ public sealed class CashViewModel : ObservableObject
     public ObservableCollection<IncomeTypeOption> FilterTypeOptions { get; } = [];
     /// <summary>"Öğrenci ara" kutusunun sonuclari; bir satir secilince dogrulama tamamlanir.</summary>
     public ObservableCollection<StudentListItem> StudentMatches { get; } = [];
+    /// <summary>Anasinifi ucret planlari sekmesi; yoksa sekme gizlenir.</summary>
+    public TuitionViewModel? Tuition { get; }
+    public bool HasTuition => Tuition is not null;
+    /// <summary>Ogrenci ekstresi sekmesi; secili ogrenci bu ekrandan aktarilir.</summary>
+    public StudentStatementViewModel? Statement { get; }
+    public bool HasStatement => Statement is not null;
     public IReadOnlyList<VoidStatusOption> VoidStatuses { get; } = [new("Tümü", null), new("Aktif", false), new("İptal", true)];
     public CashSummary? Daily { get => daily; private set { if (Set(ref daily, value)) Raise(nameof(DailyTotal)); } }
     public CashSummary? Weekly { get => weekly; private set { if (Set(ref weekly, value)) Raise(nameof(WeeklyTotal)); } }
@@ -152,7 +163,17 @@ public sealed class CashViewModel : ObservableObject
     public IncomeTypeDetails? SelectedAddType { get => selectedAddType; set => Set(ref selectedAddType, value); }
     public IncomeTypeDetails? SelectedManagedType { get => selectedManagedType; set { if (Set(ref selectedManagedType, value)) RefreshCommands(); } }
     public IncomeTransactionDetails? SelectedTransaction { get => selectedTransaction; set { if (Set(ref selectedTransaction, value)) RefreshCommands(); } }
-    public StudentListItem? LookupStudent { get => lookupStudent; private set { if (Set(ref lookupStudent, value)) { Raise(nameof(LookupStudentText)); Raise(nameof(HasLookupStudent)); } } }
+    public StudentListItem? LookupStudent
+    {
+        get => lookupStudent;
+        private set
+        {
+            if (!Set(ref lookupStudent, value)) return;
+            Raise(nameof(LookupStudentText)); Raise(nameof(HasLookupStudent));
+            // Dogrulanan ogrenci ekstre sekmesine tasinir: memur ayrica arama yapmasin.
+            if (value is not null) Statement?.SetStudent(value.Id);
+        }
+    }
     public bool HasLookupStudent => LookupStudent is not null;
     /// <summary>
     /// Dogrulanmis ogrencinin AYIRT EDICI kimligi (ad, no, sinif/sube, kart). Ayni ad-soyadli
