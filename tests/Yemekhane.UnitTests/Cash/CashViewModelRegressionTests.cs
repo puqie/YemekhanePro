@@ -306,7 +306,11 @@ public sealed class CashViewModelRegressionTests
         public Task<Yemekhane.Application.Balances.BalanceTopUpResult> TopUpBalanceAsync(Yemekhane.Application.Balances.BalanceTopUpRequest request, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
         public Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new PagedResult<StudentListItem>([new(studentId, "5016", "8350016", "ADA", "AKGÜN", "8B", "B", null, null, true, 0, false, null)], 1, 2, 1));
+            Task.FromResult(new PagedResult<StudentListItem>([Student()], 1, 2, 1));
+        // Islemler filtresi artik tam numara yerine ad/soyad/numara/kart arar.
+        public Task<PagedResult<StudentListItem>> SearchStudentsAsync(string term, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new PagedResult<StudentListItem>([Student()], 1, 20, 1));
+        private StudentListItem Student() => new(studentId, "5016", "8350016", "ADA", "AKGÜN", "8B", "B", null, null, true, 0, false, null);
         private IncomeTransactionDetails Transaction() => new(transactionId, Guid.NewGuid(), studentId, "ADA AKGÜN", "5016", "8350016", DateTimeOffset.UtcNow, typeId, "Nakit", 10m, null, Guid.NewGuid(), voided, null, null, voided ? "Hatalı" : null);
     }
 }

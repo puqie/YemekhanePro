@@ -95,10 +95,19 @@
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Grid Margin="12,10,12,0" Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="{Binding SelectedItems.Count, StringFormat=Seçili: {0}}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" x:Name="SelectedCountText"/>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding SelectedItems.Count, StringFormat=Seçili: {0}}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" x:Name="SelectedCountText"/>
+                        <Button Content="Seçimi temizle" Command="{Binding ClearSelectionCommand}" Padding="8,3" Margin="10,0,0,0"
+                                Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}"/>
+                    </StackPanel>
                 </Grid>
-                <DataGrid x:Name="EntitlementsGrid" Grid.Row="1" ItemsSource="{Binding Items}" SelectionMode="Extended" SelectionUnit="FullRow" SelectionChanged="OnSelectionChanged"
-                    AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0"
+                <!-- Secim satirin kendi IsSelected ozelligindedir, tablonun satir seciminde DEGIL:
+                     onay kutusu DataGridRow.IsSelected'e bagliyken ayni tiklama hem satiri
+                     seciyor hem tiki degistiriyordu ve tik aninda geri kapaniyordu. Grid
+                     IsReadOnly="False" olmali ki onay kutusu duzenlenebilsin; metin sutunlari
+                     tek tek salt okunur isaretlendi. -->
+                <DataGrid x:Name="EntitlementsGrid" Grid.Row="1" ItemsSource="{Binding Items}" SelectionMode="Single" SelectionUnit="Cell"
+                    AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0"
                     GridLinesVisibility="Horizontal"
                     EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Yemek hakediş listesi">
                     <DataGrid.Columns>
@@ -108,7 +117,7 @@
                             </DataGridTemplateColumn.HeaderTemplate>
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=DataGridRow}, Mode=TwoWay}"
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                               HorizontalAlignment="Center"
                                               AutomationProperties.Name="Satırı seç"/>
                                 </DataTemplate>
@@ -123,18 +132,18 @@
                              metinden calindigi icin "09.09.2026" 95px'te bile
                              "09.09.202" olarak kesiliyordu. Auto icerigi VE dolguyu
                              birlikte olcer; kesme kalmaz. -->
-                        <DataGridTextColumn Header="TARİH" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}" Width="Auto" MinWidth="95"/>
-                        <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="56"/>
-                        <DataGridTextColumn Header="KART NO" Binding="{Binding CardNumber}" Width="Auto" MinWidth="88"/>
-                        <DataGridTextColumn Header="ÖĞÜN" Binding="{Binding MealName}" Width="Auto" MinWidth="90"/>
-                        <DataGridTextColumn Header="AD SOYAD" Binding="{Binding StudentName}" Width="*" MinWidth="130" MaxWidth="240"/>
-                        <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="50"/>
-                        <DataGridTextColumn Header="ADET" Binding="{Binding Quantity}" Width="Auto" MinWidth="46"/>
-                        <DataGridTextColumn Header="KULL." Binding="{Binding ConsumedQuantity}" Width="Auto" MinWidth="46"/>
-                        <DataGridTextColumn Header="KALAN" Binding="{Binding RemainingQuantity}" Width="Auto" MinWidth="64"/>
-                        <DataGridTextColumn Header="DURUM" Binding="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=Status}" Width="Auto" MinWidth="62"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="TARİH" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}" Width="Auto" MinWidth="95"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="56"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="KART NO" Binding="{Binding CardNumber}" Width="Auto" MinWidth="88"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="ÖĞÜN" Binding="{Binding MealName}" Width="Auto" MinWidth="90"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="AD SOYAD" Binding="{Binding StudentName}" Width="*" MinWidth="130" MaxWidth="240"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="50"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="ADET" Binding="{Binding Quantity}" Width="Auto" MinWidth="46"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="KULL." Binding="{Binding ConsumedQuantity}" Width="Auto" MinWidth="46"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="KALAN" Binding="{Binding RemainingQuantity}" Width="Auto" MinWidth="64"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="DURUM" Binding="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=Status}" Width="Auto" MinWidth="62"/>
                         <!-- Auto: "Hızlı Hakediş" 80px'te "WPF Quic" gibi kesiliyordu. -->
-                        <DataGridTextColumn Header="KAYNAK" Binding="{Binding Source, Converter={StaticResource EnumText}, ConverterParameter=Source}" Width="Auto" MinWidth="90"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="KAYNAK" Binding="{Binding Source, Converter={StaticResource EnumText}, ConverterParameter=Source}" Width="Auto" MinWidth="90"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <StackPanel Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Hakedişler yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel>
@@ -155,7 +164,37 @@
             <StackPanel>
                 <TextBlock Text="Hedef" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding TargetTypes}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding TargetType}"/>
                 <StackPanel Visibility="{Binding IsManualTarget, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="Öğrenci numaraları" Style="{StaticResource Label}"/>
+                    <!-- OGRENCI SECIMI: hakedis listesi ogrenci-GUN satiridir, ayni ogrenci 300 gun
+                         icin 300 kez gorunur ve oradan secilemez. Burasi ayri bir listedir: her
+                         ogrenci TEK satir, ad/sinif/numara ile aranir, secim aramalar arasinda korunur. -->
+                    <TextBlock Text="Öğrenci ara (ad, soyad, sınıf ya da no)" Style="{StaticResource Label}" Margin="0,10,0,0"/>
+                    <DockPanel Margin="0,4,0,0">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Action}" Content="Ara" Margin="7,0,0,0"
+                                Command="{Binding SearchStudentsCommand}" AutomationProperties.Name="Hakediş için öğrenci ara"/>
+                        <TextBox Text="{Binding StudentPickerSearch, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Hakediş öğrenci arama metni">
+                            <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchStudentsCommand}"/></TextBox.InputBindings>
+                        </TextBox>
+                    </DockPanel>
+                    <Grid Margin="0,6,0,0" Visibility="{Binding HasPickerRows, Converter={StaticResource BoolToVisibility}}">
+                        <DataGrid ItemsSource="{Binding StudentPicker}" AutoGenerateColumns="False" IsReadOnly="False"
+                                  CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="170"
+                                  AutomationProperties.Name="Hakediş öğrenci listesi">
+                            <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="SEÇ" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="46"/>
+                                <DataGridTextColumn IsReadOnly="True" Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="64"/>
+                                <DataGridTextColumn IsReadOnly="True" Header="AD SOYAD" Binding="{Binding Name}" Width="*" MinWidth="120"/>
+                                <DataGridTextColumn IsReadOnly="True" Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="60"/>
+                                <DataGridTextColumn IsReadOnly="True" Header="ŞUBE" Binding="{Binding SectionName}" Width="Auto" MinWidth="52"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                    <WrapPanel Margin="0,6,0,0">
+                        <TextBlock Text="{Binding PickerSummary}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                        <Button Content="Seçimi temizle" Command="{Binding ClearPickerCommand}" Padding="8,3" Margin="10,0,0,0"
+                                Visibility="{Binding HasPickerRows, Converter={StaticResource BoolToVisibility}}"/>
+                    </WrapPanel>
+                    <TextBlock Text="Öğrenci numaraları (elle)" Style="{StaticResource Label}" Margin="0,10,0,0"/>
                     <Border Background="{StaticResource InfoSoftBrush}" Padding="10,8" x:Name="SelectionSummaryPanel"
                             Visibility="{Binding SelectedItems.Count, Converter={x:Static local:SelectionCountToVisibilityConverter.Instance}}">
                         <TextBlock x:Name="SelectionSummaryText" TextWrapping="Wrap"
@@ -179,6 +218,15 @@
                 <TextBlock Text="Öğün" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding GrantMeal}"/>
                 <!-- Ogun bedeli Tanimlar ekraninda girilir; sifirsa satir gizli (ucretsiz ogun). -->
                 <TextBlock x:Name="GrantMealPriceText" Text="{Binding GrantMealPriceText}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" Visibility="{Binding HasGrantMealPrice, Converter={StaticResource BoolToVisibility}}"/>
+                <!-- Ucretli ogunde: bedel kasaya OGRENCI BASINA gelir olarak islenebilir ve
+                     veliye bilgi SMS'i gonderilebilir. Once bedel yalnizca ekranda yaziyordu;
+                     kasaya hicbir sey yansimiyordu. -->
+                <StackPanel Margin="0,8,0,0" Visibility="{Binding CanCharge, Converter={StaticResource BoolToVisibility}}">
+                    <CheckBox Content="Ücreti kasaya gelir olarak işle" IsChecked="{Binding ChargeToCash}"
+                              AutomationProperties.Name="Ücreti kasaya gelir olarak işle"/>
+                    <CheckBox Content="Veliye bilgi SMS'i gönder" IsChecked="{Binding NotifyParents}" Margin="0,6,0,0"
+                              AutomationProperties.Name="Veliye bilgi SMS'i gönder"/>
+                </StackPanel>
                 <!-- BITIS TARIHI yerine GUN SAYISI: kullanici "10 gunluk yemek hakki"
                      diye dusunur, bitis tarihini takvimden hafta sonlarini sayarak
                      bulmak zorunda kalmamali. Sayim IS GUNU uzerinden yapilir, yani

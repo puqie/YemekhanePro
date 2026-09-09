@@ -62,6 +62,12 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Style="{StaticResource TabBody}">
                         <Border Style="{StaticResource SettingsCard}"><StackPanel>
                             <TextBlock Text="SMS sağlayıcısı" FontSize="16" FontWeight="SemiBold"/>
+                            <!-- Ana anahtar: kapaliyken hicbir SMS cikmaz. Kuyruk silinmez;
+                                 bekleyen mesajlar anahtar acilinca gonderilir. -->
+                            <CheckBox Content="SMS gönderimi açık" IsChecked="{Binding SmsEnabled}" Margin="0,8,0,0"
+                                      FontWeight="SemiBold" AutomationProperties.Name="SMS gönderimi açık"/>
+                            <TextBlock Text="{Binding SmsDisabledWarning}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"
+                                       Margin="0,4,0,0" Visibility="{Binding IsSmsDisabled, Converter={StaticResource Bool}}"/>
                             <TextBlock Text="Veli bildirimlerinin gönderileceği SMS servisi. Sağlayıcıyı seçip bilgileri girin; boş bırakılırsa SMS gönderilmez." Foreground="{StaticResource MutedBrush}" Margin="0,3,0,6" TextWrapping="Wrap"/>
                             <!-- Saglayici: Mutlucell (XML ag gecidi) ya da genel HTTP/JSON. Alan etiketleri saglayiciya gore degisir. -->
                             <TextBlock Style="{StaticResource Label}" Text="Sağlayıcı"/><ComboBox Style="{StaticResource FieldCombo}" ItemsSource="{Binding SmsProviders}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding SmsProvider}" IsEnabled="{Binding CanManage}" AutomationProperties.Name="SMS sağlayıcısı"/>

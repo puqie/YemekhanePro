@@ -88,6 +88,8 @@ public static class InfrastructureRegistration
         services.AddScoped<IOrganizationRepository, EfOrganizationRepository>();
         services.AddScoped<IMealTypeRepository, EfMealTypeRepository>();
         services.AddScoped<IMealEntitlementRepository, EfMealEntitlementRepository>();
+        // Hakedis ucretini kasaya yazan ve iptalde geri alan servis.
+        services.AddScoped<IEntitlementBillingService, Entitlements.EfEntitlementBillingService>();
         services.AddScoped<IMealTransferRepository, EfMealTransferRepository>();
         services.AddScoped<IHolidayRepository, EfHolidayRepository>();
         services.AddScoped<ICalendarRepository, EfCalendarRepository>();

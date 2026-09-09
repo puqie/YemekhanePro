@@ -27,6 +27,7 @@ public static class PageHelpTexts
         [ShellRoutes.Students] = new("Öğrenciler",
         [
             "Öğrenci arama, yeni öğrenci ekleme ve kart atama/değiştirme işlemleri burada yapılır.",
+            "Tek arama kutusu ad, soyad, öğrenci no ve kart no'da birden arar (en az 2 karakter); Sınıf/Şube/Bölüm/Durum ile daraltabilirsiniz.",
             "Yeni kaydedilen bir öğrenciye kart atamak için kartı burada okutun; ekran hem ilk atamayı hem değişimi aynı akışla yönetir.",
             "F2 arama kutusuna odaklanır. F3 \"Kartla Öğrenci Bul\" penceresini açar; bunun için kart yetkisi (cards.manage) ve bağlı bir kart okuyucu gerekir.",
             "Bir öğrenciye tıklayınca detay panelinde hakediş, ödeme ve geçiş geçmişi görünür.",
@@ -45,11 +46,15 @@ public static class PageHelpTexts
         [
             "Öğrencilere/sınıflara toplu veya tekil yemek hakkı tanımlama ekranıdır.",
             "Toplu İşlem Sihirbazı ile birden fazla öğrenciye/sınıfa aynı anda hak verebilir, geçmişini görebilirsiniz.",
+            "Hızlı Hakediş'te öğrenciyi ad, sınıf ya da numarayla arayıp listeden seçersiniz; aradaki liste her öğrenciyi tek satır gösterir.",
+            "Öğünün bedeli varsa \"Ücreti kasaya gelir olarak işle\" ile tutar öğrenci başına kasaya yazılır; hak iptal edilirse tahsilat da iptal edilir.",
+            "\"Veliye bilgi SMS'i gönder\" ile veliye tarih aralığı ve tutar bildirilir.",
             "Bir hakkı iptal etmeden önce onay istenir; iptal edilen kayıt geri alınamaz, yeniden hak tanımlamanız gerekir.",
         ]),
         [ShellRoutes.HolidayTransfer] = new("Takvim / Tatil",
         [
             "Resmi tatil ve okul tatillerini tanımladığınız, kullanılmayan hakların sonraki güne devredildiği ekrandır.",
+            "Ekran kendiliğinden güncellenir: sayfaya her geçişte ve açıkken belirli aralıklarla tazelenir, Yenile'ye basmanız gerekmez.",
             "Çok günlü bir tatilde her günün hakkı kendi sırasına göre ayrı bir sonraki boş iş gününe devredilir; hepsi tek güne yığılmaz.",
             "Belirli bir güne devir istiyorsanız Hak davranışı olarak \"Belirli bir tarihe aktar\" seçip Hedef tarih girin; bu durumda yığılma sizin isteğinizdir.",
             "Tatil, kaydedildiğinde hakları kendisi değiştirmez; seçtiğiniz davranış \"Hakediş etkilerini toplu uygula\" ile uygulanır.",
@@ -94,6 +99,7 @@ public static class PageHelpTexts
         [ShellRoutes.Settings] = new("Ayarlar",
         [
             "Okul bilgileri, yönetim ekranı bağlantıları, SMS sağlayıcısı, yedekleme, yıl sonu sıfırlama, senkronizasyon ve günlükler burada yönetilir.",
+            "SMS sekmesindeki \"SMS gönderimi açık\" kutusu tüm gönderimi durdurur; kapalıyken mesajlar kuyrukta bekler ve açtığınızda gönderilir.",
             "Yardım / AI Kılavuzu sekmesinde, uygulamanın tamamını bir yapay zekaya anlatan hazır bir metin bulabilir, kopyalayıp kullanabilirsiniz.",
             "Değişikliklerin çoğu Kaydet'e basılınca hemen geçerli olur; yedekleme/senkronizasyon zamanlaması, kuyruk için SMS sağlayıcı değişikliği ve geri yükleme uygulama yeniden başlatılınca uygulanır.",
         ]),

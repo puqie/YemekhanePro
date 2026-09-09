@@ -13,6 +13,14 @@
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Drawer.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <!-- Eslesen ogrenci satiri; acilir kutuda ve listede ayni gorunum. -->
+        <DataTemplate x:Key="StudentMatchTemplate">
+            <TextBlock TextTrimming="CharacterEllipsis">
+                <Run Text="{Binding FirstName, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding LastName, Mode=OneWay}"/>
+                <Run Foreground="{StaticResource MutedBrush}" Text="{Binding StudentNo, Mode=OneWay, StringFormat=  · No {0}}"/>
+                <Run Foreground="{StaticResource MutedBrush}" Text="{Binding ClassName, Mode=OneWay, StringFormat=  · {0}}"/>
+            </TextBlock>
+        </DataTemplate>
         <local:InverseBooleanConverter x:Key="InverseBool"/>
             </ResourceDictionary>
 </UserControl.Resources>
@@ -46,9 +54,11 @@
                         <StackPanel Width="150" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Başlangıç" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding FilterFrom}" AutomationProperties.Name="İşlem başlangıç tarihi"/></StackPanel>
                         <StackPanel Width="150" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Bitiş" Margin="0,0,0,4"/><DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding FilterTo}" AutomationProperties.Name="İşlem bitiş tarihi"/></StackPanel>
                         <StackPanel Width="165" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Gelir türü" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding FilterTypeOptions}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedFilterType}" ToolTip="Gelir türü (Tümü, aktif ve pasif türler)"/></StackPanel>
-                        <StackPanel Width="105" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding FilterStudentNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam öğrenci numarası" AutomationProperties.Name="Öğrenci filtresi"/></StackPanel>
+                        <!-- TEK ARAMA: ad, soyad, numara ya da kart. Once "Öğrenci no" tam esitlik
+                             istiyordu, "Kart no" ise ayri bir alandi. -->
+                        <StackPanel Width="230" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğrenci ara" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding FilterStudentNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Ad, soyad, öğrenci no veya kart no" AutomationProperties.Name="Öğrenci ara"><TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding LookupFilterStudentCommand}"/></TextBox.InputBindings></TextBox></StackPanel>
+                        <StackPanel Width="230" Margin="0,0,10,0" Visibility="{Binding HasFilterMatches, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource Label}" Text="Eşleşenler" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding FilterMatches}" SelectedItem="{Binding SelectedFilterMatch}" ItemTemplate="{StaticResource StudentMatchTemplate}" AutomationProperties.Name="Eşleşen öğrenciler"/></StackPanel>
 
-                        <StackPanel Width="115" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding FilterCardNumber, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tam kart numarası" AutomationProperties.Name="Kart filtresi"/></StackPanel>
                         <StackPanel Width="135" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="İptal durumu" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding VoidStatuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding FilterIsVoided}" ToolTip="İptal durumu"/></StackPanel>
                         <Button Style="{StaticResource Action}" VerticalAlignment="Bottom" Margin="0,0,0,4" Content="Öğrenciyi Bul" Command="{Binding LookupFilterStudentCommand}"/><Button Style="{StaticResource Action}" VerticalAlignment="Bottom" Margin="0,0,0,4" Content="Filtrele" Command="{Binding ApplyFiltersCommand}" IsDefault="True"/>
                     </WrapPanel>
@@ -274,9 +284,6 @@
                     </DataTemplate></ListBox.ItemTemplate>
                 </ListBox>
                 <WrapPanel Margin="0,8,0,0" IsEnabled="{Binding IsGeneralIncome, Converter={StaticResource InverseBool}}">
-                    <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Text="{Binding StudentNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam öğrenci numarası" ToolTip="Tam öğrenci numarası"/></StackPanel>
-                    <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Text="{Binding LookupCardNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam kart numarası" ToolTip="Tam kart numarası"/></StackPanel>
-                    <Button Style="{StaticResource Action}" Content="Doğrula" Command="{Binding LookupStudentCommand}" VerticalAlignment="Bottom"/>
                 </WrapPanel>
                 <!-- Kantin, bagis, personel yemegi gibi gelirler bir ogrenciye ait degildir. -->
                 <CheckBox Content="Öğrenciye bağlı olmayan gelir" IsChecked="{Binding IsGeneralIncome}" Margin="0,10,0,0"
@@ -318,9 +325,27 @@
             <StackPanel>
                 <TextBlock Text="Para yükle: tüm öğünler için geçerlidir. Günlük hakkı olmayan öğrenci, öğün ücreti bakiyesinden düşülerek geçer." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12"/>
                 <WrapPanel>
-                    <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Text="{Binding StudentNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Bakiye: tam öğrenci numarası" ToolTip="Tam öğrenci numarası"/></StackPanel>
-                    <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Text="{Binding LookupCardNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Bakiye: tam kart numarası" ToolTip="Tam kart numarası"/></StackPanel>
-                    <Button Style="{StaticResource Action}" Content="Doğrula" Command="{Binding LookupStudentCommand}" VerticalAlignment="Bottom"/>
+                    <!-- TEK ARAMA: ad, soyad, numara ya da kart. Once "Öğrenci no" ve "Kart no"
+                         ayri kutulardaydi ve TAM esitlik istiyordu; kasiyer numarayi ezberlemek
+                         ya da dogru kutuyu secmek zorunda kaliyordu. -->
+                    <TextBlock Style="{StaticResource Label}" Text="Öğrenci ara (ad, soyad, no ya da kart)"/>
+                    <DockPanel Margin="0,4,0,0" IsEnabled="{Binding IsGeneralIncome, Converter={StaticResource InverseBool}}">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource Action}" Content="Ara" Margin="7,0,0,0"
+                                Command="{Binding SearchStudentsCommand}" AutomationProperties.Name="Öğrenci ara"/>
+                        <TextBox Text="{Binding StudentSearch, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Öğrenci arama metni">
+                            <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchStudentsCommand}"/></TextBox.InputBindings>
+                        </TextBox>
+                    </DockPanel>
+                    <ListBox ItemsSource="{Binding StudentMatches}" SelectedItem="{Binding SelectedMatch}" MaxHeight="132" Margin="0,6,0,0"
+                             Visibility="{Binding HasStudentMatches, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Eşleşen öğrenciler">
+                        <ListBox.ItemTemplate><DataTemplate>
+                            <TextBlock TextTrimming="CharacterEllipsis">
+                                <Run Text="{Binding FirstName, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding LastName, Mode=OneWay}"/>
+                                <Run Foreground="{StaticResource MutedBrush}" Text="{Binding StudentNo, Mode=OneWay, StringFormat=  · No {0}}"/>
+                                <Run Foreground="{StaticResource MutedBrush}" Text="{Binding ClassName, Mode=OneWay, StringFormat=  · {0}}"/>
+                            </TextBlock>
+                        </DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
                 </WrapPanel>
                 <TextBlock Text="{Binding LookupStudentText}" Margin="0,8" TextWrapping="Wrap" AutomationProperties.Name="Bakiye: doğrulanan öğrenci">
                     <TextBlock.Style>

@@ -25,6 +25,7 @@ public sealed class CashViewModel : ObservableObject
     private StudentListItem? lookupStudent, filterStudent;
     private string? studentNumber, lookupCardNumber, filterStudentNumber, filterCardNumber, errorMessage, addError, voidReason, typeName;
     private string? studentSearch;
+    private StudentListItem? selectedFilterMatch;
     private bool isGeneralIncome;
     private StudentListItem? selectedMatch;
     private string? topUpNote, topUpError, statusMessage;
@@ -155,7 +156,15 @@ public sealed class CashViewModel : ObservableObject
     }
     public string? LookupCardNumber { get => lookupCardNumber; set { if (Set(ref lookupCardNumber, value)) LookupStudent = null; } }
     public string? FilterCardNumber { get => filterCardNumber; set => Set(ref filterCardNumber, value); }
-    public string? FilterStudentNumber { get => filterStudentNumber; set { if (Set(ref filterStudentNumber, value)) FilterStudent = null; } }
+    /// <summary>Islemler filtresinin tek arama kutusu: ad, soyad, numara ya da kart.</summary>
+    public string? FilterStudentNumber { get => filterStudentNumber; set { if (Set(ref filterStudentNumber, value)) { FilterStudent = null; FilterMatches.Clear(); Raise(nameof(HasFilterMatches)); } } }
+    public ObservableCollection<StudentListItem> FilterMatches { get; } = [];
+    public bool HasFilterMatches => FilterMatches.Count > 0;
+    public StudentListItem? SelectedFilterMatch
+    {
+        get => selectedFilterMatch;
+        set { if (Set(ref selectedFilterMatch, value) && value is not null) { FilterStudent = value; FilterMatches.Clear(); Raise(nameof(HasFilterMatches)); } }
+    }
     public StudentListItem? FilterStudent { get => filterStudent; private set { if (Set(ref filterStudent, value)) Raise(nameof(FilterStudentText)); } }
     public string FilterStudentText => FilterStudent is null ? "Öğrenci filtresi yok" : "Öğrenci filtresi: " + Identity(FilterStudent);
     public bool? FilterIsVoided { get => filterIsVoided; set => Set(ref filterIsVoided, value); }
@@ -424,17 +433,27 @@ public sealed class CashViewModel : ObservableObject
         if (IsTopUpOpen) TopUpError = message; else AddError = message;
     }
 
+    /// <summary>
+    /// Islemler filtresinde ogrenciyi ad, soyad, numara ya da kartla arar. Once yalnizca
+    /// TAM ogrenci numarasi kabul ediliyordu; kasiyer numarayi bilmiyorsa filtreyi hic
+    /// kullanamiyordu. Tek sonuc dogrudan secilir.
+    /// </summary>
     private async Task LookupFilterStudentAsync()
     {
-        ErrorMessage = null; FilterStudent = null;
-        if (string.IsNullOrWhiteSpace(FilterStudentNumber)) return;
+        ErrorMessage = null; FilterStudent = null; FilterMatches.Clear(); Raise(nameof(HasFilterMatches));
+        var term = FilterStudentNumber?.Trim();
+        if (string.IsNullOrWhiteSpace(term)) return;
+        if (term.Length < 2) { ErrorMessage = "Aramak için en az 2 karakter yazın (ad, soyad, öğrenci no ya da kart no)."; return; }
         try
         {
-            var result = await api.FindStudentAsync(FilterStudentNumber.Trim(), null);
-            FilterStudent = result.Items.Count == 1 ? result.Items[0] : null;
-            if (FilterStudent is null) ErrorMessage = "Tam öğrenci numarasıyla eşleşen tek bir aktif öğrenci bulunamadı.";
+            var result = await api.SearchStudentsAsync(term);
+            foreach (var item in result.Items) FilterMatches.Add(item);
+            Raise(nameof(HasFilterMatches));
+            // Tek sonuc dogrudan secilir; birden fazlaysa kullanici acilir kutudan secer.
+            if (FilterMatches.Count == 1) SelectedFilterMatch = FilterMatches[0];
+            else if (FilterMatches.Count == 0) ErrorMessage = "Bu aramayla eşleşen aktif öğrenci bulunamadı.";
         }
-        catch (Exception ex) when (IsApiFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci filtresi doğrulanamadı."); }
+        catch (Exception ex) when (IsApiFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci aranamadı."); }
     }
 
     private async Task AddAsync()

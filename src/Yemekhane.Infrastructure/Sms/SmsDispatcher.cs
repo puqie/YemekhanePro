@@ -13,10 +13,29 @@ public sealed class SmsDispatcher(
     IOptions<SmsProviderOptions> options,
     TimeProvider timeProvider,
     SmsDispatchRunLock runLock,
-    NotificationService? notifications = null)
+    NotificationService? notifications = null,
+    Yemekhane.Application.Settings.ISettingsService? settings = null)
 {
+    /// <summary>
+    /// SMS ana anahtari kapaliysa hicbir mesaj GONDERILMEZ. Kuyruk temizlenmez: kurallar
+    /// ve elle gonderim yazmaya devam eder, mesajlar bekler ve anahtar acilinca kaldigi
+    /// yerden gider. Boylece "kapali" olmak veri kaybettirmez.
+    /// </summary>
+    private async Task<bool> IsEnabledAsync(CancellationToken cancellationToken)
+    {
+        if (settings is null) return true;
+        try
+        {
+            var document = await settings.GetAsync(cancellationToken).ConfigureAwait(false);
+            return document.Sms.Enabled;
+        }
+        // Ayar okunamazsa gonderimi durdurmak sessiz veri kaybi gibi gorunur; acik varsayilir.
+        catch (Exception exception) when (exception is not OperationCanceledException) { return true; }
+    }
+
     public async Task<int> RunOnceAsync(CancellationToken cancellationToken = default)
     {
+        if (!await IsEnabledAsync(cancellationToken)) return 0;
         if (!await runLock.Gate.WaitAsync(0, cancellationToken)) return 0;
         try
         {

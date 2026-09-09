@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using Yemekhane.Application.BulkOperations;
 using Yemekhane.Application.Calendar;
@@ -49,16 +50,17 @@ public sealed class EntitlementSelectionTests
         });
 
     /// <summary>
-    /// DataGrid uzerinde satir secmek GERCEKTEN SetSelection'a ulasir --
-    /// OnSelectionChanged kancasi uzerinden, olcum yoluyla kanitlanir.
+    /// SEC sutunundaki onay kutusuna GERCEK arayuzde tiklamak secimi kurar VE TIK ACIK KALIR.
+    /// Onceden kutu DataGridRow.IsSelected'e bagliydi: ayni tiklama hem satir secimini
+    /// yeniden hesapliyor hem tiki degistiriyordu, tik aninda geri kapaniyordu.
     /// </summary>
     [Fact]
-    public void SatirSecimiSetSelectionaUlasir() =>
+    public void OnayKutusuTikiAcikKalirVeSecimiKurar() =>
         UiThread.Run(() =>
         {
             var vm = CreateViewModel();
-            vm.Items.Add(Item("100", "Ayşe Yılmaz", "5A", "1111"));
-            vm.Items.Add(Item("101", "Mehmet Demir", "5B", "2222"));
+            vm.Items.Add(RowOf(vm, Item("100", "Ayşe Yılmaz", "5A", "1111")));
+            vm.Items.Add(RowOf(vm, Item("101", "Mehmet Demir", "5B", "2222")));
 
             var view = new MealEntitlementsView { DataContext = vm };
             var host = UiThread.Host(view, 1600, 900);
@@ -66,14 +68,41 @@ public sealed class EntitlementSelectionTests
             host.Arrange(new Rect(0, 0, 1600, 900));
             host.UpdateLayout();
 
-            var grid = (DataGrid)view.FindName("EntitlementsGrid")!;
-            grid.SelectedItems.Clear();
-            grid.SelectedItems.Add(vm.Items[0]);
-            grid.SelectedItems.Add(vm.Items[1]);
+            var boxes = Descendants(view).OfType<CheckBox>()
+                .Where(x => AutomationProperties.GetName(x) == "Satırı seç").ToList();
+            Assert.Equal(2, boxes.Count);
+
+            // Kullanicinin tiklamasi: onay kutusu kendi komutunu calistirir.
+            boxes[0].IsChecked = true;
             host.UpdateLayout();
 
+            Assert.True(vm.Items[0].IsSelected);
+            Assert.True(boxes[0].IsChecked);
+            Assert.Single(vm.SelectedItems);
+
+            boxes[1].IsChecked = true;
+            host.UpdateLayout();
+
+            // Ikinci tik BIRINCIYI DUSURMEZ; coklu secim korunur.
             Assert.Equal(2, vm.SelectedItems.Count);
+            Assert.True(boxes[0].IsChecked);
+            Assert.True(vm.HasSelection);
         });
+
+    /// <summary>Filtre/yeniden yukleme sonrasi ESKI secim kalmamali; toplu islem gorunmeyen satiri kapsardi.</summary>
+    [Fact]
+    public async Task YenidenYuklemeSecimiTemizler()
+    {
+        var vm = CreateViewModel();
+        vm.Items.Add(RowOf(vm, Item("100", "Ayşe Yılmaz", "5A", "1111")));
+        vm.Items[0].IsSelected = true;
+        Assert.Single(vm.SelectedItems);
+
+        await vm.LoadAsync(1);
+
+        Assert.Empty(vm.SelectedItems);
+        Assert.False(vm.HasSelection);
+    }
 
     /// <summary>
     /// Secim YOKKEN elle kimlik metin kutusu GORUNURDUR -- manuel giris yolu
@@ -84,7 +113,7 @@ public sealed class EntitlementSelectionTests
         UiThread.Run(() =>
         {
             var vm = CreateViewModel();
-            vm.Items.Add(Item("100", "Ayşe Yılmaz", "5A", "1111"));
+            vm.Items.Add(RowOf(vm, Item("100", "Ayşe Yılmaz", "5A", "1111")));
             vm.OpenGrantCommand.Execute(null);
 
             var view = new MealEntitlementsView { DataContext = vm };
@@ -106,8 +135,8 @@ public sealed class EntitlementSelectionTests
             var vm = CreateViewModel();
             var a = Item("100", "Ayşe Yılmaz", "5A", "1111");
             var b = Item("101", "Mehmet Demir", "5B", "2222");
-            vm.Items.Add(a); vm.Items.Add(b);
-            vm.SetSelection([a, b]);
+            vm.Items.Add(RowOf(vm, a)); vm.Items.Add(RowOf(vm, b));
+            Tick(vm, a, b);
             vm.OpenGrantCommand.Execute(null);
 
             var view = new MealEntitlementsView { DataContext = vm };
@@ -175,8 +204,8 @@ public sealed class EntitlementSelectionTests
         {
             var vm = CreateViewModel();
             var item = Item("100", "Ayşe Yılmaz", "5A", "1111");
-            vm.Items.Add(item);
-            vm.SetSelection([item]);
+            vm.Items.Add(RowOf(vm, item));
+            Tick(vm, item);
             vm.OpenGrantCommand.Execute(null);
 
             var view = new MealEntitlementsView { DataContext = vm };
@@ -195,8 +224,8 @@ public sealed class EntitlementSelectionTests
         {
             var vm = CreateViewModel();
             var item = Item("100", "Ayşe Yılmaz", "5A", "1111");
-            vm.Items.Add(item);
-            vm.SetSelection([item]);
+            vm.Items.Add(RowOf(vm, item));
+            Tick(vm, item);
             vm.RequestCancelCommand.Execute(null);
             Assert.True(vm.IsCancelConfirmationOpen);
 
@@ -222,8 +251,8 @@ public sealed class EntitlementSelectionTests
             var wizard = new BulkOperationWizardViewModel(new FakeBulkApi(), ["entitlements.bulk", "calendar.manage"]);
             var vm = new MealEntitlementsViewModel(new FakeApi(), ["entitlements.manage", "entitlements.bulk"], wizard);
             var item = Item("100", "Ayşe Yılmaz", "5A", "1111");
-            vm.Items.Add(item);
-            vm.SetSelection([item]);
+            vm.Items.Add(RowOf(vm, item));
+            Tick(vm, item);
             wizard.OpenCommand.Execute(null);
             Assert.True(wizard.IsOpen);
 
@@ -255,8 +284,8 @@ public sealed class EntitlementSelectionTests
         {
             var vm = CreateViewModel();
             var item = Item("100", "Ayşe Yılmaz", "5A", "1111");
-            vm.Items.Add(item);
-            vm.SetSelection([item]);
+            vm.Items.Add(RowOf(vm, item));
+            Tick(vm, item);
             vm.RequestCancelCommand.Execute(null);
             Assert.True(vm.IsCancelConfirmationOpen);
 
@@ -286,7 +315,7 @@ public sealed class EntitlementSelectionTests
             var vm = CreateViewModel();
             var a = Item("100", "Ayşe Yılmaz", "5A", "1111");
             var b = Item("101", "Mehmet Demir", "5B", "2222");
-            vm.Items.Add(a); vm.Items.Add(b);
+            vm.Items.Add(RowOf(vm, a)); vm.Items.Add(RowOf(vm, b));
 
             var view = new MealEntitlementsView { DataContext = vm };
             Layout(view);
@@ -294,7 +323,7 @@ public sealed class EntitlementSelectionTests
             var countText = (TextBlock)FindByName(view, "SelectedCountText")!;
             Assert.Equal("Seçili: 0", countText.Text);
 
-            vm.SetSelection([a, b]);
+            Tick(vm, a, b);
             view.UpdateLayout();
 
             Assert.Equal("Seçili: 2", countText.Text);
@@ -337,6 +366,35 @@ public sealed class EntitlementSelectionTests
             if (result is not null) return result;
         }
         return null;
+    }
+
+
+    /// <summary>Listeye satir sarmalayicisi koyar (secim satirin kendisindedir).</summary>
+    private static MealEntitlementRowViewModel RowOf(MealEntitlementsViewModel vm, MealEntitlementListItem item) =>
+        new(item, vm.RebuildSelectionForTests);
+
+    /// <summary>Verilen kayitlarin satirlarini isaretler.</summary>
+    private static void Tick(MealEntitlementsViewModel vm, params MealEntitlementListItem[] items)
+    {
+        foreach (var item in items)
+        {
+            var row = vm.Items.FirstOrDefault(x => x.Id == item.Id);
+            if (row is null) { row = RowOf(vm, item); vm.Items.Add(row); }
+            row.IsSelected = true;
+        }
+    }
+
+
+    /// <summary>Gorsel agactaki tum alt ogeler (onay kutusunu bulmak icin).</summary>
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        var count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            yield return child;
+            foreach (var nested in Descendants(child)) yield return nested;
+        }
     }
 
     private sealed class FakeApi : IMealEntitlementApiClient

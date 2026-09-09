@@ -157,7 +157,7 @@ public sealed partial class SettingsService(YemekhaneDbContext db, ISecretProtec
     private static Dictionary<string, string> Values(SaveSettingsRequest x) => new(StringComparer.Ordinal)
     {
         ["School.Name"] = x.School.Name.Trim(), ["School.Address"] = Clean(x.School.Address), ["School.Contact"] = Clean(x.School.Contact), ["School.LogoPath"] = Clean(x.School.LogoPath),
-        ["Sms.Provider"] = x.Sms.Provider, ["Sms.Endpoint"] = Clean(x.Sms.Endpoint), ["Sms.AuthType"] = x.Sms.AuthType, ["Sms.Username"] = Clean(x.Sms.Username), ["Sms.Sender"] = Clean(x.Sms.Sender), ["Sms.TimeoutSeconds"] = Number(x.Sms.TimeoutSeconds),
+        ["Sms.Provider"] = x.Sms.Provider, ["Sms.Endpoint"] = Clean(x.Sms.Endpoint), ["Sms.AuthType"] = x.Sms.AuthType, ["Sms.Username"] = Clean(x.Sms.Username), ["Sms.Sender"] = Clean(x.Sms.Sender), ["Sms.TimeoutSeconds"] = Number(x.Sms.TimeoutSeconds), ["Sms.Enabled"] = Bool(x.Sms.Enabled),
         ["Backup.Enabled"] = Bool(x.Backup.Enabled), ["Backup.Frequency"] = x.Backup.Frequency, ["Backup.WeeklyDay"] = x.Backup.WeeklyDay.ToString(), ["Backup.Time"] = x.Backup.Time.ToString("HH:mm", CultureInfo.InvariantCulture), ["Backup.RetentionCount"] = Number(x.Backup.RetentionCount), ["Backup.Path"] = Clean(x.Backup.Path),
         ["Sync.Endpoint"] = Clean(x.Sync.Endpoint), ["Sync.DeviceId"] = Clean(x.Sync.DeviceId), ["Sync.IntervalMinutes"] = Number(x.Sync.IntervalMinutes), ["Sync.Enabled"] = Bool(x.Sync.Enabled),
         ["Logs.Level"] = x.Logs.Level, ["Logs.RetentionDays"] = Number(x.Logs.RetentionDays), ["Logs.Path"] = Clean(x.Logs.Path)
@@ -165,7 +165,9 @@ public sealed partial class SettingsService(YemekhaneDbContext db, ISecretProtec
 
     private static SettingsDocument Map(IReadOnlyDictionary<string, SystemSetting> v, SyncStatus status, List<string> devices, List<string> meals) => new(
         new(Get(v, "School.Name", "YemekhanePro"), Null(Get(v, "School.Address")), Null(Get(v, "School.Contact")), Null(Get(v, "School.LogoPath"))),
-        new(Null(Get(v, "Sms.Endpoint")), Get(v, "Sms.AuthType", "None"), Null(Get(v, "Sms.Username")), Null(Get(v, "Sms.Sender")), GetInt(v, "Sms.TimeoutSeconds", 30), IsConfigured(v, SmsSecretKey), Get(v, "Sms.Provider", "Http")),
+        new(Null(Get(v, "Sms.Endpoint")), Get(v, "Sms.AuthType", "None"), Null(Get(v, "Sms.Username")), Null(Get(v, "Sms.Sender")), GetInt(v, "Sms.TimeoutSeconds", 30), IsConfigured(v, SmsSecretKey), Get(v, "Sms.Provider", "Http"),
+            // Varsayilan ACIK: mevcut kurulumlarda ayar satiri yoksa SMS calismaya devam etmeli.
+            GetBool(v, "Sms.Enabled", true)),
         new(GetBool(v, "Backup.Enabled", false), Get(v, "Backup.Frequency", "Daily"), Enum.TryParse<DayOfWeek>(Get(v, "Backup.WeeklyDay", "Sunday"), out var day) ? day : DayOfWeek.Sunday, TimeOnly.TryParseExact(Get(v, "Backup.Time", "02:00"), "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time) ? time : new TimeOnly(2, 0), GetInt(v, "Backup.RetentionCount", 14), Null(Get(v, "Backup.Path"))),
         new(Null(Get(v, "Sync.Endpoint")), Null(Get(v, "Sync.DeviceId")), GetInt(v, "Sync.IntervalMinutes", 5), GetBool(v, "Sync.Enabled", false), IsConfigured(v, SyncSecretKey), status),
         new(Get(v, "Logs.Level", "Information"), GetInt(v, "Logs.RetentionDays", 30), Null(Get(v, "Logs.Path"))), new(devices.Count, devices, meals.Count, meals), false);

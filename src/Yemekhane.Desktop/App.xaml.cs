@@ -29,6 +29,7 @@ public partial class App : System.Windows.Application, IDisposable
     private GlobalSearchViewModel? globalSearch;
     private NotificationCenterViewModel? notifications;
     private SessionMonitor? sessionMonitor;
+    private ScreenRefreshMonitor? screenRefreshMonitor;
 
     /// <summary>
     /// Cokme kaydi. Dispatcher disinda olusan bir hata (arka plan gorevi, async void isleyici)
@@ -243,6 +244,10 @@ public partial class App : System.Windows.Application, IDisposable
             }
         };
         sessionMonitor.Start();
+        // Gorunen ekrani belirli araliklarla tazeler: memur Takvim gibi ekranlarda surekli
+        // "Yenile"ye basmak zorunda kalmasin. Acik cekmece/modal varken beklenir.
+        screenRefreshMonitor = new ScreenRefreshMonitor(window.CurrentScreenRefreshCommand, window.HasOpenLayer);
+        screenRefreshMonitor.Start();
         window.Show();
         // Ekranlar paralel baslatilir ama sonuclari tek tek toplanir. Task.WhenAll kullanilsaydi
         // yalnizca ILK hata firlar, kalanlar yutulur ve bu hata baslangic try blogunda
@@ -311,6 +316,7 @@ public partial class App : System.Windows.Application, IDisposable
         globalSearch?.Dispose();
         notifications?.Dispose();
         sessionMonitor?.Dispose();
+        screenRefreshMonitor?.Dispose();
         if (localApi is not null) await localApi.DisposeAsync();
         if (singleInstanceMutex is not null)
         {

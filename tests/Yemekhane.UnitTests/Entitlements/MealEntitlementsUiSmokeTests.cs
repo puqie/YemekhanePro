@@ -18,7 +18,13 @@ public sealed class MealEntitlementsUiSmokeTests
                 var view = new MealEntitlementsView(); Yemekhane.UnitTests.Desktop.UiThread.ApplyResources(view);
                 var grid = Assert.IsType<DataGrid>(view.FindName("EntitlementsGrid"));
                 Assert.True(grid.EnableRowVirtualization); Assert.True(grid.EnableColumnVirtualization);
-                Assert.Equal(DataGridSelectionMode.Extended, grid.SelectionMode);
+                // Coklu secim artik SEC sutunundaki onay kutusuyla yapilir. Tablonun kendi
+                // satir secimi Single/Cell: DataGridRow.IsSelected'e bagli onay kutusu ayni
+                // tiklamayla hem satiri seciyor hem tiki degistiriyor ve tik geri kapaniyordu.
+                Assert.Equal(DataGridSelectionMode.Single, grid.SelectionMode);
+                Assert.Equal(DataGridSelectionUnit.Cell, grid.SelectionUnit);
+                // Onay kutusunun duzenlenebilmesi icin tablo salt okunur OLMAMALI.
+                Assert.False(grid.IsReadOnly);
                 // Gorev 3: view'in kendi RowHeight="29" gecersiz kilmasi silindi;
                 // artik DesignSystem.xaml'in DataGrid stili (34) gecerli.
                 // Gorev 9: coklu secim icin bir SEC checkbox kolonu eklendi (11 -> 12).

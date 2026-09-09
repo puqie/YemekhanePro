@@ -166,10 +166,14 @@ public static class AiUserGuidePrompt
           yönlendirir.
         - "Yenile"; "Çevrimdışı" rozeti API'ye ulaşılamazsa görünür.
 
-        Filtre satırı: "Genel arama" (en az 2 karakter yazılmadan arama
-        tetiklenmez), "Öğrenci no", "Kart no", "Ad", "Soyad", "Sınıf", "Şube",
-        "Bölüm", "Durum" (Tümü/Aktif/Pasif), "Filtrele" (Enter ile de çalışır).
-        Arama kutusuna yazarken 350 ms sonra otomatik arama tetiklenir.
+        Filtre satırı: TEK arama kutusu "Ara" (ad, soyad, öğrenci no ve kart
+        no'da birden arar; en az 2 karakter, daha kısa yazılırsa "Aramak için
+        en az 2 karakter yazın..." uyarısı çıkar), sonra daraltma filtreleri
+        "Sınıf", "Şube", "Bölüm", "Durum" (Tümü/Aktif/Pasif) ve "Filtrele"
+        (Enter ile de çalışır). Arama kutusuna yazarken 350 ms sonra otomatik
+        arama tetiklenir. Ayrı "Öğrenci no"/"Kart no"/"Ad"/"Soyad" kutuları
+        KALDIRILDI: tek arama hepsini kapsıyor ve daha genişti (numarada tam
+        eşitlik yerine baştan eşleşme).
 
         Liste sütunları: NO, AD, SOYAD, SINIF, ŞUBE, KART NO, DURUM. Bir satıra
         tek tıklama tam detayı açar.
@@ -346,14 +350,28 @@ public static class AiUserGuidePrompt
         SOYAD, SINIF, ADET, KULL., KALAN, DURUM, KAYNAK.
 
         "Hızlı Hakediş" çekmecesi: "Hedef" (Manuel öğrenciler / Sınıf /
-        Kademe / Grup / Tüm aktif öğrenciler). Manuel'de listeden seçim
-        varsa "Seçili {n} öğrenciye verilecek." yoksa "Öğrenci numaraları"
-        kutusu (virgülle ayrılmış, örn. "5012, 5013"). "Öğün" seçilince
+        Kademe / Grup / Tüm aktif öğrenciler). Manuel hedefte ÖĞRENCİ SEÇİMİ
+        için kendi listesi vardır: "Öğrenci ara (ad, soyad, sınıf ya da no)"
+        kutusuna yazıp "Ara"ya (ya da Enter'a) basılır, çıkan listede SEÇ
+        sütunundaki kutular işaretlenir. Bu liste her öğrenciyi TEK satır
+        gösterir; arkadaki hakediş listesi öğrenci-gün satırı olduğu için
+        aynı öğrenci orada her gün için tekrar görünür ve oradan seçilemez.
+        Seçim aramalar arasında korunur (önce 5/A, sonra 5/B aranabilir);
+        "Seçimi temizle" ile sıfırlanır. Seçilenler "Öğrenci numaraları
+        (elle)" kutusuna da yazılır, oraya elle numara girmek de mümkündür. "Öğün" seçilince
         ücreti varsa "Öğün bedeli: 250,00 ₺" biçiminde görünür. "Başlangıç" tarihi, "Kaç
         gün" (bitiş tarihi değil GÜN SAYISI, iş günü esaslı), "Günlük adet
         (1-10)", "Cumartesi dahil"/"Pazar dahil" onay kutuları. "Etkileri
         Önizle" düğmesi uygulamadan önce "{n} öğrenci • {n} gün • {n} hak
         ({n} yeni, {n} güncelleme)" gösterir; sonra "Uygula" düğmesi çıkar.
+
+        Öğünün bedeli varsa iki seçenek çıkar: "Ücreti kasaya gelir olarak
+        işle" (öğrenci başına ayrı bir kasa kaydı açılır, tutar = öğün bedeli
+        x gün x günlük adet; kasada öğrenci adıyla görünür ve öğrenci
+        ekstresine düşer) ve "Veliye bilgi SMS'i gönder" (tarih aralığı ve
+        tutar bildirilir). Ücretsiz öğünde bu kutular görünmez. Hakediş
+        "Seçileni İptal Et" ile iptal edilirse ilgili tahsilat da otomatik
+        iptal edilir (silinmez, gerekçesi yazılır).
 
         Doğrulama hataları: "Öğün seçilmelidir.", "Günlük adet 1-10 arasında
         bir tam sayı olmalıdır.", "Gün sayısı 1 veya daha büyük bir tam sayı
@@ -681,7 +699,11 @@ public static class AiUserGuidePrompt
           (kayıt sayısı ve listesiyle), "Yemek Türleri" (aktif tür sayısıyla),
           "Tatiller / Takvim" düğmeleri. "Kullanıcılar / Roller" düğmesi
           hedef ekran olmadığı için görünmez (yukarıda belirtildi).
-        - "SMS": "SMS sağlayıcısı" kartında "Sağlayıcı" seçimi (Mutlucell
+        - "SMS": "SMS gönderimi açık" onay kutusu ANA ANAHTARDIR: kapatılırsa
+          hiçbir SMS gönderilmez (otomatik kurallar ve elle toplu gönderim
+          dahil). Kuyruk SİLİNMEZ: mesajlar bekler ve anahtar yeniden
+          açıldığında kaldığı yerden gönderilir. Kapalıyken ekranda kırmızı
+          uyarı görünür. Altında "SMS sağlayıcısı" kartında "Sağlayıcı" seçimi (Mutlucell
           veya genel HTTP); alan adları sağlayıcıya göre değişir — Mutlucell'de
           kullanıcı adı (ka), API şifresi (pwd) ve onaylı başlık (org); genel
           HTTP'de ek olarak "Sunucu adresi (https://...)" ve "Kimlik
@@ -739,6 +761,10 @@ public static class AiUserGuidePrompt
           kontrol edilmesi gerekir (bkz. YETKİ SİSTEMİ bölümü).
         - F1 klavye kısayollarını, hazır notu olan ekranlarda ise o ekrana
           özel kısa açıklamayı da gösterir.
+        - Ekranlar kendiliğinden güncel kalır: bir ekrana her geçişte veri
+          tazelenir, ekran açıkken de belirli aralıklarla yenilenir. Açık bir
+          çekmece ya da pencere varken tazeleme ertelenir, doldurduğunuz form
+          altınızdan kaymaz. Yine de F5 ile elle yenileyebilirsiniz.
         - Klavye kısayolları: Ctrl+K global arama, F2 Öğrenciler ve arama
           odağı (Tanımlar ekranında yeniden adlandırır), F3 kart okuma
           (cards.manage ve bağlı okuyucu ister), F4 Günlük Takip, F5 geçerli

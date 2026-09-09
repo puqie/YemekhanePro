@@ -122,7 +122,9 @@ public sealed class VisibleLabelTests
             if (!body.Contains("Filtrele", StringComparison.Ordinal)
                 && !body.Contains("ApplyFiltersCommand", StringComparison.Ordinal)) continue;
 
-            var inputs = Regex.Matches(body, @"<(TextBox|ComboBox|DatePicker)\b").Count;
+            // "<TextBox.InputBindings>" gibi OZELLIK ogeleri kutu degildir; noktali ad
+            // sayilmaz, aksi halde Enter kisayolu eklenen her kutu iki kez sayilirdi.
+            var inputs = Regex.Matches(body, @"<(TextBox|ComboBox|DatePicker)(?![\w.])").Count;
             var labels = Regex.Matches(body, @"Style=""\{StaticResource Label\}""").Count;
 
             Assert.True(labels >= inputs,

@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using Yemekhane.Application.Common;
 using Yemekhane.Application.Entitlements;
 using Yemekhane.Api.Authorization;
 
@@ -16,7 +18,7 @@ public sealed class MealEntitlementsController(MealEntitlementService service) :
     public Task<EntitlementPreview> Preview(EntitlementGrantRequest request, CancellationToken cancellationToken) => service.PreviewAsync(request, cancellationToken);
     [HttpPost("apply")]
     [PermissionAuthorize(Permissions.EntitlementsBulk)]
-    public Task<BulkEntitlementResult> Apply(ApplyEntitlementGrantRequest request, CancellationToken cancellationToken) => service.ApplyAsync(request, cancellationToken);
+    public Task<BulkEntitlementResult> Apply(ApplyEntitlementGrantRequest request, CancellationToken cancellationToken) => service.ApplyAsync(request, ActorId(), cancellationToken);
     [HttpGet]
     [PermissionAuthorize(Permissions.EntitlementsManage)]
     public Task<MealEntitlementPage> List([FromQuery] MealEntitlementQuery query, CancellationToken cancellationToken) => service.SearchAsync(query, cancellationToken);
@@ -31,5 +33,13 @@ public sealed class MealEntitlementsController(MealEntitlementService service) :
     public Task<bool> Cancel(Guid id, CancellationToken cancellationToken) => service.CancelAsync(id, cancellationToken);
     [HttpPost("cancel")]
     [PermissionAuthorize(Permissions.EntitlementsManage)]
-    public Task<CancelEntitlementsResult> CancelBulk(CancelEntitlementsRequest request, CancellationToken cancellationToken) => service.CancelBulkAsync(request, cancellationToken);
+    // Iptal, varsa hakedis tahsilatini da geri alir: hak iptal edilip para kasada kalirsa
+    // kasa ile hak birbirini tutmaz.
+    public Task<CancelEntitlementsResult> CancelBulk(CancelEntitlementsRequest request, CancellationToken cancellationToken) => service.CancelBulkWithRefundAsync(request, ActorId(), cancellationToken);
+
+    private Guid ActorId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(value, out var id) ? id : throw new RequestValidationException("Operatör kimliği bulunamadı.");
+    }
 }

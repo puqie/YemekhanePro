@@ -5,7 +5,10 @@ using Yemekhane.Application.Common;
 
 namespace Yemekhane.Application.Entitlements;
 
-public sealed class MealEntitlementService(IMealEntitlementRepository repository, BusinessDayService businessDayService)
+public sealed class MealEntitlementService(
+    IMealEntitlementRepository repository,
+    BusinessDayService businessDayService,
+    IEntitlementBillingService? billing = null)
 {
     public async Task<BulkEntitlementResult> GrantBulkAsync(BulkEntitlementRequest request, CancellationToken cancellationToken = default)
     {
@@ -24,11 +27,18 @@ public sealed class MealEntitlementService(IMealEntitlementRepository repository
         var dates = await ValidateAndGetDatesAsync(request.StartsOn, request.EndsOn, request.Quantity,
             request.IncludeSaturday, request.IncludeSunday, cancellationToken);
         var state = await repository.PreviewAsync(students, request.MealTypeId, dates, cancellationToken);
+        // Bedel SUNUCUDA hesaplanir: ekran kendi carpimini yapiyordu ve o rakam hicbir yere
+        // gitmiyordu. Ayni deger hem onizlemede gosterilir hem kasaya yazilir.
+        var unit = await repository.MealPriceAsync(request.MealTypeId, cancellationToken);
+        var perStudent = unit * dates.Count * request.Quantity;
         return new EntitlementPreview(students.Count, dates.Count, checked(students.Count * dates.Count),
-            state.CreatedCount, state.UpdatedCount, Token(request, students, dates, state.StateHash));
+            state.CreatedCount, state.UpdatedCount, Token(request, students, dates, state.StateHash),
+            perStudent, perStudent * students.Count);
     }
 
-    public async Task<BulkEntitlementResult> ApplyAsync(ApplyEntitlementGrantRequest request, CancellationToken cancellationToken = default)
+    /// <param name="actorId">Tahsilati kimin yazdigi; kasa denetimi bunu ister.</param>
+    public async Task<BulkEntitlementResult> ApplyAsync(ApplyEntitlementGrantRequest request, Guid actorId = default,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.PreviewToken)) throw new RequestValidationException("Önizleme anahtarı zorunludur.");
         var students = await repository.ResolveTargetAsync(request.Grant.Target, cancellationToken);
@@ -39,8 +49,27 @@ public sealed class MealEntitlementService(IMealEntitlementRepository repository
         var expected = Token(request.Grant, students, dates, state.StateHash);
         if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(request.PreviewToken)))
             throw new EntityConflictException("Önizlemeden sonra hedef veya hakediş verisi değişti. Yeniden önizleyin.");
-        return await repository.UpsertBulkAsync(students, request.Grant.MealTypeId, dates, request.Grant.Quantity,
+        var result = await repository.UpsertBulkAsync(students, request.Grant.MealTypeId, dates, request.Grant.Quantity,
             RequiredSource(request.Grant.Source), state.StateHash, cancellationToken);
+
+        // Ucretlendirme ve SMS hakedis YAZILDIKTAN SONRA calisir: buradaki bir hata
+        // tanimlanmis hakki geri almamalidir (IncomeService'teki ayni kural).
+        if (billing is null || (!request.Grant.ChargeToCash && !request.Grant.NotifyParents)) return result;
+        var unit = await repository.MealPriceAsync(request.Grant.MealTypeId, cancellationToken);
+        var perStudent = unit * dates.Count * request.Grant.Quantity;
+        if (perStudent <= 0) return result;
+        // Kasaya yazma kapaliysa tutar 0 gonderilir: servis para yazmaz, yalnizca SMS kuyruklar.
+        var charge = await billing.ChargeAsync(new EntitlementChargeRequest(
+            request.Grant.OperationId ?? Guid.NewGuid(), students, request.Grant.MealTypeId,
+            request.Grant.ChargeToCash ? perStudent : 0m,
+            request.Grant.StartsOn, request.Grant.EndsOn, dates.Count, request.Grant.NotifyParents),
+            actorId, cancellationToken);
+        return result with
+        {
+            ChargedStudents = charge.ChargedStudents,
+            ChargedTotal = charge.Total,
+            NotifiedParents = charge.NotifiedParents
+        };
     }
 
     public Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default)
@@ -48,6 +77,23 @@ public sealed class MealEntitlementService(IMealEntitlementRepository repository
         if (query.Page < 1 || query.PageSize is < 1 or > 250) throw new RequestValidationException("Sayfalama değerleri geçersiz.");
         if (query.StartsOn.HasValue && query.EndsOn < query.StartsOn) throw new RequestValidationException("Tarih aralığı geçersiz.");
         return repository.SearchAsync(query, cancellationToken);
+    }
+
+    /// <summary>
+    /// Haklari iptal eder ve varsa tahsilatlarini geri alir: hakedis iptal edilip para
+    /// kasada kalirsa kasa ile hak birbirini tutmaz.
+    /// </summary>
+    public async Task<CancelEntitlementsResult> CancelBulkWithRefundAsync(CancelEntitlementsRequest request,
+        Guid actorId = default, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var ids = request.EntitlementIds.Distinct().ToArray();
+        // Iade, iptalden ONCE okunur: iptal sonrasi satirlarin tarihi ve ogrencisi hala
+        // durur ama "Active" olmadiklari icin eslestirme zorlasir.
+        var result = await CancelBulkAsync(request, cancellationToken);
+        if (billing is not null && result.CancelledCount > 0)
+            await billing.RefundAsync(ids, actorId, cancellationToken);
+        return result;
     }
 
     public Task<CancelEntitlementsResult> CancelBulkAsync(CancelEntitlementsRequest request, CancellationToken cancellationToken = default)

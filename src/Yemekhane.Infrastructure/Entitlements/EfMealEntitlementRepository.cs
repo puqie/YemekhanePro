@@ -62,6 +62,15 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
         return new BulkEntitlementResult(studentIds.Count, dates.Count, created, updated);
     }
 
+    /// <summary>Ogunun birim ucreti; fiyat satiri yoksa ucretsiz ogun sayilir (0).</summary>
+    public async Task<decimal> MealPriceAsync(Guid mealTypeId, CancellationToken cancellationToken)
+    {
+        var cents = await dbContext.Set<MealTypePrice>().AsNoTracking()
+            .Where(x => x.MealTypeId == mealTypeId).Select(x => (long?)x.PriceCents)
+            .SingleOrDefaultAsync(cancellationToken);
+        return (cents ?? 0) / 100m;
+    }
+
     public async Task<IReadOnlyList<Guid>> ResolveTargetAsync(EntitlementTarget target, CancellationToken cancellationToken)
     {
         var students = dbContext.Students.AsNoTracking().Where(x => x.IsActive);

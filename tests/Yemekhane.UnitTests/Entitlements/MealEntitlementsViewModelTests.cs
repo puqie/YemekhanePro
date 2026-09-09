@@ -40,10 +40,10 @@ public sealed class MealEntitlementsViewModelTests
     {
         var api = new FakeApi(); var vm = Create(api); await vm.InitializeAsync();
         var consumed = Row() with { ConsumedQuantity = 1, RemainingQuantity = 0 };
-        vm.SetSelection([consumed]); vm.RequestCancelCommand.Execute(null);
+        Select(vm, consumed); vm.RequestCancelCommand.Execute(null);
         Assert.False(vm.IsCancelConfirmationOpen); Assert.NotNull(vm.ErrorMessage);
 
-        vm.SetSelection([Row()]); vm.RequestCancelCommand.Execute(null);
+        vm.ClearSelection(); Select(vm, Row()); vm.RequestCancelCommand.Execute(null);
         Assert.True(vm.IsCancelConfirmationOpen); Assert.Contains("1", vm.CancelConfirmationText);
         vm.ConfirmCancelCommand.Execute(null); await Until(() => api.CancelCount == 1);
         Assert.False(vm.IsCancelConfirmationOpen);
@@ -147,6 +147,18 @@ public sealed class MealEntitlementsViewModelTests
         var timeout = DateTime.UtcNow.AddSeconds(3);
         while (!condition() && DateTime.UtcNow < timeout) await Task.Delay(10);
         Assert.True(condition());
+    }
+
+
+    /// <summary>
+    /// Satiri listeye koyup TIKINI isaretler. Secim artik satirin kendi IsSelected
+    /// ozelliginden gelir; tablonun satir secimi degil.
+    /// </summary>
+    private static void Select(MealEntitlementsViewModel vm, MealEntitlementListItem item)
+    {
+        var row = new MealEntitlementRowViewModel(item, vm.RebuildSelectionForTests);
+        vm.Items.Add(row);
+        row.IsSelected = true;
     }
 
     private sealed class FakeApi : IMealEntitlementApiClient

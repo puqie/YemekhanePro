@@ -448,7 +448,13 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
 
     public async Task LoadAsync(int targetPage)
     {
-        if (!string.IsNullOrWhiteSpace(Search) && Search.Trim().Length < 2) return;
+        // Tek karakterde sessizce donmek "Filtrele" dugmesini olu gosteriyordu; kullanici
+        // neden hicbir sey olmadigini anlamiyordu. Kural artik ekranda yaziyor.
+        if (!string.IsNullOrWhiteSpace(Search) && Search.Trim().Length < 2)
+        {
+            ErrorMessage = "Aramak için en az 2 karakter yazın (ad, soyad, öğrenci no ya da kart no).";
+            return;
+        }
         IsLoading = true; ErrorMessage = null; IsOffline = false;
         // Liste yenilenirken DataGrid secimi null'a ceker (Clear); ayni ogrenci yeni sayfada
         // da varsa secim GERI VERILIR. Aksi halde "Yenile"ye her basista form bosaliyordu.

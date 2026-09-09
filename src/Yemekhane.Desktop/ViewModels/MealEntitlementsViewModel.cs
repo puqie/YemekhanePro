@@ -7,6 +7,7 @@ using Yemekhane.Application.Entitlements;
 using Yemekhane.Application.Meals;
 using Yemekhane.Application.Organization;
 using Yemekhane.Desktop.Services;
+using Yemekhane.Application.Students;
 
 namespace Yemekhane.Desktop.ViewModels;
 
@@ -73,21 +74,30 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         ApplyCommand = new AsyncCommand(ApplyAsync, () => canBulk && Preview is not null);
         RequestCancelCommand = new RelayCommand(RequestCancel, () => canManage);
         ConfirmCancelCommand = new AsyncCommand(CancelAsync, () => canManage && SelectedItems.Count > 0);
+        ClearSelectionCommand = new RelayCommand(ClearSelection, () => SelectedItems.Count > 0);
         CloseCancelCommand = new RelayCommand(() => IsCancelConfirmationOpen = false);
         OpenBulkCommand = new RelayCommand(OpenBulk, () => canBulk && BulkWizard is not null);
+        SearchStudentsCommand = new AsyncCommand(SearchStudentsAsync, () => canBulk);
+        ClearPickerCommand = new RelayCommand(ClearPicker, () => canBulk);
         selectedMealFilter = MealFilters[0]; selectedGroupFilter = GroupFilters[0];
         // Sihirbaz bir islemi uygulayinca ya da geri alinca arkadaki liste ESKI kalmasin:
         // kullanici "Geri Al" dedikten sonra satirlarin hala "Iptal" gorunmesini hata sanir.
         if (BulkWizard is not null && canManage) BulkWizard.Changed += (_, _) => _ = LoadAsync(Page);
     }
 
-    public ObservableCollection<MealEntitlementListItem> Items { get; } = [];
+    public ObservableCollection<MealEntitlementRowViewModel> Items { get; } = [];
     public ObservableCollection<MealTypeDetails> MealTypes { get; } = [];
     public ObservableCollection<ClassRecord> Classes { get; } = [];
     public ObservableCollection<GroupRecord> Groups { get; } = [];
     /// <summary>Filtre kutulari icin "Tümü" ile baslayan listeler: bos bir acilir kutu "hicbiri" degil "hepsi" demektir, bu ekranda yazmali.</summary>
     public ObservableCollection<EntitlementFilterOption> MealFilters { get; } = [new("Tümü", null)];
     public ObservableCollection<EntitlementFilterOption> GroupFilters { get; } = [new("Tümü", null)];
+    /// <summary>
+    /// Isaretli satirlar. Secim tablonun kendi satir secimine DEGIL, satirin kendi
+    /// IsSelected ozelligine baglidir: DataGridRow.IsSelected'e baglanan onay kutusu,
+    /// ayni tiklamayi hem "satiri sec" hem "tiki degistir" diye isleyen DataGrid
+    /// yuzunden hemen geri kapaniyordu (SelectionUnit=FullRow + Extended).
+    /// </summary>
     public ObservableCollection<MealEntitlementListItem> SelectedItems { get; } = [];
     public IReadOnlyList<EntitlementStatusOption> Statuses { get; } = [new("Tümü", null), new("Aktif", "Active"), new("İptal", "Cancelled"), new("Aktarıldı", "Transferred")];
     public IReadOnlyList<EntitlementTargetOption> TargetTypes { get; } = [new("Manuel öğrenciler", "Manual"), new("Sınıf", "Class"), new("Kademe", "Grade"), new("Grup", "Group"), new("Tüm aktif öğrenciler", "All")];
@@ -153,7 +163,7 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     public ClassRecord? GrantClass { get => grantClass; set { if (Set(ref grantClass, value)) Preview = null; } }
     public GroupRecord? GrantGroup { get => grantGroup; set { if (Set(ref grantGroup, value)) Preview = null; } }
     public string Grade { get => grade; set { if (Set(ref grade, value)) Preview = null; } }
-    public MealTypeDetails? GrantMeal { get => grantMeal; set { if (Set(ref grantMeal, value)) { Preview = null; Raise(nameof(GrantMealPriceText)); Raise(nameof(HasGrantMealPrice)); } } }
+    public MealTypeDetails? GrantMeal { get => grantMeal; set { if (Set(ref grantMeal, value)) { Preview = null; Raise(nameof(GrantMealPriceText)); Raise(nameof(HasGrantMealPrice)); Raise(nameof(CanCharge)); } } }
     /// <summary>
     /// Secili ogunun bedeli ("Öğün bedeli: ₺250,00"). Ucret sifirsa satir gizlenir: ucretsiz
     /// ogunde "₺0,00" yazmak kullaniciya bir hata varmis gibi gorunur.
@@ -164,10 +174,22 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     /// Onizlemenin toplam bedeli = ucret x hak adedi x gunluk adet. Sunucunun RightsCount'u
     /// ogrenci x gun sayisidir, gunluk adedi icermez; ayni gun iki ogun verilirse bedel de iki kat.
     /// </summary>
-    public decimal PreviewTotal => Preview is null || previewRequest is null || GrantMeal is null ? 0 : GrantMeal.Price * Preview.RightsCount * previewRequest.Quantity;
+    /// <summary>
+    /// Toplam bedeli SUNUCU hesaplar (EntitlementPreview.Total). Ekran kendi carpimini
+    /// yapiyordu ve o rakam hicbir yere gitmiyordu; simdi ayni deger hem burada gorunur
+    /// hem kasaya yazilir. Eski surumlerden gelen 0 yanit icin ekran hesabi yedek kalir.
+    /// </summary>
+    public decimal PreviewTotal => Preview is null ? 0
+        : Preview.Total > 0 ? Preview.Total
+        : previewRequest is null || GrantMeal is null ? 0 : GrantMeal.Price * Preview.RightsCount * previewRequest.Quantity;
     public bool HasPreviewTotal => HasPreview && PreviewTotal > 0;
     public string PreviewTotalText => HasPreviewTotal ? "Toplam bedel: " + PreviewTotal.ToString("C2", Turkish) : "";
     private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
+    private bool chargeToCash, notifyParents;
+    private string? studentPickerSearch;
+    private bool isPickerBusy;
+    /// <summary>Onizleme basina sabit islem kimligi: tekrar denemede tahsilat ikinci kez yazilmaz.</summary>
+    private Guid grantOperationId = Guid.NewGuid();
     public DateTime GrantStartsOn { get => grantStartsOn; set { if (Set(ref grantStartsOn, value)) { Preview = null; Raise(nameof(GrantRangeText)); } } }
     public DateTime GrantEndsOn { get => grantEndsOn; set { if (Set(ref grantEndsOn, value)) Preview = null; } }
 
@@ -258,10 +280,27 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         if (Guid.TryParse(suffix, out var studentId)) { ManualStudentIds = studentId.ToString("D"); OpenGrant(); }
     }
 
-    public void SetSelection(IEnumerable<MealEntitlementListItem> selection)
+    /// <summary>Satir onay kutusu her degistiginde secili kume yeniden kurulur.</summary>
+    private void RebuildSelection()
     {
-        SelectedItems.Clear(); foreach (var item in selection) SelectedItems.Add(item);
-        Raise(nameof(CancelConfirmationText)); (ConfirmCancelCommand as AsyncCommand)?.Refresh();
+        SelectedItems.Clear();
+        foreach (var row in Items.Where(x => x.IsSelected)) SelectedItems.Add(row.Item);
+        Raise(nameof(CancelConfirmationText)); Raise(nameof(HasSelection));
+        (ConfirmCancelCommand as AsyncCommand)?.Refresh();
+        (ClearSelectionCommand as RelayCommand)?.Refresh();
+    }
+
+    public bool HasSelection => SelectedItems.Count > 0;
+
+    /// <summary>Satir onay kutusu disaridan kurulduysa (testler) secimi yeniden hesaplar.</summary>
+    public void RebuildSelectionForTests() => RebuildSelection();
+    public ICommand ClearSelectionCommand { get; }
+
+    /// <summary>Tum secimi kaldirir ("Seçimi temizle").</summary>
+    public void ClearSelection()
+    {
+        foreach (var row in Items) row.SetSelectedQuietly(false);
+        RebuildSelection();
     }
 
     public async Task LoadAsync(int targetPage)
@@ -273,13 +312,18 @@ public sealed class MealEntitlementsViewModel : ObservableObject
                 StudentNo: null, CardNumber: null, Name: null, ClassName: null,
                 SelectedGroupFilter?.Id, SelectedMealFilter?.Id, Status,
                 targetPage, PageSize, Search: Empty(SearchText)));
-            Items.Clear(); foreach (var item in result.Items) Items.Add(item);
+            Items.Clear(); foreach (var item in result.Items) Items.Add(new MealEntitlementRowViewModel(item, RebuildSelection));
             Page = result.Page; TotalCount = result.TotalCount; TotalQuantity = result.Summary.TotalQuantity;
             ConsumedQuantity = result.Summary.ConsumedQuantity; RemainingQuantity = result.Summary.RemainingQuantity;
-            SetSelection([]);
         }
         catch (Exception ex) { HandleError(ex, "Hakediş listesi alınamadı."); }
-        finally { IsLoading = false; Raise(nameof(IsEmpty)); }
+        finally
+        {
+            // Secim HER durumda temizlenir (hata dahil): aksi halde filtreden sonra artik
+            // gorunmeyen satirlar secili kalir ve toplu islem onlari da kapsardi.
+            RebuildSelection();
+            IsLoading = false; Raise(nameof(IsEmpty));
+        }
     }
 
     private void OpenGrant()
@@ -345,7 +389,15 @@ public sealed class MealEntitlementsViewModel : ObservableObject
             if (StartsOn is null || StartsOn > grantStart) StartsOn = grantStart;
             if (EndsOn is null || EndsOn < grantEnd) EndsOn = grantEnd;
             if (canManage) await LoadAsync(1);
-            StatusMessage = $"{result.CreatedCount:N0} hak oluşturuldu, {result.UpdatedCount:N0} hak güncellendi.";
+            // Kasaya yazilan tutar ve SMS sayisi da bildirilir: memur "gelir yansidi mi,
+            // veliye gitti mi" diye ayrica kontrol etmek zorunda kalmasin.
+            var message = $"{result.CreatedCount:N0} hak oluşturuldu, {result.UpdatedCount:N0} hak güncellendi.";
+            if (result.ChargedStudents > 0)
+                message += $" Kasaya {result.ChargedStudents:N0} öğrenci için {result.ChargedTotal.ToString("C2", Turkish)} işlendi.";
+            if (result.NotifiedParents > 0) message += $" {result.NotifiedParents:N0} veliye SMS kuyruğa alındı.";
+            StatusMessage = message;
+            // Sonraki hakedis yeni bir islem: ayni kimlikle tekrar tahsilat yazilmaz.
+            grantOperationId = Guid.NewGuid();
         }
         catch (Exception ex) { PreviewMessage = Friendly(ex, "Hakedişler uygulanamadı. Yeniden önizleyin."); Preview = null; }
     }
@@ -369,6 +421,72 @@ public sealed class MealEntitlementsViewModel : ObservableObject
             StatusMessage = $"{result.CancelledCount:N0} hak iptal edildi.";
         }
         catch (Exception ex) { IsCancelConfirmationOpen = false; ErrorMessage = Friendly(ex, "Haklar iptal edilemedi."); }
+    }
+
+    /// <summary>
+    /// Ogun bedeli kasaya OGRENCI BASINA gelir olarak islensin mi. Ucretsiz ogunde
+    /// (bedel 0) kutu gorunmez; yazacak tutar yoktur.
+    /// </summary>
+    public bool ChargeToCash { get => chargeToCash; set { if (Set(ref chargeToCash, value)) Preview = null; } }
+    /// <summary>Veliye "hakkiniz tanimlandi" SMS'i gonderilsin mi.</summary>
+    public bool NotifyParents { get => notifyParents; set { if (Set(ref notifyParents, value)) Preview = null; } }
+    /// <summary>Bedeli olan ogunde ucretlendirme secenekleri gorunur.</summary>
+    public bool CanCharge => HasGrantMealPrice;
+
+    /// <summary>
+    /// Hakedis listesi ogrenci-GUN satiridir: ayni ogrenci 300 gun icin 300 kez gorunur ve
+    /// oradan ogrenci secilemez. Hizli Hakedis kendi ogrenci listesini kullanir; her ogrenci
+    /// bir kez, ad/sinif/numara ile aranarak.
+    /// </summary>
+    public ObservableCollection<StudentPickerRowViewModel> StudentPicker { get; } = [];
+    public string? StudentPickerSearch { get => studentPickerSearch; set => Set(ref studentPickerSearch, value); }
+    public bool IsPickerBusy { get => isPickerBusy; private set => Set(ref isPickerBusy, value); }
+    public bool HasPickerRows => StudentPicker.Count > 0;
+    public string PickerSummary => StudentPicker.Count(x => x.IsSelected) is var n && n > 0
+        ? $"Seçili: {n} öğrenci"
+        : "Ad, sınıf ya da numara yazıp Ara'ya basın.";
+
+    public ICommand SearchStudentsCommand { get; private set; } = null!;
+    public ICommand ClearPickerCommand { get; private set; } = null!;
+
+    /// <summary>Ad, soyad, numara, kart ya da SINIF adiyla arar; her ogrenci tek satir.</summary>
+    private async Task SearchStudentsAsync()
+    {
+        var term = StudentPickerSearch?.Trim();
+        PreviewMessage = null;
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+        { PreviewMessage = "Aramak için en az 2 karakter yazın (ad, soyad, sınıf, öğrenci no ya da kart no)."; return; }
+        IsPickerBusy = true;
+        try
+        {
+            var chosen = StudentPicker.Where(x => x.IsSelected).ToDictionary(x => x.Id, x => x);
+            var result = await api.SearchStudentsAsync(term);
+            StudentPicker.Clear();
+            // Onceki secim KORUNUR: kullanici once 5/A arayip secip sonra 5/B arayabilir.
+            foreach (var row in chosen.Values) StudentPicker.Add(row);
+            foreach (var item in result.Items.Where(x => !chosen.ContainsKey(x.Id)))
+                StudentPicker.Add(new StudentPickerRowViewModel(item, OnPickerChanged));
+            if (StudentPicker.Count == chosen.Count) PreviewMessage = "Bu aramayla eşleşen aktif öğrenci bulunamadı.";
+            OnPickerChanged();
+        }
+        catch (Exception ex) { PreviewMessage = Friendly(ex, "Öğrenci aranamadı."); }
+        finally { IsPickerBusy = false; }
+    }
+
+    private void ClearPicker()
+    {
+        StudentPicker.Clear();
+        StudentPickerSearch = null;
+        OnPickerChanged();
+    }
+
+    /// <summary>Secim degisince manuel numara kutusu da guncellenir; ikisi tek kaynak olur.</summary>
+    private void OnPickerChanged()
+    {
+        Raise(nameof(HasPickerRows)); Raise(nameof(PickerSummary));
+        var selected = StudentPicker.Where(x => x.IsSelected).Select(x => x.StudentNo).ToArray();
+        if (selected.Length > 0) ManualStudentIds = string.Join(", ", selected);
+        Preview = null;
     }
 
     private EntitlementGrantRequest BuildGrant()
@@ -395,7 +513,9 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         var target = new EntitlementTarget(TargetType, IsManualTarget ? ids : [], GrantClass?.Id, Empty(Grade), GrantGroup?.Id,
             IsManualTarget && nos.Length > 0 ? nos : null);
         return new EntitlementGrantRequest(target, GrantMeal.Id, DateOnly.FromDateTime(GrantStartsOn),
-            computedEnd, quantity, IncludeSaturday, IncludeSunday, "WPF Quick Grant");
+            computedEnd, quantity, IncludeSaturday, IncludeSunday, "WPF Quick Grant",
+            // Ucretsiz ogunde kasaya yazacak tutar yoktur; secenek isaretli olsa da gonderilmez.
+            ChargeToCash && HasGrantMealPrice, NotifyParents, grantOperationId);
     }
 
     private void HandleError(Exception ex, string fallback)
@@ -408,4 +528,56 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     private void RaiseTargetVisibility() { Raise(nameof(IsManualTarget)); Raise(nameof(IsClassTarget)); Raise(nameof(IsGradeTarget)); Raise(nameof(IsGroupTarget)); }
     private static DateOnly? ToDate(DateTime? value) => value.HasValue ? DateOnly.FromDateTime(value.Value) : null;
     private static string? Empty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}
+
+/// <summary>
+/// Listedeki bir hakedis satiri. Secim durumu SATIRIN kendisinde durur; onceden onay
+/// kutusu DataGridRow.IsSelected'e bagliydi ve tablo ayni tiklamayla satir secimini
+/// yeniden hesapladigi icin tik aninda geri kapaniyordu. Ayrica sanallastirilmis
+/// (recycling) satir kaplari kaydirmada tiki baska satira tasiyordu.
+/// </summary>
+public sealed class MealEntitlementRowViewModel(MealEntitlementListItem item, Action? changed = null) : ObservableObject
+{
+    private bool isSelected;
+
+    public MealEntitlementListItem Item { get; } = item;
+    public bool IsSelected { get => isSelected; set { if (Set(ref isSelected, value)) changed?.Invoke(); } }
+
+    /// <summary>Toplu temizlemede tek tek bildirim yapmadan degeri sifirlar.</summary>
+    public void SetSelectedQuietly(bool value)
+    {
+        if (isSelected == value) return;
+        isSelected = value;
+        Raise(nameof(IsSelected));
+    }
+
+    public Guid Id => Item.Id;
+    public Guid StudentId => Item.StudentId;
+    public DateOnly Date => Item.Date;
+    public string StudentNo => Item.StudentNo;
+    public string? CardNumber => Item.CardNumber;
+    public string MealName => Item.MealName;
+    public string StudentName => Item.StudentName;
+    public string? ClassName => Item.ClassName;
+    public int Quantity => Item.Quantity;
+    public int ConsumedQuantity => Item.ConsumedQuantity;
+    public int RemainingQuantity => Item.RemainingQuantity;
+    public string Status => Item.Status;
+    public string? Source => Item.Source;
+}
+
+/// <summary>
+/// Hizli Hakedis ogrenci secim satiri. Hakedis listesinden ayridir: orada ayni ogrenci her
+/// gun icin bir kez gorunur, burada her ogrenci TEK satirdir.
+/// </summary>
+public sealed class StudentPickerRowViewModel(StudentListItem item, Action? changed = null) : ObservableObject
+{
+    private bool isSelected;
+
+    public Guid Id => item.Id;
+    public string StudentNo => item.StudentNo;
+    public string Name => (item.FirstName + " " + item.LastName).Trim();
+    public string ClassName => string.IsNullOrWhiteSpace(item.ClassName) ? "" : item.ClassName!;
+    public string SectionName => item.SectionName ?? "";
+    public bool IsSelected { get => isSelected; set { if (Set(ref isSelected, value)) changed?.Invoke(); } }
 }

@@ -4,7 +4,11 @@ namespace Yemekhane.Application.Entitlements;
 
 public sealed record BulkEntitlementRequest(IReadOnlyCollection<Guid> StudentIds, Guid MealTypeId, DateOnly StartsOn,
     DateOnly EndsOn, int Quantity = 1, bool IncludeSaturday = false, bool IncludeSunday = false, string Source = "Manual");
-public sealed record BulkEntitlementResult(int StudentCount, int DayCount, int CreatedCount, int UpdatedCount);
+/// <param name="ChargedStudents">Kasaya gelir yazilan ogrenci sayisi (ucretlendirme kapaliysa 0).</param>
+/// <param name="ChargedTotal">Kasaya yazilan toplam tutar.</param>
+/// <param name="NotifiedParents">SMS kuyruguna alinan veli sayisi.</param>
+public sealed record BulkEntitlementResult(int StudentCount, int DayCount, int CreatedCount, int UpdatedCount,
+    int ChargedStudents = 0, decimal ChargedTotal = 0, int NotifiedParents = 0);
 public sealed record EntitlementDetails(Guid Id, Guid StudentId, Guid MealTypeId, DateOnly Date, int Quantity,
     int ConsumedQuantity, int RemainingQuantity, string Status, string? Source);
 
@@ -34,11 +38,22 @@ public sealed record MealEntitlementPage(IReadOnlyList<MealEntitlementListItem> 
 /// </summary>
 public sealed record EntitlementTarget(string Type, IReadOnlyCollection<Guid>? StudentIds = null,
     Guid? ClassId = null, string? Grade = null, Guid? GroupId = null, IReadOnlyCollection<string>? StudentNos = null);
+/// <param name="ChargeToCash">
+/// Ogun bedeli kasaya OGRENCI BASINA gelir olarak islensin mi. Hakedis kaydinin kendisi
+/// para tasimaz; ucret ayri bir kasa islemi olur ve hakedis iptal edilince geri alinir.
+/// </param>
+/// <param name="NotifyParents">Veliye "hakkiniz tanimlandi" SMS'i kuyruklansin mi.</param>
+/// <param name="OperationId">
+/// Tekrar denemede ayni tahsilatin ikinci kez yazilmamasi icin islem kimligi; masaustu
+/// ayni onizleme icin ayni kimligi gonderir.
+/// </param>
 public sealed record EntitlementGrantRequest(EntitlementTarget Target, Guid MealTypeId, DateOnly StartsOn,
     DateOnly EndsOn, int Quantity = 1, bool IncludeSaturday = false, bool IncludeSunday = false,
-    string Source = "Manual");
+    string Source = "Manual", bool ChargeToCash = false, bool NotifyParents = false, Guid? OperationId = null);
+/// <param name="AmountPerStudent">Ogrenci basina toplam bedel (ogun ucreti x gun x adet); ucretsiz ogunde 0.</param>
+/// <param name="Total">Butun ogrenciler icin toplam; ekranda "Toplam bedel" olarak gorunur.</param>
 public sealed record EntitlementPreview(int StudentCount, int DayCount, int RightsCount, int CreatedCount,
-    int UpdatedCount, string PreviewToken);
+    int UpdatedCount, string PreviewToken, decimal AmountPerStudent = 0, decimal Total = 0);
 public sealed record ApplyEntitlementGrantRequest(EntitlementGrantRequest Grant, string PreviewToken);
 public sealed record CancelEntitlementsRequest(IReadOnlyCollection<Guid> EntitlementIds, int ExpectedAffectedCount);
 public sealed record CancelEntitlementsResult(int CancelledCount);
@@ -51,6 +66,8 @@ public interface IMealEntitlementRepository
         IReadOnlyCollection<DateOnly> dates, int quantity, string source, string? expectedStateHash,
         CancellationToken cancellationToken);
     Task<IReadOnlyList<Guid>> ResolveTargetAsync(EntitlementTarget target, CancellationToken cancellationToken);
+    /// <summary>Ogunun birim ucreti (₺); tanimlanmamissa 0 (ucretsiz ogun).</summary>
+    Task<decimal> MealPriceAsync(Guid mealTypeId, CancellationToken cancellationToken);
     Task<EntitlementPreviewState> PreviewAsync(IReadOnlyCollection<Guid> studentIds, Guid mealTypeId,
         IReadOnlyCollection<DateOnly> dates, CancellationToken cancellationToken);
     Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken);

@@ -14,6 +14,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
     private ShortcutCommandRouter? shortcuts;
     private IReadOnlySet<string> permissions = new HashSet<string>();
     private string currentRoute = ShellRoutes.Dashboard;
+    private string previousRoute = string.Empty;
 
     public MainWindow()
     {
@@ -197,7 +198,26 @@ public partial class MainWindow : Window, IShortcutCommandTarget
             && Guid.TryParse(route[(route.LastIndexOf('/') + 1)..], out var studentId)) smsViewModel.SelectStudent(studentId);
         if (calendar && CalendarDataContext is CalendarViewModel calendarViewModel
             && DateOnly.TryParseExact(route[(route.LastIndexOf('/') + 1)..], "yyyy-MM-dd", out var date)) _ = calendarViewModel.NavigateToAsync(date);
+
+        // Ekrana gecince veri TAZELENIR. Ekranlar yalnizca acilista bir kez yukleniyordu;
+        // baska bir memurun ekledigi tatil ya da hakedis, Yenile'ye basilana kadar
+        // gorunmuyordu. Aktif ekran degismediyse tekrar cekilmez.
+        if (!string.Equals(previousRoute, BaseRoute(route), StringComparison.Ordinal)) RefreshCurrentScreen();
+        previousRoute = BaseRoute(route);
     }
+
+    /// <summary>Gorunen ekranin tazeleme komutu (varsa) calistirilir; ScreenRefreshMonitor da bunu kullanir.</summary>
+    public void RefreshCurrentScreen()
+    {
+        var command = CurrentRefreshCommand();
+        if (command?.CanExecute(null) == true) command.Execute(null);
+    }
+
+    /// <summary>Acik bir katman (cekmece, modal, palet) varken otomatik tazeleme ertelenir.</summary>
+    public bool HasOpenLayer() => HasClosableLayer();
+
+    /// <summary>Zamanlayicinin cagirdigi komut saglayicisi.</summary>
+    public System.Windows.Input.ICommand? CurrentScreenRefreshCommand() => CurrentRefreshCommand();
 
     private void UpdateNavigationSelection(string route)
     {

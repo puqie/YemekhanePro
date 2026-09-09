@@ -5,14 +5,22 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Yemekhane.Application.Entitlements;
+using Yemekhane.Application.Students;
 using Yemekhane.Application.Meals;
 using Yemekhane.Application.Organization;
+using Yemekhane.Application.Common;
 
 namespace Yemekhane.Desktop.Services;
 
 public interface IMealEntitlementApiClient
 {
-    Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default);
+    Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Hizli Hakedis ogrenci secimi: ad, soyad, numara, kart ya da SINIF adiyla arar.
+    /// Her ogrenci tek satirdir (hakedis listesi ogrenci-gun satiridir, oradan secilemez).
+    /// </summary>
+    Task<PagedResult<StudentListItem>> SearchStudentsAsync(string term, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci öğrenci aramayı desteklemiyor.");
     Task<IReadOnlyList<MealTypeDetails>> MealTypesAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ClassRecord>> ClassesAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GroupRecord>> GroupsAsync(CancellationToken cancellationToken = default);
@@ -23,6 +31,19 @@ public interface IMealEntitlementApiClient
 
 public sealed class MealEntitlementApiClient(HttpClient client, IJwtSession session) : IMealEntitlementApiClient
 {
+    public Task<PagedResult<StudentListItem>> SearchStudentsAsync(string term, CancellationToken cancellationToken = default)
+    {
+        // Sinif adiyla da bulunabilsin diye hem serbest arama hem sinif adi gonderilir;
+        // sunucu ikisini AND'ler, bu yuzden once serbest arama denenir.
+        var values = new Dictionary<string, string?>
+        {
+            ["search"] = term, ["isActive"] = "true", ["page"] = "1", ["pageSize"] = "100"
+        };
+        return GetAsync<PagedResult<StudentListItem>>("api/students?" + string.Join("&", values
+            .Where(x => !string.IsNullOrWhiteSpace(x.Value))
+            .Select(x => $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value!)}")), cancellationToken);
+    }
+
     public Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default)
     {
         var values = new Dictionary<string, string?>
@@ -31,6 +52,10 @@ public sealed class MealEntitlementApiClient(HttpClient client, IJwtSession sess
             ["endsOn"] = query.EndsOn?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             ["studentNo"] = query.StudentNo, ["cardNumber"] = query.CardNumber, ["name"] = query.Name,
             ["className"] = query.ClassName, ["groupId"] = query.GroupId?.ToString(), ["mealTypeId"] = query.MealTypeId?.ToString(),
+            // "search" EKSIKTI: ekranin tek arama kutusu doldurulup Filtrele'ye basildiginda
+            // metin sunucuya hic gitmiyor, liste filtresiz geliyordu. Kullanici aradigi ismi
+            // yazdigi halde butun satirlarin kalmasinin nedeni buydu.
+            ["search"] = query.Search,
             ["status"] = query.Status, ["page"] = query.Page.ToString(CultureInfo.InvariantCulture),
             ["pageSize"] = query.PageSize.ToString(CultureInfo.InvariantCulture), ["sortBy"] = query.SortBy,
             ["descending"] = query.Descending.ToString(CultureInfo.InvariantCulture)

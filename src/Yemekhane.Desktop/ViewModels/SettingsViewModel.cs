@@ -56,6 +56,7 @@ public sealed class SettingsViewModel : ObservableObject
     private bool autoEntitlementEnabled, autoIncomeEnabled, autoCardEnabled;
     private string autoEntitlementSendAt = "13:10", autoEntitlementDaysText = "2", autoEntitlementTemplate = "";
     private string smsProvider = "Http", testSmsPhone = "";
+    private bool smsEnabled = true;
     private string? testSmsResultText, smsCreditText;
     private string autoIncomePhone = "", autoIncomeTemplate = "", autoCardTemplate = "", autoCardPhone = "";
     private string? entitlementRunText;
@@ -211,6 +212,19 @@ public sealed class SettingsViewModel : ObservableObject
     public string SmsTimeoutText { get => smsTimeoutText; set => Change(ref smsTimeoutText, value); }
     public int SmsTimeoutSeconds { get => ParseOr(SmsTimeoutText, original?.Sms.TimeoutSeconds ?? 30); set => SmsTimeoutText = value.ToString(CultureInfo.InvariantCulture); }
     public bool SmsSecretConfigured => original?.Sms.SecretConfigured == true;
+    /// <summary>
+    /// SMS ana anahtari. Kapaliyken hicbir SMS gonderilmez; kurallar ve elle gonderim
+    /// kuyruga yazmaya devam eder, mesajlar acilinca gider (kuyruk silinmez).
+    /// </summary>
+    public bool SmsEnabled
+    {
+        get => smsEnabled;
+        set { Change(ref smsEnabled, value); Raise(nameof(SmsDisabledWarning)); Raise(nameof(IsSmsDisabled)); }
+    }
+    public bool IsSmsDisabled => !SmsEnabled;
+    public string SmsDisabledWarning => SmsEnabled
+        ? ""
+        : "SMS kapalı: otomatik kurallar ve elle gönderim mesajları kuyruğa yazar ama gönderilmez. Açtığınızda bekleyenler gönderilir.";
     public string? SmsSecret { get => smsSecret; set => Change(ref smsSecret, value); }
     public bool BackupEnabled { get => backupEnabled; set => Change(ref backupEnabled, value); } public string BackupFrequency { get => backupFrequency; set { if (Set(ref backupFrequency, value)) { Raise(nameof(IsWeeklyBackup)); Raise(nameof(IsDirty)); RefreshCommands(); } } }
     public bool IsWeeklyBackup => BackupFrequency == "Weekly";
@@ -446,7 +460,7 @@ public sealed class SettingsViewModel : ObservableObject
     private void Apply(SettingsDocument x)
     {
         original = x; schoolName = x.School.Name; schoolAddress = x.School.Address ?? ""; schoolContact = x.School.Contact ?? ""; logoPath = x.School.LogoPath ?? "";
-        smsProvider = string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider; smsEndpoint = x.Sms.Endpoint ?? ""; smsAuthType = x.Sms.AuthType; smsUsername = x.Sms.Username ?? ""; smsSender = x.Sms.Sender ?? ""; smsTimeoutText = x.Sms.TimeoutSeconds.ToString(CultureInfo.InvariantCulture); smsSecret = null;
+        smsProvider = string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider; smsEndpoint = x.Sms.Endpoint ?? ""; smsAuthType = x.Sms.AuthType; smsUsername = x.Sms.Username ?? ""; smsSender = x.Sms.Sender ?? ""; smsTimeoutText = x.Sms.TimeoutSeconds.ToString(CultureInfo.InvariantCulture); smsSecret = null; smsEnabled = x.Sms.Enabled;
         backupEnabled = x.Backup.Enabled; backupFrequency = x.Backup.Frequency; backupWeeklyDay = x.Backup.WeeklyDay; backupTime = x.Backup.Time.ToString("HH:mm", CultureInfo.InvariantCulture); backupRetentionText = x.Backup.RetentionCount.ToString(CultureInfo.InvariantCulture); backupPath = x.Backup.Path ?? "";
         syncEnabled = x.Sync.Enabled; syncEndpoint = x.Sync.Endpoint ?? ""; syncDeviceId = x.Sync.DeviceId ?? ""; syncIntervalText = x.Sync.IntervalMinutes.ToString(CultureInfo.InvariantCulture); syncSecret = null;
         logLevel = x.Logs.Level; logRetentionText = x.Logs.RetentionDays.ToString(CultureInfo.InvariantCulture); logPath = x.Logs.Path ?? "";
@@ -466,8 +480,8 @@ public sealed class SettingsViewModel : ObservableObject
             ParseOr(AutoEntitlementDaysText, automationOriginal?.Settings.EntitlementWarning.DaysThreshold ?? 2), AutoEntitlementTemplate?.Trim() ?? ""),
         new IncomeNoticeRule(AutoIncomeEnabled, EmptyToNull(AutoIncomePhone), AutoIncomeTemplate?.Trim() ?? ""),
         new CardReplacementRule(AutoCardEnabled, AutoCardTemplate?.Trim() ?? "", EmptyToNull(AutoCardPhone)));
-    private SaveSettingsRequest BuildRequest() => new(new(SchoolName, EmptyToNull(SchoolAddress), EmptyToNull(SchoolContact), EmptyToNull(LogoPath)), new(EmptyToNull(SmsEndpoint), SmsAuthType, EmptyToNull(SmsUsername), EmptyToNull(SmsSender), SmsTimeoutSeconds, EmptyToNull(SmsSecret), SmsProvider), new(BackupEnabled, BackupFrequency, BackupWeeklyDay, TryParseTime(BackupTime, out var time) ? time : original?.Backup.Time ?? TimeOnly.MinValue, BackupRetentionCount, EmptyToNull(BackupPath)), new(EmptyToNull(SyncEndpoint), EmptyToNull(SyncDeviceId), SyncIntervalMinutes, SyncEnabled, EmptyToNull(SyncSecret)), new(LogLevel, LogRetentionDays, EmptyToNull(LogPath)));
-    private static SaveSettingsRequest ToRequest(SettingsDocument x) => new(new(x.School.Name, x.School.Address, x.School.Contact, x.School.LogoPath), new(x.Sms.Endpoint, x.Sms.AuthType, x.Sms.Username, x.Sms.Sender, x.Sms.TimeoutSeconds, null, string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider), new(x.Backup.Enabled, x.Backup.Frequency, x.Backup.WeeklyDay, x.Backup.Time, x.Backup.RetentionCount, x.Backup.Path), new(x.Sync.Endpoint, x.Sync.DeviceId, x.Sync.IntervalMinutes, x.Sync.Enabled, null), new(x.Logs.Level, x.Logs.RetentionDays, x.Logs.Path));
+    private SaveSettingsRequest BuildRequest() => new(new(SchoolName, EmptyToNull(SchoolAddress), EmptyToNull(SchoolContact), EmptyToNull(LogoPath)), new(EmptyToNull(SmsEndpoint), SmsAuthType, EmptyToNull(SmsUsername), EmptyToNull(SmsSender), SmsTimeoutSeconds, EmptyToNull(SmsSecret), SmsProvider, SmsEnabled), new(BackupEnabled, BackupFrequency, BackupWeeklyDay, TryParseTime(BackupTime, out var time) ? time : original?.Backup.Time ?? TimeOnly.MinValue, BackupRetentionCount, EmptyToNull(BackupPath)), new(EmptyToNull(SyncEndpoint), EmptyToNull(SyncDeviceId), SyncIntervalMinutes, SyncEnabled, EmptyToNull(SyncSecret)), new(LogLevel, LogRetentionDays, EmptyToNull(LogPath)));
+    private static SaveSettingsRequest ToRequest(SettingsDocument x) => new(new(x.School.Name, x.School.Address, x.School.Contact, x.School.LogoPath), new(x.Sms.Endpoint, x.Sms.AuthType, x.Sms.Username, x.Sms.Sender, x.Sms.TimeoutSeconds, null, string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider, x.Sms.Enabled), new(x.Backup.Enabled, x.Backup.Frequency, x.Backup.WeeklyDay, x.Backup.Time, x.Backup.RetentionCount, x.Backup.Path), new(x.Sync.Endpoint, x.Sync.DeviceId, x.Sync.IntervalMinutes, x.Sync.Enabled, null), new(x.Logs.Level, x.Logs.RetentionDays, x.Logs.Path));
     // Yerel dogrulama hatasi gosterildikten sonra kullanici alani duzeltirse mesaj kalkar;
     // aksi halde "abc" uyarisi, kutu "2" yazarken bile ekranda asili kaliyordu.
     private bool validationErrorShown;

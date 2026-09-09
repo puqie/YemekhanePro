@@ -4,8 +4,13 @@ namespace Yemekhane.Application.Settings;
 
 public sealed record SchoolSettings(string Name, string? Address, string? Contact, string? LogoPath);
 /// <param name="Provider">"Http" (genel JSON servisi) ya da "Mutlucell" (XML ag gecidi; Username=ka, Secret=pwd, Sender=org).</param>
+/// <param name="Enabled">
+/// SMS ana anahtari. Kapaliyken HICBIR SMS cikmaz: otomatik kurallar ve elle toplu gonderim
+/// kuyruga yazmaya devam eder, gonderici mesajlari BEKLETIR. Anahtar yeniden acilinca
+/// bekleyenler kaldigi yerden gider; kuyruk silinmez, mesaj kaybolmaz.
+/// </param>
 public sealed record SmsProviderSettings(string? Endpoint, string AuthType, string? Username, string? Sender,
-    int TimeoutSeconds, bool SecretConfigured, string Provider = "Http");
+    int TimeoutSeconds, bool SecretConfigured, string Provider = "Http", bool Enabled = true);
 public sealed record BackupSettings(bool Enabled, string Frequency, DayOfWeek WeeklyDay, TimeOnly Time,
     int RetentionCount, string? Path);
 public sealed record SyncSettings(string? Endpoint, string? DeviceId, int IntervalMinutes, bool Enabled,
@@ -24,7 +29,7 @@ public sealed record SettingsDocument(SchoolSettings School, SmsProviderSettings
 
 public sealed record SaveSchoolSettings(string Name, string? Address, string? Contact, string? LogoPath);
 public sealed record SaveSmsProviderSettings(string? Endpoint, string AuthType, string? Username, string? Sender,
-    int TimeoutSeconds, string? Secret, string Provider = "Http");
+    int TimeoutSeconds, string? Secret, string Provider = "Http", bool Enabled = true);
 public sealed record SaveBackupSettings(bool Enabled, string Frequency, DayOfWeek WeeklyDay, TimeOnly Time,
     int RetentionCount, string? Path);
 public sealed record SaveSyncSettings(string? Endpoint, string? DeviceId, int IntervalMinutes, bool Enabled, string? Secret);
