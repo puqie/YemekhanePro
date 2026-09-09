@@ -50,6 +50,9 @@ public sealed class YemekhaneDbContext(DbContextOptions<YemekhaneDbContext> opti
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<StudentBalanceEntry> StudentBalanceEntries => Set<StudentBalanceEntry>();
     public DbSet<NotificationReceipt> NotificationReceipts => Set<NotificationReceipt>();
+    public DbSet<TuitionPlan> TuitionPlans => Set<TuitionPlan>();
+    public DbSet<TuitionInstallment> TuitionInstallments => Set<TuitionInstallment>();
+    public DbSet<TuitionPayment> TuitionPayments => Set<TuitionPayment>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -74,6 +77,53 @@ public sealed class YemekhaneDbContext(DbContextOptions<YemekhaneDbContext> opti
         ConfigureMealsAndCalendar(modelBuilder);
         ConfigureOperations(modelBuilder);
         ConfigureSecurityAndSystem(modelBuilder);
+        ConfigureTuition(modelBuilder);
+    }
+
+    /// <summary>
+    /// Anasinifi ucret plani, taksitleri ve tahsilat eslesmeleri. Plan bir sinifa ya da bir
+    /// ogrenciye aittir; ogrencininki sinifinkini ezer. Ogrenci/sinif silinemez (Restrict):
+    /// borcu olan bir kaydin sessizce yok olmasi kasa denetimini bozar.
+    /// </summary>
+    private static void ConfigureTuition(ModelBuilder b)
+    {
+        b.Entity<TuitionPlan>(e =>
+        {
+            e.ToTable("tuition_plans");
+            e.Property(x => x.Kind).HasMaxLength(20);
+            e.Property(x => x.Period).HasMaxLength(20);
+            e.Property(x => x.Note).HasMaxLength(500);
+            // Ayni sinifa/ogrenciye ayni donemde iki AKTIF plan olamaz; hangi tutarin gecerli
+            // oldugu belirsizlesir. Filtreli benzersiz indeks pasif gecmis planlara izin verir.
+            e.HasIndex(x => new { x.ClassId, x.Period }).IsUnique()
+                .HasFilter("ClassId IS NOT NULL AND IsActive = 1").HasDatabaseName("ux_tuition_plans_class_period");
+            e.HasIndex(x => new { x.StudentId, x.Period }).IsUnique()
+                .HasFilter("StudentId IS NOT NULL AND IsActive = 1").HasDatabaseName("ux_tuition_plans_student_period");
+            e.HasOne<SchoolClass>().WithMany().HasForeignKey(x => x.ClassId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<TuitionInstallment>(e =>
+        {
+            e.ToTable("tuition_installments");
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.HasIndex(x => new { x.StudentId, x.DueOn }).HasDatabaseName("ix_tuition_installments_student_due");
+            e.HasIndex(x => x.PlanId).HasDatabaseName("ix_tuition_installments_plan_id");
+            // Plan silinince taksitleri de gider (borc plani olmadan anlamsizdir); tahsilat
+            // kaydi ise IncomeTransaction olarak kasada kalir.
+            e.HasOne<TuitionPlan>().WithMany().HasForeignKey(x => x.PlanId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
+            e.ToTable(t => t.HasCheckConstraint("ck_tuition_installment_paid", "PaidCents >= 0"));
+        });
+        b.Entity<TuitionPayment>(e =>
+        {
+            e.ToTable("tuition_payments");
+            // Bir tahsilat ayni taksite iki kez sayilamaz; mukerrer kayit borcu yanlis kapatir.
+            e.HasIndex(x => new { x.InstallmentId, x.IncomeTransactionId }).IsUnique()
+                .HasDatabaseName("ux_tuition_payments_installment_income");
+            e.HasIndex(x => x.IncomeTransactionId).HasDatabaseName("ix_tuition_payments_income_id");
+            e.HasOne<TuitionInstallment>().WithMany().HasForeignKey(x => x.InstallmentId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<IncomeTransaction>().WithMany().HasForeignKey(x => x.IncomeTransactionId).OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
     private static void ConfigureTables(ModelBuilder b)

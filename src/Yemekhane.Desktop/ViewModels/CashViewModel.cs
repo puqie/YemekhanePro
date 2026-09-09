@@ -24,6 +24,9 @@ public sealed class CashViewModel : ObservableObject
     private IncomeTypeDetails? selectedAddType, selectedManagedType;
     private StudentListItem? lookupStudent, filterStudent;
     private string? studentNumber, lookupCardNumber, filterStudentNumber, filterCardNumber, errorMessage, addError, voidReason, typeName;
+    private string? studentSearch;
+    private bool isGeneralIncome;
+    private StudentListItem? selectedMatch;
     private string? topUpNote, topUpError, statusMessage;
     private string amountText = "";
     private string topUpAmountText = "";
@@ -62,6 +65,7 @@ public sealed class CashViewModel : ObservableObject
         OpenAddCommand = new RelayCommand(OpenAdd, () => CanWrite);
         CloseAddCommand = new RelayCommand(() => IsAddOpen = false);
         LookupStudentCommand = new AsyncCommand(LookupStudentAsync, () => CanWrite);
+        SearchStudentsCommand = new AsyncCommand(SearchStudentsAsync, () => CanWrite);
         AddCommand = new AsyncCommand(AddAsync, () => CanWrite && AddConfirmed);
         OpenVoidCommand = new RelayCommand(OpenVoid, () => CanWrite && SelectedTransaction is { IsVoided: false });
         CloseVoidCommand = new RelayCommand(() => IsVoidOpen = false);
@@ -85,6 +89,8 @@ public sealed class CashViewModel : ObservableObject
     /// pasif bir turun eski islemleri filtrelenemiyordu.
     /// </summary>
     public ObservableCollection<IncomeTypeOption> FilterTypeOptions { get; } = [];
+    /// <summary>"Öğrenci ara" kutusunun sonuclari; bir satir secilince dogrulama tamamlanir.</summary>
+    public ObservableCollection<StudentListItem> StudentMatches { get; } = [];
     public IReadOnlyList<VoidStatusOption> VoidStatuses { get; } = [new("Tümü", null), new("Aktif", false), new("İptal", true)];
     public CashSummary? Daily { get => daily; private set { if (Set(ref daily, value)) Raise(nameof(DailyTotal)); } }
     public CashSummary? Weekly { get => weekly; private set { if (Set(ref weekly, value)) Raise(nameof(WeeklyTotal)); } }
@@ -110,6 +116,32 @@ public sealed class CashViewModel : ObservableObject
     public string AmountText { get => amountText; set => Set(ref amountText, value); }
     public string? Description { get; set; }
     public string? StudentNumber { get => studentNumber; set { if (Set(ref studentNumber, value)) LookupStudent = null; } }
+    /// <summary>Ad, soyad, numara ya da kart; kasiyer numara ezberlemek zorunda kalmasin diye.</summary>
+    public string? StudentSearch
+    {
+        get => studentSearch;
+        set { if (Set(ref studentSearch, value)) { LookupStudent = null; StudentMatches.Clear(); Raise(nameof(HasStudentMatches)); } }
+    }
+    public bool HasStudentMatches => StudentMatches.Count > 0;
+    /// <summary>
+    /// Ogrenciye bagli olmayan gelir (kantin, bagis, personel yemegi). Isaretliyken ogrenci
+    /// dogrulamasi istenmez; sunucu zaten StudentId'yi zorunlu tutmuyordu, ekran tutuyordu.
+    /// </summary>
+    public bool IsGeneralIncome
+    {
+        get => isGeneralIncome;
+        set
+        {
+            if (!Set(ref isGeneralIncome, value)) return;
+            if (value) { LookupStudent = null; StudentMatches.Clear(); StudentSearch = null; StudentNumber = LookupCardNumber = null; }
+            Raise(nameof(HasStudentMatches)); Raise(nameof(LookupStudentText)); AddError = null;
+        }
+    }
+    public StudentListItem? SelectedMatch
+    {
+        get => selectedMatch;
+        set { if (Set(ref selectedMatch, value) && value is not null) { LookupStudent = value; SetLookupError(null); } }
+    }
     public string? LookupCardNumber { get => lookupCardNumber; set { if (Set(ref lookupCardNumber, value)) LookupStudent = null; } }
     public string? FilterCardNumber { get => filterCardNumber; set => Set(ref filterCardNumber, value); }
     public string? FilterStudentNumber { get => filterStudentNumber; set { if (Set(ref filterStudentNumber, value)) FilterStudent = null; } }
@@ -127,7 +159,9 @@ public sealed class CashViewModel : ObservableObject
     /// ogrenciler oldugu icin yalnizca ad yetmez. Dogrulama yapilmamisken hata degil yonlendirme
     /// metni gosterilir: bos formda "dogrulanmadi" uyarisi kullaniciyi hata yaptigina inandiriyordu.
     /// </summary>
-    public string LookupStudentText => LookupStudent is null ? LookupHint : Identity(LookupStudent);
+    public string LookupStudentText => IsGeneralIncome
+        ? "Öğrenciye bağlı olmayan gelir; öğrenci seçilmeyecek."
+        : LookupStudent is null ? LookupHint : Identity(LookupStudent);
     public string VoidConfirmationText => SelectedTransaction is null ? "" : $"{SelectedTransaction.Amount.ToString("C2", Turkish)} • {SelectedTransaction.StudentName ?? "Öğrencisiz işlem"}";
     public string? VoidReason { get => voidReason; set { if (Set(ref voidReason, value)) RefreshCommands(); } }
     public string TypeName { get => typeName ?? ""; set => Set(ref typeName, value); }
@@ -183,6 +217,7 @@ public sealed class CashViewModel : ObservableObject
     public ICommand OpenAddCommand { get; }
     public ICommand CloseAddCommand { get; }
     public ICommand LookupStudentCommand { get; }
+    public ICommand SearchStudentsCommand { get; }
     public ICommand AddCommand { get; }
     public ICommand OpenVoidCommand { get; }
     public ICommand CloseVoidCommand { get; }
@@ -322,6 +357,8 @@ public sealed class CashViewModel : ObservableObject
     {
         var now = IstanbulNow(); AddDate = now.Date; TransactionTime = now.ToString("HH:mm", CultureInfo.InvariantCulture);
         AmountText = ""; Description = null; Raise(nameof(Description)); StudentNumber = LookupCardNumber = null;
+        StudentSearch = null; StudentMatches.Clear(); Raise(nameof(HasStudentMatches)); selectedMatch = null; Raise(nameof(SelectedMatch));
+        isGeneralIncome = false; Raise(nameof(IsGeneralIncome)); Raise(nameof(LookupStudentText));
         LookupStudent = null; SelectedAddType = IncomeTypes.FirstOrDefault(); AddConfirmed = false; AddError = null; operationId = Guid.NewGuid();
     }
 
@@ -337,6 +374,27 @@ public sealed class CashViewModel : ObservableObject
             if (LookupStudent is null) SetLookupError("Girilen tam değerle eşleşen tek bir aktif öğrenci bulunamadı.");
         }
         catch (Exception ex) when (IsApiFailure(ex)) { SetLookupError(Describe(ex, "Öğrenci doğrulanamadı.")); }
+    }
+
+    /// <summary>
+    /// Ada/numaraya gore arar ve eslesenleri listeler. Tek sonuc varsa dogrudan secilir:
+    /// kasiyer ayrica tiklamak zorunda kalmasin.
+    /// </summary>
+    private async Task SearchStudentsAsync()
+    {
+        SetLookupError(null); LookupStudent = null; StudentMatches.Clear(); Raise(nameof(HasStudentMatches));
+        var term = StudentSearch?.Trim();
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+        { SetLookupError("Aramak için en az 2 karakter yazın (ad, soyad, öğrenci no ya da kart no)."); return; }
+        try
+        {
+            var result = await api.SearchStudentsAsync(term);
+            foreach (var item in result.Items) StudentMatches.Add(item);
+            Raise(nameof(HasStudentMatches));
+            if (StudentMatches.Count == 0) SetLookupError("Bu aramayla eşleşen aktif öğrenci bulunamadı.");
+            else if (StudentMatches.Count == 1) SelectedMatch = StudentMatches[0];
+        }
+        catch (Exception ex) when (IsApiFailure(ex)) { SetLookupError(Describe(ex, "Öğrenci aranamadı.")); }
     }
 
     /// <summary>Dogrulama hatasi ACIK olan cekmecede gorunur; Bakiye Yukle acikken Gelir Ekle'nin metnine yazilsa kullanici gormezdi.</summary>
@@ -367,8 +425,9 @@ public sealed class CashViewModel : ObservableObject
         if (!TryParseAmount(AmountText, out var amount)) { AddError = "Tutar okunamadı."; return; }
         try
         {
-            await api.AddAsync(new CreateIncomeTransactionRequest(operationId, LookupStudent!.Id,
-                LookupStudent.CardNumber, ToIstanbulOffset(local), SelectedAddType!.Id, amount, Empty(Description)));
+            var student = IsGeneralIncome ? null : LookupStudent;
+            await api.AddAsync(new CreateIncomeTransactionRequest(operationId, student?.Id,
+                student?.CardNumber, ToIstanbulOffset(local), SelectedAddType!.Id, amount, Empty(Description)));
             IsAddOpen = false; ResetAddForm(); await RefreshAsync();
         }
         catch (ApiRequestException ex) { AddError = ex.Message; }
@@ -378,7 +437,8 @@ public sealed class CashViewModel : ObservableObject
 
     public string? ValidateAdd()
     {
-        if (LookupStudent is null) return "Öğrenci veya kart doğrulaması zorunludur.";
+        if (!IsGeneralIncome && LookupStudent is null)
+            return "Öğrenci seçin, ya da \"Öğrenciye bağlı olmayan gelir\" kutusunu işaretleyin.";
         if (SelectedAddType is null || !SelectedAddType.IsActive) return "Aktif gelir türü seçin.";
         if (!TimeOnly.TryParseExact(TransactionTime?.Trim(), "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return "Saat SS:dd biçiminde olmalıdır.";
         if (!TryParseAmount(AmountText, out _))

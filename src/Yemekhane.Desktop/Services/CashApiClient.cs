@@ -22,6 +22,13 @@ public interface ICashApiClient
     Task<IncomeTypeDetails> SaveTypeAsync(Guid? id, SaveIncomeTypeRequest request, CancellationToken cancellationToken = default);
     Task DeactivateTypeAsync(Guid id, CancellationToken cancellationToken = default);
     Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Ada, soyada, numaraya ya da kart numarasina gore ogrenci arar (en fazla 20 sonuc).
+    /// Kasiyer numara ezberlemek zorunda kalmasin diye: tam numara isteyen
+    /// <see cref="FindStudentAsync"/> yerine yazdikca daralan liste sunar.
+    /// </summary>
+    Task<PagedResult<StudentListItem>> SearchStudentsAsync(string term, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci öğrenci aramayı desteklemiyor.");
     /// <summary>Kasa > Bakiye Yukle: "Bakiye Yükleme" gelir islemi + defter satiri (sunucuda tek transaction).</summary>
     Task<BalanceTopUpResult> TopUpBalanceAsync(BalanceTopUpRequest request, CancellationToken cancellationToken = default);
 }
@@ -64,6 +71,15 @@ public sealed class CashApiClient(HttpClient client, IJwtSession session) : ICas
         SendNoContentAsync(HttpMethod.Delete, $"api/income/types/{id:D}", cancellationToken);
     public Task<BalanceTopUpResult> TopUpBalanceAsync(BalanceTopUpRequest request, CancellationToken cancellationToken = default) =>
         SendAsync<BalanceTopUpResult>(HttpMethod.Post, "api/cash/balance-top-ups", request, cancellationToken);
+
+    public Task<PagedResult<StudentListItem>> SearchStudentsAsync(string term, CancellationToken cancellationToken = default)
+    {
+        var values = new Dictionary<string, string?>
+        {
+            ["search"] = term, ["isActive"] = "true", ["page"] = "1", ["pageSize"] = "20"
+        };
+        return GetAsync<PagedResult<StudentListItem>>("api/students?" + Query(values), cancellationToken);
+    }
 
     public Task<PagedResult<StudentListItem>> FindStudentAsync(string? studentNumber, string? cardNumber, CancellationToken cancellationToken = default)
     {

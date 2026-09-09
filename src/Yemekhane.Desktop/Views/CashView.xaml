@@ -104,11 +104,34 @@
                 <!-- Once TEK etiket ("Tam ogrenci no veya kart no") IKI kutuyu kapsiyordu:
                      kullanici hangisine ogrenci no hangisine kart no girecegini bilemiyordu.
                      Her kutu kendi etiketini tasir. -->
-                <WrapPanel>
+                <!-- Kasiyer numara ezberleyemez: ad/soyadla da aranabilir, sonuc listesinden secilir.
+                     Tam numarayla dogrulama (asagidaki iki kutu) hizli yol olarak korunur. -->
+                <TextBlock Style="{StaticResource Label}" Text="Öğrenci ara (ad, soyad, no ya da kart)"/>
+                <DockPanel Margin="0,4,0,0" IsEnabled="{Binding IsGeneralIncome, Converter={StaticResource InverseBool}}">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Action}" Content="Ara" Margin="7,0,0,0"
+                            Command="{Binding SearchStudentsCommand}" AutomationProperties.Name="Öğrenci ara"/>
+                    <TextBox Text="{Binding StudentSearch, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Öğrenci arama metni">
+                        <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchStudentsCommand}"/></TextBox.InputBindings>
+                    </TextBox>
+                </DockPanel>
+                <ListBox ItemsSource="{Binding StudentMatches}" SelectedItem="{Binding SelectedMatch}" MaxHeight="132" Margin="0,6,0,0"
+                         Visibility="{Binding HasStudentMatches, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Eşleşen öğrenciler">
+                    <ListBox.ItemTemplate><DataTemplate>
+                        <TextBlock TextTrimming="CharacterEllipsis">
+                            <Run Text="{Binding FirstName, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding LastName, Mode=OneWay}"/>
+                            <Run Foreground="{StaticResource MutedBrush}" Text="{Binding StudentNo, Mode=OneWay, StringFormat=  · No {0}}"/>
+                            <Run Foreground="{StaticResource MutedBrush}" Text="{Binding ClassName, Mode=OneWay, StringFormat=  · {0}}"/>
+                        </TextBlock>
+                    </DataTemplate></ListBox.ItemTemplate>
+                </ListBox>
+                <WrapPanel Margin="0,8,0,0" IsEnabled="{Binding IsGeneralIncome, Converter={StaticResource InverseBool}}">
                     <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Öğrenci no" Margin="0,0,0,4"/><TextBox Text="{Binding StudentNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam öğrenci numarası" ToolTip="Tam öğrenci numarası"/></StackPanel>
                     <StackPanel Width="135" Margin="0,0,7,0"><TextBlock Style="{StaticResource Label}" Text="Kart no" Margin="0,0,0,4"/><TextBox Text="{Binding LookupCardNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Tam kart numarası" ToolTip="Tam kart numarası"/></StackPanel>
                     <Button Style="{StaticResource Action}" Content="Doğrula" Command="{Binding LookupStudentCommand}" VerticalAlignment="Bottom"/>
                 </WrapPanel>
+                <!-- Kantin, bagis, personel yemegi gibi gelirler bir ogrenciye ait degildir. -->
+                <CheckBox Content="Öğrenciye bağlı olmayan gelir" IsChecked="{Binding IsGeneralIncome}" Margin="0,10,0,0"
+                          AutomationProperties.Name="Öğrenciye bağlı olmayan gelir"/>
                 <TextBlock Text="{Binding LookupStudentText}" Margin="0,8" TextWrapping="Wrap" AutomationProperties.Name="Doğrulanan öğrenci">
                     <TextBlock.Style>
                         <!-- Dogrulama oncesi yonlendirme metni soluk; dogrulanan kimlik (ad, no, sinif/sube, kart) koyu ve kalin.
