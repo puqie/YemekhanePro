@@ -156,7 +156,10 @@ public sealed class YemekhaneDbContext(DbContextOptions<YemekhaneDbContext> opti
 
     private static void ConfigureIdentityAndOrganization(ModelBuilder b)
     {
-        b.Entity<Student>(e => { e.HasIndex(x => x.StudentNo).IsUnique().HasDatabaseName("ix_students_student_no"); e.HasIndex(x => x.ClassId).HasDatabaseName("ix_students_class_id"); e.HasIndex(x => new { x.LastName, x.FirstName }); e.HasIndex(x => x.FirstName).HasDatabaseName("ix_students_first_name"); e.Property(x => x.StudentNo).HasMaxLength(32).HasColumnName("student_no"); e.Property(x => x.NationalId).HasMaxLength(11).HasColumnName("national_id"); e.HasQueryFilter(x => !x.IsDeleted);
+        b.Entity<Student>(e => { // Numarasi OLAN ogrencilerde numara benzersizdir; numarasiz ogrenciler serbesttir.
+            // Okul bazi ogrenciye numara vermiyor (anasinifi, misafir); filtresiz benzersiz
+            // indekste ikinci numarasiz ogrenci reddedilirdi.
+            e.HasIndex(x => x.StudentNo).IsUnique().HasFilter("student_no <> ''").HasDatabaseName("ix_students_student_no"); e.HasIndex(x => x.ClassId).HasDatabaseName("ix_students_class_id"); e.HasIndex(x => new { x.LastName, x.FirstName }); e.HasIndex(x => x.FirstName).HasDatabaseName("ix_students_first_name"); e.Property(x => x.StudentNo).HasMaxLength(32).HasColumnName("student_no"); e.Property(x => x.NationalId).HasMaxLength(11).HasColumnName("national_id"); e.HasQueryFilter(x => !x.IsDeleted);
             // Turkce normallestirilmis arama sutunu: LIKE ASCII disinda buyuk/kucuk harf duyarsiz degil.
             e.Property(x => x.SearchName).HasMaxLength(TurkishSearchText.MaxLength).HasDefaultValue(string.Empty);
             e.HasIndex(x => x.SearchName).HasDatabaseName("ix_students_search_name"); });

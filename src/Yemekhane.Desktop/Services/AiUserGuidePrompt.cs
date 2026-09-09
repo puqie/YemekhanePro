@@ -203,8 +203,12 @@ public static class AiUserGuidePrompt
         "Bakiye" ("GÜNCEL BAKİYE" başlığıyla tutar gösterir), "SMS Geçmişi",
         "Denetim".
 
-        "Öğrenci Kartı" çekmecesi (Yeni Öğrenci / Düzenle): zorunlu alanlar
-        "Öğrenci NO", "Ad", "Soyad"; diğerleri "TC Kimlik No" (tam 11 rakam,
+        "Öğrenci Kartı" çekmecesi (Yeni Öğrenci / Düzenle): ZORUNLU alanlar
+        yalnızca "Ad" ve "Soyad"tır. "Öğrenci NO" İSTEĞE BAĞLIDIR: okul bazı
+        öğrenciye numara vermiyorsa boş bırakılabilir, kimlik kart numarasıyla
+        sağlanır. Numara girildiyse benzersiz olmalıdır (aynı numara iki
+        öğrenciye verilemez); boş bırakılan öğrenciler birbiriyle çakışmaz.
+        Diğer alanlar "TC Kimlik No" (tam 11 rakam,
         boş olabilir), "Doğum tarihi", "Kart No", "Baskı No", fotoğraf ("Resim
         Seç" / "Kaldır" düğmeleri; yalnızca JPG ve PNG, en fazla 2 MB — aksi
         halde "Yalnızca JPG ve PNG dosyaları seçilebilir." ya da "Fotoğraf en
@@ -214,16 +218,18 @@ public static class AiUserGuidePrompt
         ID", "PI ID", "Not". Alt: "Kaydet" / "İptal".
 
         Doğrulama hataları (bunlar ekranda görebileceğiniz gerçek mesajlardır):
-        - "Öğrenci NO alanı 1-32 karakter olmalıdır."
+        - "Öğrenci NO alanı en fazla 32 karakter olabilir." (numara zorunlu değildir)
         - "Ad alanı zorunludur." / "Soyad alanı zorunludur."
         - "TC Kimlik No 11 rakam olmalıdır."
         - "Doğum tarihi gelecekte olamaz."
         - "Parmak izi ID en fazla 64 karakter olabilir." / "PI ID en fazla 64
           karakter olabilir."
         - "Adres en fazla 500 karakter olabilir."
-        - "Veli adı 2-200 karakter olmalıdır." / "Veli telefonu zorunludur
-          (örn. 5321234567)." (veli adı veya telefonu girildiyse ikisi de
-          zorunlu hale gelir)
+        - "Veli adı en fazla 200 karakter olabilir." (veli adı İSTEĞE BAĞLIDIR;
+          boş bırakılırsa SMS'lerde "Veli" diye geçer)
+        - "Veli telefonu zorunludur (örn. 5321234567)." (veli adı girildiyse
+          telefon da gerekir: SMS ve kayıt telefonla çalışır, telefonsuz veli
+          kaydı hiçbir işe yaramaz)
 
         Kart okuma modalı ("Kartla Öğrenci Bul", F3 ile de açılır; cards.manage
         izni ve bağlı kart okuyucu gerekir): "Kart numarasını yazın ve Ara'ya
@@ -448,6 +454,10 @@ public static class AiUserGuidePrompt
         şablon dosyası YOKTUR; sütun adları önizleme tablosundakiyle aynı
         olacak şekilde dosya hazırlanır (NO, Kart No, Ad, Soyad, Sınıf, Veli
         telefonu).
+
+        NOT: Öğrenci kartında numara isteğe bağlı olsa da SİCİL AKTARMA
+        dosyasında "NO" sütunu ZORUNLUDUR: içe aktarma mevcut öğrenciyi
+        numarasından bulur, numarasız satır her zaman YENİ kayıt açar.
 
         Adım 2 "2 · Uygulamadan önce kontrol edin": "Okunan satır", "Yeni
         kayıt", "Güncellenecek", "Hatalı satır" sayaçları. Hata varsa:

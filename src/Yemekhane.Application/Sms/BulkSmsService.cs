@@ -93,10 +93,10 @@ public sealed class BulkSmsService(IBulkSmsRepository repository, ISmsTemplateRe
                 ? new Dictionary<string, object?>(StringComparer.Ordinal)
                 : new Dictionary<string, object?>(request.Variables, StringComparer.Ordinal);
             values["StudentName"] = source.StudentName;
-            values["ParentName"] = source.ParentName ?? "Veli";
+            values["ParentName"] = (string.IsNullOrWhiteSpace(source.ParentName) ? "Veli" : source.ParentName);
             var message = request.TemplateId.HasValue ? SmsTemplateRenderer.Render(body, values) : body;
             if (message.Length is < 1 or > 1600) throw new RequestValidationException("SMS metni 1-1600 karakter olmalıdır.");
-            output.Add(new(source.StudentId, source.StudentName, source.ParentName ?? "Veli", phone, message));
+            output.Add(new(source.StudentId, source.StudentName, (string.IsNullOrWhiteSpace(source.ParentName) ? "Veli" : source.ParentName), phone, message));
         }
         return (output, sources.Count, noPhone, duplicates);
     }

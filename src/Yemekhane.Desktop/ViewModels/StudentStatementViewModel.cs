@@ -68,7 +68,9 @@ public sealed class StudentStatementViewModel : ObservableObject
     public string? ErrorMessage { get => errorMessage; private set => Set(ref errorMessage, value); }
     public string? StatusMessage { get => statusMessage; private set => Set(ref statusMessage, value); }
     public bool HasRows => Rows.Count > 0;
-    public string Title => statement is null ? "Öğrenci Ekstresi" : $"{statement.StudentName} · No {statement.StudentNo}";
+    public string Title => statement is null ? "Öğrenci Ekstresi"
+        : string.IsNullOrWhiteSpace(statement.StudentNo) ? statement.StudentName
+        : $"{statement.StudentName} · No {statement.StudentNo}";
 
     /// <summary>Ozet satiri; veli en cok bu iki rakami sorar: ne odedim, ne kaldi.</summary>
     public string SummaryText => statement is null

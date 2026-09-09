@@ -79,7 +79,7 @@ public sealed class EfGlobalSearchRepository(YemekhaneDbContext db, TimeProvider
         var classPart = string.IsNullOrWhiteSpace(className) ? "Sınıf yok"
             : string.IsNullOrWhiteSpace(sectionName) ? className : className + " / " + sectionName;
         var cardPart = string.IsNullOrWhiteSpace(cardNumber) ? "Kart yok" : "Kart " + cardNumber;
-        return $"No {studentNo} • {classPart} • {cardPart}";
+        return $"{(string.IsNullOrWhiteSpace(studentNo) ? "No yok" : "No " + studentNo)} • {classPart} • {cardPart}";
     }
 
     private async Task<IReadOnlyList<SearchResultItem>> SearchClassesAsync(string term, CancellationToken token)

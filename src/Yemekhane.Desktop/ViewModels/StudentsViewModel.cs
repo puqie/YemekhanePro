@@ -358,7 +358,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public LookupPickerViewModel FormDepartment { get; }
     public LookupPickerViewModel FormJob { get; }
     /// <summary>Cekmece alt basligi: yeni kayit mi, hangi ogrenci duzenleniyor.</summary>
-    public string FormSubtitle => Details is null ? "Yeni öğrenci kaydı" : $"No {Details.StudentNo} · {Details.FirstName} {Details.LastName}";
+    public string FormSubtitle => Details is null ? "Yeni öğrenci kaydı" : (string.IsNullOrWhiteSpace(Details.StudentNo)
+            ? $"{Details.FirstName} {Details.LastName}"
+            : $"No {Details.StudentNo} · {Details.FirstName} {Details.LastName}");
     /// <summary>Sag panel ozeti: Bolum ve Gorev adlari tanim listelerinden cozulur (Details yalnizca Id tasir).</summary>
     public string? DetailDepartmentName => FormDepartment.NameOf(Details?.DepartmentId) ?? SelectedStudent?.DepartmentName;
     public string? DetailJobName => FormJob.NameOf(Details?.JobId);
@@ -999,7 +1001,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
 
     private string? ValidateForm()
     {
-        if (string.IsNullOrWhiteSpace(FormStudentNo) || FormStudentNo.Trim().Length > 32) return "Öğrenci NO alanı 1-32 karakter olmalıdır.";
+        // Ogrenci numarasi ISTEGE BAGLI: okul bazi ogrenciye numara vermiyor (anasinifi,
+        // misafir ogrenci). Kimlik kart numarasiyla saglanir; numara yalnizca kolaylik.
+        if (FormStudentNo?.Trim().Length > 32) return "Öğrenci NO alanı en fazla 32 karakter olabilir.";
         if (string.IsNullOrWhiteSpace(FormFirstName) || FormFirstName.Trim().Length > 100) return "Ad alanı zorunludur.";
         if (string.IsNullOrWhiteSpace(FormLastName) || FormLastName.Trim().Length > 100) return "Soyad alanı zorunludur.";
         if (!string.IsNullOrWhiteSpace(FormNationalId) && (FormNationalId.Trim().Length != 11 || !FormNationalId.Trim().All(char.IsDigit))) return "TC Kimlik No 11 rakam olmalıdır.";
@@ -1007,15 +1011,14 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         if (FormFingerprintId?.Trim().Length > 64) return "Parmak izi ID en fazla 64 karakter olabilir.";
         if (FormPid?.Trim().Length > 64) return "PI ID en fazla 64 karakter olabilir.";
         if (FormAddress?.Trim().Length > 500) return "Adres en fazla 500 karakter olabilir.";
-        // Veli: ad ve telefon birlikte anlamlidir. Yalnizca biri girilirse sunucu zaten reddeder,
-        // ama hatayi burada soylemek kullaniciyi bir gidis-donusten kurtarir.
+        // Veli ADI istege baglidir; TELEFON zorunludur. SMS ve kayit telefonla calisir,
+        // ad yalnizca gorunumdur. Yalnizca ad girilip telefon bos birakilirsa kayit
+        // hicbir ise yaramaz, o yuzden telefon istenir.
         var parentName = FormParentName?.Trim() ?? "";
         var parentPhone = FormParentPhone?.Trim() ?? "";
-        if (parentName.Length > 0 || parentPhone.Length > 0)
-        {
-            if (parentName.Length is < 2 or > 200) return "Veli adı 2-200 karakter olmalıdır.";
-            if (parentPhone.Length == 0) return "Veli telefonu zorunludur (örn. 5321234567).";
-        }
+        if (parentName.Length > 200) return "Veli adı en fazla 200 karakter olabilir.";
+        if (parentName.Length > 0 && parentPhone.Length == 0)
+            return "Veli telefonu zorunludur (örn. 5321234567).";
         return null;
     }
     private void ClearForm()

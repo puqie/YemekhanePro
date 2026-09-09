@@ -602,7 +602,9 @@ public sealed class CashViewModel : ObservableObject
     /// <summary>Ayirt edici ogrenci kimligi; StudentIdentityConverter ile ayni dizilis: "AD SOYAD · No 5016 · 8B/B · Kart 8350016".</summary>
     private static string Identity(StudentListItem s)
     {
-        var parts = new List<string> { $"{s.FirstName} {s.LastName}".Trim(), $"No {s.StudentNo}" };
+        // Numarasi olmayan ogrencide "No " diye bosluk birakilmaz; bolum tamamen atlanir.
+        var parts = new List<string> { $"{s.FirstName} {s.LastName}".Trim() };
+        if (!string.IsNullOrWhiteSpace(s.StudentNo)) parts.Add($"No {s.StudentNo}");
         var classText = string.Join('/', new[] { s.ClassName, s.SectionName }.Where(x => !string.IsNullOrWhiteSpace(x)));
         if (classText.Length > 0) parts.Add(classText);
         parts.Add(s.CardNumber is null ? "Kart yok" : $"Kart {s.CardNumber}");

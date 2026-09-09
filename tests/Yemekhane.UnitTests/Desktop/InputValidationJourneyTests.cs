@@ -82,8 +82,6 @@ public sealed class InputValidationJourneyTests : IAsyncLifetime, IDisposable
         ["students.read", "students.write", "students.deactivate", "cards.manage"]);
 
     [Theory]
-    [InlineData("", "Ad", "Soyad", "boş öğrenci numarası")]
-    [InlineData("   ", "Ad", "Soyad", "boşluktan ibaret numara")]
     [InlineData("2026-6001", "", "Soyad", "boş ad")]
     [InlineData("2026-6002", "Ad", "", "boş soyad")]
     [InlineData("2026-6003", "   ", "   ", "boşluktan ibaret ad ve soyad")]
@@ -104,6 +102,28 @@ public sealed class InputValidationJourneyTests : IAsyncLifetime, IDisposable
         var after = await InScope(db => db.Students.CountAsync());
         Assert.Equal(before, after);
         Assert.True(screen.IsFormOpen, $"{what}: hata sonrası form kapandı, girilen veri kayboldu.");
+    }
+
+    /// <summary>
+    /// Numarasiz ogrenci GERCEKTEN kaydedilir (uctan uca, gercek API). Okul bazi ogrenciye
+    /// numara vermiyor; kimlik kart numarasindan saglanir.
+    /// </summary>
+    [Fact]
+    public async Task AStudentWithoutANumberIsSaved()
+    {
+        var screen = NewStudentsScreen();
+        screen.NewStudentCommand.Execute(null);
+        screen.FormStudentNo = "";
+        screen.FormFirstName = "Numarasız";
+        screen.FormLastName = "Öğrenci";
+
+        await Run(screen.SaveStudentCommand);
+
+        var stored = await InScope(db => db.Students.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.FirstName == "Numarasız" && x.LastName == "Öğrenci"));
+        Assert.NotNull(stored);
+        Assert.Equal("", stored!.StudentNo);
+        Assert.False(screen.HasError);
     }
 
     [Fact]

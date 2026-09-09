@@ -20,7 +20,11 @@ public sealed class StudentService(IStudentRepository repository)
     public async Task<StudentDetails> CreateAsync(SaveStudentRequest request, CancellationToken cancellationToken = default)
     {
         var normalized = NormalizeAndValidate(request);
-        if (await repository.StudentNoExistsAsync(normalized.StudentNo, null, cancellationToken))
+        // Benzersizlik yalnizca DOLU numarada aranir; numarasiz ogrenciler birbiriyle
+        // catismaz (aksi halde ikinci numarasiz ogrenci " numaralı öğrenci zaten kayıtlı"
+        // diye reddedilirdi).
+        if (normalized.StudentNo.Length > 0
+            && await repository.StudentNoExistsAsync(normalized.StudentNo, null, cancellationToken))
             throw new EntityConflictException($"{normalized.StudentNo} numaralı öğrenci zaten kayıtlı.");
         var id = await repository.AddAsync(normalized, cancellationToken);
         return await GetAsync(id, cancellationToken);
@@ -29,7 +33,8 @@ public sealed class StudentService(IStudentRepository repository)
     public async Task<StudentDetails> UpdateAsync(Guid id, SaveStudentRequest request, CancellationToken cancellationToken = default)
     {
         var normalized = NormalizeAndValidate(request);
-        if (await repository.StudentNoExistsAsync(normalized.StudentNo, id, cancellationToken))
+        if (normalized.StudentNo.Length > 0
+            && await repository.StudentNoExistsAsync(normalized.StudentNo, id, cancellationToken))
             throw new EntityConflictException($"{normalized.StudentNo} numaralı öğrenci zaten kayıtlı.");
         if (!await repository.UpdateAsync(id, normalized, cancellationToken))
             throw new EntityNotFoundException("Öğrenci bulunamadı.");
@@ -47,7 +52,9 @@ public sealed class StudentService(IStudentRepository repository)
         var studentNo = request.StudentNo?.Trim() ?? string.Empty;
         var firstName = request.FirstName?.Trim() ?? string.Empty;
         var lastName = request.LastName?.Trim() ?? string.Empty;
-        if (studentNo.Length is < 1 or > 32) throw new RequestValidationException("Öğrenci NO alanı 1-32 karakter olmalıdır.");
+        // Ogrenci numarasi ISTEGE BAGLI: okul bazi ogrenciye numara vermiyor (anasinifi,
+        // misafir). Kimlik karttan saglanir; numara yalnizca kolaylik alanidir.
+        if (studentNo.Length > 32) throw new RequestValidationException("Öğrenci NO alanı en fazla 32 karakter olabilir.");
         if (firstName.Length is < 1 or > 100) throw new RequestValidationException("Ad alanı 1-100 karakter olmalıdır.");
         if (lastName.Length is < 1 or > 100) throw new RequestValidationException("Soyad alanı 1-100 karakter olmalıdır.");
         var nationalId = string.IsNullOrWhiteSpace(request.NationalId) ? null : request.NationalId.Trim();

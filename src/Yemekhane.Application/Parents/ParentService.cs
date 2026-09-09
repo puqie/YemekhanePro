@@ -21,8 +21,11 @@ public sealed class ParentService(IParentRepository repository)
 
     private static SaveParentRequest Normalize(SaveParentRequest request)
     {
+        // Veli adi ISTEGE BAGLI: okulun elinde cogu zaman yalnizca telefon vardir (sicil
+        // aktarma da adsiz veli yazar). SMS'in ve kaydin anahtari TELEFONDUR; ad yalnizca
+        // gorunumdur ve bos birakilirsa mesajlarda "Veli" diye gecer.
         var name = request.Name?.Trim() ?? string.Empty;
-        if (name.Length is < 2 or > 200) throw new RequestValidationException("Veli adı 2-200 karakter olmalıdır.");
+        if (name.Length > 200) throw new RequestValidationException("Veli adı en fazla 200 karakter olabilir.");
         var normalizedPhone = TurkishMobilePhone.Normalize(request.Phone);
         return request with { Name = name, Phone = normalizedPhone, Relationship = request.Relationship?.Trim() };
     }

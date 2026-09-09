@@ -431,10 +431,12 @@ public sealed class StudentCardViewModelTests
         Assert.Empty(api.Parents);
     }
 
-    /// <summary>Yalnizca ad ya da yalnizca telefon girilirse kaydetmeden once uyarilir.</summary>
+    /// <summary>
+    /// Veli ADI istege baglidir (cogu velinin elinde yalnizca telefon var); TELEFON
+    /// zorunludur, cunku SMS ve kayit onunla calisir. Yalnizca ad girilirse uyarilir.
+    /// </summary>
     [Theory]
     [InlineData("Zeynep Yılmaz", "", "Veli telefonu zorunludur (örn. 5321234567).")]
-    [InlineData("Z", "5321234567", "Veli adı 2-200 karakter olmalıdır.")]
     public async Task EksikVeliBilgisiKaydetmeyiDurdurur(string name, string phone, string expected)
     {
         var api = new FakeApi();

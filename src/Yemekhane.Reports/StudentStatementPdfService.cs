@@ -120,7 +120,9 @@ public sealed class StudentStatementPdfService : IStudentStatementPdfService
         y += 22;
         if (!first) return y;
 
-        var identity = $"{statement.StudentName} · No {statement.StudentNo}";
+        var identity = string.IsNullOrWhiteSpace(statement.StudentNo)
+            ? statement.StudentName
+            : $"{statement.StudentName} · No {statement.StudentNo}";
         if (!string.IsNullOrWhiteSpace(statement.ClassName))
             identity += $" · {statement.ClassName}{(string.IsNullOrWhiteSpace(statement.SectionName) ? "" : "/" + statement.SectionName)}";
         graphics.DrawString(identity, Font(10, true), XBrushes.Black, new XPoint(Margin, y + 10));

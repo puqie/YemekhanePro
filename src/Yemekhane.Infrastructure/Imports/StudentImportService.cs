@@ -181,7 +181,10 @@ public sealed class StudentImportService(
             var updated = 0;
             foreach (var row in snapshot.Rows.Where(x => x.Errors.Count == 0))
             {
-                var student = await dbContext.Students.SingleOrDefaultAsync(x => x.StudentNo == row.StudentNo, cancellationToken);
+                // Bos numarali satir HER ZAMAN yeni kayit acar; eslestirilecek anahtar yoktur.
+                var student = row.StudentNo.Length == 0
+                    ? null
+                    : await dbContext.Students.FirstOrDefaultAsync(x => x.StudentNo == row.StudentNo, cancellationToken);
                 if (student is null)
                 {
                     student = new Student { StudentNo = row.StudentNo, FirstName = row.FirstName, LastName = row.LastName, RegisteredOn = DateOnly.FromDateTime(now.LocalDateTime) };
@@ -271,7 +274,14 @@ public sealed class StudentImportService(
 
         // Global query filter soft-delete edilmis ogrencileri gizler, ancak benzersiz indeks onlari gorur.
         // Filtre uygulanirsa onizleme "Yeni" der, apply ise unique index ihlaliyle TUM aktarimi geri alir.
-        var students = await dbContext.Students.IgnoreQueryFilters().AsNoTracking().Where(x => rows.Select(r => r.StudentNo).Contains(x.StudentNo)).ToDictionaryAsync(x => x.StudentNo, StringComparer.OrdinalIgnoreCase, cancellationToken);
+        // Numarasi BOS ogrenciler artik olabilir (numara istege bagli). Bos numarayla
+        // eslestirme yapilmaz: yoksa bos numarali bir satir rastgele bir ogrencinin
+        // uzerine yazardi. Ayrica ToDictionary mukerrer bos anahtarda cokerdi.
+        var wanted = rows.Select(r => r.StudentNo).Where(x => x.Length > 0).ToList();
+        var students = (await dbContext.Students.IgnoreQueryFilters().AsNoTracking()
+                .Where(x => x.StudentNo != "" && wanted.Contains(x.StudentNo)).ToListAsync(cancellationToken))
+            .GroupBy(x => x.StudentNo, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
         var cards = await dbContext.StudentCards.AsNoTracking().Where(x => rows.Select(r => r.CardNumber).Contains(x.CardNumber)).ToDictionaryAsync(x => x.CardNumber, StringComparer.OrdinalIgnoreCase, cancellationToken);
         var classes = await dbContext.Set<SchoolClass>().AsNoTracking().Where(x => x.IsActive).ToListAsync(cancellationToken);
         var classLookup = classes.GroupBy(x => x.Name.Trim(), StringComparer.Create(new CultureInfo("tr-TR"), true)).ToDictionary(x => x.Key, x => x.Single(), StringComparer.Create(new CultureInfo("tr-TR"), true));
