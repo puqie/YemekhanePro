@@ -231,6 +231,17 @@ public static class AiUserGuidePrompt
           telefon da gerekir: SMS ve kayıt telefonla çalışır, telefonsuz veli
           kaydı hiçbir işe yaramaz)
 
+        KARTSIZ ÖĞRENCİ: "Kart No" alanı isteğe bağlıdır. Anasınıfı gibi kart
+        verilmeyen öğrencilerde boş bırakılır; öğrenci kartsız kaydedilir, listede
+        görünür, ad/soyadla bulunur, hakediş alır ve sayımlara girer. Kart yalnızca
+        turnikeden geçiş için gerekir ve sonradan da verilebilir.
+
+        FORM ALANLARI: form başlığındaki "Alanlar" düğmesi, okulun kullanmadığı
+        isteğe bağlı alanları (TC Kimlik No, Doğum tarihi, Bölüm, Görev, Baskı No,
+        Fotoğraf, Parmak izi ID, PI ID, Adres, Not) KALICI olarak gizler; seçim
+        diske yazılır, her açılışta yeniden kapatmak gerekmez. Ad ve soyad her
+        zaman görünür; gizlenen alanın kayıtlı değeri silinmez.
+
         Kart okuma modalı ("Kartla Öğrenci Bul", F3 ile de açılır; cards.manage
         izni ve bağlı kart okuyucu gerekir): "Kart numarasını yazın ve Ara'ya
         basın. Masa tipi okuyucu bağlıysa Okuyucuyu Bekle ile okutabilirsiniz."
@@ -397,7 +408,11 @@ public static class AiUserGuidePrompt
         Başlık: "Operasyon Takvimi", alt başlık: "Hakediş, tatil, gezi, izin
         ve aktarım görünümü".
 
-        Üstte "Bugün"/"Yenile", ay gezinme (‹ Ay Yılı ›), "Kapsam" + "Uygula".
+        Üstte "Bugün"/"Yenile", ay gezinme (‹ Ay Yılı ›), "Kapsam", "Sınıf türü"
+        ve "Uygula". "Sınıf türü" süzgeci gündeki sayıların KİMİ kapsadığını
+        belirler: "İlkokul (anasınıfı hariç)" varsayılandır ve mutfağa verilecek
+        sayıdır (sınıfı girilmemiş öğrenciler de sayılır), "Yalnızca anasınıfı"
+        ve "Tümü" seçenekleri de vardır. Seçim altta bir satırla yazılır.
         Ay takviminde her günde küçük etiketler: "{n} öğrenci ·
         {kullanılan}/{toplam}", "Tatil · {ad}", "Gezi", "Özel", "İzin · {n}",
         "Aktarım +{n} / -{n}".

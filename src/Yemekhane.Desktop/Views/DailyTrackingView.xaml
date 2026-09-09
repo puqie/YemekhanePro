@@ -11,6 +11,7 @@
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <converters:LocalTimeConverter x:Key="LocalTime"/>
         <converters:EnumTextConverter x:Key="EnumText"/>
             </ResourceDictionary>
 </UserControl.Resources>
@@ -82,7 +83,7 @@
                             <!-- Milisaniye (.fff) kaldirildi: bir yemekhane gecisinde
                                  saniye zaten fazlasiyla yeterli, ".000" her satirda
                                  yer kaplayip okumayi zorlastiriyordu. -->
-                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="Auto" MinWidth="68"/>
+                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, Converter={StaticResource LocalTime}, StringFormat={}{0:HH:mm:ss}}" Width="Auto" MinWidth="68"/>
                             <DataGridTextColumn Header="Kart No" Binding="{Binding CardNumber}" Width="Auto" MinWidth="90"/>
                             <DataGridTextColumn Header="Öğrenci No" Binding="{Binding StudentNo}" Width="Auto" MinWidth="80"/>
                             <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="Auto" MinWidth="170"/>

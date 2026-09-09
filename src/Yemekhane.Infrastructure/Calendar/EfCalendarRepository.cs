@@ -121,6 +121,8 @@ public sealed class EfCalendarRepository(YemekhaneDbContext db, IAuditService au
     private IQueryable<T> ScopeStudents<T>(IQueryable<T> query, CalendarScope? scope) where T : class
     {
         if (scope is null) return query;
+        query = ApplyKind(query, scope.ClassKind);
+        if (scope.ScopeType == "AllSchool") return query;
         if (typeof(T) == typeof(MealEntitlement))
         {
             var values = (IQueryable<MealEntitlement>)query;
@@ -139,6 +141,29 @@ public sealed class EfCalendarRepository(YemekhaneDbContext db, IAuditService au
         transfers = scope.ScopeType == "Class" ? transfers.Where(x => db.Students.Any(s => s.Id == x.StudentId && s.ClassId == scope.ScopeId))
             : transfers.Where(x => db.Set<StudentGroupMember>().Any(m => m.GroupId == scope.ScopeId && m.StudentId == x.StudentId));
         return (IQueryable<T>)transfers;
+    }
+
+    /// <summary>
+    /// Tur suzgecini varlik tipine gore uygular. Ogrenci kimligi her uc kayitta da
+    /// StudentId alanindadir ama ortak bir arayuz yok; EF'in cevirebilmesi icin tek tek yazilir.
+    /// </summary>
+    private IQueryable<T> ApplyKind<T>(IQueryable<T> query, string? classKind) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(classKind)) return query;
+        var preschoolOnly = classKind == ClassKinds.Preschool;
+        if (typeof(T) == typeof(MealEntitlement))
+            return (IQueryable<T>)((IQueryable<MealEntitlement>)query).Where(x => preschoolOnly
+                ? db.Students.Any(s => s.Id == x.StudentId && db.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool))
+                : !db.Students.Any(s => s.Id == x.StudentId && db.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool)));
+        if (typeof(T) == typeof(StudentLeave))
+            return (IQueryable<T>)((IQueryable<StudentLeave>)query).Where(x => preschoolOnly
+                ? db.Students.Any(s => s.Id == x.StudentId && db.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool))
+                : !db.Students.Any(s => s.Id == x.StudentId && db.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool)));
+        if (typeof(T) == typeof(MealTransfer))
+            return (IQueryable<T>)((IQueryable<MealTransfer>)query).Where(x => preschoolOnly
+                ? db.Students.Any(s => s.Id == x.StudentId && db.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool))
+                : !db.Students.Any(s => s.Id == x.StudentId && db.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool)));
+        return query;
     }
 
     private static CalendarExceptionItem Map(ScheduleOverride x) => new(x.Id, x.ExceptionType, x.ScopeType, x.ScopeId,

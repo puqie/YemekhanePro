@@ -2,7 +2,13 @@ using Yemekhane.Application.Common;
 
 namespace Yemekhane.Application.Calendar;
 
-public sealed record CalendarScope(string ScopeType, Guid? ScopeId = null);
+/// <param name="ClassKind">
+/// Sinif turu suzgeci: bos = herkes, "Normal" = ilkokul (SINIFSIZ ogrenciler DAHIL),
+/// "Anasinifi" = yalnizca anasinifi. Mutfaga verilen gunluk sayi ilkokulun sayisidir;
+/// anasinifi ayri ucretlendirildigi icin o rakama karismamalidir. Sinifi girilmemis
+/// ogrenci yemege geliyorsa sayilir: sayimdan dusmek kisi eksik cikarir.
+/// </param>
+public sealed record CalendarScope(string ScopeType, Guid? ScopeId = null, string? ClassKind = null);
 public sealed record WeekendPolicy(bool SaturdayIsWorking = false, bool SundayIsWorking = false);
 
 public interface ICalendarClosureProvider

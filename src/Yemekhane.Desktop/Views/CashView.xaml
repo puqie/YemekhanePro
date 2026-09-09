@@ -1,6 +1,7 @@
 <UserControl x:Class="Yemekhane.Desktop.Views.CashView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
     xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
     xmlns:vm="clr-namespace:Yemekhane.Desktop.ViewModels"
     xmlns:local="clr-namespace:Yemekhane.Desktop"
@@ -13,6 +14,7 @@
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Drawer.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <converters:LocalTimeConverter x:Key="LocalTime"/>
         <!-- Eslesen ogrenci satiri; acilir kutuda ve listede ayni gorunum. -->
         <DataTemplate x:Key="StudentMatchTemplate">
             <TextBlock TextTrimming="CharacterEllipsis">
@@ -68,7 +70,7 @@
                     <DataGrid Grid.Row="2" x:Name="TransactionsGrid" IsEnabled="{Binding IsAddOpen, Converter={StaticResource InverseBool}}" ItemsSource="{Binding Transactions}" SelectedItem="{Binding SelectedTransaction}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Kasa işlem listesi">
                         <DataGrid.InputBindings><KeyBinding Key="Delete" Command="{Binding OpenVoidCommand}"/><KeyBinding Key="Enter" Command="{Binding OpenVoidCommand}"/></DataGrid.InputBindings>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="TARİH" Binding="{Binding TransactionAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="Auto" MinWidth="118"/>
+                            <DataGridTextColumn Header="TARİH" Binding="{Binding TransactionAt, Converter={StaticResource LocalTime}, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="Auto" MinWidth="118"/>
                             <DataGridTextColumn Header="ÖĞRENCİ" Binding="{Binding StudentName}" Width="*" MinWidth="130" MaxWidth="260"/>
                             <!-- Ayni adli ogrenciler (uc ADA AKGUN gibi) yalnizca adla ayirt edilemez; numara her satirda gorunur. -->
                             <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="70"/>
@@ -397,7 +399,7 @@
                         </TextBlock>
                         <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" Text="{Binding SelectedTransaction.StudentNo, StringFormat=No {0}, TargetNullValue=No -}"/>
                         <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Text="{Binding SelectedTransaction.CardNumber, StringFormat=Kart: {0}, TargetNullValue=Kart: -}"/>
-                        <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" Text="{Binding SelectedTransaction.TransactionAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}"/>
+                        <TextBlock Margin="0,4,0,0" Foreground="{StaticResource MutedBrush}" Text="{Binding SelectedTransaction.TransactionAt, Converter={StaticResource LocalTime}, StringFormat={}{0:dd.MM.yyyy HH:mm}}"/>
                     </StackPanel>
                 </Border>
                 <TextBlock Text="İptal nedeni (zorunlu)" Style="{StaticResource Label}"/>

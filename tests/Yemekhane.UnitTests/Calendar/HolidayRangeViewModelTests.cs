@@ -251,14 +251,14 @@ public sealed class HolidayRangeViewModelTests
 
         public Task<IReadOnlyCollection<CalendarScopeOption>> GetScopesAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyCollection<CalendarScopeOption>>([new("AllSchool", null, "Tüm okul"), new("Class", ClassId, "5A")]);
-        public Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScopeOption? scope, CancellationToken cancellationToken = default)
+        public Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScopeOption? scope, string? classKind = null, CancellationToken cancellationToken = default)
         {
             var first = new DateOnly(month.Year, month.Month, 1);
             var days = Enumerable.Range(0, first.AddMonths(1).DayNumber - first.DayNumber)
                 .Select(x => new CalendarDaySummary(first.AddDays(x), new(0, 0, 0, 0), [], [], 0, 0, 0)).ToArray();
             return Task.FromResult(new MonthlyCalendar(first, null, days));
         }
-        public Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScopeOption? scope, CancellationToken cancellationToken = default)
+        public Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScopeOption? scope, string? classKind = null, CancellationToken cancellationToken = default)
         {
             DayCalls++;
             return Task.FromResult(new CalendarDayDetails(calendarDate, new(0, 0, 0, 0), [], DayOperations.ToArray(), DayHolidays.ToArray(), [], 0, 0, 0));

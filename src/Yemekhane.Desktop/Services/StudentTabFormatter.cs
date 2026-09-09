@@ -249,11 +249,24 @@ public static class StudentTabFormatter
     // ayni bicim gorunmelidir.
     private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
 
-    /// <summary>Saniye ve milisaniye kasten atilir: "02.09.2026 13:00".</summary>
+    /// <summary>
+    /// Saniye ve milisaniye kasten atilir: "02.09.2026 13:00". Saat OKUL SAATINE
+    /// (Europe/Istanbul) cevrilir; once makinenin yerel saati kullaniliyordu ve ayni
+    /// gecis kaydi Ogrenci detayinda baska, Gunluk Takip'te baska saat gosteriyordu.
+    /// </summary>
     private static string FormatDateTime(string text) =>
         DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var value)
-            ? value.LocalDateTime.ToString("dd.MM.yyyy HH:mm", Turkish)
+            ? TimeZoneInfo.ConvertTime(value, SchoolTimeZone).ToString("dd.MM.yyyy HH:mm", Turkish)
             : text;
+
+    /// <summary>Okulun saat dilimi; kayitlar UTC saklanir, ekranda okul saati gosterilir.</summary>
+    private static readonly TimeZoneInfo SchoolTimeZone = FindSchoolTimeZone();
+
+    private static TimeZoneInfo FindSchoolTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time"); }
+    }
 
     private static string FormatDate(string text) =>
         DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var value)

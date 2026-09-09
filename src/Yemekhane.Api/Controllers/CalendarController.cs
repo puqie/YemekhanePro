@@ -16,12 +16,14 @@ public sealed class CalendarController(CalendarService service) : ControllerBase
         service.ListScopesAsync(cancellationToken);
 
     [HttpGet("month")]
-    public Task<MonthlyCalendar> Month(string month, string? scopeType, Guid? scopeId, CancellationToken cancellationToken) =>
-        service.GetMonthAsync(month, scopeType, scopeId, cancellationToken);
+    public Task<MonthlyCalendar> Month(string month, string? scopeType, Guid? scopeId, string? classKind,
+        CancellationToken cancellationToken) =>
+        service.GetMonthAsync(month, scopeType, scopeId, classKind, cancellationToken);
 
     [HttpGet("day/{date}")]
-    public Task<CalendarDayDetails> Day(DateOnly date, string? scopeType, Guid? scopeId, CancellationToken cancellationToken) =>
-        service.GetDayAsync(date, scopeType, scopeId, cancellationToken);
+    public Task<CalendarDayDetails> Day(DateOnly date, string? scopeType, Guid? scopeId, string? classKind,
+        CancellationToken cancellationToken) =>
+        service.GetDayAsync(date, scopeType, scopeId, classKind, cancellationToken);
 
     [HttpPost("exceptions")]
     public Task<CalendarExceptionItem> CreateException(CreateScheduleExceptionRequest request, CancellationToken cancellationToken) =>

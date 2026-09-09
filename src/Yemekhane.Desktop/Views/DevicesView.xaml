@@ -1,6 +1,7 @@
 ﻿<UserControl x:Class="Yemekhane.Desktop.Views.DevicesView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:Yemekhane.Desktop.Converters"
     xmlns:controls="clr-namespace:Yemekhane.Desktop.Controls"
     Background="{DynamicResource CanvasBrush}" FontFamily="Segoe UI" FontSize="12">
 
@@ -14,6 +15,7 @@
                 <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/Modal.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+            <converters:LocalTimeConverter x:Key="LocalTime"/>
         </ResourceDictionary>
     </UserControl.Resources>
     <Grid Margin="22,18">
@@ -113,7 +115,7 @@
                 <ItemsControl.ItemTemplate><DataTemplate>
                     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,8">
                         <StackPanel>
-                            <Grid><TextBlock Text="{Binding EventType}" FontWeight="SemiBold"/><TextBlock Text="{Binding Timestamp, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" HorizontalAlignment="Right" Foreground="{StaticResource FaintBrush}"/></Grid>
+                            <Grid><TextBlock Text="{Binding EventType}" FontWeight="SemiBold"/><TextBlock Text="{Binding Timestamp, Converter={StaticResource LocalTime}, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" HorizontalAlignment="Right" Foreground="{StaticResource FaintBrush}"/></Grid>
                             <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource InkBrush}" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Border>

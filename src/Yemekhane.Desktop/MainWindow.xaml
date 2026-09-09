@@ -235,7 +235,7 @@
                                     <Grid Margin="14,0"><TextBlock Text="Canlı Geçişler" Style="{StaticResource SectionTitle}" VerticalAlignment="Center"/><TextBlock Text="son 20" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
                                     <DataGrid Grid.Row="1" ItemsSource="{Binding Snapshot.RecentAccess}">
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" Width="80"/>
+                                            <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp, Converter={StaticResource LocalTime}, StringFormat={}{0:HH:mm:ss}}" Width="80"/>
                                             <DataGridTextColumn Header="Öğrenci" Binding="{Binding StudentName}" Width="*" MinWidth="130"/>
                                             <DataGridTextColumn Header="No" Binding="{Binding StudentNo}" Width="70"/>
                                             <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="105"/>
@@ -268,7 +268,7 @@
                             </Border>
                             <Border Grid.Column="1" Style="{StaticResource Panel}" Margin="7,0,0,0">
                                 <Grid><Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition /></Grid.RowDefinitions><TextBlock Text="Son Hatalar" Style="{StaticResource SectionTitle}" Margin="14,0" VerticalAlignment="Center"/>
-                                    <DataGrid Grid.Row="1" ItemsSource="{Binding Snapshot.RecentErrors}"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, StringFormat={}{0:dd.MM HH:mm:ss}}" Width="110"/><DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="110"/><DataGridTextColumn Header="Seviye" Binding="{Binding Severity, Converter={StaticResource EnumText}, ConverterParameter=LogLevel}" Width="Auto" MinWidth="72"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/></DataGrid.Columns></DataGrid>
+                                    <DataGrid Grid.Row="1" ItemsSource="{Binding Snapshot.RecentErrors}"><DataGrid.Columns><DataGridTextColumn Header="Zaman" Binding="{Binding Timestamp, Converter={StaticResource LocalTime}, StringFormat={}{0:dd.MM HH:mm:ss}}" Width="110"/><DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="110"/><DataGridTextColumn Header="Seviye" Binding="{Binding Severity, Converter={StaticResource EnumText}, ConverterParameter=LogLevel}" Width="Auto" MinWidth="72"/><DataGridTextColumn Header="Mesaj" Binding="{Binding Message}" Width="*"/></DataGrid.Columns></DataGrid>
                                 </Grid>
                             </Border>
                         </Grid>

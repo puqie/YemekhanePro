@@ -484,7 +484,10 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     private void OnPickerChanged()
     {
         Raise(nameof(HasPickerRows)); Raise(nameof(PickerSummary));
-        var selected = StudentPicker.Where(x => x.IsSelected).Select(x => x.StudentNo).ToArray();
+        // Yalnizca NUMARASI OLAN secimler kutuya yazilir; numarasiz ogrenci kimligiyle
+        // gonderilir (bkz. BuildGrant). Bos numara yazmak listeyi bozardi.
+        var selected = StudentPicker.Where(x => x.IsSelected && !string.IsNullOrWhiteSpace(x.StudentNo))
+            .Select(x => x.StudentNo).ToArray();
         if (selected.Length > 0) ManualStudentIds = string.Join(", ", selected);
         Preview = null;
     }
@@ -505,8 +508,13 @@ public sealed class MealEntitlementsViewModel : ObservableObject
             DateOnly.FromDateTime(GrantStartsOn), dayCount, IncludeSaturday, IncludeSunday)
             ?? throw new InvalidOperationException("Seçilen günlerle bu süre hesaplanamıyor. Cumartesi/Pazar seçimini gözden geçirin.");
         var (ids, nos) = ManualStudentInput.Parse(ManualStudentIds);
+        // Listeden secilen ogrencilerin KIMLIGI kullanilir: numarasi olmayan ogrenci
+        // (anasinifi, misafir) numara kutusuna hicbir sey yazamaz ve eskiden bu ekrandan
+        // hakedis alamiyordu.
+        var picked = StudentPicker.Where(x => x.IsSelected).Select(x => x.Id).ToArray();
+        if (picked.Length > 0) ids = [.. ids.Concat(picked).Distinct()];
         if (IsManualTarget && ids.Length == 0 && nos.Length == 0)
-            throw new InvalidOperationException("Öğrenci numaralarını girin (örn. 5012, 5013) ya da listeden satır seçerek Hızlı Hakediş'i açın.");
+            throw new InvalidOperationException("Listeden öğrenci seçin ya da öğrenci numaralarını yazın (örn. 5012, 5013).");
         if (IsClassTarget && GrantClass is null) throw new InvalidOperationException("Sınıf seçilmelidir.");
         if (IsGroupTarget && GrantGroup is null) throw new InvalidOperationException("Grup seçilmelidir.");
         if (IsGradeTarget && string.IsNullOrWhiteSpace(Grade)) throw new InvalidOperationException("Kademe / sınıf seviyesi girilmelidir.");

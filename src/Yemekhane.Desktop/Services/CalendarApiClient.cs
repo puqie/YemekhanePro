@@ -10,8 +10,9 @@ namespace Yemekhane.Desktop.Services;
 
 public interface ICalendarApiClient
 {
-    Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScopeOption? scope, CancellationToken cancellationToken = default);
-    Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScopeOption? scope, CancellationToken cancellationToken = default);
+    /// <param name="classKind">Sinif turu suzgeci; bos = herkes, "Normal" = ilkokul, "Anasinifi" = anasinifi.</param>
+    Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScopeOption? scope, string? classKind = null, CancellationToken cancellationToken = default);
+    Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScopeOption? scope, string? classKind = null, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<CalendarScopeOption>> GetScopesAsync(CancellationToken cancellationToken = default);
     Task<HolidayDetails> CreateHolidayAsync(CreateHolidayRequest request, CancellationToken cancellationToken = default);
     Task<CalendarExceptionItem> CreateExceptionAsync(CreateScheduleExceptionRequest request, CancellationToken cancellationToken = default);
@@ -21,10 +22,13 @@ public interface ICalendarApiClient
 
 public sealed class CalendarApiClient(HttpClient client, IJwtSession session) : ICalendarApiClient
 {
-    public Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScopeOption? scope, CancellationToken cancellationToken = default) =>
-        GetAsync<MonthlyCalendar>($"api/calendar/month?month={month:yyyy-MM}{ScopeQuery(scope)}", cancellationToken);
-    public Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScopeOption? scope, CancellationToken cancellationToken = default) =>
-        GetAsync<CalendarDayDetails>($"api/calendar/day/{calendarDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}?{ScopeQuery(scope).TrimStart('&')}", cancellationToken);
+    public Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScopeOption? scope, string? classKind = null, CancellationToken cancellationToken = default) =>
+        GetAsync<MonthlyCalendar>($"api/calendar/month?month={month:yyyy-MM}{ScopeQuery(scope)}{KindQuery(classKind)}", cancellationToken);
+    public Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScopeOption? scope, string? classKind = null, CancellationToken cancellationToken = default) =>
+        GetAsync<CalendarDayDetails>($"api/calendar/day/{calendarDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}?{(ScopeQuery(scope) + KindQuery(classKind)).TrimStart('&')}", cancellationToken);
+
+    private static string KindQuery(string? classKind) =>
+        string.IsNullOrWhiteSpace(classKind) ? "" : "&classKind=" + Uri.EscapeDataString(classKind);
     public Task<IReadOnlyCollection<CalendarScopeOption>> GetScopesAsync(CancellationToken cancellationToken = default) =>
         GetAsync<IReadOnlyCollection<CalendarScopeOption>>("api/calendar/scopes", cancellationToken);
     public Task<HolidayDetails> CreateHolidayAsync(CreateHolidayRequest request, CancellationToken cancellationToken = default) =>

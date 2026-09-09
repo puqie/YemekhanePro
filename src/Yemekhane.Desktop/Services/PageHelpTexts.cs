@@ -29,7 +29,8 @@ public static class PageHelpTexts
             "Öğrenci arama, yeni öğrenci ekleme ve kart atama/değiştirme işlemleri burada yapılır.",
             "Tek arama kutusu ad, soyad, öğrenci no ve kart no'da birden arar (en az 2 karakter); Sınıf/Şube/Bölüm/Durum ile daraltabilirsiniz.",
             "Yeni kaydedilen bir öğrenciye kart atamak için kartı burada okutun; ekran hem ilk atamayı hem değişimi aynı akışla yönetir.",
-            "Öğrenci numarası ve veli adı zorunlu değildir; yalnızca ad, soyad ve (veli girildiyse) veli telefonu gerekir.",
+            "Öğrenci numarası, kart no ve veli adı zorunlu değildir; yalnızca ad ve soyad gerekir. Kartsız öğrenci (anasınıfı gibi) kaydedilir, sayımlarda ve hakedişlerde görünür.",
+            "Formda kullanmadığınız alanları \"Alanlar\" düğmesinden kalıcı olarak gizleyebilirsiniz; gizlenen alanın kayıtlı değeri silinmez.",
             "F2 arama kutusuna odaklanır. F3 \"Kartla Öğrenci Bul\" penceresini açar; bunun için kart yetkisi (cards.manage) ve bağlı bir kart okuyucu gerekir.",
             "Bir öğrenciye tıklayınca detay panelinde hakediş, ödeme ve geçiş geçmişi görünür.",
         ]),
@@ -56,6 +57,7 @@ public static class PageHelpTexts
         [
             "Resmi tatil ve okul tatillerini tanımladığınız, kullanılmayan hakların sonraki güne devredildiği ekrandır.",
             "Ekran kendiliğinden güncellenir: sayfaya her geçişte ve açıkken belirli aralıklarla tazelenir, Yenile'ye basmanız gerekmez.",
+            "\"Sınıf türü\" süzgeci mutfağa verilecek sayıyı belirler: varsayılan İlkokul (anasınıfı hariç, sınıfı girilmemiş öğrenciler dahil).",
             "Çok günlü bir tatilde her günün hakkı kendi sırasına göre ayrı bir sonraki boş iş gününe devredilir; hepsi tek güne yığılmaz.",
             "Belirli bir güne devir istiyorsanız Hak davranışı olarak \"Belirli bir tarihe aktar\" seçip Hedef tarih girin; bu durumda yığılma sizin isteğinizdir.",
             "Tatil, kaydedildiğinde hakları kendisi değiştirmez; seçtiğiniz davranış \"Hakediş etkilerini toplu uygula\" ile uygulanır.",

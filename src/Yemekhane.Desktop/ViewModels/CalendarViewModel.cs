@@ -92,6 +92,7 @@ public sealed class CalendarViewModel : ObservableObject
     private readonly ICalendarApiClient api;
     private DateOnly month, selectedDate;
     private CalendarScopeOption? selectedScope, holidayScope, exceptionScope;
+    private ClassKindFilterOption selectedClassKind = new("İlkokul (anasınıfı hariç)", Yemekhane.Domain.Entities.ClassKinds.Normal);
     private CalendarDayDetails? selectedDetails;
     private bool isLoading, isOffline, isDrawerOpen, isHolidayFormOpen, isExceptionFormOpen;
     private string? errorMessage, formMessage, infoMessage, pendingBehavior;
@@ -142,6 +143,33 @@ public sealed class CalendarViewModel : ObservableObject
     public BulkOperationWizardViewModel? BulkWizard { get; }
     public string MonthTitle => Turkish.TextInfo.ToTitleCase(month.ToDateTime(TimeOnly.MinValue).ToString("MMMM yyyy", Turkish));
     public CalendarScopeOption? SelectedScope { get => selectedScope; set => Set(ref selectedScope, value); }
+
+    /// <summary>
+    /// Sinif turu suzgeci. Mutfaga verilen gunluk sayi ILKOKULUN sayisidir: anasinifi ayri
+    /// ucretlendirildigi icin o rakama karismamalidir, bu yuzden varsayilan "İlkokul"dur.
+    /// "İlkokul" secildiginde sinifi girilmemis ogrenciler de sayilir (yemege geliyorlarsa
+    /// sayimdan dusmemeli); yalnizca anasinifi disarida kalir.
+    /// </summary>
+    public IReadOnlyList<ClassKindFilterOption> ClassKinds { get; } =
+    [
+        new("İlkokul (anasınıfı hariç)", Yemekhane.Domain.Entities.ClassKinds.Normal),
+        new("Yalnızca anasınıfı", Yemekhane.Domain.Entities.ClassKinds.Preschool),
+        new("Tümü", null)
+    ];
+
+    public ClassKindFilterOption SelectedClassKind
+    {
+        get => selectedClassKind;
+        set { if (Set(ref selectedClassKind, value)) Raise(nameof(ClassKindHint)); }
+    }
+
+    /// <summary>Sayilarin kimi kapsadigini ekranda yazar; rakamin anlami gorunur olmali.</summary>
+    public string ClassKindHint => SelectedClassKind.Value switch
+    {
+        Yemekhane.Domain.Entities.ClassKinds.Preschool => "Sayılar yalnızca anasınıfını kapsıyor.",
+        null => "Sayılar ilkokul ve anasınıfını birlikte kapsıyor.",
+        _ => "Sayılar anasınıfı hariç; sınıfı girilmemiş öğrenciler dahil."
+    };
     public CalendarScopeOption? HolidayScope { get => holidayScope; set => Set(ref holidayScope, value); }
     public CalendarScopeOption? ExceptionScope { get => exceptionScope; set => Set(ref exceptionScope, value); }
     public DateOnly SelectedDate { get => selectedDate; private set { if (Set(ref selectedDate, value)) Raise(nameof(SelectedDateTitle)); } }
@@ -229,7 +257,7 @@ public sealed class CalendarViewModel : ObservableObject
         IsLoading = true; IsOffline = false; ErrorMessage = null;
         try
         {
-            var result = await api.GetMonthAsync(month, FilterScope());
+            var result = await api.GetMonthAsync(month, FilterScope(), SelectedClassKind.Value);
             var byDate = result.Days.ToDictionary(x => x.Date); Days.Clear();
             var first = month; var offset = ((int)first.DayOfWeek + 6) % 7; var gridStart = first.AddDays(-offset);
             for (var index = 0; index < 42; index++)
@@ -248,7 +276,7 @@ public sealed class CalendarViewModel : ObservableObject
     {
         SelectedDate = date; foreach (var item in Days) item.IsSelected = item.Date == date;
         IsDrawerOpen = true; FormMessage = null; InfoMessage = null; pendingBehavior = null;
-        try { SelectedDetails = await api.GetDayAsync(date, FilterScope()); }
+        try { SelectedDetails = await api.GetDayAsync(date, FilterScope(), SelectedClassKind.Value); }
         catch (Exception ex) { SelectedDetails = null; HandleError(ex); }
     }
 
@@ -373,4 +401,10 @@ public sealed class CalendarViewModel : ObservableObject
         "TransferIn" or "TransferOut" => new(operation.Title, operation.Quantity > 0 ? $"{operation.Quantity:N0} hak · {operation.Detail}" : operation.Detail),
         _ => new(operation.Title, operation.Detail)
     };
+}
+
+/// <summary>Takvim sinif turu suzgeci secenegi: ekranda Turkce etiket, sunucuya anahtar gider.</summary>
+public sealed record ClassKindFilterOption(string Label, string? Value)
+{
+    public override string ToString() => Label;
 }

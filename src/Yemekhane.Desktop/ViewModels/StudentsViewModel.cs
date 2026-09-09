@@ -116,6 +116,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private string formStudentNo = "", formFirstName = "", formLastName = "";
     private string? formNationalId, formAddress, formNotes, formFingerprintId, formPid;
     private string? formCardNumber, formPrintedNumber;
+    private readonly IStudentFormPreferences formPreferences;
+    private bool isFieldChooserOpen;
     // Veli: sicil kartindan girilir. Ogrenciyle birlikte kaydedilir (bkz. CommitParentAsync).
     private string? formParentName, formParentPhone;
     private Guid? parentId;
@@ -123,9 +125,14 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private readonly IFileDialogService fileDialog;
 
     public StudentsViewModel(IStudentApiClient api, IShellNavigationService navigation, IEnumerable<string> permissions,
-        bool task43Available = false, ICardReadEventSource? cardReadSource = null, IFileDialogService? fileDialog = null)
+        bool task43Available = false, ICardReadEventSource? cardReadSource = null, IFileDialogService? fileDialog = null,
+        IStudentFormPreferences? formPreferences = null)
     {
         this.api = api; this.navigation = navigation; this.permissions = permissions.ToHashSet(StringComparer.Ordinal);
+        // Okulun kullanmadigi alanlar KALICI olarak gizlenebilir; tercih diske yazilir.
+        this.formPreferences = formPreferences ?? new AllFieldsVisible();
+        FormFields = [.. StudentFormFields.All.Select(x => new StudentFieldToggle(x.Field, x.Label,
+            this.formPreferences.IsVisible(x.Field), OnFieldToggled))];
         // Varsayilan gercek diyalog: App.xaml.cs'e dokunmadan uretimde calisir; testler kendi sahtesini verir.
         this.fileDialog = fileDialog ?? new FileDialogService();
         FormClass = new LookupPickerViewModel(LookupKind.Class, api);
@@ -340,6 +347,35 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     /// </para>
     /// </summary>
     public string? FormCardNumber { get => formCardNumber; set => Set(ref formCardNumber, value); }
+
+    /// <summary>Bir alan gizlenince/gosterilince tercih diske yazilir ve form guncellenir.</summary>
+    private void OnFieldToggled()
+    {
+        foreach (var toggle in FormFields) formPreferences.SetVisible(toggle.Field, toggle.IsVisible);
+        foreach (var name in new[]
+        {
+            nameof(ShowNationalId), nameof(ShowBirthDate), nameof(ShowDepartment), nameof(ShowJob),
+            nameof(ShowPrintedNumber), nameof(ShowPhoto), nameof(ShowFingerprint), nameof(ShowPid),
+            nameof(ShowAddress), nameof(ShowNotes)
+        }) Raise(name);
+    }
+
+    /// <summary>Formda gosterilecek istege bagli alanlar; kullanici kalici olarak kapatabilir.</summary>
+    public IReadOnlyList<StudentFieldToggle> FormFields { get; }
+    /// <summary>Alan gizleme listesi acik mi (Ayarla dugmesi).</summary>
+    public bool IsFieldChooserOpen { get => isFieldChooserOpen; set => Set(ref isFieldChooserOpen, value); }
+
+    public bool ShowNationalId => formPreferences.IsVisible(StudentFormFields.NationalId);
+    public bool ShowBirthDate => formPreferences.IsVisible(StudentFormFields.BirthDate);
+    public bool ShowDepartment => formPreferences.IsVisible(StudentFormFields.Department);
+    public bool ShowJob => formPreferences.IsVisible(StudentFormFields.Job);
+    public bool ShowPrintedNumber => formPreferences.IsVisible(StudentFormFields.PrintedNumber);
+    public bool ShowPhoto => formPreferences.IsVisible(StudentFormFields.Photo);
+    public bool ShowFingerprint => formPreferences.IsVisible(StudentFormFields.Fingerprint);
+    public bool ShowPid => formPreferences.IsVisible(StudentFormFields.Pid);
+    public bool ShowAddress => formPreferences.IsVisible(StudentFormFields.Address);
+    public bool ShowNotes => formPreferences.IsVisible(StudentFormFields.Notes);
+
     /// <summary>Kartin ON yuzundeki basili numara (orn. 6296); kayip kart bulununca sahibini bulmak icin.</summary>
     public string? FormPrintedNumber { get => formPrintedNumber; set => Set(ref formPrintedNumber, value); }
     /// <summary>Sicil karti alanlari (eski programdaki form): dogum tarihi, parmak izi, PI ID ve dort tanim.</summary>
@@ -1069,5 +1105,22 @@ public static class StudentPhotoImage
         }
         catch (Exception ex) when (ex is NotSupportedException or IOException or ArgumentException or InvalidOperationException)
         { return null; }
+    }
+}
+
+/// <summary>
+/// Formda bir alanin gorunurlugu. Isaret degisince tercih DISKE yazilir; okul her acilista
+/// ayni alanlari yeniden kapatmak zorunda kalmaz.
+/// </summary>
+public sealed class StudentFieldToggle(string field, string label, bool visible, Action? changed = null) : ObservableObject
+{
+    private bool isVisible = visible;
+
+    public string Field { get; } = field;
+    public string Label { get; } = label;
+    public bool IsVisible
+    {
+        get => isVisible;
+        set { if (Set(ref isVisible, value)) changed?.Invoke(); }
     }
 }

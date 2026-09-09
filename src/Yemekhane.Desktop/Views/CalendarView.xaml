@@ -43,12 +43,16 @@
                                TextAlignment="Center" MinWidth="150" Margin="8,0"/>
                     <Button Content="›" Command="{Binding NextMonthCommand}" Style="{StaticResource Action}" AutomationProperties.Name="Sonraki ay"/>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="Kapsam" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/><ComboBox Width="190" ItemsSource="{Binding Scopes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedScope}"/><Button Content="Uygula" Command="{Binding ApplyScopeCommand}" Style="{StaticResource Action}" Margin="7,0,0,0"/></StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><TextBlock Text="Kapsam" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/><ComboBox Width="190" ItemsSource="{Binding Scopes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedScope}"/><TextBlock Text="Sınıf türü" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="10,0,7,0"/><ComboBox Width="190" ItemsSource="{Binding ClassKinds}" DisplayMemberPath="Label" SelectedItem="{Binding SelectedClassKind}" ToolTip="Mutfağa verilen sayı ilkokulundur; anasınıfı ayrı ücretlendirilir." AutomationProperties.Name="Sınıf türü süzgeci"/><Button Content="Uygula" Command="{Binding ApplyScopeCommand}" Style="{StaticResource Action}" Margin="7,0,0,0"/></StackPanel>
             </Grid>
         </controls:PageShell.Filters>
 
         <controls:PageShell.FooterLeft>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"/>
+            <StackPanel>
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"/>
+                <!-- Rakamin kimi kapsadigi gorunur olmali: mutfaga verilen sayi ilkokulundur. -->
+                <TextBlock Text="{Binding ClassKindHint}" Foreground="{StaticResource MutedBrush}"/>
+            </StackPanel>
         </controls:PageShell.FooterLeft>
 
         <Grid>

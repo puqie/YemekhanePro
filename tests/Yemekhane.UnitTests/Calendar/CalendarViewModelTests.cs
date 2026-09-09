@@ -127,14 +127,14 @@ public sealed class CalendarViewModelTests
         public Exception? HolidayError; public int DayQuantity; public List<CalendarOperation> DayOperations = [];
         public Task<IReadOnlyCollection<CalendarScopeOption>> GetScopesAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyCollection<CalendarScopeOption>>([all, new("Class", Guid.NewGuid(), "5A"), new("Group", Guid.NewGuid(), "Sporcular")]);
-        public async Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScopeOption? scope, CancellationToken cancellationToken = default)
+        public async Task<MonthlyCalendar> GetMonthAsync(DateOnly month, CalendarScopeOption? scope, string? classKind = null, CancellationToken cancellationToken = default)
         {
             if (MonthGate is not null) await MonthGate.Task.WaitAsync(cancellationToken);
             if (Fail) throw new HttpRequestException(); MonthCalls++; LastScope = scope; var first = new DateOnly(month.Year, month.Month, 1);
             var days = Enumerable.Range(0, first.AddMonths(1).DayNumber - first.DayNumber).Select(x => new CalendarDaySummary(first.AddDays(x), new(0, 0, 0, 0), [], [], 0, 0, 0)).ToArray();
             return new MonthlyCalendar(first, scope is null ? null : new CalendarScope(scope.ScopeType, scope.ScopeId), days);
         }
-        public Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScopeOption? scope, CancellationToken cancellationToken = default)
+        public Task<CalendarDayDetails> GetDayAsync(DateOnly calendarDate, CalendarScopeOption? scope, string? classKind = null, CancellationToken cancellationToken = default)
         { DayCalls++; return Task.FromResult(new CalendarDayDetails(calendarDate, new(DayQuantity, DayQuantity, DayQuantity, 0), [], DayOperations, [], [], 0, 0, 0)); }
         public Task<HolidayDetails> CreateHolidayAsync(CreateHolidayRequest request, CancellationToken cancellationToken = default)
         {
