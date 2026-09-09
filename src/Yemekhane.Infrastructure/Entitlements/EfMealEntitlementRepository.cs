@@ -226,6 +226,144 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
             .OrderBy(x => x.EntitlementDate).Select(x => new EntitlementDetails(x.Id, x.StudentId, x.MealTypeId, x.EntitlementDate,
                 x.Quantity, x.ConsumedQuantity, x.Quantity - x.ConsumedQuantity, x.Status, x.Source)).ToListAsync(cancellationToken);
 
+    /// <summary>
+    /// Ogrencinin ogun bazinda acik hakedis donemleri. Gruplama VERITABANINDA degil
+    /// hafizada yapilir: SQLite tarafinda DateOnly uzerinde Min/Max toplamasi cevrilemiyor,
+    /// ayrica bir ogrencinin hak satiri en fazla birkac yuz tanedir.
+    /// </summary>
+    public async Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, DateOnly today,
+        CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.MealEntitlements.AsNoTracking()
+            .Where(x => x.StudentId == studentId && x.Status == "Active")
+            .Select(x => new { x.MealTypeId, x.EntitlementDate, x.Quantity, x.ConsumedQuantity })
+            .ToListAsync(cancellationToken);
+        if (rows.Count == 0) return [];
+
+        var student = await dbContext.Students.AsNoTracking().Where(x => x.Id == studentId)
+            .Select(x => new
+            {
+                x.StudentNo,
+                Name = x.FirstName + " " + x.LastName,
+                ClassName = dbContext.Set<SchoolClass>().Where(c => c.Id == x.ClassId).Select(c => c.Name).FirstOrDefault(),
+                Phone = dbContext.Set<Parent>().Where(p => p.StudentId == x.Id && p.IsActive)
+                    .OrderByDescending(p => p.IsPrimary).Select(p => p.NormalizedPhone).FirstOrDefault()
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (student is null) return [];
+
+        var mealNames = await MealNamesAsync(rows.Select(x => x.MealTypeId), cancellationToken);
+        return [.. rows.GroupBy(x => x.MealTypeId)
+            .Select(group => Summarize(group.Key, mealNames.GetValueOrDefault(group.Key, "-"), studentId,
+                student.StudentNo, student.Name, student.ClassName, student.Phone,
+                group.Select(x => (x.EntitlementDate, x.Quantity, x.ConsumedQuantity)), today))
+            .OrderBy(x => x.MealName, StringComparer.CurrentCulture)];
+    }
+
+    /// <summary>
+    /// Hakedisi bitmek uzere olan (ve BITMIS) ogrenciler. Suresi gecmis olanlar esikten
+    /// bagimsiz her zaman girer: bittigini gec fark etmek de ayni derttir.
+    /// </summary>
+    public async Task<IReadOnlyList<EntitlementPeriodSummary>> ExpiringAsync(ExpiringEntitlementQuery query,
+        DateOnly today, CancellationToken cancellationToken)
+    {
+        var rights = dbContext.MealEntitlements.AsNoTracking().Where(x => x.Status == "Active");
+        if (query.MealTypeId.HasValue) rights = rights.Where(x => x.MealTypeId == query.MealTypeId);
+        if (!string.IsNullOrWhiteSpace(query.ClassKind))
+        {
+            var preschoolOnly = query.ClassKind == ClassKinds.Preschool;
+            rights = rights.Where(x => preschoolOnly
+                ? dbContext.Students.Any(s => s.Id == x.StudentId
+                    && dbContext.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool))
+                : !dbContext.Students.Any(s => s.Id == x.StudentId
+                    && dbContext.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool)));
+        }
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var raw = query.Search.Trim();
+            var like = $"%{raw}%";
+            var normalized = $"%{TurkishSearchText.Normalize(raw)}%";
+            rights = rights.Where(x => dbContext.Students.Any(s => s.Id == x.StudentId
+                && (EF.Functions.Like(s.SearchName, normalized)
+                    || EF.Functions.Like(s.StudentNo, like)
+                    || dbContext.Set<SchoolClass>().Any(c => c.Id == s.ClassId
+                        && EF.Functions.Like(c.SearchName, normalized)))));
+        }
+
+        // Yalnizca AKTIF ogrenciler: pasife alinmis ogrencinin yenilenecek hakki yoktur.
+        rights = rights.Where(x => dbContext.Students.Any(s => s.Id == x.StudentId && s.IsActive));
+
+        var rows = await rights
+            .Select(x => new { x.StudentId, x.MealTypeId, x.EntitlementDate, x.Quantity, x.ConsumedQuantity })
+            .ToListAsync(cancellationToken);
+        if (rows.Count == 0) return [];
+
+        var studentIds = rows.Select(x => x.StudentId).Distinct().ToArray();
+        var students = await dbContext.Students.AsNoTracking().Where(x => studentIds.Contains(x.Id))
+            .Select(x => new
+            {
+                x.Id,
+                x.StudentNo,
+                Name = x.FirstName + " " + x.LastName,
+                ClassName = dbContext.Set<SchoolClass>().Where(c => c.Id == x.ClassId).Select(c => c.Name).FirstOrDefault(),
+                Phone = dbContext.Set<Parent>().Where(p => p.StudentId == x.Id && p.IsActive)
+                    .OrderByDescending(p => p.IsPrimary).Select(p => p.NormalizedPhone).FirstOrDefault()
+            })
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        var mealNames = await MealNamesAsync(rows.Select(x => x.MealTypeId), cancellationToken);
+
+        var summaries = rows.GroupBy(x => new { x.StudentId, x.MealTypeId })
+            .Select(group =>
+            {
+                var owner = students.GetValueOrDefault(group.Key.StudentId);
+                return Summarize(group.Key.MealTypeId, mealNames.GetValueOrDefault(group.Key.MealTypeId, "-"),
+                    group.Key.StudentId, owner?.StudentNo ?? "", owner?.Name ?? "", owner?.ClassName, owner?.Phone,
+                    group.Select(x => (x.EntitlementDate, x.Quantity, x.ConsumedQuantity)), today);
+            });
+
+        // Esik: "kac gun icinde bitecek". Suresi GECMIS olanlar (DaysLeft negatif) esikten
+        // bagimsiz girer. Hicbir hakki kalmamis donem listelenmez: yenilenecek bir sey yok.
+        var withinDays = Math.Max(0, query.WithinDays);
+        return [.. summaries
+            .Where(x => x.DaysLeft <= withinDays)
+            .Where(x => x.RemainingQuantity > 0 || x.IsExpired)
+            .OrderBy(x => x.DaysLeft).ThenBy(x => x.StudentName, StringComparer.CurrentCulture)];
+    }
+
+    private async Task<Dictionary<Guid, string>> MealNamesAsync(IEnumerable<Guid> mealTypeIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = mealTypeIds.Distinct().ToArray();
+        return await dbContext.Set<MealType>().AsNoTracking().Where(x => ids.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
+    }
+
+    /// <summary>
+    /// Bir ogunun hak satirlarini tek donem ozetine indirger.
+    ///
+    /// "Kalan" YALNIZCA bugun ve sonrasidir: gecmiste kullanilmayan hak yanmistir ve
+    /// veliye "kalan" diye soylenirse yanlis olur. Yanan miktar ayrica ExpiredQuantity
+    /// olarak tasinir ki kullanici hakkin bosa gittigini de gorebilsin.
+    /// </summary>
+    private static EntitlementPeriodSummary Summarize(Guid mealTypeId, string mealName, Guid studentId,
+        string studentNo, string studentName, string? className, string? parentPhone,
+        IEnumerable<(DateOnly Date, int Quantity, int Consumed)> rows, DateOnly today)
+    {
+        var days = rows.ToList();
+        var firstDate = days.Min(x => x.Date);
+        var lastDate = days.Max(x => x.Date);
+        return new EntitlementPeriodSummary(studentId, studentNo, studentName, className, parentPhone,
+            mealTypeId, mealName,
+            RemainingQuantity: days.Where(x => x.Date >= today).Sum(x => x.Quantity - x.Consumed),
+            ExpiredQuantity: days.Where(x => x.Date < today).Sum(x => x.Quantity - x.Consumed),
+            TotalQuantity: days.Sum(x => x.Quantity),
+            ConsumedQuantity: days.Sum(x => x.Consumed),
+            FirstDate: firstDate,
+            LastDate: lastDate,
+            RenewFrom: lastDate.AddDays(1),
+            DaysLeft: lastDate.DayNumber - today.DayNumber);
+    }
+
     public async Task<bool> TryConsumeAsync(Guid entitlementId, CancellationToken cancellationToken)
     {
         var changed = await dbContext.MealEntitlements.Where(x => x.Id == entitlementId && x.Status == "Active" && x.ConsumedQuantity < x.Quantity)

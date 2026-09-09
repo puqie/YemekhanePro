@@ -85,11 +85,94 @@
             </WrapPanel>
         </Border>
 
-        <UniformGrid Grid.Row="2" Columns="3" Margin="0,0,0,10">
+        <!-- Row 2 tek bir StackPanel: yeni SATIR eklenmez, cunku alttaki ogeler
+             Grid.Row="3"/"4" diye SABIT indeksler; satir eklemek duzeni sessizce kaydirirdi. -->
+        <StackPanel Grid.Row="2">
+        <UniformGrid Columns="3" Margin="0,0,0,10">
             <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12" Margin="0,0,5,0"><StackPanel><TextBlock Text="TOPLAM HAK" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding TotalQuantity, StringFormat=N0}" FontSize="20" FontWeight="SemiBold"/></StackPanel></Border>
             <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12" Margin="5,0"><StackPanel><TextBlock Text="KULLANILAN" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding ConsumedQuantity, StringFormat=N0}" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/></StackPanel></Border>
             <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="12" Margin="5,0,0,0"><StackPanel><TextBlock Text="KALAN" Foreground="{StaticResource MutedBrush}" FontSize="10"/><TextBlock Text="{Binding RemainingQuantity, StringFormat=N0}" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource InfoBrush}"/></StackPanel></Border>
         </UniformGrid>
+
+        <!-- SECILI OGRENCININ DONEMI: "veli soruyor, kac ogun kaldi, ne zaman bitiyor".
+             Tek ogrenci seciliyken gorunur; cok secimde hangi ogrencinin rakami oldugu
+             belirsiz olacagi icin gizlenir. -->
+        <ItemsControl ItemsSource="{Binding Periods}" Margin="0,0,0,10"
+                      Visibility="{Binding HasPeriods, Converter={StaticResource BoolToVisibility}}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{StaticResource InfoSoftBrush}" CornerRadius="6" Padding="12,10" Margin="0,0,0,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock FontWeight="SemiBold">
+                                    <Run Text="{Binding StudentName, Mode=OneWay}"/>
+                                    <Run Text=" — "/>
+                                    <Run Text="{Binding MealName, Mode=OneWay}"/>
+                                </TextBlock>
+                                <TextBlock Text="{Binding PeriodText}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding RenewFromText}" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
+                                <TextBlock Text="KALAN" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
+                                <TextBlock Text="{Binding RemainingText}" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource InfoBrush}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                <TextBlock Text="SON GÜN" Foreground="{StaticResource MutedBrush}" FontSize="10"/>
+                                <TextBlock Text="{Binding LastDateText}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding DaysLeftText}" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- BITISI YAKLASANLAR: veli aramadan ONCE yenilemeyi gormek icin. Suresi coktan
+             gecmis olanlar esikten bagimsiz listeye girer; gec fark etmek de ayni derttir. -->
+        <Expander IsExpanded="{Binding IsExpiringOpen}" Margin="0,0,0,10"
+                  Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibility}}">
+            <Expander.Header>
+                <TextBlock Text="Bitişi yaklaşan hakedişler" FontWeight="SemiBold"/>
+            </Expander.Header>
+            <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12">
+                <StackPanel>
+                    <WrapPanel Margin="0,0,0,8">
+                        <TextBlock Text="Kaç gün içinde bitecekler:" VerticalAlignment="Center"/>
+                        <TextBox Text="{Binding ExpiringDaysText, UpdateSourceTrigger=LostFocus}" Width="60" Margin="8,0,0,0"
+                                 AutomationProperties.Name="Gün eşiği"/>
+                        <TextBlock Text="{Binding ExpiringMessage}" Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
+                    </WrapPanel>
+                    <DataGrid ItemsSource="{Binding Expiring}" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" MaxHeight="260"
+                              Visibility="{Binding HasExpiring, Converter={StaticResource BoolToVisibility}}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ÖĞRENCİ" Binding="{Binding StudentName}" Width="*" MinWidth="140"/>
+                            <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="56"/>
+                            <DataGridTextColumn Header="ÖĞÜN" Binding="{Binding MealName}" Width="Auto" MinWidth="90"/>
+                            <DataGridTextColumn Header="KALAN" Binding="{Binding RemainingText}" Width="Auto" MinWidth="70"/>
+                            <DataGridTextColumn Header="SON GÜN" Binding="{Binding LastDateText}" Width="Auto" MinWidth="110"/>
+                            <DataGridTextColumn Header="DURUM" Binding="{Binding DaysLeftText}" Width="Auto" MinWidth="110"/>
+                            <DataGridTextColumn Header="VELİ TEL" Binding="{Binding ParentPhone}" Width="Auto" MinWidth="100"/>
+                        </DataGrid.Columns>
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <!-- Suresi GECMIS satirlar kirmizi: yenileme gecikmis demektir. -->
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsExpired}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+        </Expander>
+        </StackPanel>
 
         <Border Grid.Row="3" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
             <Grid>
@@ -190,10 +273,24 @@
                         </DataGrid>
                     </Grid>
                     <WrapPanel Margin="0,6,0,0">
-                        <TextBlock Text="{Binding PickerSummary}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding PickerSummary}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                         <Button Content="Seçimi temizle" Command="{Binding ClearPickerCommand}" Padding="8,3" Margin="10,0,0,0"
                                 Visibility="{Binding HasPickerRows, Converter={StaticResource BoolToVisibility}}"/>
+                        <!-- Varsayilan KAPALI: yeni arama secimi sifirlar. Acikken kullanici
+                             gormedigi ogrenciye hak verebiliyordu; cogul sinif secimi icin
+                             bilerek isaretlenir. -->
+                        <CheckBox Content="Seçimi koru (birden çok sınıf)" IsChecked="{Binding KeepSelectionAcrossSearches}"
+                                  VerticalAlignment="Center" Margin="12,0,0,0"
+                                  ToolTip="İşaretliyse yeni arama önceki seçimi silmez; birden çok sınıfa aynı anda hak vermek için."
+                                  AutomationProperties.Name="Seçimi koru"/>
                     </WrapPanel>
+                    <!-- GORUNMEYEN SECIM UYARISI: onceki aramadan tasinan secili ogrenciler
+                         adiyla yazilir. Bu serit olmadan kullanici "ela" ararken hala secili
+                         olan "ceylin"e de hak veriyor ve bunu fark etmiyordu. -->
+                    <Border Background="{StaticResource WarningSoftBrush}" Padding="10,8" Margin="0,6,0,0" CornerRadius="4"
+                            Visibility="{Binding HasHiddenSelection, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding HiddenSelectionWarning}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    </Border>
                     <TextBlock Text="Öğrenci numaraları (elle)" Style="{StaticResource Label}" Margin="0,10,0,0"/>
                     <Border Background="{StaticResource InfoSoftBrush}" Padding="10,8" x:Name="SelectionSummaryPanel"
                             Visibility="{Binding SelectedItems.Count, Converter={x:Static local:SelectionCountToVisibilityConverter.Instance}}">

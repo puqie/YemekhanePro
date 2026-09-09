@@ -25,6 +25,14 @@ public sealed class MealEntitlementsController(MealEntitlementService service) :
     [HttpGet("student/{studentId:guid}")]
     [PermissionAuthorize(Permissions.EntitlementsManage)]
     public Task<IReadOnlyList<EntitlementDetails>> Student(Guid studentId, DateOnly startsOn, DateOnly endsOn, CancellationToken cancellationToken) => service.ListAsync(studentId, startsOn, endsOn, cancellationToken);
+    /// <summary>Ogrencinin ogun bazinda kalan hakki, bitis gunu ve yenileme gunu.</summary>
+    [HttpGet("student/{studentId:guid}/periods")]
+    [PermissionAuthorize(Permissions.EntitlementsManage)]
+    public Task<IReadOnlyList<EntitlementPeriodSummary>> Periods(Guid studentId, CancellationToken cancellationToken) => service.PeriodsAsync(studentId, cancellationToken);
+    /// <summary>Hakedisi bitmek uzere olan (ve bitmis) ogrenciler; yenileme takibi.</summary>
+    [HttpGet("expiring")]
+    [PermissionAuthorize(Permissions.EntitlementsManage)]
+    public Task<IReadOnlyList<EntitlementPeriodSummary>> Expiring([FromQuery] ExpiringEntitlementQuery query, CancellationToken cancellationToken) => service.ExpiringAsync(query, cancellationToken);
     [HttpPost("{id:guid}/consume")]
     [PermissionAuthorize(Permissions.EntitlementsManage)]
     public Task<bool> Consume(Guid id, CancellationToken cancellationToken) => service.TryConsumeAsync(id, cancellationToken);

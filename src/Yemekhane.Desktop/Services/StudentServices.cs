@@ -10,6 +10,7 @@ using Yemekhane.Application.Common;
 using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Organization;
 using Yemekhane.Application.Parents;
+using Yemekhane.Application.Entitlements;
 using Yemekhane.Application.Students;
 using Yemekhane.Devices.Abstractions;
 
@@ -22,6 +23,14 @@ public interface IStudentApiClient
     Task<StudentDetails> SaveAsync(Guid? id, SaveStudentRequest request, CancellationToken cancellationToken = default);
     Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Ogrencinin ogun bazinda KALAN hakki, donem bitis gunu ve yenileme gunu.
+    /// "Veli soruyor: kac ogun kaldi, ne zaman bitiyor" sorusunun cevabi.
+    /// Varsayilan govde bos liste: yalnizca arama icin kullanan sahte istemciler
+    /// bunu uygulamak zorunda kalmasin.
+    /// </summary>
+    Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<EntitlementPeriodSummary>>([]);
     Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default);
     Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default);
     /// <summary>
@@ -92,6 +101,9 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         using var response = await client.SendAsync(message, cancellationToken);
         await EnsureAsync(response, cancellationToken);
     }
+
+    public Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        GetAsync<IReadOnlyList<EntitlementPeriodSummary>>($"api/meal-entitlements/student/{studentId}/periods", cancellationToken);
 
     public async Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default)
     {

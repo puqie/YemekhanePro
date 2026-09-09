@@ -283,6 +283,42 @@
                             <TextBox Grid.Row="1" Grid.Column="6" Style="{StaticResource Field}" MinWidth="0" Text="{Binding SelectedStudent.ParentPhone, Mode=OneWay}" IsReadOnly="True"/>
                         </Grid>
 
+                        <!-- HAKEDIS DONEMI: "veli arayip kac ogun kaldi, yuklemesi ne zaman
+                             bitiyor diye soruyor" ihtiyaci. Once bu bilgi hicbir ekranda yoktu;
+                             kullanici tarih araligini genisletip satirlari tek tek sayiyordu.
+                             Her ogun ayri satirdir (ogle ve kahvalti ayri biter). -->
+                        <ItemsControl ItemsSource="{Binding Periods}" Margin="0,10,0,0"
+                                      Visibility="{Binding HasPeriods, Converter={StaticResource BoolToVisibility}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource SunkenBrush}" CornerRadius="6" Padding="10,8" Margin="0,0,0,6">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding MealName}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                <!-- Kalan ogun: velinin sordugu rakam, en buyuk punto. -->
+                                                <TextBlock Grid.Column="1" Text="{Binding RemainingText}" FontSize="18" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource InfoBrush}"/>
+                                            </Grid>
+                                            <TextBlock Text="{Binding UsageText}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding PeriodText}" Margin="0,4,0,0"/>
+                                            <!-- Son gun ve "kac gun kaldi": yenileme karari bu iki satirdan verilir. -->
+                                            <TextBlock Margin="0,2,0,0">
+                                                <Run Text="Son gün:"/>
+                                                <Run Text="{Binding LastDateText, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                <Run Text=" · "/>
+                                                <Run Text="{Binding DaysLeftText, Mode=OneWay}"/>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding RenewFromText}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,2,0,0"/>
+                                            <!-- Yanan hak varsa gorunur: kullanilmadan gecen gunler "kalan"a sayilmaz. -->
+                                            <TextBlock Text="{Binding ExpiredText}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,2,0,0"
+                                                       Visibility="{Binding HasExpiredQuantity, Converter={StaticResource BoolToVisibility}}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <!-- Bolum / Gorev ozeti (eski programdaki Sicil Karti alanlari). Adlar tanim
                              listelerinden cozulur; ikisi de bosken satir yer kaplamasin diye kisa tutulur. -->
                         <Grid>

@@ -33,6 +33,8 @@ public static class PageHelpTexts
             "Formda kullanmadığınız alanları \"Alanlar\" düğmesinden kalıcı olarak gizleyebilirsiniz; gizlenen alanın kayıtlı değeri silinmez.",
             "F2 arama kutusuna odaklanır. F3 \"Kartla Öğrenci Bul\" penceresini açar; bunun için kart yetkisi (cards.manage) ve bağlı bir kart okuyucu gerekir.",
             "Bir öğrenciye tıklayınca detay panelinde hakediş, ödeme ve geçiş geçmişi görünür.",
+            "Detay panelinde her öğün için dönem kutusu vardır: kalan öğün, dönemin ilk/son günü ve yenilemenin başlaması gereken gün. Veli \"kaç öğün kaldı, ne zaman bitiyor\" diye sorduğunda buraya bakın.",
+            "Kalan öğün BUGÜNDEN itibaren sayılır; geçmişte kullanılmadan geçen günler ayrıca \"kullanılmadan geçti\" olarak yazılır.",
         ]),
         [ShellRoutes.Cash] = new("Kasa",
         [
@@ -55,6 +57,10 @@ public static class PageHelpTexts
             "Aynı öğrenciye aynı gün ve aynı öğün için tekrar hak verirseniz ikinci bir hak açılmaz; var olan kayıt güncellenir.",
             "Genel Bakış'ta \"HAK SAHİBİ\" o günkü öğrenci sayısı, \"HAKEDİŞ\" ise hak adedidir: bir öğrenciye iki öğün verilirse hak sahibi 1, hakediş 2 görünür.",
             "Hak verdikten sonra liste kendiliğinden tazelenir ve arama kutusu temizlenir; yeni satırı görmek için tekrar hak vermeniz gerekmez.",
+            "Bir öğrenci seçince üstte dönem özeti çıkar: kalan öğün, dönemin son günü ve yenilemenin başlaması gereken gün.",
+            "\"Bitişi yaklaşan hakedişler\" bölümü kaç gün içinde bitecekleri listeler; süresi geçmiş olanlar gün eşiğinden bağımsız olarak kırmızı görünür.",
+            "Hızlı Hakediş'te YENİ ARAMA önceki seçimi siler; birden çok sınıfa aynı anda hak verecekseniz \"Seçimi koru\" kutusunu işaretleyin.",
+            "Seçimi koru işaretliyken aramada görünmeyen seçili öğrenciler sarı şeritte adıyla uyarı olarak gösterilir.",
         ]),
         [ShellRoutes.HolidayTransfer] = new("Takvim / Tatil",
         [

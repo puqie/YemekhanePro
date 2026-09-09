@@ -99,6 +99,35 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     /// yuzunden hemen geri kapaniyordu (SelectionUnit=FullRow + Extended).
     /// </summary>
     public ObservableCollection<MealEntitlementListItem> SelectedItems { get; } = [];
+
+    /// <summary>
+    /// Secili ogrencinin ogun bazinda ACIK donemleri: kalan ogun, bitis gunu, yenileme
+    /// gunu. Veli telefondayken ekran degistirmeden bakilsin diye burada da gosterilir.
+    /// </summary>
+    public ObservableCollection<EntitlementPeriodViewModel> Periods { get; } = [];
+    public bool HasPeriods => Periods.Count > 0;
+
+    /// <summary>
+    /// Hakedisi bitmek uzere olan (ve BITMIS) ogrenciler. Veli aramadan once yenilemeyi
+    /// gorebilmek icin; suresi coktan gecmis olanlar esikten bagimsiz listeye girer.
+    /// </summary>
+    public ObservableCollection<EntitlementPeriodViewModel> Expiring { get; } = [];
+    public bool HasExpiring => Expiring.Count > 0;
+    public bool IsExpiringOpen { get => isExpiringOpen; set { if (Set(ref isExpiringOpen, value) && value) _ = LoadExpiringAsync(); } }
+    public bool IsExpiringBusy { get => isExpiringBusy; private set => Set(ref isExpiringBusy, value); }
+    public string? ExpiringMessage { get => expiringMessage; private set => Set(ref expiringMessage, value); }
+
+    /// <summary>Kac gun icinde bitecekler listelensin (varsayilan 10).</summary>
+    public string ExpiringDaysText
+    {
+        get => expiringDaysText;
+        set { if (Set(ref expiringDaysText, value)) _ = LoadExpiringAsync(); }
+    }
+
+    private bool isExpiringOpen;
+    private bool isExpiringBusy;
+    private string? expiringMessage;
+    private string expiringDaysText = "10";
     public IReadOnlyList<EntitlementStatusOption> Statuses { get; } = [new("Tümü", null), new("Aktif", "Active"), new("İptal", "Cancelled"), new("Aktarıldı", "Transferred")];
     public IReadOnlyList<EntitlementTargetOption> TargetTypes { get; } = [new("Manuel öğrenciler", "Manual"), new("Sınıf", "Class"), new("Kademe", "Grade"), new("Grup", "Group"), new("Tüm aktif öğrenciler", "All")];
     public bool CanManage => canManage;
@@ -285,6 +314,9 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     {
         SelectedItems.Clear();
         foreach (var row in Items.Where(x => x.IsSelected)) SelectedItems.Add(row.Item);
+        // Tek ogrenci secildiginde donem ozeti gosterilir: "kac ogun kaldi, ne zaman
+        // bitiyor". Cok ogrenci secilince ozet anlamsizdir, temizlenir.
+        _ = LoadPeriodsAsync();
         Raise(nameof(CancelConfirmationText)); Raise(nameof(HasSelection));
         (ConfirmCancelCommand as AsyncCommand)?.Refresh();
         (ClearSelectionCommand as RelayCommand)?.Refresh();
@@ -294,6 +326,56 @@ public sealed class MealEntitlementsViewModel : ObservableObject
 
     /// <summary>Satir onay kutusu disaridan kurulduysa (testler) secimi yeniden hesaplar.</summary>
     public void RebuildSelectionForTests() => RebuildSelection();
+    /// <summary>
+    /// Secili TEK ogrencinin donem ozetini yukler. Birden fazla (ya da hic) ogrenci
+    /// seciliyse ozet temizlenir: hangi ogrencinin rakami oldugu belirsiz olurdu.
+    /// </summary>
+    private async Task LoadPeriodsAsync()
+    {
+        var studentIds = SelectedItems.Select(x => x.StudentId).Distinct().ToArray();
+        if (studentIds.Length != 1)
+        {
+            Periods.Clear();
+            Raise(nameof(HasPeriods));
+            return;
+        }
+        var studentId = studentIds[0];
+        try
+        {
+            var periods = await api.PeriodsAsync(studentId);
+            // Yanit gecikirken secim degismis olabilir; eski sonuc yazilmamalidir.
+            if (SelectedItems.Select(x => x.StudentId).Distinct().SingleOrDefault() != studentId) return;
+            Periods.Clear();
+            foreach (var period in periods) Periods.Add(new EntitlementPeriodViewModel(period));
+        }
+        catch (Exception)
+        {
+            // Yutulur: ozet bilgilendirmedir, hakedis ekranini engellememelidir.
+            Periods.Clear();
+        }
+        Raise(nameof(HasPeriods));
+    }
+
+    /// <summary>Bitisi yaklasan (ve bitmis) hakedisleri yukler.</summary>
+    private async Task LoadExpiringAsync()
+    {
+        if (!canManage) return;
+        IsExpiringBusy = true;
+        ExpiringMessage = null;
+        try
+        {
+            var days = int.TryParse(ExpiringDaysText, NumberStyles.Integer, CultureInfo.CurrentCulture, out var parsed)
+                ? parsed
+                : 10;
+            var rows = await api.ExpiringAsync(new ExpiringEntitlementQuery(WithinDays: Math.Clamp(days, 0, 365)));
+            Expiring.Clear();
+            foreach (var row in rows) Expiring.Add(new EntitlementPeriodViewModel(row));
+            if (Expiring.Count == 0) ExpiringMessage = "Bu süre içinde biten hakediş yok.";
+        }
+        catch (Exception ex) { ExpiringMessage = Friendly(ex, "Bitişi yaklaşanlar yüklenemedi."); }
+        finally { IsExpiringBusy = false; Raise(nameof(HasExpiring)); }
+    }
+
     public ICommand ClearSelectionCommand { get; }
 
     /// <summary>Tum secimi kaldirir ("Seçimi temizle").</summary>
@@ -449,10 +531,47 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     public ObservableCollection<StudentPickerRowViewModel> StudentPicker { get; } = [];
     public string? StudentPickerSearch { get => studentPickerSearch; set => Set(ref studentPickerSearch, value); }
     public bool IsPickerBusy { get => isPickerBusy; private set => Set(ref isPickerBusy, value); }
+    private bool keepSelectionAcrossSearches;
     public bool HasPickerRows => StudentPicker.Count > 0;
-    public string PickerSummary => StudentPicker.Count(x => x.IsSelected) is var n && n > 0
-        ? $"Seçili: {n} öğrenci"
-        : "Ad, sınıf ya da numara yazıp Ara'ya basın.";
+    /// <summary>
+    /// Secili ogrencilerin ADLARINI yazar. Once yalnizca "Seçili: 2 öğrenci" diyordu;
+    /// kullanici o ikincinin kim oldugunu gormedigi icin yanlis ogrenciye hak veriyordu.
+    /// </summary>
+    public string PickerSummary
+    {
+        get
+        {
+            var names = StudentPicker.Where(x => x.IsSelected).Select(x => x.Name).ToArray();
+            if (names.Length == 0) return "Ad, sınıf ya da numara yazıp Ara'ya basın.";
+            return names.Length <= 3
+                ? $"Seçili ({names.Length}): {string.Join(", ", names)}"
+                : $"Seçili ({names.Length}): {string.Join(", ", names.Take(3))} ve {names.Length - 3} kişi daha";
+        }
+    }
+
+    /// <summary>
+    /// Yeni aramada onceki secim korunsun mu. VARSAYILAN KAPALI: acik oldugunda
+    /// kullanici gormedigi bir ogrenciye hak verebiliyordu. Cogul sinif secimi icin
+    /// bilerek acilir.
+    /// </summary>
+    public bool KeepSelectionAcrossSearches
+    {
+        get => keepSelectionAcrossSearches;
+        set { if (Set(ref keepSelectionAcrossSearches, value)) Raise(nameof(PickerSummary)); }
+    }
+
+    /// <summary>
+    /// Listede GORUNMEYEN secili ogrenci sayisi. Sifirdan buyukse ekranda uyari cikar:
+    /// hak, kullanicinin o an bakmadigi ogrenciye de yaziliyor demektir.
+    /// </summary>
+    public int HiddenSelectedCount => StudentPicker.Count(x => x.IsSelected && !x.MatchesCurrentSearch);
+
+    /// <summary>Gorunmeyen secim VARSA ekranda sari uyari serifi cikar.</summary>
+    public bool HasHiddenSelection => HiddenSelectedCount > 0;
+
+    public string HiddenSelectionWarning => HiddenSelectedCount == 0 ? ""
+        : $"DİKKAT: Aramada görünmeyen {HiddenSelectedCount} seçili öğrenci var; hak onlara da yazılır. "
+          + $"Seçili: {string.Join(", ", StudentPicker.Where(x => x.IsSelected && !x.MatchesCurrentSearch).Select(x => x.Name))}";
 
     public ICommand SearchStudentsCommand { get; private set; } = null!;
     public ICommand ClearPickerCommand { get; private set; } = null!;
@@ -467,11 +586,22 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         IsPickerBusy = true;
         try
         {
-            var chosen = StudentPicker.Where(x => x.IsSelected).ToDictionary(x => x.Id, x => x);
+            // Yeni arama secimi SIFIRLAR. Onceden onceki secim sessizce korunuyordu:
+            // "ceylin" arayip secen, sonra "ela" arayan kullanici Ceylin hala secili
+            // oldugu icin IKISINE birden hak veriyordu -- ve bunu fark etmiyordu, cunku
+            // listede aradigi isme bakiyordu. Yanlis ogrenciye yukleme yapmak, ikinci bir
+            // arama yapmaktan cok daha pahali bir hatadir.
+            //
+            // Cogul secim gerekiyorsa (once 5/A sonra 5/B) kullanici "Seçimi koru"
+            // kutusunu isaretler; o zaman eski davranis gecerlidir.
+            var chosen = KeepSelectionAcrossSearches
+                ? StudentPicker.Where(x => x.IsSelected).ToDictionary(x => x.Id, x => x)
+                : [];
             var result = await api.SearchStudentsAsync(term);
             StudentPicker.Clear();
-            // Onceki secim KORUNUR: kullanici once 5/A arayip secip sonra 5/B arayabilir.
-            foreach (var row in chosen.Values) StudentPicker.Add(row);
+            // Tasinan secili satirlar "bu aramada yok" diye isaretlenir; ekran bunlari
+            // sari uyari serifinde adiyla gosterir.
+            foreach (var row in chosen.Values) { row.MatchesCurrentSearch = false; StudentPicker.Add(row); }
             foreach (var item in result.Items.Where(x => !chosen.ContainsKey(x.Id)))
                 StudentPicker.Add(new StudentPickerRowViewModel(item, OnPickerChanged));
             if (StudentPicker.Count == chosen.Count) PreviewMessage = "Bu aramayla eşleşen aktif öğrenci bulunamadı.";
@@ -492,6 +622,8 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     private void OnPickerChanged()
     {
         Raise(nameof(HasPickerRows)); Raise(nameof(PickerSummary));
+        Raise(nameof(HiddenSelectedCount)); Raise(nameof(HasHiddenSelection));
+        Raise(nameof(HiddenSelectionWarning));
         // Yalnizca NUMARASI OLAN secimler kutuya yazilir; numarasiz ogrenci kimligiyle
         // gonderilir (bkz. BuildGrant). Bos numara yazmak listeyi bozardi.
         var selected = StudentPicker.Where(x => x.IsSelected && !string.IsNullOrWhiteSpace(x.StudentNo))
@@ -595,5 +727,12 @@ public sealed class StudentPickerRowViewModel(StudentListItem item, Action? chan
     public string Name => (item.FirstName + " " + item.LastName).Trim();
     public string ClassName => string.IsNullOrWhiteSpace(item.ClassName) ? "" : item.ClassName!;
     public string SectionName => item.SectionName ?? "";
+
+    /// <summary>
+    /// Bu satir SON aramanin sonucunda mi geldi. Onceki aramadan tasinan secili satirlar
+    /// icin false olur ve ekranda "görünmeyen seçim" uyarisini tetikler: kullanici
+    /// bakmadigi bir ogrenciye sessizce hak vermesin.
+    /// </summary>
+    public bool MatchesCurrentSearch { get; set; } = true;
     public bool IsSelected { get => isSelected; set { if (Set(ref isSelected, value)) changed?.Invoke(); } }
 }

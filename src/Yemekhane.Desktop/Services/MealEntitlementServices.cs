@@ -27,6 +27,17 @@ public interface IMealEntitlementApiClient
     Task<EntitlementPreview> PreviewAsync(EntitlementGrantRequest request, CancellationToken cancellationToken = default);
     Task<BulkEntitlementResult> ApplyAsync(ApplyEntitlementGrantRequest request, CancellationToken cancellationToken = default);
     Task<CancelEntitlementsResult> CancelAsync(CancelEntitlementsRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ogrencinin ogun bazinda kalan hakki, bitis gunu ve yenileme gunu. Veli telefondayken
+    /// bakilacak ozet. Varsayilan govde BOS liste doner: eski sahte istemciler kirilmasin.
+    /// </summary>
+    Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<EntitlementPeriodSummary>>([]);
+
+    /// <summary>Hakedisi bitmek uzere olan (ve bitmis) ogrenciler.</summary>
+    Task<IReadOnlyList<EntitlementPeriodSummary>> ExpiringAsync(ExpiringEntitlementQuery query, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<EntitlementPeriodSummary>>([]);
 }
 
 public sealed class MealEntitlementApiClient(HttpClient client, IJwtSession session) : IMealEntitlementApiClient
@@ -76,6 +87,23 @@ public sealed class MealEntitlementApiClient(HttpClient client, IJwtSession sess
         PostAsync<ApplyEntitlementGrantRequest, BulkEntitlementResult>("api/meal-entitlements/apply", request, cancellationToken);
     public Task<CancelEntitlementsResult> CancelAsync(CancelEntitlementsRequest request, CancellationToken cancellationToken = default) =>
         PostAsync<CancelEntitlementsRequest, CancelEntitlementsResult>("api/meal-entitlements/cancel", request, cancellationToken);
+
+    public Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        GetAsync<IReadOnlyList<EntitlementPeriodSummary>>($"api/meal-entitlements/student/{studentId}/periods", cancellationToken);
+
+    public Task<IReadOnlyList<EntitlementPeriodSummary>> ExpiringAsync(ExpiringEntitlementQuery query, CancellationToken cancellationToken = default)
+    {
+        var values = new Dictionary<string, string?>
+        {
+            ["withinDays"] = query.WithinDays.ToString(CultureInfo.InvariantCulture),
+            ["mealTypeId"] = query.MealTypeId?.ToString(),
+            ["classKind"] = query.ClassKind,
+            ["search"] = query.Search
+        };
+        return GetAsync<IReadOnlyList<EntitlementPeriodSummary>>("api/meal-entitlements/expiring?" + string.Join("&", values
+            .Where(x => !string.IsNullOrWhiteSpace(x.Value))
+            .Select(x => $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value!)}")), cancellationToken);
+    }
 
     private async Task<T> GetAsync<T>(string url, CancellationToken cancellationToken)
     {

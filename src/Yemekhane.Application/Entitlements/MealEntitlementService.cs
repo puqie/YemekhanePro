@@ -127,6 +127,38 @@ public sealed class MealEntitlementService(
         return dates;
     }
 
+    /// <summary>
+    /// "Bu cocugun kac ogun hakki kaldi, yuklemesi ne zaman bitiyor?" -- veli telefondayken
+    /// bakilacak ozet. Ogun bazinda tek satir dondurur.
+    /// </summary>
+    public Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId,
+        CancellationToken cancellationToken = default) =>
+        repository.PeriodsAsync(studentId, SchoolToday(), cancellationToken);
+
+    /// <summary>
+    /// Hakedisi bitmek uzere olan ogrenciler; veli aramadan once yenilemeyi gorebilmek icin.
+    /// Suresi coktan gecmis olanlar da listeye girer.
+    /// </summary>
+    public Task<IReadOnlyList<EntitlementPeriodSummary>> ExpiringAsync(ExpiringEntitlementQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        if (query.WithinDays is < 0 or > 365)
+            throw new RequestValidationException("Gün eşiği 0-365 arasında olmalıdır.");
+        return repository.ExpiringAsync(query, SchoolToday(), cancellationToken);
+    }
+
+    /// <summary>Okul saatiyle bugun: hak sayimi sunucunun saat diliminden bagimsiz olmalidir.</summary>
+    private static DateOnly SchoolToday() =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, Istanbul).DateTime);
+
+    private static readonly TimeZoneInfo Istanbul = FindIstanbulTimeZone();
+
+    private static TimeZoneInfo FindIstanbulTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time"); }
+    }
+
     private static string RequiredSource(string source) => string.IsNullOrWhiteSpace(source) ? "Manual" : source.Trim();
     private static string Token(EntitlementGrantRequest request, IReadOnlyCollection<Guid> students,
         IReadOnlyCollection<DateOnly> dates, string stateHash)

@@ -399,6 +399,32 @@ public static class AiUserGuidePrompt
         Uygulamadan sonra liste kendiliğinden tazelenir ve arama kutusu
         temizlenir; kullanıcının "olmadı" sanıp tekrar vermesi gerekmez.
 
+        DONEM OZETI (kalan ogun / bitis gunu): Hakedisler ekraninda TEK ogrenci
+        secildiginde ustte, Ogrenciler ekraninda ise ogrenciye tiklayinca sag
+        detay panelinde her OGUN icin bir kutu cikar: "KALAN" (kac ogun kaldi),
+        donem araligi (ilk gun - son gun), "SON GÜN" ve "Yenileme: ... tarihinden
+        itibaren". Veli "cocugumun kac ogun hakki kaldi, yuklemesi ne zaman
+        bitiyor" diye sordugunda bakilacak yer burasidir.
+
+        KALAN nasil sayilir: YALNIZCA bugun ve sonrasi. Gecmiste kullanilmadan
+        gecen gunler "kalan"a GIRMEZ (16 Eylul'un yemegi 20 Eylul'de yenmez);
+        onlar ayrica "... ogun kullanilmadan gecti" satirinda gorunur. Iptal
+        edilmis haklar hic sayilmaz.
+
+        BITISI YAKLASANLAR: Hakedisler ekranindaki "Bitişi yaklaşan hakedişler"
+        acilir bolumu, gun esigi (varsayilan 10) icinde bitecek hakedisleri
+        listeler: ogrenci, sinif, ogun, kalan, son gun, durum ve veli telefonu.
+        Suresi COKTAN GECMIS olanlar esikten bagimsiz HER ZAMAN listeye girer ve
+        satirlari KIRMIZI gorunur -- bittigini gec fark etmek de ayni derttir.
+        Pasif ogrenciler listeye girmez.
+
+        SECIM SIFIRLAMA (Hizli Hakedis): YENI ARAMA onceki secimi SILER. Onceden
+        secim sessizce tasiniyordu; "ceylin" arayip secen, sonra "ela" arayan
+        kullanici Ceylin hala secili oldugu icin IKISINE birden hak veriyordu.
+        Birden cok sinifa ayni anda hak vermek icin "Seçimi koru" kutusu
+        isaretlenir; o zaman aramada gorunmeyen secili ogrenciler SARI UYARI
+        seridinde ADIYLA gosterilir. Secim ozeti de artik adlari yazar.
+
         Doğrulama hataları: "Öğün seçilmelidir.", "Günlük adet 1-10 arasında
         bir tam sayı olmalıdır.", "Gün sayısı 1 veya daha büyük bir tam sayı
         olmalıdır.", "Seçilen günlerle bu süre hesaplanamıyor. Cumartesi/

@@ -172,6 +172,14 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<StudentListItem> Students { get; } = [];
     public ObservableCollection<StudentDetailTabViewModel> Tabs { get; } = [];
+
+    /// <summary>
+    /// Ogrencinin ogun bazinda ACIK hakedis donemleri: kalan ogun, bitis gunu, yenileme
+    /// gunu. Veli telefonda "kac ogun kaldi, ne zaman bitiyor" diye sordugunda bakilacak
+    /// yer burasi; once bu bilgi hicbir ekranda yoktu.
+    /// </summary>
+    public ObservableCollection<EntitlementPeriodViewModel> Periods { get; } = [];
+    public bool HasPeriods => Periods.Count > 0;
     public IReadOnlyList<StudentStatusOption> Statuses { get; } =
         [new("Tümü", null), new("Aktif", true), new("Pasif", false)];
     public string? Search { get => search; set { if (Set(ref search, value)) DebounceSearch(); } }
@@ -545,6 +553,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         // Fotograf ve tanim adlari (Bolum/Gorev) detayla birlikte gelir; hata olursa panel
         // bos kalir ama ogrenci detayi acilmaya devam eder.
         _ = LoadPhotoAsync(Details);
+        // Donem ozeti detayla birlikte gelir; hata olursa kutu bos kalir ama
+        // ogrenci detayi acilmaya devam eder.
+        _ = LoadPeriodsAsync(id);
         if (!lookupsLoaded) _ = EnsureLookupsAsync();
         Tabs.Clear();
         Tabs.Add(new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
@@ -737,6 +748,29 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         FormCardNumber = SelectedStudent?.Id == d.Id ? SelectedStudent.CardNumber : null;
         FormPrintedNumber = SelectedStudent?.Id == d.Id ? SelectedStudent.PrintedNumber : null;
         RaiseForm();
+    }
+
+    /// <summary>
+    /// Ogrencinin hakedis donemlerini yukler. Yetki yoksa ya da uc erisilemezse kutu
+    /// sessizce bos kalir: ogrenci detayinin acilmasi buna bagli degildir.
+    /// </summary>
+    private async Task LoadPeriodsAsync(Guid studentId)
+    {
+        Periods.Clear();
+        Raise(nameof(HasPeriods));
+        try
+        {
+            var periods = await api.PeriodsAsync(studentId);
+            // Yanit gecikirken kullanici baska ogrenciye tiklamis olabilir; o zaman bu
+            // sonuc ARTIK YANLIS OGRENCIYE aittir ve yazilmamalidir.
+            if (Details?.Id != studentId) return;
+            foreach (var period in periods) Periods.Add(new EntitlementPeriodViewModel(period));
+        }
+        catch (Exception)
+        {
+            // Yutulur: donem ozeti bilgilendirmedir, detay ekranini engellememelidir.
+        }
+        Raise(nameof(HasPeriods));
     }
 
     /// <summary>

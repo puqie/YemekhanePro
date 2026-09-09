@@ -72,8 +72,70 @@ public interface IMealEntitlementRepository
         IReadOnlyCollection<DateOnly> dates, CancellationToken cancellationToken);
     Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken);
     Task<IReadOnlyList<EntitlementDetails>> ListAsync(Guid studentId, DateOnly startsOn, DateOnly endsOn, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Ogrencinin ogun bazinda ACIK hakedis donemleri: kalan ogun, son gun ve yenileme
+    /// gunu. Veli telefondayken bakilacak ozet budur.
+    /// </summary>
+    /// <param name="today">Okul saatiyle bugun; "kalan" ve "kac gun kaldi" buna gore hesaplanir.</param>
+    Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, DateOnly today,
+        CancellationToken cancellationToken);
+
+    /// <summary>Hakedisi bitmek uzere olan (ve bitmis) ogrenciler; yenileme takibi icin.</summary>
+    Task<IReadOnlyList<EntitlementPeriodSummary>> ExpiringAsync(ExpiringEntitlementQuery query, DateOnly today,
+        CancellationToken cancellationToken);
     Task<bool> TryConsumeAsync(Guid entitlementId, CancellationToken cancellationToken);
     Task<bool> CancelAsync(Guid entitlementId, CancellationToken cancellationToken);
     Task<CancelEntitlementsResult> CancelBulkAsync(IReadOnlyCollection<Guid> entitlementIds, int expectedAffectedCount,
         CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// Bir ogrencinin BIR OGUN icin acik hakedis donemi: "veli arayip 'kac ogun kaldi,
+/// ne zaman bitiyor' diye soruyor" ihtiyaci icin. Once bu bilgi hicbir ekranda yoktu;
+/// kullanici tarih araligini genisletip satirlari tek tek saymak zorunda kaliyordu.
+/// </summary>
+/// <param name="RemainingQuantity">
+/// BUGUNDEN ITIBAREN kullanilabilir ogun sayisi. Veliye soylenecek rakam budur.
+/// Gecmiste kalan kullanilmamis haklar buraya GIRMEZ: 16 Eylul'un yemegi 20 Eylul'de
+/// yenmez, o hak yanmistir (bkz. <paramref name="ExpiredQuantity"/>).
+/// </param>
+/// <param name="ExpiredQuantity">
+/// Gecmis gunlerde kullanilmadan yanan ogun sayisi. Ayri tutulur ki "kalan" sismesin
+/// ama kullanici da hakkin bosa gittigini gorebilsin.
+/// </param>
+/// <param name="TotalQuantity">Donemin tamami (gecmis + gelecek, iptaller haric).</param>
+/// <param name="ConsumedQuantity">Fiilen kullanilan ogun sayisi.</param>
+/// <param name="FirstDate">Donemin ilk gunu.</param>
+/// <param name="LastDate">
+/// Donemin SON gunu. "Yuklemesi ne zaman bitiyor" sorusunun cevabi budur.
+/// </param>
+/// <param name="RenewFrom">
+/// Yeni yuklemenin baslamasi gereken gun (<paramref name="LastDate"/> + 1 gun).
+/// Kullanici "10 Ekim'de bitiyorsa 11 Ekim'de yenilemeliyim" hesabini kafadan
+/// yapmak zorunda kalmasin diye hazir verilir.
+/// </param>
+/// <param name="DaysLeft">
+/// Son gune kalan gun sayisi (bugun dahil degil). Donem bugun bitiyorsa 0,
+/// GECMISTE bittiyse NEGATIFTIR -- "5 gun once bitmis" uyarisi buradan cikar.
+/// </param>
+public sealed record EntitlementPeriodSummary(
+    Guid StudentId, string StudentNo, string StudentName, string? ClassName, string? ParentPhone,
+    Guid MealTypeId, string MealName,
+    int RemainingQuantity, int ExpiredQuantity, int TotalQuantity, int ConsumedQuantity,
+    DateOnly FirstDate, DateOnly LastDate, DateOnly RenewFrom, int DaysLeft)
+{
+    /// <summary>Donem bugun ya da daha once bitti mi (yenileme gecikmis demektir).</summary>
+    public bool IsExpired => DaysLeft < 0;
+}
+
+/// <param name="WithinDays">
+/// Kac gun icinde bitecekler listelensin. Suresi COKTAN GECMIS olanlar esikten bagimsiz
+/// olarak HER ZAMAN listeye girer: 10 Ekim'de bittigini 15 Ekim'de fark etmek de ayni
+/// derttir, gozden kacmamalidir.
+/// </param>
+/// <param name="ClassKind">
+/// Sinif turu suzgeci (null ise tumu). Anasinifi ayri takip edildigi icin ayirt edilebilir.
+/// </param>
+public sealed record ExpiringEntitlementQuery(int WithinDays = 10, Guid? MealTypeId = null,
+    string? ClassKind = null, string? Search = null);
