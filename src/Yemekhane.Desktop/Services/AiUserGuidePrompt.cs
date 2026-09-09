@@ -390,6 +390,15 @@ public static class AiUserGuidePrompt
         "Seçileni İptal Et" ile iptal edilirse ilgili tahsilat da otomatik
         iptal edilir (silinmez, gerekçesi yazılır).
 
+        TEKRAR HAK VERME: Aynı öğrenciye aynı gün ve aynı öğün için tekrar
+        hak verilirse İKİNCİ BİR HAK AÇILMAZ; var olan kayıt güncellenir
+        (veritabanı da benzersiz kısıtla bunu garanti eder). Sayının ikiye
+        çıkması ancak gün ya da öğün farklıysa olur. Genel Bakış'taki
+        "HAK SAHİBİ" öğrenci sayısı, "HAKEDİŞ" ise hak adedidir: bir
+        öğrenciye iki öğün verilirse hak sahibi 1, hakediş 2 görünür.
+        Uygulamadan sonra liste kendiliğinden tazelenir ve arama kutusu
+        temizlenir; kullanıcının "olmadı" sanıp tekrar vermesi gerekmez.
+
         Doğrulama hataları: "Öğün seçilmelidir.", "Günlük adet 1-10 arasında
         bir tam sayı olmalıdır.", "Gün sayısı 1 veya daha büyük bir tam sayı
         olmalıdır.", "Seçilen günlerle bu süre hesaplanamıyor. Cumartesi/

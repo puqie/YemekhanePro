@@ -388,9 +388,17 @@ public sealed class MealEntitlementsViewModel : ObservableObject
             var grantEnd = previewRequest.EndsOn.ToDateTime(TimeOnly.MinValue);
             if (StartsOn is null || StartsOn > grantStart) StartsOn = grantStart;
             if (EndsOn is null || EndsOn < grantEnd) EndsOn = grantEnd;
-            if (canManage) await LoadAsync(1);
+            // ARAMA METNI de temizlenir: kutuda kalan eski metin yeni satirlari suzuyor,
+            // kullanici "hak verdim ama listede yok" diye ayni hakki tekrar veriyordu.
+            SearchText = null;
+            // Liste HER DURUMDA tazelenir. Once yalnizca entitlements.manage yetkisi
+            // olanlarda yenileniyordu; toplu hakedis yetkisi olup yonetim yetkisi olmayan
+            // kullanicida hak yaziliyor ama ekran bos kaliyordu.
+            await LoadAsync(1);
             // Kasaya yazilan tutar ve SMS sayisi da bildirilir: memur "gelir yansidi mi,
             // veliye gitti mi" diye ayrica kontrol etmek zorunda kalmasin.
+            // LoadAsync StatusMessage'i temizler; sonuc mesaji ONDAN SONRA yazilir, yoksa
+            // kullanici hicbir onay gormez ve islemin gectigini anlamaz.
             var message = $"{result.CreatedCount:N0} hak oluşturuldu, {result.UpdatedCount:N0} hak güncellendi.";
             if (result.ChargedStudents > 0)
                 message += $" Kasaya {result.ChargedStudents:N0} öğrenci için {result.ChargedTotal.ToString("C2", Turkish)} işlendi.";

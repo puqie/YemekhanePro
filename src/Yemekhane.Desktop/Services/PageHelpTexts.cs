@@ -52,6 +52,9 @@ public static class PageHelpTexts
             "Öğünün bedeli varsa \"Ücreti kasaya gelir olarak işle\" ile tutar öğrenci başına kasaya yazılır; hak iptal edilirse tahsilat da iptal edilir.",
             "\"Veliye bilgi SMS'i gönder\" ile veliye tarih aralığı ve tutar bildirilir.",
             "Bir hakkı iptal etmeden önce onay istenir; iptal edilen kayıt geri alınamaz, yeniden hak tanımlamanız gerekir.",
+            "Aynı öğrenciye aynı gün ve aynı öğün için tekrar hak verirseniz ikinci bir hak açılmaz; var olan kayıt güncellenir.",
+            "Genel Bakış'ta \"HAK SAHİBİ\" o günkü öğrenci sayısı, \"HAKEDİŞ\" ise hak adedidir: bir öğrenciye iki öğün verilirse hak sahibi 1, hakediş 2 görünür.",
+            "Hak verdikten sonra liste kendiliğinden tazelenir ve arama kutusu temizlenir; yeni satırı görmek için tekrar hak vermeniz gerekmez.",
         ]),
         [ShellRoutes.HolidayTransfer] = new("Takvim / Tatil",
         [
