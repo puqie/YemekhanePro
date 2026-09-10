@@ -158,7 +158,12 @@ public static class StudentTabFormatter
         ["SMS History"] =
         [
             new("createdAt", "Tarih", FieldKind.DateTime),
-            new("status", "Durum", Map: "Status"),
+            // SmsStatus sozlugu: genel "Status" sozlugunde Pending/Failed/Sent var ama
+            // Sending ve RetryScheduled YOK. Yanlis sozlukle bu sekmede ham
+            // "RetryScheduled" goruluyordu; SMS ekrani ayni kaydi "Yeniden denenecek"
+            // diye gosteriyordu. Veli telefondayken memur gonderilip gonderilmedigini
+            // anlayamiyordu.
+            new("status", "Durum", Map: "SmsStatus"),
             new("phone", "Telefon"),
             new("message", "Mesaj"),
             new("error", "Hata"),

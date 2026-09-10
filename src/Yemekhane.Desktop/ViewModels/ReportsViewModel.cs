@@ -87,11 +87,30 @@ public sealed class ReportGridRow
         ReportType.DailyAccess or ReportType.DeniedAccess => EnumTextConverter.Translate(source.Status, "Reason"),
         // Bakiye Hareketleri'nde "Status" defter satir turudur (TopUp/Deduction/Refund/Adjustment).
         ReportType.Balance => EnumTextConverter.Translate(source.Status, "BalanceKind"),
+        // Tatil/Aktarim raporunda "Status" tatil TURUDUR (Official/Administrative/
+        // Trip/Other/Bulk). Genel "Status" sozlugunde bu kodlar YOK: ekranda ham
+        // Ingilizce goruluyordu.
+        ReportType.HolidayTransfer => EnumTextConverter.Translate(source.Status, "HolidayType"),
         _ => EnumTextConverter.Translate(source.Status, "Status")
     };
-    public string Description => source.Type == ReportType.Turnstile
-        ? TranslateTurnstileDescription(source.Description)
-        : source.Description ?? "";
+    public string Description => source.Type switch
+    {
+        ReportType.Turnstile => TranslateTurnstileDescription(source.Description),
+        // "tatil adi / davranis kodu": ikinci parca ham geciyordu ve
+        // "Yılbaşı / NextBusinessDay" gibi yari Turkce metinler olusuyordu.
+        ReportType.HolidayTransfer => TranslateHolidayDescription(source.Description),
+        _ => source.Description ?? "",
+    };
+
+    /// <summary>Tatil aciklamasinin davranis parcasini cevirir; ilk parca tatilin ADIDIR.</summary>
+    private static string TranslateHolidayDescription(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description)) return "";
+        var parts = description.Split(" / ", 2, StringSplitOptions.None);
+        return parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1])
+            ? parts[0] + " / " + EnumTextConverter.Translate(parts[1], "TransferBehavior")
+            : description;
+    }
 
     /// <summary>"OPEN / hata metni" -> "Aç / hata metni"; hata yoksa yalnizca komut.</summary>
     private static string TranslateTurnstileDescription(string? value)
