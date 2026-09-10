@@ -52,7 +52,18 @@ public sealed class EfMealTransferRepository(YemekhaneDbContext dbContext, IAudi
                     EntitlementDate = command.TargetDate, Quantity = remaining, Status = "Active", Source = "Transfer" };
                 dbContext.Add(target); targetMap[key] = target;
             }
-            else { target.Quantity += remaining; target.Version++; target.UpdatedAt = DateTimeOffset.UtcNow; }
+            else
+            {
+                // Hedef satir AKTIFLESTIRILIR. Once yalnizca Quantity artiriliyordu:
+                // hedef gunun hakki daha once iptal edilmisse (Status="Cancelled") satir
+                // "Cancelled" kaliyor, turnike "yemek hakki yok" diyor ve KALAN sutunu da
+                // 0 gosteriyordu -- aktarilan hak SESSIZCE yok oluyordu. Toplu aktarim yolu
+                // (EfBulkOperationRepository) bunu zaten yapiyordu; iki yol ayrilmisti.
+                target.Quantity += remaining;
+                target.Status = "Active";
+                target.Version++;
+                target.UpdatedAt = DateTimeOffset.UtcNow;
+            }
             dbContext.Add(new MealTransfer { StudentId = source.StudentId, MealTypeId = source.MealTypeId,
                 SourceEntitlementId = source.Id, OriginalDate = source.EntitlementDate, TargetDate = command.TargetDate,
                 Quantity = remaining, Reason = reason, CreatedBy = createdBy });

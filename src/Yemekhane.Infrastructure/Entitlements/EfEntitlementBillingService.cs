@@ -161,11 +161,14 @@ public sealed class EfEntitlementBillingService(
                 .OrderBy(x => x.TransactionAt).ToList();
             if (linked.Count == 0)
             {
+                // GECIS DONEMI: ogun bagi olmayan eski tahsilatlar. Bunlar da ORANTILI
+                // iade edilir; once tahsilatin TAMAMI void ediliyordu ve 20 gunluk bir
+                // odemede 3 gun iptal edilince yenen 17 ogunun parasi da okuldan cikiyordu.
                 var legacy = candidates.Where(x => x.StudentId == group.Key.StudentId && !x.IsVoided
                         && x.MealTypeId == null)
                     .OrderByDescending(x => x.TransactionAt).FirstOrDefault();
                 if (legacy is null) continue;
-                Void(legacy, "Yemek hakedişi iptal edildi.");
+                RefundCharge(legacy, cancelledDates.Count, incomeType, actorId, now);
                 voided++;
                 continue;
             }
@@ -179,39 +182,8 @@ public sealed class EfEntitlementBillingService(
                     ? cancelledDates.Count(date => date >= from && date <= to)
                     : cancelledDates.Count;
                 if (covered <= 0) continue;
-                var chargedDays = charge.EntitlementDayCount is > 0 ? charge.EntitlementDayCount.Value : covered;
-                var refundDays = Math.Min(covered, chargedDays);
-                remaining -= refundDays;
-
-                Void(charge, refundDays >= chargedDays
-                    ? "Yemek hakedişi iptal edildi."
-                    : string.Create(Turkish, $"Yemek hakedişi kısmen iptal edildi: {refundDays}/{chargedDays} gün iade."));
+                remaining -= RefundCharge(charge, covered, incomeType, actorId, now);
                 voided++;
-
-                // Kismi iade: kalan gunlerin bedeli icin yeni tahsilat. Yenen ogunlerin
-                // parasi okulda kalir.
-                if (refundDays >= chargedDays) continue;
-                var perDay = charge.Amount / chargedDays;
-                var keptDays = chargedDays - refundDays;
-                var keptAmount = decimal.Round(perDay * keptDays, 2, MidpointRounding.AwayFromZero);
-                if (keptAmount <= 0) continue;
-                dbContext.Add(new IncomeTransaction
-                {
-                    // Turetilmis kimlik: ayni iptal iki kez islenirse ikinci kayit acilmaz.
-                    OperationId = DeriveOperationId(charge.OperationId, charge.Id),
-                    StudentId = charge.StudentId,
-                    IncomeTypeId = incomeType.Id,
-                    CardNumber = charge.CardNumber,
-                    TransactionAt = now,
-                    Amount = keptAmount,
-                    Description = string.Create(Turkish, $"{charge.Description} · kısmi iptal sonrası {keptDays} gün"),
-                    CreatedBy = actorId,
-                    CreatedAt = now,
-                    MealTypeId = charge.MealTypeId,
-                    EntitlementStartsOn = charge.EntitlementStartsOn,
-                    EntitlementEndsOn = charge.EntitlementEndsOn,
-                    EntitlementDayCount = keptDays
-                });
             }
         }
         if (voided == 0) return 0;
@@ -220,15 +192,6 @@ public sealed class EfEntitlementBillingService(
             string.Create(Turkish, $"İptal edilen hakedişlerin tahsilatı geri alındı: {voided} kayıt."), voided));
         await dbContext.SaveChangesAsync(cancellationToken);
         return voided;
-
-        void Void(IncomeTransaction target, string reason)
-        {
-            target.IsVoided = true;
-            target.VoidedAt = now;
-            target.VoidedBy = actorId;
-            target.VoidReason = reason;
-            target.UpdatedAt = now;
-        }
     }
 
     /// <summary>Veliye "hakkiniz tanimlandi" bilgisi; SMS ana anahtari kapaliysa kuyrukta bekler.</summary>
@@ -298,6 +261,72 @@ public sealed class EfEntitlementBillingService(
     }
 
     /// <summary>Islem + ogrenci ciftinden kararli bir kimlik uretir; tekrar denemede ayni deger cikar.</summary>
+    /// <summary>Tahsilati gecersiz isaretler; tutar silinmez, gerekcesiyle birlikte kalir.</summary>
+    private static void Void(IncomeTransaction target, string reason, Guid actorId, DateTimeOffset now)
+    {
+        target.IsVoided = true;
+        target.VoidedAt = now;
+        target.VoidedBy = actorId;
+        target.VoidReason = reason;
+        target.UpdatedAt = now;
+    }
+
+    /// <summary>
+    /// Bir tahsilati ORANTILI iade eder ve kac gunun iade edildigini doner.
+    ///
+    /// <para>
+    /// Tahsilatin tamami void edilir, sonra KALAN gunlerin bedeli yeni bir kayit
+    /// olarak yazilir. Kalan tutar, iade edilecek tutar TAHSILATTAN CIKARILARAK
+    /// bulunur -- carpip yuvarlayarak degil.
+    /// </para>
+    ///
+    /// <para>
+    /// Cikarma kullanilir, carpip yuvarlama DEGIL: kept + refund toplami her zaman tam
+    /// olarak tahsilat tutarini verir. Bugun tahsilat her zaman "birim fiyat x gun"
+    /// oldugu icin bolme tam cikar ve iki yontem ayni sonucu uretir; fiyatlandirma
+    /// degisip bolunemeyen bir tutar olusursa (indirim, elle duzeltme) cikarma yontemi
+    /// kurus kaybetmez, carpip yuvarlama kaybeder.
+    /// </para>
+    /// </summary>
+    private int RefundCharge(IncomeTransaction charge, int coveredDays, IncomeType incomeType,
+        Guid actorId, DateTimeOffset now)
+    {
+        var chargedDays = charge.EntitlementDayCount is > 0 ? charge.EntitlementDayCount.Value : coveredDays;
+        var refundDays = Math.Min(coveredDays, chargedDays);
+        var keptDays = chargedDays - refundDays;
+
+        Void(charge, keptDays <= 0
+            ? "Yemek hakedişi iptal edildi."
+            : string.Create(Turkish, $"Yemek hakedişi kısmen iptal edildi: {refundDays}/{chargedDays} gün iade."),
+            actorId, now);
+        if (keptDays <= 0) return refundDays;
+
+        // Once IADE tutari yuvarlanir, kalan CIKARMA ile bulunur: boylece
+        // kept + refund toplami her zaman tam olarak charge.Amount eder.
+        var refundAmount = decimal.Round(charge.Amount * refundDays / chargedDays, 2, MidpointRounding.AwayFromZero);
+        var keptAmount = charge.Amount - refundAmount;
+        if (keptAmount <= 0) return refundDays;
+
+        dbContext.Add(new IncomeTransaction
+        {
+            // Turetilmis kimlik: ayni iptal iki kez islenirse ikinci kayit acilmaz.
+            OperationId = DeriveOperationId(charge.OperationId, charge.Id),
+            StudentId = charge.StudentId,
+            IncomeTypeId = incomeType.Id,
+            CardNumber = charge.CardNumber,
+            TransactionAt = now,
+            Amount = keptAmount,
+            Description = string.Create(Turkish, $"{charge.Description} · kısmi iptal sonrası {keptDays} gün"),
+            CreatedBy = actorId,
+            CreatedAt = now,
+            MealTypeId = charge.MealTypeId,
+            EntitlementStartsOn = charge.EntitlementStartsOn,
+            EntitlementEndsOn = charge.EntitlementEndsOn,
+            EntitlementDayCount = keptDays
+        });
+        return refundDays;
+    }
+
     private static Guid DeriveOperationId(Guid operationId, Guid studentId)
     {
         Span<byte> left = stackalloc byte[16];

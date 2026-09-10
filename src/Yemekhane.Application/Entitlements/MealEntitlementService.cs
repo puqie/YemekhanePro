@@ -135,7 +135,24 @@ public sealed class MealEntitlementService(
     public Task<IReadOnlyList<EntitlementDetails>> ListAsync(Guid studentId, DateOnly startsOn, DateOnly endsOn, CancellationToken cancellationToken = default) =>
         repository.ListAsync(studentId, startsOn, endsOn, cancellationToken);
     public Task<bool> TryConsumeAsync(Guid entitlementId, CancellationToken cancellationToken = default) => repository.TryConsumeAsync(entitlementId, cancellationToken);
-    public Task<bool> CancelAsync(Guid entitlementId, CancellationToken cancellationToken = default) => repository.CancelAsync(entitlementId, cancellationToken);
+    /// <summary>
+    /// TEK hakki iptal eder ve varsa tahsilatini geri alir.
+    ///
+    /// <para>
+    /// Once dogrudan repository.CancelAsync cagriliyordu ve IADE YAPILMIYORDU: ayni isi
+    /// coklu secimle yapan yol (CancelBulkWithRefundAsync) parayi iade ederken, listeden
+    /// tek tek iptal eden kullanicinin tahsilati kasada kaliyordu. 30 gunu tek tek iptal
+    /// eden personel 30 gunluk bedeli velinin uzerinde birakiyordu.
+    /// </para>
+    /// </summary>
+    public async Task<bool> CancelAsync(Guid entitlementId, Guid actorId = default,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await repository.CancelBulkAsync([entitlementId], expectedAffectedCount: 1,
+            billing is null ? null : token => billing.RefundAsync([entitlementId], actorId, token),
+            cancellationToken);
+        return result.CancelledCount == 1;
+    }
 
     private async Task<IReadOnlyList<DateOnly>> ValidateAndGetDatesAsync(DateOnly startsOn, DateOnly endsOn, int quantity,
         bool includeSaturday, bool includeSunday, CancellationToken cancellationToken, int? dayCount = null)

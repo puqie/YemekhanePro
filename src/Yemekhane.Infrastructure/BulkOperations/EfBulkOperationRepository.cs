@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Audit;
+using Yemekhane.Application.Entitlements;
 using Yemekhane.Application.BulkOperations;
 using Yemekhane.Application.Common;
 using Yemekhane.Domain.Entities;
@@ -10,7 +11,8 @@ using Yemekhane.Infrastructure.Persistence;
 
 namespace Yemekhane.Infrastructure.BulkOperations;
 
-public sealed class EfBulkOperationRepository(YemekhaneDbContext db, IAuditService audit, TimeProvider timeProvider)
+public sealed class EfBulkOperationRepository(YemekhaneDbContext db, IAuditService audit, TimeProvider timeProvider,
+    IEntitlementBillingService? billing = null)
     : IBulkOperationRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -158,6 +160,19 @@ public sealed class EfBulkOperationRepository(YemekhaneDbContext db, IAuditServi
         audit.Record(new AuditEntry("BulkOperationApplied", nameof(BulkOperation), operation.Id.ToString(),
             $"{request.Operation} toplu takvim işlemi uygulandı.", current.Entitlements.Count,
             After: result, BulkOperationId: operation.Id, UserId: createdBy));
+        // IPTAL/YAKMA edilen haklarin TAHSILATI da geri alinir. Once alinmiyordu ve
+        // sonuc, ayni isin HANGI EKRANDAN yapildigina gore degisiyordu: Hakedisler
+        // ekranindan iptal para iade ederken, Toplu Islem sihirbazindan iptal etmiyordu.
+        // 200 ogrencinin 5 gunluk tatilinde ogun basi 60 TL ile 60.000 TL kasada kalirdi.
+        //
+        // AKTARIM iade ETMEZ: hak baska gune tasinir, ogrenci onu kullanacaktir.
+        if (!transfer && billing is not null && current.Entitlements.Count > 0)
+        {
+            // Ayni transaction icinde: iade cokerse iptal de geri alinir. Ayri olsaydi
+            // haklar "Cancelled" kalir ve ikinci deneme iadeyi BIR DAHA tetikleyemezdi.
+            await billing.RefundAsync([.. current.Entitlements.Select(x => x.EntitlementId)],
+                createdBy, cancellationToken);
+        }
         try
         {
             await db.SaveChangesAsync(cancellationToken);

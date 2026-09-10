@@ -38,7 +38,7 @@ public sealed class MealEntitlementsController(MealEntitlementService service) :
     public Task<bool> Consume(Guid id, CancellationToken cancellationToken) => service.TryConsumeAsync(id, cancellationToken);
     [HttpPost("{id:guid}/cancel")]
     [PermissionAuthorize(Permissions.EntitlementsManage)]
-    public Task<bool> Cancel(Guid id, CancellationToken cancellationToken) => service.CancelAsync(id, cancellationToken);
+    public Task<bool> Cancel(Guid id, CancellationToken cancellationToken) => service.CancelAsync(id, ActorId(), cancellationToken);
     [HttpPost("cancel")]
     [PermissionAuthorize(Permissions.EntitlementsManage)]
     // Iptal, varsa hakedis tahsilatini da geri alir: hak iptal edilip para kasada kalirsa

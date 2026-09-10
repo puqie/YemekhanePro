@@ -69,10 +69,16 @@ public sealed class BackupService : IDisposable
         {
             var validated = await ValidateArchiveAsync(archivePath, workDirectory, cancellationToken).ConfigureAwait(false);
             if (!IsCompatibleAppVersion(validated.Manifest.AppVersion, GetAppVersion()))
-                throw new BackupValidationException($"Backup uygulama sürümü uyumsuz: {validated.Manifest.AppVersion}.");
+                throw new BackupValidationException(
+                    $"Bu yedek daha YENİ bir sürümde alınmış ({validated.Manifest.AppVersion}); "
+                    + $"bu bilgisayarda {GetAppVersion().Split(['+', '-'], 2)[0]} kurulu. "
+                    + "Önce bu bilgisayardaki programı güncelleyin, sonra yedeği geri yükleyin.");
             var latestSchema = GetLatestSchemaVersion();
             if (string.CompareOrdinal(validated.Manifest.SchemaVersion, latestSchema) > 0)
-                throw new BackupValidationException($"Backup şema sürümü uygulamadan yeni: {validated.Manifest.SchemaVersion} (desteklenen: {latestSchema}).");
+                throw new BackupValidationException(
+                    "Bu yedek daha YENİ bir sürümde alınmış (veri yapısı bu programdan ileride). "
+                    + "Önce bu bilgisayardaki programı güncelleyin, sonra yedeği geri yükleyin. "
+                    + $"Yedek: {validated.Manifest.SchemaVersion}, bu program: {latestSchema}.");
 
             var databasePath = GetDatabasePath();
             BackupResult? safety = null;
@@ -411,12 +417,30 @@ public sealed class BackupService : IDisposable
         ?? typeof(BackupService).Assembly.GetName().Version?.ToString()
         ?? "unknown";
 
+    /// <summary>
+    /// Yedek bu surume geri yuklenebilir mi.
+    ///
+    /// <para>
+    /// ESKI yedek YENI programa GIRER: geri yukleme sonrasi <c>MigrateAsync</c> eksik
+    /// tablo ve sutunlari ekler. Okul bir bilgisayardan digerine tasinirken iki makinenin
+    /// ayni surumde olmasi beklenemez; onceki kural (ana surum ESITLIGI) 1.x -&gt; 2.x
+    /// gecisinde eski yedegi tamamen erisilemez kilardi.
+    /// </para>
+    ///
+    /// <para>
+    /// YENI yedek ESKI programa GIRMEZ: eski surum yeni sutunlari tanimaz ve geri gocu
+    /// yoktur. Bu yon zaten SEMA kontrolüyle de engellenir; burada ana surum dususu
+    /// ayrica ve daha anlasilir bir mesajla reddedilir.
+    /// </para>
+    ///
+    /// <para>Surum okunamiyorsa (elle uretilmis arsiv) yalnizca birebir esitlik kabul edilir.</para>
+    /// </summary>
     private static bool IsCompatibleAppVersion(string backupVersion, string currentVersion)
     {
         var backupCore = backupVersion.Split(['+', '-'], 2)[0];
         var currentCore = currentVersion.Split(['+', '-'], 2)[0];
         return Version.TryParse(backupCore, out var backup) && Version.TryParse(currentCore, out var current)
-            ? backup.Major == current.Major
+            ? backup.Major <= current.Major
             : string.Equals(backupVersion, currentVersion, StringComparison.Ordinal);
     }
 

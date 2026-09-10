@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Calendar;
 using Yemekhane.Application.Common;
+using Yemekhane.Application.Entitlements;
 using Yemekhane.Application.Leaves;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
@@ -10,7 +11,8 @@ using Yemekhane.Infrastructure.Audit;
 
 namespace Yemekhane.Infrastructure.Leaves;
 
-public sealed class EfLeaveRepository(YemekhaneDbContext dbContext, BusinessDayService businessDayService, IAuditService auditService) : ILeaveRepository
+public sealed class EfLeaveRepository(YemekhaneDbContext dbContext, BusinessDayService businessDayService,
+    IAuditService auditService, IEntitlementBillingService? billing = null) : ILeaveRepository
 {
     public EfLeaveRepository(YemekhaneDbContext dbContext, BusinessDayService businessDayService)
         : this(dbContext, businessDayService, new AuditService(new EfAuditRepository(dbContext, TimeProvider.System), new SystemAuditContext())) { }
@@ -29,6 +31,22 @@ public sealed class EfLeaveRepository(YemekhaneDbContext dbContext, BusinessDayS
             foreach (var right in rights)
             {
                 right.Status = request.EntitlementBehavior == "Cancel" ? "Cancelled" : "Transferred"; right.Version++;
+            }
+
+            // IPTAL edilen haklarin TAHSILATI da geri alinir. Once alinmiyordu: 20 is
+            // gunu rapor alan bir ogrencinin haklari iptal ediliyor ama velinin parasi
+            // kasada kaliyordu. Daha kotusu, haklar artik "Cancelled" oldugu icin
+            // CancelBulkWithRefundAsync da bunu duzeltemiyordu -- para kalici olarak
+            // yanlis yerde kaliyordu.
+            //
+            // AKTARIM (Transferred) iade ETMEZ: hak baska gune tasinir, ogrenci onu
+            // kullanacaktir; para iade edilirse okul bedava yemek vermis olur.
+            if (request.EntitlementBehavior == "Cancel" && billing is not null && rights.Count > 0)
+            {
+                // Ayni transaction icinde: iade cokerse izin de yazilmaz. Ayri olsaydi
+                // izin kaydi kalir, para kasada kalirdi ve ikinci deneme haklar
+                // "Cancelled" oldugu icin ise yaramazdi.
+                await billing.RefundAsync([.. rights.Select(x => x.Id)], request.CreatedBy, cancellationToken);
             }
 
             if (request.EntitlementBehavior == "NextBusinessDay")

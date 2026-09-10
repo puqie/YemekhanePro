@@ -191,7 +191,12 @@ public sealed class BackupServiceTests
         catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time"); }
     }
 
-    private sealed class BackupFixture : IDisposable
+    /// <summary>
+    /// Ayni ad alanindaki diger yedek testleri de bu iskeleti kullanir (bkz.
+    /// BackupPortabilityTests). Kopyalanmaz: iki kopya zamanla ayrisir ve biri
+    /// guncellenirken digeri unutulur.
+    /// </summary>
+    internal sealed class BackupFixture : IDisposable
     {
         private BackupFixture(string root, int retentionCount, IReadOnlyDictionary<string, string?>? settings)
         {
