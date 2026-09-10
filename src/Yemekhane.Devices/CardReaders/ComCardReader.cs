@@ -184,6 +184,28 @@ public sealed class ComCardReader : ICardReader
         return Task.FromResult(new DeviceStatus(state, DateTimeOffset.UtcNow, message));
     }
 
+    /// <summary>
+    /// Ayni kartin bu sure icindeki tekrari AYNI TEMAS sayilir ve bildirilmez.
+    /// Ogrencinin siraya girip ikinci kez yemek almasi bu kadar kisa surede olamaz;
+    /// mekanik tekrar ve "turnike donmedi" tekrarlari tam bu araliga duser.
+    /// </summary>
+    public static readonly TimeSpan RepeatReadWindow = TimeSpan.FromSeconds(3);
+
+    private string? _lastCardNumber;
+    private DateTimeOffset _lastCardReadAt;
+
+    /// <summary>Bu okuma, son okumanin fiziksel tekrari mi.</summary>
+    private bool IsRepeatOfLastRead(string cardNumber, DateTimeOffset now)
+    {
+        var repeat = string.Equals(_lastCardNumber, cardNumber, StringComparison.Ordinal)
+            && now - _lastCardReadAt < RepeatReadWindow;
+        // Son okuma HER DURUMDA guncellenir: ard arda gelen tekrarlarda pencere
+        // kayarak ilerlesin, ilk temasa sabitlenip erken acilmasin.
+        _lastCardNumber = cardNumber;
+        _lastCardReadAt = now;
+        return repeat;
+    }
+
     public async IAsyncEnumerable<CardReadEvent> ReadCardsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -214,7 +236,24 @@ public sealed class ComCardReader : ICardReader
                 {
                     if (!discardingInvalidLine && TryParseCardNumber(line, out var cardNumber))
                     {
-                        yield return new CardReadEvent(cardNumber, DateTimeOffset.UtcNow, Name);
+                        // FIZIKSEL TEKRAR FILTRESI. Kart okuyucular ayni karti bir
+                        // temasta birden cok kez bildirebilir (kontak sekmesi) ve
+                        // kullanici "turnike donmedi" saniyla hemen tekrar okutur.
+                        // Bunlar AYNI temastir; karar katmanina ulasirsa her biri yeni
+                        // bir gecis sayilir ve gunluk adedi 1'den buyuk haklarda
+                        // (haftalik/aylik paketler) IKI GUN birden dusulurdu.
+                        //
+                        // Filtre OKUYUCU katmanindadir: karar katmanina konsaydi
+                        // "ayni anda birden fazla turnike, tam bir hak dussun"
+                        // garantisi bozulur ve ogrenci iki turnikeden birden gecebilirdi.
+                        var now = DateTimeOffset.UtcNow;
+                        if (IsRepeatOfLastRead(cardNumber, now))
+                        {
+                            line.Clear();
+                            discardingInvalidLine = false;
+                            continue;
+                        }
+                        yield return new CardReadEvent(cardNumber, now, Name);
                     }
 
                     line.Clear();

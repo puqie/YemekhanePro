@@ -363,6 +363,13 @@ public partial class MainWindow : Window, IShortcutCommandTarget
             // IsTopUpOpen (TL bakiye yukleme) ve IsRenameOpen (tanim yeniden adlandirma)
             // eksikti: bu iki cekmece acikken Escape hicbir sey yapmiyordu.
             ShellRoutes.Cash => CashDataContext is CashViewModel cash && (cash.IsVoidOpen || cash.IsAddOpen || cash.IsTopUpOpen),
+            // AYARLAR: doldurulmus form da bir "katman"dir. Bu dal YOKKEN otomatik
+            // tazeleme 45 saniyede bir LoadAsync cagirip kullanicinin yazdigi HER SEYI
+            // sunucudaki eski degerlerle eziyordu: memur SMS adresini ve yedek yolunu
+            // degistirip telefona bakarken yazdiklari sessizce geri donuyordu ve ekranda
+            // hicbir uyari cikmiyordu. IsDirty zaten vardi, buraya baglanmamisti.
+            // Elle "Yenile" calismaya devam eder; durdurulan yalnizca OTOMATIK tazelemedir.
+            ShellRoutes.Settings => SettingsDataContext is SettingsViewModel settingsScreen && settingsScreen.IsDirty,
             ShellRoutes.Definitions => DefinitionsDataContext is DefinitionsViewModel definitions
                 && (definitions.IsMealOpen || definitions.Tabs.Any(tab => tab.IsRenameOpen)),
             _ => false

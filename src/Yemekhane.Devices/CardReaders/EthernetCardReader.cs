@@ -162,6 +162,19 @@ public sealed class EthernetCardReader : ICardReader
         return Task.FromResult(new DeviceStatus(state, DateTimeOffset.UtcNow, message));
     }
 
+    private string? _lastCardNumber;
+    private DateTimeOffset _lastCardReadAt;
+
+    /// <summary>Bu okuma, son okumanin fiziksel tekrari mi (bkz. ComCardReader).</summary>
+    private bool IsRepeatOfLastRead(string cardNumber, DateTimeOffset now)
+    {
+        var repeat = string.Equals(_lastCardNumber, cardNumber, StringComparison.Ordinal)
+            && now - _lastCardReadAt < ComCardReader.RepeatReadWindow;
+        _lastCardNumber = cardNumber;
+        _lastCardReadAt = now;
+        return repeat;
+    }
+
     public async IAsyncEnumerable<CardReadEvent> ReadCardsAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -192,7 +205,17 @@ public sealed class EthernetCardReader : ICardReader
                 {
                     if (!discardingInvalidFrame && TryParseCardNumber(frame, out var cardNumber))
                     {
-                        yield return new CardReadEvent(cardNumber, DateTimeOffset.UtcNow, Name);
+                        // FIZIKSEL TEKRAR FILTRESI (ComCardReader ile ayni gerekce):
+                        // bir temasta gelen tekrarlar tek okuma sayilir, yoksa gunluk
+                        // adedi 1'den buyuk haklarda iki gun birden dusulurdu.
+                        var now = DateTimeOffset.UtcNow;
+                        if (IsRepeatOfLastRead(cardNumber, now))
+                        {
+                            frame.Clear();
+                            discardingInvalidFrame = false;
+                            continue;
+                        }
+                        yield return new CardReadEvent(cardNumber, now, Name);
                     }
 
                     frame.Clear();

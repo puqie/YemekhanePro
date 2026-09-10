@@ -13,7 +13,18 @@ public sealed class ReportExcelService : IExcelService
     private const uint HeaderRow = 5;
     private const uint FirstDataRow = HeaderRow + 1;
     private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
-    private static readonly TimeZoneInfo Istanbul = TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul");
+    // YEDEKLI cozum: "Europe/Istanbul" ICU adidir ve tzdata olmayan yalin Windows
+    // kurulumlarinda bulunamaz. Yedek olmadan bu STATIK ALAN baslatici cokuyor,
+    // dolayisiyla PDF ve Excel disa aktarma HIC calismiyordu -- CSV calisirken.
+    // Kullanici yalnizca "Rapor dosyasi kaydedilemedi" goruyor, nedenini ogrenemiyordu.
+    // Depodaki diger 12 cagri yerinin hepsinde bu yedek zaten vardi.
+    private static readonly TimeZoneInfo Istanbul = FindIstanbulTimeZone();
+
+    private static TimeZoneInfo FindIstanbulTimeZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time"); }
+    }
     private readonly ReportService reportService;
     private readonly ReportExcelOptions options;
     private readonly TimeProvider timeProvider;

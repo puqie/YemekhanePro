@@ -160,6 +160,83 @@ public sealed class ComCardReaderTests
         Assert.Equal(1, transport.DisposeCount);
     }
 
+    // --- FIZIKSEL TEKRAR FILTRESI ---
+
+    /// <summary>
+    /// AYNI kartin ard arda okunmasi TEK okuma olarak bildirilir.
+    ///
+    /// <para>
+    /// Kart okuyucular bir temasta ayni karti birden cok kez bildirebilir (kontak
+    /// sekmesi); kullanici da "turnike donmedi" saniyla hemen tekrar okutur. Bunlar
+    /// AYNI temastir. Filtre olmadan her biri karar katmaninda yeni bir gecis sayilir
+    /// ve gunluk adedi 1'DEN BUYUK haklarda (haftalik/aylik paketler) IKI GUN birden
+    /// sessizce dusulurdu.
+    /// </para>
+    /// <para>
+    /// Filtre OKUYUCU katmanindadir. Karar katmanina konsaydi "ayni anda birden fazla
+    /// turnike, tam bir hak dussun" garantisi bozulur ve ogrenci iki turnikeden birden
+    /// gecebilirdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task RepeatedReadsOfTheSameCardAreReportedOnce()
+    {
+        var transport = new FakeSerialTransport();
+        await using var reader = CreateReader(transport);
+        await reader.ConnectAsync(CancellationToken.None);
+        // Ayni kart uc kez, ardindan BASKA bir kart.
+        transport.Queue("12345\n12345\n12345\n67890\n");
+        await using var enumerator = reader.ReadCardsAsync(CancellationToken.None).GetAsyncEnumerator();
+
+        Assert.True(await enumerator.MoveNextAsync());
+        Assert.Equal("12345", enumerator.Current.CardNumber);
+        // Tekrarlar atlanir; siradaki bildirilen okuma DIGER karttir.
+        Assert.True(await enumerator.MoveNextAsync());
+        Assert.Equal("67890", enumerator.Current.CardNumber);
+    }
+
+    /// <summary>FARKLI kartlar birbirini engellemez: sirali gecisler calismaya devam eder.</summary>
+    [Fact]
+    public async Task DifferentCardsAreAllReported()
+    {
+        var transport = new FakeSerialTransport();
+        await using var reader = CreateReader(transport);
+        await reader.ConnectAsync(CancellationToken.None);
+        transport.Queue("111\n222\n333\n");
+        await using var enumerator = reader.ReadCardsAsync(CancellationToken.None).GetAsyncEnumerator();
+
+        foreach (var expected in new[] { "111", "222", "333" })
+        {
+            Assert.True(await enumerator.MoveNextAsync());
+            Assert.Equal(expected, enumerator.Current.CardNumber);
+        }
+    }
+
+    /// <summary>
+    /// Ayni kart ARAYA BASKA KART girdikten sonra yeniden okunabilir: iki ogrenci
+    /// sirayla gecip ilki tekrar gelirse engellenmemelidir.
+    /// </summary>
+    [Fact]
+    public async Task TheSameCardIsReportedAgainAfterAnotherCard()
+    {
+        var transport = new FakeSerialTransport();
+        await using var reader = CreateReader(transport);
+        await reader.ConnectAsync(CancellationToken.None);
+        transport.Queue("111\n222\n111\n");
+        await using var enumerator = reader.ReadCardsAsync(CancellationToken.None).GetAsyncEnumerator();
+
+        foreach (var expected in new[] { "111", "222", "111" })
+        {
+            Assert.True(await enumerator.MoveNextAsync());
+            Assert.Equal(expected, enumerator.Current.CardNumber);
+        }
+    }
+
+    /// <summary>Pencere makul kisa olmali: ogrenci gercekten ikinci ogun almak isteyebilir.</summary>
+    [Fact]
+    public void TheRepeatWindowIsShort() =>
+        Assert.InRange(ComCardReader.RepeatReadWindow, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+
     private static ComCardReader CreateReader(FakeSerialTransport transport, TimeSpan? timeout = null,
         TimeSpan? connectTimeout = null) =>
         new(Guid.NewGuid(), "Test reader", Endpoint, transport, timeout, connectTimeout);
