@@ -29,7 +29,10 @@ public sealed class MealEntitlementService(
         var state = await repository.PreviewAsync(students, request.MealTypeId, dates, cancellationToken);
         // Bedel SUNUCUDA hesaplanir: ekran kendi carpimini yapiyordu ve o rakam hicbir yere
         // gitmiyordu. Ayni deger hem onizlemede gosterilir hem kasaya yazilir.
-        var unit = await repository.MealPriceAsync(request.MealTypeId, cancellationToken);
+        // Fiyat TANIMSIZSA onizlemede 0 gosterilir; engel ancak "Kasaya isle" secili
+        // uygulama adiminda cikar (asagida). Onizleme kullaniciya durumu gostersin diye
+        // reddedilmez.
+        var unit = await repository.MealPriceAsync(request.MealTypeId, cancellationToken) ?? 0m;
         var perStudent = unit * dates.Count * request.Quantity;
         return new EntitlementPreview(students.Count, dates.Count, checked(students.Count * dates.Count),
             state.CreatedCount, state.UpdatedCount, Token(request, students, dates, state.StateHash),
@@ -55,7 +58,14 @@ public sealed class MealEntitlementService(
         // Ucretlendirme ve SMS hakedis YAZILDIKTAN SONRA calisir: buradaki bir hata
         // tanimlanmis hakki geri almamalidir (IncomeService'teki ayni kural).
         if (billing is null || (!request.Grant.ChargeToCash && !request.Grant.NotifyParents)) return result;
-        var unit = await repository.MealPriceAsync(request.Grant.MealTypeId, cancellationToken);
+        var price = await repository.MealPriceAsync(request.Grant.MealTypeId, cancellationToken);
+        // Ucreti TANIMSIZ ogun kasaya islenemez: sessizce 0 TL yazmak 250.000 TL'lik bir
+        // tahsilati hicbir uyari vermeden kaybediyordu. Ucretsiz dagitim icin ogune
+        // ACIKCA 0 ₺ tanimlanir ya da "Kasaya isle" kapatilir.
+        if (price is null && request.Grant.ChargeToCash)
+            throw new RequestValidationException(
+                "Bu öğünün ücreti tanımlı değil; kasaya işlenemez. Tanımlar ekranından öğün ücretini girin (ücretsiz ise 0 yazın) ya da \"Kasaya işle\" seçeneğini kapatın.");
+        var unit = price ?? 0m;
         var perStudent = unit * dates.Count * request.Grant.Quantity;
         if (perStudent <= 0) return result;
         // Ucret YENI yaratilan gunler uzerinden hesaplanir, aralik uzunlugu uzerinden
@@ -103,12 +113,15 @@ public sealed class MealEntitlementService(
     {
         ArgumentNullException.ThrowIfNull(request);
         var ids = request.EntitlementIds.Distinct().ToArray();
-        // Iade, iptalden ONCE okunur: iptal sonrasi satirlarin tarihi ve ogrencisi hala
-        // durur ama "Active" olmadiklari icin eslestirme zorlasir.
-        var result = await CancelBulkAsync(request, cancellationToken);
-        if (billing is not null && result.CancelledCount > 0)
-            await billing.RefundAsync(ids, actorId, cancellationToken);
-        return result;
+        if (ids.Length == 0 || request.ExpectedAffectedCount != ids.Length)
+            throw new RequestValidationException("İptal edilecek kayıt sayısı onayla eşleşmiyor.");
+        // Iade iptal ile AYNI transaction icinde yazilir: once ikisi ayriydi ve iade
+        // adimi cokerse hak iptal edilmis ama para kasada kalmis oluyordu. Daha kotusu,
+        // ikinci denemede haklar "Cancelled" oldugu icin iade BIR DAHA
+        // TETIKLENEMIYORDU. Simdi iade hata atarsa iptal de geri alinir.
+        return await repository.CancelBulkAsync(ids, request.ExpectedAffectedCount,
+            billing is null ? null : token => billing.RefundAsync(ids, actorId, token),
+            cancellationToken);
     }
 
     public Task<CancelEntitlementsResult> CancelBulkAsync(CancelEntitlementsRequest request, CancellationToken cancellationToken = default)

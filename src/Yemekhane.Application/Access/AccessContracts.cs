@@ -7,10 +7,20 @@ public sealed record AccessCheckRequest(string CardNumber, Guid DeviceId, Guid M
 /// MealPriceCents / AvailableBalanceCents yalnizca aktif hakedis YOKKEN doldurulur (bakiye yolu);
 /// hakedis varken sifir kalir ki sicak yolda ek sorgu acilmasin.
 /// </summary>
+/// <param name="MealPriceDefined">
+/// Ogunun ucreti TANIMLI mi (satir var mi). Ucreti tanimsiz ogun ile acikca 0 ₺
+/// tanimlanmis ucretsiz ogun ayni sey degildir; ret SEBEBI buna gore yazilir.
+///
+/// <para>
+/// Once ikisi de <c>MealPriceCents &lt;= 0</c> ile ayni kefeye konuyor ve ogrenci
+/// bakiyesi dolu olmasina ragmen "Bugün yemek hakkı bulunmuyor" diye reddediliyordu.
+/// Operator sorunu ogrencide ariyor, oysa eksik olan OGUN TANIMIYDI.
+/// </para>
+/// </param>
 public sealed record AccessSnapshot(bool CardExists, bool CardActive, Guid? StudentId, string? StudentName,
     Guid? ClassId, bool StudentActive, bool DeviceActive, Guid? EntitlementId, int Quantity, int ConsumedQuantity,
     string? EntitlementStatus, bool IsOnLeave, bool GroupHoliday = false,
-    long MealPriceCents = 0, long AvailableBalanceCents = 0);
+    long MealPriceCents = 0, long AvailableBalanceCents = 0, bool MealPriceDefined = true);
 public sealed record AccessDecision(string Decision, string Reason, Guid? StudentId, string? StudentName,
     Guid DeviceId, Guid MealTypeId, DateTimeOffset Timestamp, Guid OperationId);
 

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Meals;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
@@ -26,7 +26,9 @@ public sealed class EfMealTypeRepository(YemekhaneDbContext dbContext) : IMealTy
     {
         var meal = new MealType { Name = request.Name, StartsAt = request.StartsAt, EndsAt = request.EndsAt, IsActive = request.IsActive };
         dbContext.Add(meal);
-        dbContext.Add(new MealTypePrice { MealTypeId = meal.Id, PriceCents = ToCents(request.Price) });
+        var cents = ToCents(request.Price);
+        dbContext.Add(new MealTypePrice { MealTypeId = meal.Id, PriceCents = cents });
+        RecordPriceChange(meal.Id, cents, null);
         await dbContext.SaveChangesAsync(cancellationToken);
         return Map(meal, request.Price);
     }
@@ -37,8 +39,19 @@ public sealed class EfMealTypeRepository(YemekhaneDbContext dbContext) : IMealTy
         if (meal is null) return null;
         meal.Name = request.Name; meal.StartsAt = request.StartsAt; meal.EndsAt = request.EndsAt; meal.IsActive = request.IsActive; meal.UpdatedAt = DateTimeOffset.UtcNow;
         var price = await dbContext.Set<MealTypePrice>().SingleOrDefaultAsync(x => x.MealTypeId == id, cancellationToken);
-        if (price is null) dbContext.Add(new MealTypePrice { MealTypeId = id, PriceCents = ToCents(request.Price) });
-        else { price.PriceCents = ToCents(request.Price); price.UpdatedAt = DateTimeOffset.UtcNow; }
+        var cents = ToCents(request.Price);
+        if (price is null)
+        {
+            dbContext.Add(new MealTypePrice { MealTypeId = id, PriceCents = cents });
+            RecordPriceChange(id, cents, null);
+        }
+        else if (price.PriceCents != cents)
+        {
+            // Yalnizca fiyat DEGISTIYSE gecmise satir eklenir; ogun adi guncellemesi
+            // gecmisi gurultuye bogmamali.
+            RecordPriceChange(id, cents, price.PriceCents);
+            price.PriceCents = cents; price.UpdatedAt = DateTimeOffset.UtcNow;
+        }
         await dbContext.SaveChangesAsync(cancellationToken);
         return Map(meal, request.Price);
     }
@@ -49,6 +62,20 @@ public sealed class EfMealTypeRepository(YemekhaneDbContext dbContext) : IMealTy
         if (meal is null) return false;
         meal.IsActive = false; meal.UpdatedAt = DateTimeOffset.UtcNow; await dbContext.SaveChangesAsync(cancellationToken); return true;
     }
+
+    /// <summary>
+    /// Fiyat degisikligini GECMISE yazar. <see cref="MealTypePrice"/> ogun basina tek
+    /// satir tutup uzerine yazdigi icin eski deger kayboluyordu; gecmis hakedisler
+    /// guncel fiyattan raporlaniyordu.
+    /// </summary>
+    private void RecordPriceChange(Guid mealTypeId, long priceCents, long? previousPriceCents) =>
+        dbContext.Add(new MealTypePriceHistory
+        {
+            MealTypeId = mealTypeId,
+            PriceCents = priceCents,
+            PreviousPriceCents = previousPriceCents,
+            EffectiveFrom = DateTimeOffset.UtcNow
+        });
 
     private static MealTypeDetails Map(MealType x, decimal price) => new(x.Id, x.Name, x.StartsAt, x.EndsAt, x.IsActive, price);
     private static long ToCents(decimal lira) => (long)decimal.Round(lira * 100m, 0, MidpointRounding.AwayFromZero);

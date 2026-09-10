@@ -204,9 +204,15 @@ public sealed class StudentImportService(
                 student.LastName = row.LastName;
                 student.NationalId = row.NationalId;
                 student.BirthDate = row.BirthDate;
-                student.ClassId = row.ClassId;
-                // Bolum/Gorev yalnizca dosyada DOLUYSA yazilir: eski dosya bicimleri bu sutunlari
-                // tasimaz, bos sutun yuzunden mevcut atama silinmemeli.
+                // Sinif/Bolum/Gorev yalnizca dosyada DOLUYSA yazilir: eski dosya bicimleri bu
+                // sutunlari tasimaz, bos sutun yuzunden mevcut atama silinmemeli.
+                //
+                // Sinif icin bu koruma YOKTU ve atama KOSULSUZ yaziliyordu: yalnizca kart
+                // numaralarini guncellemek icin hazirlanan sade bir "NO;KART NO;AD;SOYAD"
+                // dosyasi TUM ogrencilerin sinifini NULL'a dusuruyordu. Sonrasinda sinifsiz
+                // ogrenciler anasinifi sayimlarindan sessizce dusup mutfaga yanlis sayi
+                // gidiyordu.
+                if (row.ClassName is not null) student.ClassId = row.ClassId;
                 if (row.DepartmentName is not null) student.DepartmentId = row.DepartmentId;
                 if (row.JobName is not null) student.JobId = row.JobId;
                 student.IsActive = true;

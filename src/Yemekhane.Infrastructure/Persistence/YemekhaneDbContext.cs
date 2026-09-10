@@ -175,6 +175,15 @@ public sealed class YemekhaneDbContext(DbContextOptions<YemekhaneDbContext> opti
         b.Entity<MealType>().HasIndex(x => x.Name).IsUnique();
         // Ogun ucreti 1:1 yan tablo (bkz. MealTypePrice); ogun silinirse ucret de gider.
         b.Entity<MealTypePrice>(e => { e.ToTable("meal_type_prices"); e.HasKey(x => x.MealTypeId); e.HasOne<MealType>().WithOne().HasForeignKey<MealTypePrice>(x => x.MealTypeId).OnDelete(DeleteBehavior.Cascade); });
+        // Ucret GECMISI: her degisiklik bir satir birakir. Ogun basina tek satir tutan
+        // meal_type_prices uzerine yaziyordu ve eski fiyat kayboluyordu; gecmis
+        // hakedisler guncel fiyattan raporlaniyordu.
+        b.Entity<MealTypePriceHistory>(e =>
+        {
+            e.ToTable("meal_type_price_history");
+            e.HasIndex(x => new { x.MealTypeId, x.EffectiveFrom });
+            e.HasOne<MealType>().WithMany().HasForeignKey(x => x.MealTypeId).OnDelete(DeleteBehavior.Cascade);
+        });
         // On odemeli TL bakiye defteri (bkz. StudentBalanceEntry). Ogrenci silinemez (Restrict):
         // para hareketi olan bir kaydin sessizce yok olmasi kasa denetimini bozar.
         b.Entity<StudentBalanceEntry>(e =>

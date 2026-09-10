@@ -59,6 +59,50 @@ public sealed class DeletedStudentImportRevivalTests
         Assert.Single(db.Students.Where(x => x.StudentNo == "71"));
     }
 
+
+    /// <summary>
+    /// SINIF sutunu OLMAYAN dosya mevcut sinif atamalarini SILMEMELIDIR.
+    ///
+    /// <para>
+    /// <c>student.ClassId = row.ClassId</c> KOSULSUZ calisiyordu. Bolum ve Gorev icin
+    /// "yalnizca dosyada doluysa yaz" korumasi vardi (yorumu: "eski dosya bicimleri bu
+    /// sutunlari tasimaz, bos sutun yuzunden mevcut atama silinmemeli") ama SINIF icin
+    /// ayni koruma YOKTU.
+    /// </para>
+    /// <para>
+    /// Sonuc: okul yalnizca kart numaralarini guncellemek icin sade bir
+    /// "NO;KART NO;AD;SOYAD" dosyasi hazirlayip uyguladiginda TUM ogrencilerin sinifi
+    /// NULL'a dusuyordu. Sonrasinda sinifsiz ogrenciler anasinifi sayimlarindan sessizce
+    /// dusuyor ve mutfaga yanlis sayi gidiyordu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task SinifSutunsuzDosyaMevcutSinifiSilmez()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var db = new YemekhaneDbContext(
+            new DbContextOptionsBuilder<YemekhaneDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        var schoolClass = new Yemekhane.Domain.Entities.SchoolClass { Name = "5A" };
+        db.Add(schoolClass);
+        await db.SaveChangesAsync();
+        var service = new StudentImportService(db, new StudentImportPreviewStore(TimeProvider.System), TimeProvider.System);
+
+        var withClass = await PreviewAsync(service, "NO;KART NO;AD;SOYAD;SINIF\n80;C80;Sinifli;Ogrenci;5A");
+        await service.ApplyAsync(new(withClass.Token), ActorId);
+        db.ChangeTracker.Clear();
+        Assert.Equal(schoolClass.Id, db.Students.Single(x => x.StudentNo == "80").ClassId);
+
+        // Yalnizca kart numarasini guncelleyen sade dosya: SINIF sutunu YOK.
+        var withoutClass = await PreviewAsync(service, "NO;KART NO;AD;SOYAD\n80;C81;Sinifli;Ogrenci");
+        await service.ApplyAsync(new(withoutClass.Token), ActorId);
+
+        db.ChangeTracker.Clear();
+        // Sinif atamasi KORUNMALI: dosyada olmayan bir sutun mevcut veriyi silmemeli.
+        Assert.Equal(schoolClass.Id, db.Students.Single(x => x.StudentNo == "80").ClassId);
+    }
+
     private static Task<ImportPreviewResult> PreviewAsync(StudentImportService service, string csv) =>
         service.PreviewAsync(new MemoryStream(Encoding.UTF8.GetBytes(csv)), "students.csv", ActorId);
 }

@@ -294,6 +294,10 @@ public sealed class AccessDecisionServiceTests
             entitlement?.Invoke(entitlementValue);
 
             context.AddRange(studentValue, cardValue, mealValue, deviceValue, entitlementValue);
+            // Ogun ucreti ACIKCA 0 ₺ tanimlanir: bu senaryolarin konusu hakedis/kart/cihaz,
+            // ucret tanimsizligi degil. Satir hic olmasaydi ret sebebi "Öğün ücreti tanımlı
+            // değil" olur ve asil olculen dal golgelenirdi.
+            context.Add(new MealTypePrice { MealTypeId = mealValue.Id, PriceCents = 0 });
             if (onLeave)
                 context.Add(new StudentLeave { StudentId = studentValue.Id, StartsOn = Day, EndsOn = Day,
                     LeaveType = "Sağlık", EntitlementBehavior = "Keep" });

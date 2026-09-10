@@ -1,4 +1,4 @@
-using Yemekhane.Application.Common;
+﻿using Yemekhane.Application.Common;
 
 namespace Yemekhane.Application.Entitlements;
 
@@ -91,8 +91,11 @@ public interface IMealEntitlementRepository
         IReadOnlyCollection<DateOnly> dates, int quantity, string source, string? expectedStateHash,
         CancellationToken cancellationToken);
     Task<IReadOnlyList<Guid>> ResolveTargetAsync(EntitlementTarget target, CancellationToken cancellationToken);
-    /// <summary>Ogunun birim ucreti (₺); tanimlanmamissa 0 (ucretsiz ogun).</summary>
-    Task<decimal> MealPriceAsync(Guid mealTypeId, CancellationToken cancellationToken);
+    /// <summary>
+    /// Ogunun birim ucreti (₺); fiyat satiri TANIMLANMAMISSA <c>null</c>.
+    /// Acikca 0 girilmis ucretsiz ogun ile tanimsiz ogun ayni sey degildir.
+    /// </summary>
+    Task<decimal?> MealPriceAsync(Guid mealTypeId, CancellationToken cancellationToken);
     Task<EntitlementPreviewState> PreviewAsync(IReadOnlyCollection<Guid> studentIds, Guid mealTypeId,
         IReadOnlyCollection<DateOnly> dates, CancellationToken cancellationToken);
     Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken);
@@ -111,6 +114,14 @@ public interface IMealEntitlementRepository
         CancellationToken cancellationToken);
     Task<bool> TryConsumeAsync(Guid entitlementId, CancellationToken cancellationToken);
     Task<bool> CancelAsync(Guid entitlementId, CancellationToken cancellationToken);
+    /// <param name="withinTransaction">
+    /// Iptal COMMIT EDILMEDEN once, AYNI transaction icinde calisacak is (iade). Hata
+    /// atarsa iptal de geri alinir; yarim kalmis "hak iptal ama para kasada" durumu
+    /// olusmaz.
+    /// </param>
+    Task<CancelEntitlementsResult> CancelBulkAsync(IReadOnlyCollection<Guid> entitlementIds, int expectedAffectedCount,
+        Func<CancellationToken, Task>? withinTransaction, CancellationToken cancellationToken);
+
     Task<CancelEntitlementsResult> CancelBulkAsync(IReadOnlyCollection<Guid> entitlementIds, int expectedAffectedCount,
         CancellationToken cancellationToken);
 }

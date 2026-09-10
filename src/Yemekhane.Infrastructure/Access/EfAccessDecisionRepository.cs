@@ -71,11 +71,14 @@ public sealed class EfAccessDecisionRepository(
         if (snapshot.StudentId is { } studentId && (snapshot.EntitlementId is null || snapshot.EntitlementStatus != "Active"))
         {
             var price = await dbContext.Set<MealTypePrice>().AsNoTracking().Where(x => x.MealTypeId == mealTypeId)
-                .Select(x => (long?)x.PriceCents).FirstOrDefaultAsync(cancellationToken) ?? 0;
+                .Select(x => (long?)x.PriceCents).FirstOrDefaultAsync(cancellationToken);
+            // Fiyat satirinin VARLIGI ile degeri ayri tutulur: tanimsiz ogun ile acikca
+            // 0 ₺ ucretsiz ogun ayni ret sebebini almamali.
+            snapshot = snapshot with { MealPriceDefined = price is not null };
             if (price > 0)
             {
                 var totals = await BalanceLedgerQueries.TotalsAsync(dbContext, studentId, calendarDate, cancellationToken);
-                snapshot = snapshot with { MealPriceCents = price, AvailableBalanceCents = totals.AvailableCents };
+                snapshot = snapshot with { MealPriceCents = price.Value, AvailableBalanceCents = totals.AvailableCents };
             }
         }
         cache.Set(cardNumber, deviceId, mealTypeId, calendarDate, snapshot);

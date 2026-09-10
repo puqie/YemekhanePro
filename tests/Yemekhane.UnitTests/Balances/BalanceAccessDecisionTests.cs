@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Access;
 using Yemekhane.Application.Balances;
@@ -69,15 +69,42 @@ public sealed class BalanceAccessDecisionTests
         Assert.Equal(BalanceAccessReasons.InsufficientBalance, decision.Reason);
     }
 
+    /// <summary>
+    /// ACIKCA 0 ₺ tanimlanmis ogun: bakiye kurali devreye girmez, hak aranir. Bakiyeye
+    /// dokunulmaz.
+    /// </summary>
     [Fact]
     public async Task UcretSifirOgundeBakiyeKuraliDevreyeGirmez()
+    {
+        await using var scenario = await Scenario.CreateAsync(priceCents: 0, topUpCents: 50_000, definePrice: true);
+
+        var decision = await scenario.CheckAsync();
+
+        Assert.Equal("DENY", decision.Decision);
+        Assert.Equal("Bugün yemek hakkı bulunmuyor", decision.Reason);
+        Assert.Equal(50_000, await scenario.Context.StudentBalanceEntries.SumAsync(x => x.AmountCents));
+    }
+
+    /// <summary>
+    /// Ucreti TANIMSIZ ogun (fiyat satiri hic yok): ret sebebi ogun tanimini
+    /// isaret etmeli.
+    ///
+    /// <para>
+    /// Once bu durum "ücret 0" ile ayni kefeye konuyor ve ogrenci bakiyesi DOLU olmasina
+    /// ragmen "Bugün yemek hakkı bulunmuyor" deniyordu; operator sorunu ogrencide ariyor,
+    /// eksik olan OGUN TANIMI oldugu icin saatlerce bulamiyordu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task UcretiTanimsizOgundeSebepOgunTaniminiIsaretEder()
     {
         await using var scenario = await Scenario.CreateAsync(priceCents: 0, topUpCents: 50_000);
 
         var decision = await scenario.CheckAsync();
 
         Assert.Equal("DENY", decision.Decision);
-        Assert.Equal("Bugün yemek hakkı bulunmuyor", decision.Reason);
+        Assert.Equal("Öğün ücreti tanımlı değil", decision.Reason);
+        // Bakiyeye DOKUNULMAZ: tanimsizlik yuzunden para dusulmemeli.
         Assert.Equal(50_000, await scenario.Context.StudentBalanceEntries.SumAsync(x => x.AmountCents));
     }
 
@@ -217,7 +244,13 @@ public sealed class BalanceAccessDecisionTests
         public Guid DeviceId { get; }
         public Guid MealTypeId { get; }
 
-        public static async Task<Scenario> CreateAsync(long priceCents, long? topUpCents, bool entitlement = false, DateOnly? expiresOn = null)
+        /// <param name="definePrice">
+        /// Fiyat satiri OLUSTURULSUN mu. <c>priceCents: 0</c> ile birlikte "acikca 0 ₺
+        /// ucretsiz ogun"u kurar; verilmezse satir hic acilmaz ve "ucreti tanimsiz ogun"
+        /// durumu olusur. Ikisi ayri ret sebebi uretir.
+        /// </param>
+        public static async Task<Scenario> CreateAsync(long priceCents, long? topUpCents, bool entitlement = false,
+            DateOnly? expiresOn = null, bool definePrice = false)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
@@ -229,7 +262,7 @@ public sealed class BalanceAccessDecisionTests
             var meal = new MealType { Name = "Öğle Yemeği" };
             var device = new Device { Name = "Turnike", DeviceType = "SF300", ConnectionType = "Ethernet", Direction = "Entry", ConnectionStatus = "Connected", IsActive = true };
             context.AddRange(student, cardValue, meal, device);
-            if (priceCents > 0) context.Add(new MealTypePrice { MealTypeId = meal.Id, PriceCents = priceCents });
+            if (priceCents > 0 || definePrice) context.Add(new MealTypePrice { MealTypeId = meal.Id, PriceCents = priceCents });
             if (topUpCents is { } cents)
                 context.Add(new StudentBalanceEntry { StudentId = student.Id, AmountCents = cents, Kind = StudentBalanceEntryKinds.TopUp,
                     ReferenceType = StudentBalanceReferenceTypes.IncomeTransaction, ReferenceId = Guid.NewGuid(),

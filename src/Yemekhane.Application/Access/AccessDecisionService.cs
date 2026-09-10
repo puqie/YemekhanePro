@@ -48,6 +48,10 @@ public sealed class AccessDecisionService(
         {
             // Hakedis yoksa on odemeli bakiye devreye girer (eski programdaki "TL Bakiye Yukleme").
             // Ucreti 0 olan ogunde bakiye kurali yoktur: bedelsiz ogun icin para dusulmez, hak aranir.
+            // Ucreti TANIMSIZ ogun: ret dogru (para dusulemez) ama sebep dogru soylenmeli.
+            // Once "Bugün yemek hakkı bulunmuyor" deniyordu ve operator sorunu ogrencide
+            // ariyordu; eksik olan OGUN TANIMIYDI.
+            if (!snapshot.MealPriceDefined) return await DenyAndLog("Öğün ücreti tanımlı değil");
             if (snapshot.MealPriceCents <= 0) return await DenyAndLog("Bugün yemek hakkı bulunmuyor");
             if (snapshot.AvailableBalanceCents < snapshot.MealPriceCents) return await DenyAndLog(Balances.BalanceAccessReasons.InsufficientBalance);
             var paid = new AccessDecision("ALLOW", Balances.BalanceAccessReasons.BalanceUsed, snapshot.StudentId, snapshot.StudentName,

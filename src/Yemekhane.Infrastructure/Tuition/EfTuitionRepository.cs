@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Audit;
 using Yemekhane.Application.Balances;
 using Yemekhane.Application.Common;
@@ -199,23 +199,65 @@ public sealed class EfTuitionRepository(YemekhaneDbContext dbContext, TimeProvid
         var paid = existing.Where(x => x.PaidCents > 0).ToList();
         dbContext.RemoveRange(existing.Where(x => x.PaidCents == 0));
 
+        // Plan toplami her ogrenci icin ayni; pesinat da bu toplamin bir parcasidir.
+        var planTotal = planned.Sum(x => x.AmountCents);
         foreach (var studentId in students)
         {
-            foreach (var row in planned)
+            var studentPaid = paid.Where(x => x.StudentId == studentId).ToList();
+            var rows = planned.Where(row => studentPaid.All(x => x.Sequence != row.Sequence)).ToList();
+            // ODENMIS taksitler eski tutarinda kalir (tahsilat gecmisi bozulmamali), ama
+            // aradaki fark KALAN taksitlere dagitilir: aksi halde taksit toplami plan
+            // tutarindan ayrisiyordu ve fark hicbir ekranda gorunmuyordu. 48.000 -> 60.000
+            // zamminda 1.200 TL hic tahsil edilmiyor, ters yonde veliden fazla isteniyordu.
+            var adjustments = DistributeRemainder(planTotal - studentPaid.Sum(x => x.AmountCents), rows);
+            for (var index = 0; index < rows.Count; index++)
             {
-                if (paid.Any(x => x.StudentId == studentId && x.Sequence == row.Sequence)) continue;
+                var row = rows[index];
                 dbContext.Add(new TuitionInstallment
                 {
                     PlanId = plan.Id,
                     StudentId = studentId,
                     Sequence = row.Sequence,
                     DueOn = row.DueOn,
-                    AmountCents = row.AmountCents,
+                    AmountCents = adjustments[index],
                     Note = row.Note,
                     CreatedAt = now
                 });
             }
         }
+    }
+
+    /// <summary>
+    /// <paramref name="target"/> kurusu <paramref name="rows"/> satirlarina, her satirin
+    /// plandaki agirligi oraninda dagitir; kurus artigi ILK satira eklenir ki toplam
+    /// birebir tutsun (TuitionSchedule.Build ile ayni kural).
+    /// </summary>
+    private static long[] DistributeRemainder(long target, IReadOnlyList<PlannedInstallment> rows)
+    {
+        if (rows.Count == 0) return [];
+        // Hedef negatifse (odenmis taksitler yeni plan tutarini asiyor) kalan taksitler
+        // sifirlanir: veliden eksi borc istenmez.
+        if (target <= 0) return [.. rows.Select(_ => 0L)];
+        var planned = rows.Sum(x => x.AmountCents);
+        var result = new long[rows.Count];
+        if (planned <= 0)
+        {
+            // Plandaki agirliklar sifirsa esit bol.
+            var each = target / rows.Count;
+            for (var index = 0; index < rows.Count; index++) result[index] = each;
+            result[0] += target - (each * rows.Count);
+            return result;
+        }
+        var distributed = 0L;
+        for (var index = 0; index < rows.Count; index++)
+        {
+            var share = (long)Math.Round((decimal)target * rows[index].AmountCents / planned,
+                MidpointRounding.AwayFromZero);
+            result[index] = share;
+            distributed += share;
+        }
+        result[0] += target - distributed;
+        return result;
     }
 
     private async Task<TuitionPlanDetails> DetailsAsync(TuitionPlan plan, DateOnly today,

@@ -67,13 +67,22 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
             CreatedPerStudent: createdPerStudent);
     }
 
-    /// <summary>Ogunun birim ucreti; fiyat satiri yoksa ucretsiz ogun sayilir (0).</summary>
-    public async Task<decimal> MealPriceAsync(Guid mealTypeId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Ogunun birim ucreti; fiyat satiri YOKSA <c>null</c>.
+    ///
+    /// <para>
+    /// Once satir yoksa 0 donuyordu ve "ucretsiz ogun" ile "ucreti TANIMSIZ ogun"
+    /// birbirine karisiyordu. Ucretsiz ogun zaten acikca 0 girilerek tanimlanabilir;
+    /// satirin hic olmamasi bir EKSIKLIKTIR. Fark edilmedigi icin 250.000 TL'lik bir
+    /// hakedis sessizce 0 TL olarak kasaya gecebiliyordu.
+    /// </para>
+    /// </summary>
+    public async Task<decimal?> MealPriceAsync(Guid mealTypeId, CancellationToken cancellationToken)
     {
         var cents = await dbContext.Set<MealTypePrice>().AsNoTracking()
             .Where(x => x.MealTypeId == mealTypeId).Select(x => (long?)x.PriceCents)
             .SingleOrDefaultAsync(cancellationToken);
-        return (cents ?? 0) / 100m;
+        return cents is null ? null : cents.Value / 100m;
     }
 
     public async Task<IReadOnlyList<Guid>> ResolveTargetAsync(EntitlementTarget target, CancellationToken cancellationToken)
@@ -408,8 +417,24 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
         catch (EntityConflictException) { return false; }
     }
 
+    public Task<CancelEntitlementsResult> CancelBulkAsync(IReadOnlyCollection<Guid> entitlementIds,
+        int expectedAffectedCount, CancellationToken cancellationToken) =>
+        CancelBulkAsync(entitlementIds, expectedAffectedCount, null, cancellationToken);
+
+    /// <param name="withinTransaction">
+    /// Iptal COMMIT EDILMEDEN once, AYNI transaction icinde calisacak is (iade). Hata
+    /// atarsa iptal de geri alinir.
+    ///
+    /// <para>
+    /// Once iptal ve iade ayri transaction'lardaydi: iptal commit ediliyor, iade ayri
+    /// yaziliyordu. Iade adimi cokerse hak iptal edilmis ama para kasada kalmis oluyordu
+    /// -- ve DUZELTILEMIYORDU, cunku ikinci denemede haklar zaten "Cancelled" oldugu icin
+    /// bu metot EntityConflictException firlatiyordu.
+    /// </para>
+    /// </param>
     public async Task<CancelEntitlementsResult> CancelBulkAsync(IReadOnlyCollection<Guid> entitlementIds,
-        int expectedAffectedCount, CancellationToken cancellationToken)
+        int expectedAffectedCount, Func<CancellationToken, Task>? withinTransaction,
+        CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var items = await dbContext.MealEntitlements.AsNoTracking().Where(x => entitlementIds.Contains(x.Id)).ToListAsync(cancellationToken);
@@ -423,6 +448,9 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
         auditService.Record(new AuditEntry("EntitlementsCancelled", nameof(MealEntitlement), operationId.ToString(),
             "Seçili yemek hakları iptal edildi.", changed, After: new { Count = changed }, BulkOperationId: operationId));
         await dbContext.SaveChangesAsync(cancellationToken);
+        // Iade AYNI transaction icinde: hata atarsa asagidaki commit hic calismaz ve
+        // iptal de geri alinir. Boylece operator ayni islemi sorunsuz tekrarlayabilir.
+        if (withinTransaction is not null) await withinTransaction(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         foreach (var studentId in items.Select(x => x.StudentId).Distinct())
             accessCache?.Publish(new(StudentId: studentId));
