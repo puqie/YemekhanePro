@@ -52,6 +52,14 @@ public interface IEntitlementBillingService
     /// </summary>
     Task<int> RefundAsync(IReadOnlyCollection<Guid> entitlementIds, Guid actorId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bir iadeyi GERI ALIR: void isareti kaldirilir, kismi iadede yazilan telafi kaydi
+    /// silinir. Toplu islem "Geri Al" ile geri alindiginda haklar geri gelir; tahsilat
+    /// void kalirsa okul o yemegi BEDAVA vermis olur.
+    /// </summary>
+    Task<int> UndoRefundAsync(IReadOnlyCollection<Guid> entitlementIds, Guid actorId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Hakedis ucretlerinin yazildigi gelir turu; yoksa ilk tahsilatta olusturulur.</summary>

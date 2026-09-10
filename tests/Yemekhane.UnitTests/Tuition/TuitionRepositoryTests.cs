@@ -29,7 +29,73 @@ public sealed class TuitionRepositoryTests : IAsyncDisposable
 
     public async ValueTask DisposeAsync() { await db.DisposeAsync(); await connection.DisposeAsync(); }
 
+    /// <summary>
+    /// AYNI taksite AYRI iki tahsilat islenirse IKISI DE sayilmalidir.
+    ///
+    /// <para>
+    /// Once "installment.PaidCents += cents" yaziliyordu: iki kasiyer ayni taksite ayri
+    /// tahsilat islerse ikisi de PaidCents=0 okur ve ikincisi birincinin tutarini EZER.
+    /// Benzersiz indeks bunu YAKALAMAZ (farkli IncomeTransactionId), Version alani da yok.
+    /// TuitionPayment satirlari dogru kalir ama borc yanlis kapanir -- veliden alinan para
+    /// taksitte hic gorunmez.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task TwoSeparatePaymentsOnTheSameInstallmentBothCount()
+    {
+        var classId = AddClass();
+        var studentId = AddStudent(classId, "1001");
+        var plan = await SaveAsync(ClassPlan(classId));
+        var installment = plan.Installments.OrderBy(x => x.DueOn).First();
+
+        await Repository().ApplyPaymentAsync(
+            new ApplyTuitionPaymentRequest(installment.Id, AddIncome(studentId, 3_000m), 3_000m), Today, actor, default);
+        var second = await Repository().ApplyPaymentAsync(
+            new ApplyTuitionPaymentRequest(installment.Id, AddIncome(studentId, 1_800m), 1_800m), Today, actor, default);
+
+        // 3.000 + 1.800 = 4.800: ilk odeme EZILMEMELI.
+        Assert.Equal(4_800m, second.Paid);
+        Assert.Equal(0m, second.Remaining);
+        Assert.Equal(TuitionInstallmentStatuses.Paid, second.Status);
+    }
+
+    /// <summary>Ayni anda islenen iki odemede de toplam dogru kalmalidir.</summary>
+    [Fact]
+    public async Task ConcurrentPaymentsDoNotOverwriteEachOther()
+    {
+        var classId = AddClass();
+        var studentId = AddStudent(classId, "1001");
+        var plan = await SaveAsync(ClassPlan(classId));
+        var installment = plan.Installments.OrderBy(x => x.DueOn).First();
+        var firstIncome = AddIncome(studentId, 2_000m);
+        var secondIncome = AddIncome(studentId, 1_500m);
+
+        // GERCEK YARIS: iki repository taksiti AYNI ANDA, ikisi de PaidCents=0 iken okur.
+        // Sirali cagrilar bu hatayi GORMEZ -- ikinci cagri zaten taze deger okur.
+        // AYRI DbContext'ler: ayni "db" paylasilirsa EF ikinci okumada onbellekteki
+        // nesneyi verir ve yaris hic olusmaz -- test sessizce gecerdi.
+        await using var firstContext = NewContext();
+        await using var secondContext = NewContext();
+        var firstRepository = new EfTuitionRepository(firstContext, TimeProvider.System);
+        var secondRepository = new EfTuitionRepository(secondContext, TimeProvider.System);
+        var firstRequest = new ApplyTuitionPaymentRequest(installment.Id, firstIncome, 2_000m);
+        var secondRequest = new ApplyTuitionPaymentRequest(installment.Id, secondIncome, 1_500m);
+
+        // IKI baglam da taksiti YAZMADAN ONCE okur: gercek yaris budur. Sirali
+        // await edilseydi ikinci okuma birincinin sonucunu gorurdu ve hata gizlenirdi.
+        _ = secondContext.TuitionInstallments.AsTracking().Single(x => x.Id == installment.Id);
+        await firstRepository.ApplyPaymentAsync(firstRequest, Today, actor, default);
+        await secondRepository.ApplyPaymentAsync(secondRequest, Today, actor, default);
+
+        var reloaded = await Repository().GetAsync(plan.Id, Today, default);
+        Assert.Equal(3_500m, reloaded!.TotalPaid);
+    }
+
     private EfTuitionRepository Repository() => new(db, TimeProvider.System);
+
+    /// <summary>Ayni veritabanina AYRI baglam: es zamanli kullaniciyi taklit eder.</summary>
+    private YemekhaneDbContext NewContext() =>
+        new(new DbContextOptionsBuilder<YemekhaneDbContext>().UseSqlite(connection).Options);
 
     private Guid AddClass(string name = "Anasınıfı A", string kind = ClassKinds.Preschool)
     {

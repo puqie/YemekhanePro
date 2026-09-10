@@ -261,6 +261,54 @@ public sealed class EfEntitlementBillingService(
     }
 
     /// <summary>Islem + ogrenci ciftinden kararli bir kimlik uretir; tekrar denemede ayni deger cikar.</summary>
+    /// <summary>
+    /// Iadeyi geri alir: void isareti kaldirilir ve kismi iadede yazilan telafi kaydi
+    /// silinir. Telafi kaydi silinmezse para IKI KEZ sayilirdi.
+    /// </summary>
+    public async Task<int> UndoRefundAsync(IReadOnlyCollection<Guid> entitlementIds, Guid actorId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entitlementIds);
+        var ids = entitlementIds.Distinct().ToArray();
+        if (ids.Length == 0) return 0;
+
+        var rights = await dbContext.MealEntitlements.AsNoTracking().Where(x => ids.Contains(x.Id))
+            .Select(x => new { x.StudentId, x.MealTypeId, x.EntitlementDate })
+            .ToListAsync(cancellationToken);
+        if (rights.Count == 0) return 0;
+
+        var studentIds = rights.Select(x => x.StudentId).Distinct().ToArray();
+        // YALNIZCA hakedis tahsilatlari; baska gelirler bu onekle yazilmaz.
+        var voided = await dbContext.Set<IncomeTransaction>()
+            .Where(x => studentIds.Contains(x.StudentId!.Value) && x.IsVoided
+                && x.Description != null && x.Description.StartsWith(DescriptionPrefix))
+            .ToListAsync(cancellationToken);
+        if (voided.Count == 0) return 0;
+
+        var now = timeProvider.GetUtcNow();
+        var restored = 0;
+        foreach (var charge in voided)
+        {
+            // Kismi iadede yazilan telafi kaydi: ayni turetilmis kimlikle bulunur.
+            var compensation = await dbContext.Set<IncomeTransaction>()
+                .Where(x => x.OperationId == DeriveOperationId(charge.OperationId, charge.Id))
+                .ToListAsync(cancellationToken);
+            dbContext.RemoveRange(compensation);
+
+            charge.IsVoided = false;
+            charge.VoidedAt = null;
+            charge.VoidedBy = null;
+            charge.VoidReason = null;
+            charge.UpdatedAt = now;
+            restored++;
+        }
+
+        auditService.Record(new AuditEntry("EntitlementRefundUndone", nameof(IncomeTransaction), null,
+            string.Create(Turkish, $"Hakediş iadesi geri alındı: {restored} tahsilat yeniden geçerli."), restored));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return restored;
+    }
+
     /// <summary>Tahsilati gecersiz isaretler; tutar silinmez, gerekcesiyle birlikte kalir.</summary>
     private static void Void(IncomeTransaction target, string reason, Guid actorId, DateTimeOffset now)
     {

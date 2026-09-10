@@ -169,13 +169,28 @@ public sealed class EfTuitionRepository(YemekhaneDbContext dbContext, TimeProvid
             CreatedBy = actorId,
             CreatedAt = now
         });
-        installment.PaidCents += cents;
-        installment.UpdatedAt = now;
         auditService.Record(new AuditEntry("TuitionPaymentApplied", nameof(TuitionInstallment), installment.Id.ToString(),
             $"Taksite ödeme işlendi: {request.Amount:N2} ₺.",
-            After: new { installment.PaidCents, installment.AmountCents }));
+            After: new { Added = cents, installment.AmountCents }));
         await dbContext.SaveChangesAsync(cancellationToken);
-        return Map(installment, today);
+
+        // ODENEN TUTAR VERITABANINDA ARTIRILIR, okunan degerin uzerine yazilmaz.
+        //
+        // Once "installment.PaidCents += cents" yaziliyordu: iki kasiyer AYNI taksite
+        // ayri tahsilat islerse ikisi de PaidCents=0 okur, ikincisi birincinin tutarini
+        // EZER ve o para taksitte hic gorunmez. Benzersiz indeks bunu yakalamaz (farkli
+        // IncomeTransactionId), Version alani da yok. TuitionPayment satirlari dogru
+        // kalir ama borc yanlis kapanir -- veliden alinan para kaybolmus gorunur.
+        await dbContext.TuitionInstallments.Where(x => x.Id == installment.Id)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(x => x.PaidCents, x => x.PaidCents + cents)
+                .SetProperty(x => x.UpdatedAt, now), cancellationToken);
+
+        // Guncel degeri geri oku: bellekteki nesne artik eskidir.
+        dbContext.Entry(installment).State = EntityState.Detached;
+        var fresh = await dbContext.TuitionInstallments.AsNoTracking()
+            .SingleAsync(x => x.Id == installment.Id, cancellationToken);
+        return Map(fresh, today);
     }
 
     /// <summary>Sinif plani o siniftaki AKTIF ogrencilere uygulanir; ogrenci plani yalnizca o ogrenciye.</summary>

@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using System.Globalization;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Balances;
 using Yemekhane.Application.Common;
@@ -198,9 +199,28 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         var student = await dbContext.Students.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (student is null) return false;
         var before = Snapshot(student);
+
+        // SILINEN OGRENCININ PARASI KAYDA GECER. Global sorgu suzgeci (!IsDeleted)
+        // silinen ogrenciyi HER EKRANDAN gizler: arama, ekstre, bakiye. Kalan bakiyesi
+        // ya da odenmemis borcu varsa o para tabloda durur ama hicbir yerden GORULEMEZ
+        // ve iade edilemez. Veli aylar sonra "param vardi" dediginde kayit bulunamazdi.
+        var balanceCents = await dbContext.Set<StudentBalanceEntry>().AsNoTracking()
+            .Where(x => x.StudentId == id).SumAsync(x => (long?)x.AmountCents, cancellationToken) ?? 0;
+        var debtCents = await dbContext.Set<TuitionInstallment>().AsNoTracking()
+            .Where(x => x.StudentId == id && !x.IsCancelled)
+            .SumAsync(x => (long?)(x.AmountCents - x.PaidCents), cancellationToken) ?? 0;
+        var unusedRights = await dbContext.MealEntitlements.AsNoTracking()
+            .Where(x => x.StudentId == id && x.Status == "Active" && x.ConsumedQuantity < x.Quantity)
+            .SumAsync(x => (int?)(x.Quantity - x.ConsumedQuantity), cancellationToken) ?? 0;
+
         student.IsDeleted = true; student.IsActive = false; student.UpdatedAt = DateTimeOffset.UtcNow;
         LocalOutbox.Enqueue(dbContext, student, LocalOutbox.UpdateStudent, student);
-        auditService.Record(new AuditEntry("StudentDeactivated", nameof(Student), id.ToString(), "Öğrenci pasifleştirildi.", Before: before, After: student));
+        var money = balanceCents == 0 && debtCents == 0 && unusedRights == 0
+            ? "Öğrenci pasifleştirildi."
+            : string.Create(CultureInfo.GetCultureInfo("tr-TR"),
+                $"Öğrenci pasifleştirildi. DİKKAT: kalan bakiye {balanceCents / 100m:N2} ₺, "
+                + $"ödenmemiş borç {debtCents / 100m:N2} ₺, kullanılmamış {unusedRights} öğün hakkı vardı.");
+        auditService.Record(new AuditEntry("StudentDeactivated", nameof(Student), id.ToString(), money, Before: before, After: student));
         await dbContext.SaveChangesAsync(cancellationToken); return true;
     }
 

@@ -31,7 +31,14 @@ public static class YearEndResetActions
 /// <param name="Action"><see cref="YearEndResetActions.Delete"/> ya da <see cref="YearEndResetActions.Deactivate"/>.</param>
 public sealed record YearEndResetItem(string Key, string Label, int Count, string Action = YearEndResetActions.Delete);
 
-public sealed record YearEndResetPreview(IReadOnlyList<YearEndResetItem> Items)
+/// <param name="UnusedPaidQuantity">
+/// Silinecek haklar icinde ODENMIS ama KULLANILMAMIS ogun sayisi. Bu haklarin
+/// karsiligi olan tahsilat kasada AKTIF kalir: hak yok, para var, iade yok.
+/// Kullanici bunu bilerek karar vermelidir; once yalnizca satir SAYISI gosteriliyordu.
+/// </param>
+/// <param name="UnusedPaidStudents">Bu durumdaki ogrenci sayisi.</param>
+public sealed record YearEndResetPreview(IReadOnlyList<YearEndResetItem> Items,
+    int UnusedPaidQuantity = 0, int UnusedPaidStudents = 0)
 {
     /// <summary>Etkilenecek kayit sayisi (silinen + pasife alinan).</summary>
     public int Total => Items.Sum(item => item.Count);

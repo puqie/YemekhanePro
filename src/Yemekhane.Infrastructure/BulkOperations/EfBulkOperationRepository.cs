@@ -232,6 +232,12 @@ public sealed class EfBulkOperationRepository(YemekhaneDbContext db, IAuditServi
             throw new EntityConflictException("Geri alma yapılamadı: aktarım kayıtları değişmiş. Hiçbir kayıt değiştirilmedi.");
         db.MealTransfers.RemoveRange(transfers);
         await RemoveEventsAsync(undo.Events, cancellationToken);
+        // IADE DE GERI ALINIR. Haklar geri geldigi halde tahsilat void kalirsa okul o
+        // yemegi BEDAVA vermis olur: 200 ogrenci x 5 gun x 60 TL = 60.000 TL. Ekranda
+        // hicbir uyari cikmaz, gecmis "Geri alindi" der.
+        if (billing is not null && undo.Sources.Count > 0)
+            await billing.UndoRefundAsync([.. undo.Sources.Select(x => x.Id)], revertedBy, cancellationToken);
+
         operation.Status = "Reverted"; operation.RevertedAt = timeProvider.GetUtcNow(); operation.UpdatedAt = operation.RevertedAt;
         audit.Record(new AuditEntry("BulkOperationUndone", nameof(BulkOperation), operation.Id.ToString(),
             "Toplu takvim işlemi geri alındı.", undo.Sources.Count, BulkOperationId: operation.Id, UserId: revertedBy));

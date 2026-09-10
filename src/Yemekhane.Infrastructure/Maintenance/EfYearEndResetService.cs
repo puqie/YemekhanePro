@@ -67,7 +67,20 @@ public sealed class EfYearEndResetService(
         var items = new List<YearEndResetItem>(Steps.Length);
         foreach (var step in Steps)
             items.Add(new YearEndResetItem(step.Key, step.Label, await step.Count(db, cancellationToken).ConfigureAwait(false), step.Action));
-        return new YearEndResetPreview(items);
+
+        // ODENMIS ama KULLANILMAMIS haklar ayrica sayilir. Bunlar silinince karsiligi
+        // olan tahsilat kasada AKTIF kalir -- hak yok, para var, iade yok. Kullanici
+        // bunu gormeden onay veremesin; once yalnizca satir sayisi gosteriliyordu.
+        var unusedPaid = await db.MealEntitlements.AsNoTracking()
+            .Where(x => x.Status == "Active" && x.ConsumedQuantity < x.Quantity
+                && db.Set<IncomeTransaction>().Any(income => !income.IsVoided
+                    && income.StudentId == x.StudentId && income.MealTypeId == x.MealTypeId))
+            .Select(x => new { x.StudentId, Remaining = x.Quantity - x.ConsumedQuantity })
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return new YearEndResetPreview(items,
+            unusedPaid.Sum(x => x.Remaining),
+            unusedPaid.Select(x => x.StudentId).Distinct().Count());
     }
 
     public async Task<YearEndResetResult> ResetAsync(string? confirmation, CancellationToken cancellationToken)

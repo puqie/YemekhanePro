@@ -72,8 +72,26 @@ public sealed class IncomeService(IIncomeRepository repository, Yemekhane.Applic
             throw new RequestValidationException("Sayfa en az 1, sayfa boyutu 1-200 olmalıdır.");
         if (filter.From > filter.To) throw new RequestValidationException("Başlangıç tarihi bitiş tarihinden sonra olamaz.");
         var cardNumber = NormalizeOptional(filter.CardNumber, 128, "Kart numarası");
-        return repository.ListTransactionsAsync(filter with { CardNumber = cardNumber }, cancellationToken);
+        return repository.ListTransactionsAsync(
+            filter with { CardNumber = cardNumber, To = EndOfDay(filter.To) }, cancellationToken);
     }
+
+    /// <summary>
+    /// Bitis tarihini GUN SONUNA cekar (23:59:59.999).
+    ///
+    /// <para>
+    /// Ekran "31 Ekim" secildiginde gunun BASINI gonderiyor; sorgu ise
+    /// <c>TransactionAt &lt;= To</c> kullaniyor. Duzeltme olmadan 31 Ekim gun icindeki
+    /// tahsilatlarin HICBIRI listeye girmezdi. Kasa Ozeti ayni araligi tam gun sayiyor
+    /// (gun sonrasina gecip HARIC karsilastiriyor); iki ekran farkli toplam gosterip
+    /// muhasebeyi bir gunluk tahsilat kadar ayiriyordu.
+    /// </para>
+    /// <para>Saat bilgisi ZATEN verilmisse (gun basi degilse) oldugu gibi birakilir.</para>
+    /// </summary>
+    private static DateTimeOffset? EndOfDay(DateTimeOffset? value) =>
+        value is { } moment && moment.TimeOfDay == TimeSpan.Zero
+            ? moment.AddDays(1).AddTicks(-1)
+            : value;
 
     private static SaveIncomeTypeRequest ValidateType(SaveIncomeTypeRequest request)
     {

@@ -131,6 +131,8 @@ public sealed class CancelRefundAtomicityTests : IAsyncDisposable
         public Task<int> RefundAsync(IReadOnlyCollection<Guid> entitlementIds, Guid actorId,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("İade yazılamadı (benzetim).");
+        public Task<int> UndoRefundAsync(IReadOnlyCollection<Guid> entitlementIds, Guid actorId,
+            CancellationToken cancellationToken = default) => Task.FromResult(0);
     }
 
     private sealed class NoClosures : ICalendarClosureProvider
