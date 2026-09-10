@@ -50,25 +50,35 @@ public sealed record DashboardSnapshot(
 
 public interface IDashboardRepository
 {
+    /// <param name="classKind">
+    /// Sinif turu suzgeci. Panel MUTFAGA VERILECEK SAYIYI gosterir; Takvim ekrani bu
+    /// suzgeci zaten uyguluyordu (varsayilan: anasinifi HARIC). Panel uygulamayinca iki
+    /// ekran ayni gun icin FARKLI sayi gosteriyor ve kullanici hangisine bakarsa mutfaga
+    /// o sayiyi veriyordu -- yemek eksik ya da fazla cikardi.
+    /// </param>
     Task<DashboardSnapshot> GetAsync(
         DateOnly currentDate,
         DateTimeOffset dayStart,
         DateTimeOffset dayEnd,
         DateTimeOffset generatedAt,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? classKind = null);
 }
 
 public sealed class DashboardService(IDashboardRepository repository, TimeProvider timeProvider)
 {
     private static readonly TimeZoneInfo Istanbul = FindIstanbulTimeZone();
 
-    public Task<DashboardSnapshot> GetAsync(CancellationToken cancellationToken = default)
+    public Task<DashboardSnapshot> GetAsync(string? classKind = null, CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow();
         var date = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, Istanbul).DateTime);
         var localStart = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
         var start = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(localStart, Istanbul), TimeSpan.Zero);
-        return repository.GetAsync(date, start, start.AddDays(1), now, cancellationToken);
+        // Varsayilan Takvim ekraniyla AYNI: anasinifi haric. Iki ekran ayni sayiyi
+        // gostermelidir; mutfaga verilen rakam buradan okunur.
+        return repository.GetAsync(date, start, start.AddDays(1), now, cancellationToken,
+            Yemekhane.Domain.Entities.ClassKinds.Normalize(classKind));
     }
 
     private static TimeZoneInfo FindIstanbulTimeZone()

@@ -237,7 +237,11 @@ public sealed class EfReportRepository(YemekhaneDbContext dbContext) : IReportRe
     private IQueryable<ReportRow> Income(ReportType type) =>
         from item in dbContext.Set<IncomeTransaction>().AsNoTracking()
         join incomeType in dbContext.Set<IncomeType>().AsNoTracking() on item.IncomeTypeId equals incomeType.Id
-        join studentValue in dbContext.Students.AsNoTracking() on item.StudentId equals (Guid?)studentValue.Id into studentJoin
+        // IgnoreQueryFilters: silinen ogrencinin tahsilati raporda KALIR (para gercekten
+        // alinmistir, muhasebe toplamindan dusmemeli) ama ADI DA gorunur. Suzgec acikken
+        // join bos donuyor, satir "isimsiz" cikiyordu: muhasebe "bu 3.000 TL kimin?" diye
+        // soruyor, rapordan cevaplanamiyordu. Gecis Gecmisi bu deseni zaten kullaniyor.
+        join studentValue in dbContext.Students.IgnoreQueryFilters().AsNoTracking() on item.StudentId equals (Guid?)studentValue.Id into studentJoin
         from student in studentJoin.DefaultIfEmpty()
         join classValue in dbContext.Set<SchoolClass>().AsNoTracking() on student.ClassId equals (Guid?)classValue.Id into classJoin
         from schoolClass in classJoin.DefaultIfEmpty()

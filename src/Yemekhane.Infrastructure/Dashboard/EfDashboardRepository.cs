@@ -8,11 +8,29 @@ namespace Yemekhane.Infrastructure.Dashboard;
 public sealed class EfDashboardRepository(YemekhaneDbContext dbContext) : IDashboardRepository
 {
     public async Task<DashboardSnapshot> GetAsync(DateOnly currentDate, DateTimeOffset dayStart,
-        DateTimeOffset dayEnd, DateTimeOffset generatedAt, CancellationToken cancellationToken)
+        DateTimeOffset dayEnd, DateTimeOffset generatedAt, CancellationToken cancellationToken,
+        string? classKind = null)
     {
-        var activeStudents = await dbContext.Students.AsNoTracking().CountAsync(x => x.IsActive, cancellationToken);
+        // SINIF TURU SUZGECI: Panel mutfaga verilecek sayiyi gosterir. Takvim bu suzgeci
+        // zaten uyguluyordu; Panel uygulamayinca ayni gun icin IKI FARKLI sayi cikiyordu.
+        var preschoolOnly = classKind == ClassKinds.Preschool;
+        var filtered = !string.IsNullOrWhiteSpace(classKind);
+
+        var studentQuery = dbContext.Students.AsNoTracking().Where(x => x.IsActive);
+        if (filtered)
+            studentQuery = studentQuery.Where(x => preschoolOnly
+                ? dbContext.Set<SchoolClass>().Any(c => c.Id == x.ClassId && c.Kind == ClassKinds.Preschool)
+                : !dbContext.Set<SchoolClass>().Any(c => c.Id == x.ClassId && c.Kind == ClassKinds.Preschool));
+        var activeStudents = await studentQuery.CountAsync(cancellationToken);
+
         var entitlementQuery = dbContext.MealEntitlements.AsNoTracking()
             .Where(x => x.EntitlementDate == currentDate && x.Status == "Active");
+        if (filtered)
+            entitlementQuery = entitlementQuery.Where(x => preschoolOnly
+                ? dbContext.Students.Any(s => s.Id == x.StudentId
+                    && dbContext.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool))
+                : !dbContext.Students.Any(s => s.Id == x.StudentId
+                    && dbContext.Set<SchoolClass>().Any(c => c.Id == s.ClassId && c.Kind == ClassKinds.Preschool)));
         var entitlementSummary = await entitlementQuery.GroupBy(_ => 1).Select(x => new
         {
             Students = x.Select(value => value.StudentId).Distinct().Count(),
