@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Audit;
@@ -402,13 +403,38 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
             DaysLeft: lastDate.DayNumber - today.DayNumber);
     }
 
+    /// <summary>
+    /// Hakki turnikeden GECMEDEN duser (elle kullanim ucu).
+    ///
+    /// <para>
+    /// Turnike yolu (EfAccessDecisionRepository.TryConsumeAndLogAsync) AccessLog +
+    /// MealUsage yazar; bu yol yazmaz, cunku ortada bir gecis yoktur. Ama IZSIZ de
+    /// kalmaz: denetim kaydi birakilir. Once hicbir iz yoktu ve veli "hakkim 20'ydi,
+    /// 18 kaldi, nerede kullanildi?" diye sordugunda CEVAP VERILEMIYORDU.
+    /// </para>
+    /// </summary>
     public async Task<bool> TryConsumeAsync(Guid entitlementId, CancellationToken cancellationToken)
     {
         var changed = await dbContext.MealEntitlements.Where(x => x.Id == entitlementId && x.Status == "Active" && x.ConsumedQuantity < x.Quantity)
             .ExecuteUpdateAsync(update => update.SetProperty(x => x.ConsumedQuantity, x => x.ConsumedQuantity + 1)
                 .SetProperty(x => x.Version, x => x.Version + 1).SetProperty(x => x.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken) == 1;
-        if (changed) accessCache?.Publish(new(ClearAll: true));
-        return changed;
+        if (!changed) return false;
+
+        // Hangi hakkin elle dusuruldugu KAYDA GECER; aksi halde hak sessizce eksilir.
+        var row = await dbContext.MealEntitlements.AsNoTracking()
+            .Where(x => x.Id == entitlementId)
+            .Select(x => new { x.StudentId, x.EntitlementDate, x.MealTypeId })
+            .SingleOrDefaultAsync(cancellationToken);
+        auditService.Record(new AuditEntry("EntitlementConsumedManually", nameof(MealEntitlement),
+            entitlementId.ToString(),
+            row is null
+                ? "Yemek hakkı elle düşüldü (turnike geçişi olmadan)."
+                : string.Create(CultureInfo.GetCultureInfo("tr-TR"),
+                    $"Yemek hakkı elle düşüldü (turnike geçişi olmadan): {row.EntitlementDate:dd.MM.yyyy}."),
+            1));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        accessCache?.Publish(new(ClearAll: true));
+        return true;
     }
 
     public async Task<bool> CancelAsync(Guid entitlementId, CancellationToken cancellationToken)
