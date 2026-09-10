@@ -354,7 +354,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
             // katman saymak Escape'in surmekte olan bir duzenlemeyi (IsFormOpen'i kapatarak)
             // GORUNMEYEN bir nedenle sessizce iptal etmesine yol aciyordu. Gercekten goruntude
             // olan tek katman kart okuma modalidir.
-            ShellRoutes.Students or ShellRoutes.StudentDetail => StudentsDataContext is StudentsViewModel students && students.IsCardWorkflowOpen,
+            ShellRoutes.Students or ShellRoutes.StudentDetail => StudentsDataContext is StudentsViewModel students && (students.IsCardWorkflowOpen || students.IsLeaveOpen),
             ShellRoutes.Devices => DevicesDataContext is DevicesViewModel devices && (devices.IsLogsOpen || devices.IsEditorOpen),
             ShellRoutes.HolidayTransfer => CalendarDataContext is CalendarViewModel calendar &&
                 (calendar.IsDrawerOpen || calendar.BulkWizard is { IsOpen: true } or { IsHistoryOpen: true }),

@@ -39,6 +39,9 @@ public sealed class EnumTextConverter : IValueConverter
         ["Active"] = "Aktif",
         ["Cancelled"] = "İptal",
         ["Transferred"] = "Aktarıldı",
+        // Toplu islemde "Forfeit" (yakma) secilince yazilan durum. Ceviride EKSIKTI:
+        // ekranda ham "Forfeited" gorunuyordu.
+        ["Forfeited"] = "Yakıldı",
         // Rapor projeksiyonlarinin buyuk harfli karsiliklari (EfReportRepository)
         ["VOIDED"] = "İptal",
         ["INACTIVE"] = "Pasif",

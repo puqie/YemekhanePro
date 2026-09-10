@@ -323,8 +323,20 @@ public sealed class StudentsViewModelTests
         vm.SelectedTab = vm.Tabs.First(t => t.Key == "Leaves");
         await Until(() => api.TabCount == 1);
 
+        // "İzin Ver" artik FORMU ACAR: tarih ve hakedis davranisi kullaniciya sorulur.
+        // Once hicbir sey sorulmadan bugun icin "Keep" kaydi aciliyordu.
         vm.GiveLeaveCommand.Execute(null);
+        Assert.True(vm.IsLeaveOpen, "İzin formu açılmadı.");
+
+        vm.LeaveEndsOn = vm.LeaveStartsOn.AddDays(6);
+        vm.LeaveBehavior = "Cancel";
+        vm.SaveLeaveCommand.Execute(null);
         await Until(() => api.LeaveCount == 1 && api.TabCount == 2);
+        Assert.False(vm.IsLeaveOpen, "Kayıttan sonra form kapanmadı.");
+        // KULLANICININ SECIMI sunucuya gitmeli: once alanlar ekrana bagli olmadigi icin
+        // hep bugun + "Keep" gidiyordu ve yedi gunluk rapor izni tek gune iniyordu.
+        Assert.Equal("Cancel", api.LastLeave!.EntitlementBehavior);
+        Assert.Equal(6, api.LastLeave.EndsOn.DayNumber - api.LastLeave.StartsOn.DayNumber);
         Assert.Equal("Leaves", vm.SelectedTab!.Key);
         Assert.True(vm.SelectedTab.IsLoaded);
     }
@@ -551,7 +563,8 @@ public sealed class StudentsViewModelTests
         public int LeaveCount, ReplaceCount, AssignCount;
         public SaveStudentRequest? LastSaveRequest;
         public Exception? ReplaceFailure;
-        public Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default) { LeaveCount++; return Task.CompletedTask; }
+        public CreateLeaveRequest? LastLeave;
+        public Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default) { LeaveCount++; LastLeave = request; return Task.CompletedTask; }
         public Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
         { ReplaceCount++; return ReplaceFailure is null ? Task.CompletedTask : Task.FromException(ReplaceFailure); }
         public Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default) { AssignCount++; LastAssign = request; return Task.CompletedTask; }

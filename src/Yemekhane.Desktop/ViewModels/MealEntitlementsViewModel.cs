@@ -128,7 +128,14 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     private bool isExpiringBusy;
     private string? expiringMessage;
     private string expiringDaysText = "10";
-    public IReadOnlyList<EntitlementStatusOption> Statuses { get; } = [new("Tümü", null), new("Aktif", "Active"), new("İptal", "Cancelled"), new("Aktarıldı", "Transferred")];
+    /// <summary>
+    /// Durum suzgeci. "Yakıldı" (Forfeited) EKSIKTI: toplu islemde "Yakma" secen
+    /// kullanici o haklari bir daha bulamiyordu -- ne suzgecte secenek vardi ne de
+    /// ekranda dogru etiket goruniyordu (ham "Forfeited" yaziyordu).
+    /// </summary>
+    public IReadOnlyList<EntitlementStatusOption> Statuses { get; } =
+        [new("Tümü", null), new("Aktif", "Active"), new("İptal", "Cancelled"),
+         new("Aktarıldı", "Transferred"), new("Yakıldı", "Forfeited")];
     public IReadOnlyList<EntitlementTargetOption> TargetTypes { get; } = [new("Manuel öğrenciler", "Manual"), new("Sınıf", "Class"), new("Kademe", "Grade"), new("Grup", "Group"), new("Tüm aktif öğrenciler", "All")];
     public bool CanManage => canManage;
     public bool CanBulk => canBulk;

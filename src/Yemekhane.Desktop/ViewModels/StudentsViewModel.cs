@@ -75,6 +75,9 @@ public sealed class StudentDetailTabViewModel(string key, Func<Task<IReadOnlyLis
     }
 }
 
+/// <summary>Izin sirasinda hakedise ne olacagi; Value sunucuya giden koddur.</summary>
+public sealed record LeaveBehaviorOption(string Name, string Value);
+
 public sealed class StudentsViewModel : ObservableObject, IDisposable
 {
     private readonly IStudentApiClient api;
@@ -157,7 +160,11 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         ActivateCommand = new AsyncCommand(() => SetActiveAsync(true, "Öğrenci aktifleştirilemedi."), () => CanWrite && Details?.IsActive == false);
         DeleteCommand = new AsyncCommand(DeleteAsync, () => CanDeactivate && Details is not null);
         CancelDeleteCommand = new RelayCommand(() => IsDeleteArmed = false, () => IsDeleteArmed);
-        GiveLeaveCommand = new AsyncCommand(GiveLeaveAsync, () => CanWrite && Details is not null);
+        // "İzin Ver" artik dogrudan kaydetmez, FORMU ACAR: tarih ve davranis
+        // kullaniciya sorulur. Once hicbir sey sorulmadan bugun icin kayit aciliyordu.
+        GiveLeaveCommand = new RelayCommand(OpenLeave, () => CanWrite && Details is not null);
+        SaveLeaveCommand = new AsyncCommand(GiveLeaveAsync, () => CanWrite && Details is not null);
+        CloseLeaveCommand = new RelayCommand(() => IsLeaveOpen = false);
         ReplaceCardCommand = new AsyncCommand(ReplaceCardAsync, () => CanManageCards && Details is not null);
         ReadCardCommand = new AsyncCommand(ReadCardAsync, () => CanManageCards && this.cardReadSource.IsAvailable);
         OpenCardWorkflowCommand = new AsyncCommand(OpenCardWorkflowAsync, () => CanManageCards);
@@ -481,10 +488,47 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public string? PendingPhotoName => pendingPhotoName;
     /// <summary>Kaydedilmis fotografin sunucudaki goreli yolu.</summary>
     public string? PhotoPath => Details?.PhotoPath;
-    public string LeaveType { get; set; } = "Mazeret";
-    public DateTime LeaveStartsOn { get; set; } = DateTime.Today;
-    public DateTime LeaveEndsOn { get; set; } = DateTime.Today;
-    public string LeaveBehavior { get; set; } = "Keep";
+    /// <summary>
+    /// IZIN FORMU. Bu dort alan EKRANA BAGLI DEGILDI: "İzin Ver" dugmesi kullaniciya
+    /// hicbir sey sormadan HEP BUGUN icin, turu "Mazeret", davranisi "Keep" bir kayit
+    /// aciyordu. Bir haftalik rapor izni girmek isteyen memur tek gunluk izin yaziyor,
+    /// hicbir hak iptal edilmiyor ya da aktarilmiyordu. Sunucunun destekledigi
+    /// "Cancel" ve "NextBusinessDay" davranislari masaustunden ERISILEMEZDI.
+    /// </summary>
+    public string LeaveType { get => leaveType; set => Set(ref leaveType, value); }
+    public DateTime LeaveStartsOn
+    {
+        get => leaveStartsOn;
+        // Bitis baslangictan once kalmasin: kullanici ileri bir baslangic secince
+        // bitis de birlikte kayar, yoksa sunucu dogrulamasi reddederdi.
+        set { if (Set(ref leaveStartsOn, value) && leaveEndsOn < value) LeaveEndsOn = value; }
+    }
+    public DateTime LeaveEndsOn { get => leaveEndsOn; set => Set(ref leaveEndsOn, value); }
+    public string LeaveBehavior { get => leaveBehavior; set => Set(ref leaveBehavior, value); }
+
+    private string leaveType = "Mazeret";
+    private DateTime leaveStartsOn = DateTime.Today;
+    private DateTime leaveEndsOn = DateTime.Today;
+    private string leaveBehavior = "Keep";
+    private bool isLeaveOpen;
+
+    /// <summary>Izin cekmecesi acik mi.</summary>
+    public bool IsLeaveOpen { get => isLeaveOpen; private set => Set(ref isLeaveOpen, value); }
+
+    /// <summary>Izin turleri; sunucu serbest metin kabul eder, liste yaygin secenekleri verir.</summary>
+    public IReadOnlyList<string> LeaveTypes { get; } = ["Mazeret", "Rapor", "Gezi", "Diğer"];
+
+    /// <summary>
+    /// Hakedis davranisi. Sunucudaki liste ile AYNI olmalidir
+    /// (LeaveService.Behaviors = Keep, Cancel, NextBusinessDay).
+    /// </summary>
+    public IReadOnlyList<LeaveBehaviorOption> LeaveBehaviors { get; } =
+    [
+        new("Hakları koru (yemek hakkı durur)", "Keep"),
+        new("Hakları iptal et (tahsilat iade edilir)", "Cancel"),
+        new("Sonraki iş gününe aktar", "NextBusinessDay"),
+
+    ];
     public string NewCardNumber { get; set; } = "";
     public string NewPrintedNumber { get; set; } = "";
     public string CardReplacementReason { get; set; } = "Kayıp/hasarlı kart";
@@ -504,6 +548,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public ICommand DeleteCommand { get; }
     public ICommand CancelDeleteCommand { get; }
     public ICommand GiveLeaveCommand { get; }
+    public ICommand SaveLeaveCommand { get; }
+    public ICommand CloseLeaveCommand { get; }
     public ICommand ReplaceCardCommand { get; }
     public ICommand ReadCardCommand { get; }
     public ICommand OpenCardWorkflowCommand { get; }
@@ -1062,6 +1108,17 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { IsDeleteArmed = false; ErrorMessage = Describe(ex, "Öğrenci silinemedi."); }
     }
+    /// <summary>Izin formunu bugunun tarihiyle acar.</summary>
+    private void OpenLeave()
+    {
+        LeaveStartsOn = DateTime.Today;
+        LeaveEndsOn = DateTime.Today;
+        LeaveType = "Mazeret";
+        LeaveBehavior = "Keep";
+        ErrorMessage = null;
+        IsLeaveOpen = true;
+    }
+
     private async Task GiveLeaveAsync()
     {
         if (Details is null) return;
@@ -1070,6 +1127,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             await api.GiveLeaveAsync(new CreateLeaveRequest(Details.Id, DateOnly.FromDateTime(LeaveStartsOn), DateOnly.FromDateTime(LeaveEndsOn),
                 LeaveType, null, LeaveBehavior, Guid.Empty));
             ErrorMessage = null;
+            IsLeaveOpen = false;
             // Key: API kimligi (Ingilizce); Title artik Turkce oldugu icin arama Key uzerinden.
             // Sekme daha once acilmis olsa bile YENIDEN yuklenir; eski liste yeni izni gostermez.
             await ReloadTabAsync("Leaves");

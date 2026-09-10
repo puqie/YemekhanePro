@@ -166,7 +166,12 @@ public sealed class EfBulkOperationRepository(YemekhaneDbContext db, IAuditServi
         // 200 ogrencinin 5 gunluk tatilinde ogun basi 60 TL ile 60.000 TL kasada kalirdi.
         //
         // AKTARIM iade ETMEZ: hak baska gune tasinir, ogrenci onu kullanacaktir.
-        if (!transfer && billing is not null && current.Entitlements.Count > 0)
+        // "YAKMA" IADE ETMEZ. Ekranda iki ayri secenek var ve etiketleri farki acikca
+        // soyluyor: "Hakları iptal et" (para iade edilir) ile "Hakları yak (iade yok)".
+        // Kosul yalnizca !transfer olsaydi kullanici acikca "iade yok" secse bile para
+        // geri verilirdi; okul cezai kesinti uygulamak isterken kararinin tersi olurdu.
+        var refunds = !transfer && request.TransferBehavior != "Forfeit";
+        if (refunds && billing is not null && current.Entitlements.Count > 0)
         {
             // Ayni transaction icinde: iade cokerse iptal de geri alinir. Ayri olsaydi
             // haklar "Cancelled" kalir ve ikinci deneme iadeyi BIR DAHA tetikleyemezdi.

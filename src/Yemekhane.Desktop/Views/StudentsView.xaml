@@ -473,6 +473,42 @@
              genislik sinirlanir ve kesilir. -->
         <Grid Grid.Row="3" Margin="0,9,0,0"><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,320,0"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PageText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel></Grid>
 
+        <!-- IZIN FORMU. Once boyle bir ekran YOKTU: "İzin Ver" dugmesi hicbir sey
+             sormadan hep BUGUN icin, turu "Mazeret", davranisi "Keep" kayit aciyordu.
+             Bir haftalik rapor izni girmek isteyen memur tek gunluk izin yaziyor ve
+             hicbir hak iptal/aktarim olmuyordu; sunucunun destekledigi "Cancel" ve
+             "NextBusinessDay" davranislari erisilemezdi. -->
+        <controls:Modal x:Name="LeaveHost" Grid.RowSpan="4" Panel.ZIndex="45" Style="{StaticResource ModalMedium}" Title="İzin Ver"
+                        Subtitle="Tarih aralığını ve yemek hakkına ne olacağını seçin."
+                        IsOpen="{Binding IsLeaveOpen, Mode=OneWay}" CloseCommand="{Binding CloseLeaveCommand}">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource Label}" Text="Başlangıç"/>
+                    <DatePicker Grid.Row="1" SelectedDate="{Binding LeaveStartsOn}" AutomationProperties.Name="İzin başlangıç tarihi"/>
+                    <TextBlock Grid.Column="2" Style="{StaticResource Label}" Text="Bitiş"/>
+                    <DatePicker Grid.Row="1" Grid.Column="2" SelectedDate="{Binding LeaveEndsOn}" AutomationProperties.Name="İzin bitiş tarihi"/>
+                </Grid>
+
+                <TextBlock Style="{StaticResource Label}" Text="İzin türü" Margin="0,10,0,0"/>
+                <ComboBox ItemsSource="{Binding LeaveTypes}" SelectedItem="{Binding LeaveType}"
+                          AutomationProperties.Name="İzin türü"/>
+
+                <TextBlock Style="{StaticResource Label}" Text="Yemek hakkına ne olsun?" Margin="0,10,0,0"/>
+                <ComboBox ItemsSource="{Binding LeaveBehaviors}" DisplayMemberPath="Name" SelectedValuePath="Value"
+                          SelectedValue="{Binding LeaveBehavior}" AutomationProperties.Name="Hakediş davranışı"/>
+                <TextBlock Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,6,0,0"
+                           Text="İptal edilen hakların tahsilatı kasaya iade edilir. Aktarımda hak başka güne taşınır, para iade edilmez."/>
+
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                <WrapPanel Margin="0,12,0,0">
+                    <Button Content="Kaydet" Command="{Binding SaveLeaveCommand}" Style="{StaticResource Primary}" IsDefault="True"/>
+                    <Button Content="Vazgeç" Command="{Binding CloseLeaveCommand}" Style="{StaticResource Action}" Margin="8,0,0,0"/>
+                </WrapPanel>
+            </StackPanel>
+        </controls:Modal>
+
         <!-- Kart okuma: ortak Modal (once elle yazilmis Border + karartma). -->
         <controls:Modal x:Name="CardWorkflowHost" Grid.RowSpan="4" Panel.ZIndex="40" Style="{StaticResource ModalMedium}" Title="Kartla Öğrenci Bul"
                         Subtitle="Kart numarasını yazın ve Ara'ya basın. Masa tipi okuyucu bağlıysa Okuyucuyu Bekle ile okutabilirsiniz."
