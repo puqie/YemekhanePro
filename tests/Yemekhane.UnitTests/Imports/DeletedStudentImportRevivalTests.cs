@@ -5,7 +5,7 @@ using Yemekhane.Application.StudentImports;
 using Yemekhane.Infrastructure.StudentImports;
 using Yemekhane.Infrastructure.Persistence;
 
-namespace Yemekhane.UnitTests.Imports;
+namespace Yemekhane.UnitTests.StudentImports;
 
 /// <summary>
 /// SILINMIS bir ogrencinin numarasi dosyada geri geldiginde aktarim CALISMALI ve kayit

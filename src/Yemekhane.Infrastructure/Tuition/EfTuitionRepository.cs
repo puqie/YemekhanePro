@@ -232,7 +232,7 @@ public sealed class EfTuitionRepository(YemekhaneDbContext dbContext, TimeProvid
     /// plandaki agirligi oraninda dagitir; kurus artigi ILK satira eklenir ki toplam
     /// birebir tutsun (TuitionSchedule.Build ile ayni kural).
     /// </summary>
-    private static long[] DistributeRemainder(long target, IReadOnlyList<PlannedInstallment> rows)
+    private static long[] DistributeRemainder(long target, List<PlannedInstallment> rows)
     {
         if (rows.Count == 0) return [];
         // Hedef negatifse (odenmis taksitler yeni plan tutarini asiyor) kalan taksitler
