@@ -293,12 +293,35 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
         // Yalnizca AKTIF ogrenciler: pasife alinmis ogrencinin yenilenecek hakki yoktur.
         rights = rights.Where(x => dbContext.Students.Any(s => s.Id == x.StudentId && s.IsActive));
 
-        var rows = await rights
-            .Select(x => new { x.StudentId, x.MealTypeId, x.EntitlementDate, x.Quantity, x.ConsumedQuantity })
+        // Ozet TAMAMEN VERITABANINDA hesaplanir: hangi ciftin ilgili oldugu, ilk/son gun
+        // ve toplamlar tek GROUP BY ile gelir. Once TUM aktif haklar hafizaya cekiliyordu
+        // (olculdu: 400 ogrenci x 180 gun icin 72.401 satir, 394 ms, sonuc 0 satir).
+        //
+        // "Bitisi yaklasan" = o ciftin EN SON hak gunu esikten kucuk/esit. Suresi GECMIS
+        // olanlar da bu kosula dogal olarak girer (son gun bugunden de kucuktur).
+        //
+        // DateOnly SQLite'ta ISO-8601 metindir (yyyy-MM-dd): metin siralamasi tarih
+        // siralamasiyla AYNIDIR, bu yuzden MIN/MAX dogru sonuc verir.
+        var threshold = today.AddDays(Math.Max(0, query.WithinDays));
+        var groups = await rights
+            .GroupBy(x => new { x.StudentId, x.MealTypeId })
+            .Where(g => g.Max(x => x.EntitlementDate) <= threshold)
+            .Select(g => new
+            {
+                g.Key.StudentId,
+                g.Key.MealTypeId,
+                FirstDate = g.Min(x => x.EntitlementDate),
+                LastDate = g.Max(x => x.EntitlementDate),
+                Total = g.Sum(x => x.Quantity),
+                Consumed = g.Sum(x => x.ConsumedQuantity),
+                // "Kalan" YALNIZCA bugun ve sonrasidir; gecmiste kullanilmayan hak yanmistir.
+                Remaining = g.Sum(x => x.EntitlementDate >= today ? x.Quantity - x.ConsumedQuantity : 0),
+                Expired = g.Sum(x => x.EntitlementDate < today ? x.Quantity - x.ConsumedQuantity : 0)
+            })
             .ToListAsync(cancellationToken);
-        if (rows.Count == 0) return [];
+        if (groups.Count == 0) return [];
 
-        var studentIds = rows.Select(x => x.StudentId).Distinct().ToArray();
+        var studentIds = groups.Select(x => x.StudentId).Distinct().ToArray();
         var students = await dbContext.Students.AsNoTracking().Where(x => studentIds.Contains(x.Id))
             .Select(x => new
             {
@@ -310,22 +333,23 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
                     .OrderByDescending(p => p.IsPrimary).Select(p => p.NormalizedPhone).FirstOrDefault()
             })
             .ToDictionaryAsync(x => x.Id, cancellationToken);
-        var mealNames = await MealNamesAsync(rows.Select(x => x.MealTypeId), cancellationToken);
+        var mealNames = await MealNamesAsync(groups.Select(x => x.MealTypeId), cancellationToken);
 
-        var summaries = rows.GroupBy(x => new { x.StudentId, x.MealTypeId })
+        // Hicbir hakki kalmamis donem listelenmez: yenilenecek bir sey yoktur. Suresi
+        // GECMIS donemler kalan 0 olsa da kalir -- gec fark edilen bitis de bir derttir.
+        return [.. groups
             .Select(group =>
             {
-                var owner = students.GetValueOrDefault(group.Key.StudentId);
-                return Summarize(group.Key.MealTypeId, mealNames.GetValueOrDefault(group.Key.MealTypeId, "-"),
-                    group.Key.StudentId, owner?.StudentNo ?? "", owner?.Name ?? "", owner?.ClassName, owner?.Phone,
-                    group.Select(x => (x.EntitlementDate, x.Quantity, x.ConsumedQuantity)), today);
-            });
-
-        // Esik: "kac gun icinde bitecek". Suresi GECMIS olanlar (DaysLeft negatif) esikten
-        // bagimsiz girer. Hicbir hakki kalmamis donem listelenmez: yenilenecek bir sey yok.
-        var withinDays = Math.Max(0, query.WithinDays);
-        return [.. summaries
-            .Where(x => x.DaysLeft <= withinDays)
+                var owner = students.GetValueOrDefault(group.StudentId);
+                return new EntitlementPeriodSummary(group.StudentId, owner?.StudentNo ?? "", owner?.Name ?? "",
+                    owner?.ClassName, owner?.Phone, group.MealTypeId,
+                    mealNames.GetValueOrDefault(group.MealTypeId, "-"),
+                    RemainingQuantity: group.Remaining, ExpiredQuantity: group.Expired,
+                    TotalQuantity: group.Total, ConsumedQuantity: group.Consumed,
+                    FirstDate: group.FirstDate, LastDate: group.LastDate,
+                    RenewFrom: group.LastDate.AddDays(1),
+                    DaysLeft: group.LastDate.DayNumber - today.DayNumber);
+            })
             .Where(x => x.RemainingQuantity > 0 || x.IsExpired)
             .OrderBy(x => x.DaysLeft).ThenBy(x => x.StudentName, StringComparer.CurrentCulture)];
     }

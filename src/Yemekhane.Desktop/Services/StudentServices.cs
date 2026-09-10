@@ -142,7 +142,25 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
             var root = arrayProperty is null ? document.RootElement : document.RootElement.GetProperty(arrayProperty);
             // Bicimlendirme sekmeye ozeldir: her sekmenin hangi alanlari hangi
             // Turkce etiketle gosterecegi StudentTabFormatter'da tanimlidir.
-            return root.EnumerateArray().Select(x => (object)new StudentDetailRow(StudentTabFormatter.Summarize(tab, x))).ToArray();
+            var rows = root.EnumerateArray()
+                .Select(x => (object)new StudentDetailRow(StudentTabFormatter.Summarize(tab, x))).ToList();
+
+            // KESILME UYARISI: sunucu sayfa basina en fazla 200 kayit doner ve devami
+            // oldugunu "hasMore" ile soyler. Bu bayrak okunmadiginda kullanici 200 satiri
+            // gorup listenin BITTIGINI saniyordu -- gecen yila bakmak icin acilan bir
+            // ekranda bu, aradigi kaydin "yok" gorunmesi demekti.
+            // Iki bicim var: gecis gecmisi "hasMore" bayragi, sayfali uclar (Odemeler,
+            // SMS, Denetim) ise "totalCount" doner. Ikisi de kontrol edilir.
+            var truncated = document.RootElement.TryGetProperty("hasMore", out var hasMore)
+                    && hasMore.ValueKind == JsonValueKind.True
+                || (document.RootElement.TryGetProperty("totalCount", out var totalCount)
+                    && totalCount.TryGetInt32(out var total) && total > rows.Count);
+            if (truncated)
+            {
+                rows.Add(new StudentDetailRow(
+                    "⚠ Daha fazla kayıt var; hepsi gösterilmiyor. Tarih aralığını daraltın."));
+            }
+            return rows;
         }
     }
 

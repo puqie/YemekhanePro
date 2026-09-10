@@ -218,6 +218,20 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     /// </summary>
     public ObservableCollection<EntitlementPeriodViewModel> Periods { get; } = [];
     public bool HasPeriods => Periods.Count > 0;
+
+    /// <summary>
+    /// Donem ozeti YUKLENEMEDIYSE gosterilecek metin. Bos kutu ile "hakki yok" ayni
+    /// gorunur; kullanici farki bilmelidir.
+    /// </summary>
+    public string? PeriodsError
+    {
+        get => periodsError;
+        private set { if (Set(ref periodsError, value)) Raise(nameof(HasPeriodsError)); }
+    }
+
+    public bool HasPeriodsError => !string.IsNullOrEmpty(PeriodsError);
+
+    private string? periodsError;
     public IReadOnlyList<StudentStatusOption> Statuses { get; } =
         [new("Tümü", null), new("Aktif", true), new("Pasif", false)];
     public string? Search { get => search; set { if (Set(ref search, value)) DebounceSearch(); } }
@@ -855,6 +869,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private async Task LoadPeriodsAsync(Guid studentId)
     {
         Periods.Clear();
+        PeriodsError = null;
         Raise(nameof(HasPeriods));
         try
         {
@@ -864,9 +879,12 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             if (Details?.Id != studentId) return;
             foreach (var period in periods) Periods.Add(new EntitlementPeriodViewModel(period));
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // Yutulur: donem ozeti bilgilendirmedir, detay ekranini engellememelidir.
+            // Detay ekranini ENGELLEMEZ ama SESSIZ de kalmaz: bos kutu ile "hakki yok"
+            // gorsel olarak AYNIDIR ve kullanici hakki oldugu halde ikinci kez yukleme
+            // yapabilir -- bu, daha once yasanan hatanin ta kendisidir.
+            if (Details?.Id == studentId) PeriodsError = "Hakediş özeti yüklenemedi: " + exception.Message;
         }
         Raise(nameof(HasPeriods));
     }

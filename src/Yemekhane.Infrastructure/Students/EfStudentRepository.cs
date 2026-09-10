@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Yemekhane.Application.Balances;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Students;
 using Yemekhane.Domain.Entities;
@@ -76,9 +77,12 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         }
 
         var total = await students.CountAsync(cancellationToken);
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        var dayStart = new DateTimeOffset(DateTime.Today, TimeZoneInfo.Local.GetUtcOffset(DateTime.Today));
-        var dayEnd = dayStart.AddDays(1);
+        // OKUL gunu (Istanbul) kullanilir. Once DateTime.Today + TimeZoneInfo.Local vardi:
+        // sunucu UTC ise (konteyner varsayilani) Turkiye'de 00:00-03:00 arasinda listede
+        // BIR ONCEKI gunun hakki ve girisi gorunuyordu.
+        var today = SchoolToday();
+        var dayStart = SchoolDayStart(today);
+        var dayEnd = SchoolDayStart(today.AddDays(1));
         var items = await students.OrderBy(x => x.StudentNo).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
             .Select(student => new StudentListItem(student.Id, student.StudentNo,
                 dbContext.StudentCards.Where(card => card.StudentId == student.Id && card.IsActive).Select(card => card.CardNumber).FirstOrDefault(),
@@ -117,7 +121,7 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
             StudentNo = request.StudentNo,
             FirstName = request.FirstName,
             LastName = request.LastName,
-            RegisteredOn = DateOnly.FromDateTime(DateTime.Today)
+            RegisteredOn = SchoolToday()
         };
         Apply(student, request);
         dbContext.Students.Add(student);
@@ -173,4 +177,20 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         x.StudentNo, x.NationalId, x.FirstName, x.LastName, x.BirthDate, x.ClassId, x.SectionId,
         x.DepartmentId, x.JobId, x.FingerprintId, x.Pid, x.Address, x.PhotoPath, x.Notes, x.IsActive, x.IsDeleted
     };
+
+    /// <summary>Okul saatiyle bugun; sunucunun saat diliminden bagimsiz.</summary>
+    private static DateOnly SchoolToday() => StudentBalanceService.IstanbulDate(DateTimeOffset.UtcNow);
+
+    private static DateTimeOffset SchoolDayStart(DateOnly day)
+    {
+        var local = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        var zone = IstanbulZone();
+        return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, zone), TimeSpan.Zero);
+    }
+
+    private static TimeZoneInfo IstanbulZone()
+    {
+        try { return TimeZoneInfo.FindSystemTimeZoneById("Europe/Istanbul"); }
+        catch (TimeZoneNotFoundException) { return TimeZoneInfo.FindSystemTimeZoneById("Turkey Standard Time"); }
+    }
 }

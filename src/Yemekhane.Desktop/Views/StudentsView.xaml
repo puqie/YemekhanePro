@@ -287,6 +287,13 @@
                              bitiyor diye soruyor" ihtiyaci. Once bu bilgi hicbir ekranda yoktu;
                              kullanici tarih araligini genisletip satirlari tek tek sayiyordu.
                              Her ogun ayri satirdir (ogle ve kahvalti ayri biter). -->
+                        <!-- Ozet YUKLENEMEDIYSE soylenir: bos kutu ile "hakki yok" ayni
+                             gorunur ve kullanici hakki oldugu halde ikinci kez yukleyebilir. -->
+                        <Border Background="{StaticResource WarningSoftBrush}" CornerRadius="6" Padding="10,8" Margin="0,10,0,0"
+                                Visibility="{Binding HasPeriodsError, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding PeriodsError}" TextWrapping="Wrap"/>
+                        </Border>
+
                         <ItemsControl ItemsSource="{Binding Periods}" Margin="0,10,0,0"
                                       Visibility="{Binding HasPeriods, Converter={StaticResource BoolToVisibility}}">
                             <ItemsControl.ItemTemplate>

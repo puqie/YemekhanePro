@@ -30,7 +30,35 @@ public sealed class SmsDispatcher(
             return document.Sms.Enabled;
         }
         // Ayar okunamazsa gonderimi durdurmak sessiz veri kaybi gibi gorunur; acik varsayilir.
-        catch (Exception exception) when (exception is not OperationCanceledException) { return true; }
+        // ANCAK bu sessiz kalmaz: yonetici SMS'i KAPATMIS olabilir ve ayar okunamadigi
+        // icin gonderim devam ediyordur. Once bunun hicbir izi yoktu.
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            await WarnAsync("SmsSettingsUnreadable", "SMS ayarı okunamadı",
+                "SMS açık/kapalı ayarı okunamadığı için gönderim AÇIK varsayıldı. "
+                + "Ayarı kapattıysanız kontrol edin. Hata: " + exception.Message,
+                $"sms-settings-unreadable:{timeProvider.GetUtcNow():yyyyMMddHH}", cancellationToken)
+                .ConfigureAwait(false);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Sessiz kalmamasi gereken bir hatayi kullaniciya GORUNUR bildirime cevirir.
+    /// Bildirim servisi yoksa (bazi testler) sessizce gecilir; asil is akisi durmaz.
+    /// </summary>
+    private async Task WarnAsync(string type, string title, string message, string deduplicationKey,
+        CancellationToken cancellationToken)
+    {
+        if (notifications is null) return;
+        try
+        {
+            await notifications.CreateAsync(new CreateNotification(NotificationSeverities.Warning,
+                type, title, message, RelatedRoute: "sms", AudiencePermission: "sms.read",
+                DeduplicationKey: deduplicationKey), cancellationToken).ConfigureAwait(false);
+        }
+        // Bildirim yazilamazsa asil is akisini durdurmak dogru olmaz.
+        catch (Exception) { }
     }
 
     public async Task<int> RunOnceAsync(CancellationToken cancellationToken = default)

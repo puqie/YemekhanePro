@@ -1,3 +1,4 @@
+using Yemekhane.Application.Balances;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO.Compression;
@@ -374,7 +375,10 @@ public sealed class StudentImportService(
             var birthText = Optional("birthDate");
             if (birthText is not null)
             {
-                if (TryDate(birthText, out var date) && date <= DateOnly.FromDateTime(DateTime.Today)) row.BirthDate = date;
+                // OKUL gunu ile karsilastirilir; sunucu UTC ise gunun ilk saatlerinde
+                // bugun dogmus bir kayit "gelecekte" sayilip reddedilebiliyordu.
+                if (TryDate(birthText, out var date)
+                    && date <= StudentBalanceService.IstanbulDate(DateTimeOffset.UtcNow)) row.BirthDate = date;
                 else Error(row, "InvalidBirthDate", "Doğum tarihi geçersiz veya gelecektedir.");
             }
             if (row.ClassName?.Length > 100) Error(row, "CellTooLong", "SINIF en fazla 100 karakter olabilir.");

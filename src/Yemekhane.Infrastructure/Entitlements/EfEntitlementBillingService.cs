@@ -151,6 +151,8 @@ public sealed class EfEntitlementBillingService(
             .ToListAsync(cancellationToken);
 
         var queued = 0;
+        var failed = 0;
+        Exception? lastFailure = null;
         foreach (var contact in contacts.Where(x => !string.IsNullOrWhiteSpace(x.Phone)))
         {
             var message = string.Create(Turkish,
@@ -164,7 +166,19 @@ public sealed class EfEntitlementBillingService(
                 queued++;
             }
             // SMS kuyruklama hatasi tanimlanmis hakki ya da yazilmis tahsilati geri almamali.
-            catch (Exception exception) when (exception is not OperationCanceledException) { }
+            // Ama SESSIZ de kalmamali: once yutuluyordu ve veli haberdar olmadigi gibi
+            // personel de gonderilemedigini ASLA ogrenemiyordu.
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                failed++;
+                lastFailure = exception;
+            }
+        }
+        if (failed > 0)
+        {
+            auditService.Record(new AuditEntry("EntitlementSmsQueueFailed", nameof(SmsLog), null,
+                string.Create(Turkish, $"Veli SMS'i kuyruğa alınamadı: {failed} kayıt başarısız, {queued} başarılı.")
+                + (lastFailure is null ? "" : " Son hata: " + lastFailure.Message), failed));
         }
         return queued;
     }

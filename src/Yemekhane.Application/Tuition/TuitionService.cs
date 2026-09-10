@@ -34,7 +34,7 @@ public sealed class TuitionService(ITuitionRepository repository, TimeProvider t
     public Task<TuitionPlanDetails> SaveAsync(SaveTuitionPlanRequest request, Guid actorId,
         CancellationToken cancellationToken = default)
     {
-        var plan = Validate(request);
+        var plan = Validate(request, Today());
         return repository.SaveAsync(request, TuitionSchedule.Build(plan), Today(), actorId, cancellationToken);
     }
 
@@ -57,7 +57,12 @@ public sealed class TuitionService(ITuitionRepository repository, TimeProvider t
     /// Istegi dogrular ve kaydedilecek plan nesnesini uretir. Dogrulama servis katmaninda
     /// durur ki hem API hem testler ayni kurali gorsun.
     /// </summary>
-    public static TuitionPlan Validate(SaveTuitionPlanRequest request)
+    /// <param name="today">
+    /// OKUL gunu (Istanbul). Verilmezse sunucunun yerel gunu kullanilir; sunucu UTC ise
+    /// ayin 1'i civarinda plan BIR AY kayar ve bu KALICI olarak veritabanina yazilir.
+    /// Uretimde her zaman TuitionService.Today() gecilir.
+    /// </param>
+    public static TuitionPlan Validate(SaveTuitionPlanRequest request, DateOnly? today = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (!TuitionPlanKinds.IsKnown(request.Kind))
@@ -123,11 +128,19 @@ public sealed class TuitionService(ITuitionRepository repository, TimeProvider t
             DownPaymentCents = StudentBalanceService.ToCents(down),
             InstallmentCount = count,
             DueDayOfMonth = dueDay,
-            StartsOn = request.StartsOn ?? new DateOnly(DateTime.Today.Year, DateTime.Today.Month, 1),
+            // OKUL gunu kullanilir; DateTime.Today SUNUCUNUN saat dilimidir.
+            StartsOn = request.StartsOn ?? FirstOfMonth(today),
             Note = note,
             IsActive = request.IsActive
         };
     }
 
     private DateOnly Today() => StudentBalanceService.IstanbulDate(timeProvider.GetUtcNow());
+
+    /// <summary>Verilen gunun (yoksa sunucu gununun) ayinin ilk gunu.</summary>
+    private static DateOnly FirstOfMonth(DateOnly? today)
+    {
+        var day = today ?? DateOnly.FromDateTime(DateTime.Today);
+        return new DateOnly(day.Year, day.Month, 1);
+    }
 }
