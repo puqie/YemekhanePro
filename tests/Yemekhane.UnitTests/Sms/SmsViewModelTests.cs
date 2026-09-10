@@ -88,7 +88,7 @@ public sealed class SmsViewModelTests
         public Task<StudentDetails> GetAsync(Guid value, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task<StudentDetails> SaveAsync(Guid? value, SaveStudentRequest request, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         public Task DeactivateAsync(Guid value, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<object>>([]);
+        public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<object>>([]);
         public Task GiveLeaveAsync(Yemekhane.Application.Leaves.CreateLeaveRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task ReplaceCardAsync(Guid studentId, Yemekhane.Application.Cards.ReplaceCardRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

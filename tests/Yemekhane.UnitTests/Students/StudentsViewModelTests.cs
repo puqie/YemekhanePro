@@ -415,6 +415,104 @@ public sealed class StudentsViewModelTests
         Assert.True(previousRaised > 0, "2. sayfada \"Onceki\" yeniden sorgulanmadi: dugme gri kalir");
     }
 
+    // --- GECMIS SEKMELERI: tarih araligi (gecen yillara bakabilmek icin) ---
+
+    /// <summary>Gecmis sekmesi secili tarih araligiyla yuklenir; aralik sunucuya GECER.</summary>
+    [Fact]
+    public async Task HistoryTabsAreLoadedWithTheSelectedDateRange()
+    {
+        var api = new FakeApi(); using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.IsDetailOpen);
+
+        vm.SelectedTab = vm.Tabs.First(x => x.Key == "Access History");
+        await Until(() => api.LastTabKey == "Access History");
+
+        Assert.NotNull(api.LastTabFrom);
+        Assert.NotNull(api.LastTabTo);
+    }
+
+    /// <summary>Gecmis OLMAYAN sekmeye aralik GECMEZ: kartlar tarihle daralmamali.</summary>
+    [Fact]
+    public async Task NonHistoryTabsReceiveNoDateRange()
+    {
+        var api = new FakeApi(); using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.IsDetailOpen);
+
+        vm.SelectedTab = vm.Tabs.First(x => x.Key == "Cards");
+        await Until(() => api.LastTabKey == "Cards");
+
+        Assert.Null(api.LastTabFrom);
+        Assert.Null(api.LastTabTo);
+    }
+
+    /// <summary>"Gecen ogretim yili" 1 Eylul - 31 Agustos araligini kurar.</summary>
+    [Fact]
+    public async Task TheLastSchoolYearPresetSpansSeptemberToAugust()
+    {
+        var api = new FakeApi(); using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.IsDetailOpen);
+
+        vm.HistoryLastYearCommand.Execute(null);
+
+        Assert.Equal(9, vm.HistoryFrom!.Value.Month);
+        Assert.Equal(1, vm.HistoryFrom!.Value.Day);
+        Assert.Equal(8, vm.HistoryTo!.Value.Month);
+        // Gecen ogretim yili, icinde bulunulan yilin BIR ONCESINDE baslar.
+        Assert.Equal(vm.HistoryFrom!.Value.Year + 1, vm.HistoryTo!.Value.Year);
+    }
+
+    /// <summary>Hazir aralik SECILI gecmis sekmesini tazeler; kullanici Yenile'ye basmamali.</summary>
+    [Fact]
+    public async Task ChangingTheRangeReloadsTheLoadedHistoryTab()
+    {
+        var api = new FakeApi(); using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.IsDetailOpen);
+        vm.SelectedTab = vm.Tabs.First(x => x.Key == "Access History");
+        await Until(() => api.LastTabKey == "Access History");
+        var before = api.TabCount;
+
+        vm.HistoryLastYearCommand.Execute(null);
+
+        await Until(() => api.TabCount > before);
+        // Tazeleme YENI araligi tasir; eski aralikla gitseydi kullanici gecen yila
+        // gectigini sanip bu yilin verisine bakardi.
+        Assert.Equal(DateOnly.FromDateTime(vm.HistoryFrom!.Value), api.LastTabFrom);
+    }
+
+    /// <summary>Acilmamis sekme tazelenmez: kullanici oraya gectiginde zaten yuklenir.</summary>
+    [Fact]
+    public async Task ChangingTheRangeDoesNotLoadUnopenedTabs()
+    {
+        var api = new FakeApi(); using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.IsDetailOpen);
+        var before = api.TabCount;
+
+        vm.HistoryLastYearCommand.Execute(null);
+        await Task.Delay(50);
+
+        Assert.Equal(before, api.TabCount);
+    }
+
+    /// <summary>Tarih kutulari YALNIZCA gecmis sekmesindeyken gorunur.</summary>
+    [Fact]
+    public async Task TheDateBoxesAreVisibleOnlyOnHistoryTabs()
+    {
+        var api = new FakeApi(); using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.IsDetailOpen);
+
+        vm.SelectedTab = vm.Tabs.First(x => x.Key == "Cards");
+        Assert.False(vm.IsHistoryTabSelected);
+
+        vm.SelectedTab = vm.Tabs.First(x => x.Key == "Entitlements");
+        Assert.True(vm.IsHistoryTabSelected);
+    }
+
     private static StudentsViewModel Create(FakeApi api, params string[] permissions) =>
         new(api, new ShellNavigationService([ShellRoutes.Students, ShellRoutes.StudentDetail]), permissions);
     private static StudentListItem Row() => new(Guid.NewGuid(), "42", "CARD42", "Ada", "Yılmaz", "5", "A", "Ortaokul", "+905551234567", true, 1, true, DateTimeOffset.UtcNow);
@@ -447,7 +545,9 @@ public sealed class StudentsViewModelTests
         }
         public Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default) { DeactivateCount++; DeactivatedId = id; return Task.CompletedTask; }
         public Exception? TabFailure { get; set; }
-        public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default) { TabCount++; if (TabFailure is not null) throw TabFailure; return Task.FromResult<IReadOnlyList<object>>([new StudentDetailRow(tab)]); }
+        public DateOnly? LastTabFrom, LastTabTo;
+        public string? LastTabKey;
+        public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default) { TabCount++; LastTabKey = tab; LastTabFrom = fromDate; LastTabTo = toDate; if (TabFailure is not null) throw TabFailure; return Task.FromResult<IReadOnlyList<object>>([new StudentDetailRow(tab)]); }
         public int LeaveCount, ReplaceCount, AssignCount;
         public SaveStudentRequest? LastSaveRequest;
         public Exception? ReplaceFailure;

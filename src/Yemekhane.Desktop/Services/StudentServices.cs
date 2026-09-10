@@ -22,7 +22,13 @@ public interface IStudentApiClient
     Task<StudentDetails> GetAsync(Guid id, CancellationToken cancellationToken = default);
     Task<StudentDetails> SaveAsync(Guid? id, SaveStudentRequest request, CancellationToken cancellationToken = default);
     Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default);
+    /// <param name="fromDate">
+    /// Gecmis sekmelerinin (Hakedisler, Gecis Gecmisi) baslangic tarihi. Verilmezse
+    /// eski davranis: hakedislerde bugunun etrafinda dar bir pencere, geciste bugun.
+    /// GECEN YILLARA bakabilmek icin eklendi.
+    /// </param>
+    Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null,
+        DateOnly? toDate = null, CancellationToken cancellationToken = default);
     /// <summary>
     /// Ogrencinin ogun bazinda KALAN hakki, donem bitis gunu ve yenileme gunu.
     /// "Veli soruyor: kac ogun kaldi, ne zaman bitiyor" sorusunun cevabi.
@@ -105,7 +111,8 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
     public Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
         GetAsync<IReadOnlyList<EntitlementPeriodSummary>>($"api/meal-entitlements/student/{studentId}/periods", cancellationToken);
 
-    public async Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null,
+        DateOnly? toDate = null, CancellationToken cancellationToken = default)
     {
         if (tab == "Balance") return await LoadBalanceTabAsync(studentId, cancellationToken);
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -113,8 +120,15 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         {
             "Cards" => ($"api/students/{studentId:D}/cards", (string?)null),
             "Parents" => ($"api/students/{studentId:D}/parents", null),
-            "Entitlements" => ($"api/meal-entitlements/student/{studentId:D}?startsOn={today.AddMonths(-1):yyyy-MM-dd}&endsOn={today.AddMonths(1):yyyy-MM-dd}", null),
-            "Access History" => ($"api/daily-tracking?studentId={studentId:D}&pageSize=100", "items"),
+            // Tarih araligi VERILMEZSE eski dar pencere (bugunun etrafi) korunur; verilirse
+            // gecmis yillara kadar gidilir. Once aralik SABITTI ve Eylul'de Haziran'daki
+            // yukleme hic gorunmuyordu.
+            "Entitlements" => ($"api/meal-entitlements/student/{studentId:D}?startsOn={fromDate ?? today.AddMonths(-1):yyyy-MM-dd}&endsOn={toDate ?? today.AddMonths(1):yyyy-MM-dd}", null),
+            // Gecis gecmisi ONCEDEN yalnizca BUGUNU getiriyordu (sunucu araligi bugune
+            // sabitliyordu); "gecen yil 12 Eylul'de yemek yedi mi" cevaplanamiyordu.
+            "Access History" => ($"api/daily-tracking?studentId={studentId:D}&pageSize=200"
+                + (fromDate is { } accessFrom ? $"&fromDate={accessFrom:yyyy-MM-dd}" : "")
+                + (toDate is { } accessTo ? $"&toDate={accessTo:yyyy-MM-dd}" : ""), "items"),
             "Leaves" => ($"api/leaves/student/{studentId:D}", null),
             "Holiday/Transfer" => ($"api/meal-transfers?studentId={studentId:D}", null),
             "Payments" => ($"api/income/transactions?studentId={studentId:D}&pageSize=100", "items"),

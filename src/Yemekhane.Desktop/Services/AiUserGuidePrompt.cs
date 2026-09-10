@@ -418,6 +418,19 @@ public static class AiUserGuidePrompt
         satirlari KIRMIZI gorunur -- bittigini gec fark etmek de ayni derttir.
         Pasif ogrenciler listeye girmez.
 
+        GECMISE BAKMA (Ogrenciler > detay sekmeleri): Iki AYRI sekme vardir.
+        "Hakedisler" gecmis YUKLEMELERI (hangi tarihte hangi hak verilmis),
+        "Gecis Gecmisi" ise ogrencinin hangi gun yemekhaneye GIRDIGINI gosterir
+        (reddedilen gecisler de gorunur). Bu iki sekmede ustte TARIH ARALIGI
+        cikar ve GECEN YILLARA kadar gidilebilir. Hazir dugmeler: "Bu ogretim
+        yili", "Gecen ogretim yili", "Tumu" (ogretim yili 1 Eylul - 31 Agustos).
+        Aralik iki sekmede ORTAKTIR: degistirilince yuklemeler ve girisler ayni
+        donem icin birlikte gorunur; diger sekmeler (Kartlar, Veliler, Odemeler,
+        Denetim) bu suzgecten ETKILENMEZ.
+
+        Onceden bu mumkun degildi: hakedis sekmesi bugunun etrafinda dar bir
+        pencereye, gecis gecmisi ise YALNIZCA BUGUNE sabitti.
+
         SECIM SIFIRLAMA (Hizli Hakedis): YENI ARAMA onceki secimi SILER. Onceden
         secim sessizce tasiniyordu; "ceylin" arayip secen, sonra "ela" arayan
         kullanici Ceylin hala secili oldugu icin IKISINE birden hak veriyordu.

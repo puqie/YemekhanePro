@@ -165,6 +165,10 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         SearchByReadCardCommand = new AsyncCommand(SearchByReadCardAsync, () => !string.IsNullOrWhiteSpace(CardNumber));
         GrantEntitlementCommand = new RelayCommand(GrantEntitlement, () => CanGrantEntitlement && (SelectedStudent is not null || Details is not null));
         OpenStudentDetailCommand = new AsyncCommand(() => SelectedStudent is null ? Task.CompletedTask : OpenDetailAsync(SelectedStudent));
+        // Hazir araliklar: kullanici "gecen yil" icin iki tarih yazmak zorunda kalmasin.
+        HistoryThisYearCommand = new RelayCommand(() => SetSchoolYear(0));
+        HistoryLastYearCommand = new RelayCommand(() => SetSchoolYear(-1));
+        HistoryAllCommand = new RelayCommand(SetAllTime);
         OpenSmsCommand = new RelayCommand(OpenSms, () => CanSendSms && (SelectedStudent is not null || Details is not null));
         // Eski programdaki "Sicil Listesi" disa aktarimi: Raporlar'a Sicil Listesi secili gider; CSV/Excel/PDF orada.
         ExportCommand = new RelayCommand(() => navigation.Navigate($"{ShellRoutes.Reports}/{Yemekhane.Application.Reports.ReportType.StudentList}"), () => CanExport);
@@ -172,6 +176,40 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<StudentListItem> Students { get; } = [];
     public ObservableCollection<StudentDetailTabViewModel> Tabs { get; } = [];
+
+    /// <summary>
+    /// Gecmis sekmelerinin (Hakedisler, Gecis Gecmisi) PAYLASTIGI tarih araligi.
+    /// Tek aralik kullanilir cunku kullanici "Ceylin'in gecen yiline bakayim" derken
+    /// hem yuklemelerine hem girislerine ayni donem icin bakar; iki ayri kutu olsaydi
+    /// biri 2025'te obur 2026'da kalip sessizce yanlis karsilastirma yapilabilirdi.
+    /// </summary>
+    public static IReadOnlyList<string> HistoryTabKeys { get; } = ["Entitlements", "Access History"];
+
+    /// <summary>Secili sekme gecmis sekmesi mi (tarih kutulari yalnizca o zaman gorunur).</summary>
+    public bool IsHistoryTabSelected => SelectedTab is not null && HistoryTabKeys.Contains(SelectedTab.Key);
+
+    public DateTime? HistoryFrom
+    {
+        get => historyFrom;
+        set { if (Set(ref historyFrom, value)) _ = ReloadHistoryTabsAsync(); }
+    }
+
+    public DateTime? HistoryTo
+    {
+        get => historyTo;
+        set { if (Set(ref historyTo, value)) _ = ReloadHistoryTabsAsync(); }
+    }
+
+    private DateTime? historyFrom = DateTime.Today.AddMonths(-1);
+    private DateTime? historyTo = DateTime.Today.AddMonths(1);
+
+    /// <summary>
+    /// Hazir araliklar: kullanici "gecen yil" demek icin iki tarih girmek zorunda kalmasin.
+    /// Okul yili Eylul'de baslar; "bu ogretim yili" ve "gecen ogretim yili" ona gore hesaplanir.
+    /// </summary>
+    public ICommand HistoryThisYearCommand { get; private set; } = null!;
+    public ICommand HistoryLastYearCommand { get; private set; } = null!;
+    public ICommand HistoryAllCommand { get; private set; } = null!;
 
     /// <summary>
     /// Ogrencinin ogun bazinda ACIK hakedis donemleri: kalan ogun, bitis gunu, yenileme
@@ -313,7 +351,16 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     /// </summary>
     public bool ShowDeactivate => CanWrite && Details?.IsActive == true;
     public bool ShowActivate => CanWrite && Details?.IsActive == false;
-    public StudentDetailTabViewModel? SelectedTab { get => selectedTab; set { if (Set(ref selectedTab, value) && value is not null) _ = value.LoadAsync(); } }
+    public StudentDetailTabViewModel? SelectedTab
+    {
+        get => selectedTab;
+        set
+        {
+            if (!Set(ref selectedTab, value)) return;
+            Raise(nameof(IsHistoryTabSelected));
+            if (value is not null) _ = value.LoadAsync();
+        }
+    }
     public bool CanWrite => permissions.Contains("students.write");
     public bool CanDeactivate => permissions.Contains("students.deactivate");
     public bool CanManageCards => permissions.Contains("cards.manage");
@@ -561,7 +608,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         Tabs.Add(new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
             ([new StudentDetailRow($"No: {Details.StudentNo}  |  Ad Soyad: {Details.FirstName} {Details.LastName}  |  Durum: {(Details.IsActive ? "Aktif" : "Pasif")}")])));
         foreach (var name in new[] { "Cards", "Parents", "Entitlements", "Access History", "Leaves", "Holiday/Transfer", "Payments", "Balance", "SMS History", "Audit" })
-            Tabs.Add(new StudentDetailTabViewModel(name, () => api.LoadTabAsync(name, id)));
+            Tabs.Add(new StudentDetailTabViewModel(name, () => LoadTabAsync(name, id)));
         SelectedTab = Tabs[0];
     }
 
@@ -597,6 +644,57 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         await LoadPhotoAsync(fresh);
     }
 
+    /// <summary>
+    /// Sekmeyi yukler; GECMIS sekmelerine secili tarih araligini gecirir. Diger sekmeler
+    /// araligi gormez -- kartlar, veliler ve denetim kaydi tarih suzgeciyle daralmamalidir.
+    /// </summary>
+    private Task<IReadOnlyList<object>> LoadTabAsync(string key, Guid studentId) =>
+        HistoryTabKeys.Contains(key)
+            ? api.LoadTabAsync(key, studentId, AsDate(HistoryFrom), AsDate(HistoryTo))
+            : api.LoadTabAsync(key, studentId);
+
+    private static DateOnly? AsDate(DateTime? value) => value is { } date ? DateOnly.FromDateTime(date) : null;
+
+    /// <summary>
+    /// Ogretim yili araligi: 1 Eylul - 31 Agustos. <paramref name="offset"/> 0 ise icinde
+    /// bulunulan yil, -1 ise bir onceki. Takvim yili degil OGRETIM yili kullanilir:
+    /// Eylul'de acilan kayit Haziran'da hala ayni yila aittir.
+    /// </summary>
+    private void SetSchoolYear(int offset)
+    {
+        var today = DateTime.Today;
+        // Eylul'den once isek icinde bulundugumuz ogretim yili GECEN yil basladi.
+        var startYear = (today.Month >= 9 ? today.Year : today.Year - 1) + offset;
+        SetRange(new DateTime(startYear, 9, 1), new DateTime(startYear + 1, 8, 31));
+    }
+
+    /// <summary>Tum kayitlar: uygulamanin makul en eski tarihinden bugunun bir yil sonrasina.</summary>
+    private void SetAllTime() => SetRange(new DateTime(2000, 1, 1), DateTime.Today.AddYears(1));
+
+    /// <summary>
+    /// Iki tarihi TEK seferde yazar ve sekmeleri BIR KEZ tazeler. Ayri ayri atansaydi
+    /// her atama kendi yenilemesini baslatir, ilk yenileme eski ikinci tarihle giderdi.
+    /// </summary>
+    private void SetRange(DateTime from, DateTime to)
+    {
+        historyFrom = from;
+        historyTo = to;
+        Raise(nameof(HistoryFrom));
+        Raise(nameof(HistoryTo));
+        _ = ReloadHistoryTabsAsync();
+    }
+
+    /// <summary>Tarih araligi degisince YUKLENMIS gecmis sekmeleri tazelenir.</summary>
+    private async Task ReloadHistoryTabsAsync()
+    {
+        foreach (var key in HistoryTabKeys)
+        {
+            var tab = Tabs.FirstOrDefault(x => x.Key == key);
+            // Hic acilmamis sekme tazelenmez: kullanici oraya gectiginde zaten yuklenir.
+            if (tab is not null && tab.IsLoaded) await tab.ReloadAsync();
+        }
+    }
+
     private async Task ReloadTabAsync(string key)
     {
         var index = Tabs.ToList().FindIndex(x => x.Key == key);
@@ -605,7 +703,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         var fresh = key == "General"
             ? new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
                 ([new StudentDetailRow($"No: {Details?.StudentNo}  |  Ad Soyad: {Details?.FirstName} {Details?.LastName}  |  Durum: {(Details?.IsActive == true ? "Aktif" : "Pasif")}")]))
-            : new StudentDetailTabViewModel(key, () => api.LoadTabAsync(key, id));
+            : new StudentDetailTabViewModel(key, () => LoadTabAsync(key, id));
         var old = Tabs[index];
         var wasSelected = ReferenceEquals(SelectedTab, old);
         Tabs[index] = fresh;

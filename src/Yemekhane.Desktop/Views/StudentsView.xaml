@@ -387,12 +387,40 @@
                          basliklar yer degistiriyordu. Serit sabit sirali bir ListBox+WrapPanel;
                          icerik ayri bir satirda, kendi icinde kayar. -->
                     <Border Grid.Row="3" Margin="0,10,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,8,0,0">
+                        <!-- Serit + tarih satiri TEK Border icinde: yeni Grid SATIRI eklenmez,
+                             cunku alttaki icerik Grid.Row="4" diye SABIT indeksler. -->
+                        <StackPanel>
                         <ListBox x:Name="DetailTabStrip" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
                                  ItemContainerStyle="{StaticResource TabChip}" AutomationProperties.Name="Öğrenci detay sekmeleri"
                                  ScrollViewer.VerticalScrollBarVisibility="Disabled" KeyboardNavigation.DirectionalNavigation="Cycle">
                             <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
                             <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}"/></DataTemplate></ListBox.ItemTemplate>
                         </ListBox>
+
+                        <!-- TARIH ARALIGI: yalnizca gecmis sekmelerinde (Hakedisler, Gecis Gecmisi).
+                             Once hakedisler bugunun etrafinda dar bir pencereye, gecis gecmisi ise
+                             YALNIZCA BUGUNE sabitti; gecen yila bakmak mumkun degildi. -->
+                        <Border Background="{StaticResource SunkenBrush}" CornerRadius="6" Padding="8,6" Margin="0,8,0,0"
+                                Visibility="{Binding IsHistoryTabSelected, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <WrapPanel>
+                                    <TextBlock Text="Tarih aralığı" Style="{StaticResource Label}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <DatePicker SelectedDate="{Binding HistoryFrom}" Width="120"
+                                                AutomationProperties.Name="Geçmiş başlangıç tarihi"/>
+                                    <TextBlock Text="–" VerticalAlignment="Center" Margin="6,0"/>
+                                    <DatePicker SelectedDate="{Binding HistoryTo}" Width="120"
+                                                AutomationProperties.Name="Geçmiş bitiş tarihi"/>
+                                </WrapPanel>
+                                <!-- Hazir araliklar: "gecen yil" demek icin iki tarih yazmaya gerek kalmasin.
+                                     Ogretim yili 1 Eylul - 31 Agustos olarak hesaplanir. -->
+                                <WrapPanel Margin="0,6,0,0">
+                                    <Button Content="Bu öğretim yılı" Command="{Binding HistoryThisYearCommand}" Padding="8,3"/>
+                                    <Button Content="Geçen öğretim yılı" Command="{Binding HistoryLastYearCommand}" Padding="8,3" Margin="6,0,0,0"/>
+                                    <Button Content="Tümü" Command="{Binding HistoryAllCommand}" Padding="8,3" Margin="6,0,0,0"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                        </StackPanel>
                     </Border>
 
                     <ContentControl Grid.Row="4" x:Name="DetailTabContent" Content="{Binding SelectedTab}" Margin="0,6,0,0">

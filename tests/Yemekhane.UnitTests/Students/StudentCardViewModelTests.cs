@@ -504,7 +504,7 @@ public sealed class StudentCardViewModelTests
             return Task.FromResult(Details);
         }
         public Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<object>>([]);
+        public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<object>>([]);
         public Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task<IReadOnlyList<LookupRecord>> GetLookupsAsync(LookupKind kind, CancellationToken cancellationToken = default) =>

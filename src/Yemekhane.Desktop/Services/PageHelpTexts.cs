@@ -35,6 +35,9 @@ public static class PageHelpTexts
             "Bir öğrenciye tıklayınca detay panelinde hakediş, ödeme ve geçiş geçmişi görünür.",
             "Detay panelinde her öğün için dönem kutusu vardır: kalan öğün, dönemin ilk/son günü ve yenilemenin başlaması gereken gün. Veli \"kaç öğün kaldı, ne zaman bitiyor\" diye sorduğunda buraya bakın.",
             "Kalan öğün BUGÜNDEN itibaren sayılır; geçmişte kullanılmadan geçen günler ayrıca \"kullanılmadan geçti\" olarak yazılır.",
+            "Detay sekmelerinden \"Hakedişler\" geçmiş yüklemeleri, \"Geçiş Geçmişi\" ise hangi gün yemekhaneye girdiğini gösterir.",
+            "Bu iki sekmede üstte tarih aralığı çıkar; GEÇEN YILLARA da bakılır. \"Bu öğretim yılı\", \"Geçen öğretim yılı\" ve \"Tümü\" düğmeleri aralığı hazır kurar (öğretim yılı 1 Eylül - 31 Ağustos).",
+            "Tarih aralığı iki sekmede ORTAKTIR: aralığı değiştirince yüklemeler ve girişler aynı dönem için birlikte görünür.",
         ]),
         [ShellRoutes.Cash] = new("Kasa",
         [
