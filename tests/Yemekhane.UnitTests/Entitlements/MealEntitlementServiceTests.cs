@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Calendar;
 using Yemekhane.Application.Common;
@@ -195,4 +195,31 @@ public sealed class MealEntitlementServiceTests
     private static YemekhaneDbContext CreateContext(SqliteConnection connection) => new(new DbContextOptionsBuilder<YemekhaneDbContext>().UseSqlite(connection).Options);
     private static MealEntitlementService CreateService(YemekhaneDbContext context) => new(new EfMealEntitlementRepository(context),
         new BusinessDayService(new FixedClosureProvider(), new WeekendPolicy()));
+
+    /// <summary>
+    /// Kullanici "20 gun" dedi diye 20 hak almalidir: aralik tatile denk gelirse
+    /// bitis tarihi tatilleri ATLAYARAK uzar. Onceden gun sayisi sunucuya hic
+    /// gitmiyordu; masaustu tatilleri bilmeden bitis tarihi hesapliyor, sunucu ayni
+    /// araligi tatil takvimiyle yeniden eliyordu ve "20 gun" sessizce 15 gune,
+    /// 6.000 TL sessizce 4.500 TL'ye dusuyordu.
+    /// </summary>
+    [Fact]
+    public async Task RequestedDayCountSurvivesHolidaysByExtendingTheRange()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
+        await using var context = CreateContext(connection); await context.Database.MigrateAsync();
+        var student = new Student { StudentNo = "7100", FirstName = "Zeynep", LastName = "Ak" };
+        var meal = new MealType { Name = "Ogle" }; context.AddRange(student, meal); await context.SaveChangesAsync();
+        // 16-17 Eylul 2026 (Carsamba-Persembe) tatil; istenen 5 is gunu bu yuzden
+        // 14 Eylul Pazartesi'den 21 Eylul Pazartesi'ye kadar uzamalidir.
+        var service = new MealEntitlementService(new EfMealEntitlementRepository(context),
+            new BusinessDayService(new FixedClosureProvider(new DateOnly(2026, 9, 16), new DateOnly(2026, 9, 17)), new WeekendPolicy()));
+        var grant = new EntitlementGrantRequest(new EntitlementTarget("Manual", [student.Id]), meal.Id,
+            new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 14), DayCount: 5);
+
+        var preview = await service.PreviewAsync(grant);
+
+        Assert.Equal(5, preview.DayCount);
+        Assert.Equal(5, preview.RightsCount);
+    }
 }

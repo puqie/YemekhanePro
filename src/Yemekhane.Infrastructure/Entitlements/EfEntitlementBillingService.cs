@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Audit;
 using Yemekhane.Application.Balances;
@@ -31,8 +31,13 @@ public sealed class EfEntitlementBillingService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.AmountPerStudent <= 0 || request.StudentIds.Count == 0)
-            return new EntitlementChargeResult(0, 0m, 0);
+        if (request.StudentIds.Count == 0) return new EntitlementChargeResult(0, 0m, 0);
+        // Tutari 0 olan ogrenci tahsil edilmez: ayni hakedis ikinci kez verildiginde
+        // yeni hak yaratilmadigi icin o ogrencinin borcu yoktur.
+        var amountFor = (Guid studentId) => request.AmountOverrides is null
+            ? request.AmountPerStudent
+            : request.AmountOverrides.GetValueOrDefault(studentId, request.AmountPerStudent);
+        if (request.StudentIds.All(x => amountFor(x) <= 0)) return new EntitlementChargeResult(0, 0m, 0);
 
         // Ayni islem kimligiyle tekrar (masaustu yeniden denemesi): ikinci kez tahsilat
         // yazilmaz. Kimlik ogrenci basina turetildigi icin kontrol de turetilmis kimlikler
@@ -59,10 +64,12 @@ public sealed class EfEntitlementBillingService(
             .GroupBy(x => x.StudentId).Select(g => new { StudentId = g.Key, Card = g.First().CardNumber })
             .ToDictionaryAsync(x => x.StudentId, x => x.Card, cancellationToken);
 
-        var charged = 0;
+        var charged = 0; var total = 0m;
         foreach (var (studentId, derived) in operationIds)
         {
             if (pending.Contains(derived)) continue;
+            var amount = amountFor(studentId);
+            if (amount <= 0) continue;
             dbContext.Add(new IncomeTransaction
             {
                 // Ogrenci basina benzersiz islem kimligi: hepsi ayni OperationId tasisaydi
@@ -72,23 +79,23 @@ public sealed class EfEntitlementBillingService(
                 IncomeTypeId = incomeType.Id,
                 CardNumber = cards.GetValueOrDefault(studentId),
                 TransactionAt = now,
-                Amount = request.AmountPerStudent,
+                Amount = amount,
                 Description = description,
                 CreatedBy = actorId,
                 CreatedAt = now
             });
-            charged++;
+            charged++; total += amount;
         }
 
         auditService.Record(new AuditEntry("EntitlementCharged", nameof(IncomeTransaction), request.OperationId.ToString(),
-            string.Create(Turkish, $"Hakediş ücreti kasaya işlendi: {charged} öğrenci, {request.AmountPerStudent * charged:N2} ₺."),
-            charged, After: new { request.OperationId, Students = charged, request.AmountPerStudent }));
+            string.Create(Turkish, $"Hakediş ücreti kasaya işlendi: {charged} öğrenci, {total:N2} ₺."),
+            charged, After: new { request.OperationId, Students = charged, request.AmountPerStudent, Total = total }));
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var notified = request.NotifyParents
             ? await NotifyParentsAsync(request, mealName, cancellationToken)
             : 0;
-        return new EntitlementChargeResult(charged, request.AmountPerStudent * charged, notified);
+        return new EntitlementChargeResult(charged, total, notified);
     }
 
     public async Task<int> RefundAsync(IReadOnlyCollection<Guid> entitlementIds, Guid actorId,

@@ -1,3 +1,4 @@
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Balances;
 using Yemekhane.Application.Common;
@@ -83,7 +84,7 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         var today = SchoolToday();
         var dayStart = SchoolDayStart(today);
         var dayEnd = SchoolDayStart(today.AddDays(1));
-        var items = await students.OrderBy(x => x.StudentNo).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
+        var items = await OrderForPaging(students).Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
             .Select(student => new StudentListItem(student.Id, student.StudentNo,
                 dbContext.StudentCards.Where(card => card.StudentId == student.Id && card.IsActive).Select(card => card.CardNumber).FirstOrDefault(),
                 student.FirstName, student.LastName,
@@ -111,8 +112,34 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
             x.ClassId, x.SectionId, x.DepartmentId, x.JobId, x.FingerprintId, x.Pid, x.Address, x.PhotoPath, x.Notes, x.IsActive, x.RegisteredOn))
         .SingleOrDefaultAsync(cancellationToken);
 
+    /// <summary>
+    /// Ogrenci listesinin sayfalama siralamasi. Numaraya gore siralar, ardindan TEKIL
+    /// kimlige gore ayirir.
+    ///
+    /// <para>
+    /// Ikincil anahtar sart: ogrenci numarasi istege bagli oldugundan bircok satir ayni
+    /// BOS numarayi tasiyor ve esit anahtarli satirlarin sirasi SQLite'ta LIMIT/OFFSET
+    /// sorgulari arasinda garanti degil. Tie-break olmadan sayfa 1 ile sayfa 2 sinirinda
+    /// bazi ogrenciler hic gorunmuyor, bazilari iki kez cikiyordu.
+    /// </para>
+    /// </summary>
+    public static IOrderedQueryable<Student> OrderForPaging(IQueryable<Student> students) =>
+        students.OrderBy(x => x.StudentNo).ThenBy(x => x.Id);
+
+    /// <summary>
+    /// Numara kullanimda mi. SILINMIS ogrenciler de sayilir.
+    ///
+    /// <para>
+    /// <c>IgnoreQueryFilters()</c> sart: global filtre (<c>!IsDeleted</c>) silinmis
+    /// ogrenciyi gizler ama <c>student_no</c> benzersiz indeksi onu HALA gorur. Filtreli
+    /// sorgu "numara bos" deyince guzel Turkce catisma mesaji atlaniyor, kayit
+    /// veritabaninda UNIQUE ihlaline carpiyor ve kullaniciya "Sunucuya ulasilamadi."
+    /// olarak yansiyordu.
+    /// </para>
+    /// </summary>
     public Task<bool> StudentNoExistsAsync(string studentNo, Guid? excludingId, CancellationToken cancellationToken) =>
-        dbContext.Students.AnyAsync(x => x.StudentNo == studentNo && (!excludingId.HasValue || x.Id != excludingId), cancellationToken);
+        dbContext.Students.IgnoreQueryFilters()
+            .AnyAsync(x => x.StudentNo == studentNo && (!excludingId.HasValue || x.Id != excludingId), cancellationToken);
 
     public async Task<Guid> AddAsync(SaveStudentRequest request, CancellationToken cancellationToken)
     {
@@ -127,9 +154,33 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         dbContext.Students.Add(student);
         LocalOutbox.Enqueue(dbContext, student, LocalOutbox.UpdateStudent, student);
         auditService.Record(new AuditEntry("StudentCreated", nameof(Student), student.Id.ToString(), "Öğrenci oluşturuldu.", After: student));
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await SaveOrExplainAsync(student.StudentNo, cancellationToken);
         return student.Id;
     }
+
+    /// <summary>
+    /// Kaydeder; benzersiz numara ihlalini ANLASILIR bir catisma hatasina cevirir.
+    ///
+    /// <para>
+    /// Son savunma katmani: on kontrol (StudentNoExistsAsync) yarista kaybederse ya da
+    /// baska bir yol atlarsa ham DbUpdateException 500'e donusuyor ve masaustunde
+    /// "Sunucuya ulasilamadi." olarak gorunuyordu -- sunucuya ulasilmisti, numara
+    /// cakismisti.
+    /// </para>
+    /// </summary>
+    private async Task SaveOrExplainAsync(string studentNo, CancellationToken cancellationToken)
+    {
+        try { await dbContext.SaveChangesAsync(cancellationToken); }
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
+        {
+            throw new EntityConflictException(studentNo.Length == 0
+                ? "Bu kayıt benzersizlik kuralına takıldı; bilgileri kontrol edin."
+                : $"{studentNo} numaralı öğrenci zaten kayıtlı (silinmiş bir kayıt da olabilir).");
+        }
+    }
+
+    private static bool IsUniqueViolation(DbUpdateException exception) =>
+        exception.InnerException is SqliteException { SqliteErrorCode: 19 };
 
     public async Task<bool> UpdateAsync(Guid id, SaveStudentRequest request, CancellationToken cancellationToken)
     {

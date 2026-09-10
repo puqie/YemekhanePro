@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using Yemekhane.Application.Calendar;
 using Yemekhane.Application.Common;
@@ -25,7 +25,7 @@ public sealed class MealEntitlementService(
         var students = await repository.ResolveTargetAsync(request.Target, cancellationToken);
         if (students.Count == 0) throw new RequestValidationException("Hedefte aktif öğrenci bulunamadı.");
         var dates = await ValidateAndGetDatesAsync(request.StartsOn, request.EndsOn, request.Quantity,
-            request.IncludeSaturday, request.IncludeSunday, cancellationToken);
+            request.IncludeSaturday, request.IncludeSunday, cancellationToken, request.DayCount);
         var state = await repository.PreviewAsync(students, request.MealTypeId, dates, cancellationToken);
         // Bedel SUNUCUDA hesaplanir: ekran kendi carpimini yapiyordu ve o rakam hicbir yere
         // gitmiyordu. Ayni deger hem onizlemede gosterilir hem kasaya yazilir.
@@ -44,7 +44,7 @@ public sealed class MealEntitlementService(
         var students = await repository.ResolveTargetAsync(request.Grant.Target, cancellationToken);
         if (students.Count == 0) throw new RequestValidationException("Hedefte aktif öğrenci bulunamadı.");
         var dates = await ValidateAndGetDatesAsync(request.Grant.StartsOn, request.Grant.EndsOn, request.Grant.Quantity,
-            request.Grant.IncludeSaturday, request.Grant.IncludeSunday, cancellationToken);
+            request.Grant.IncludeSaturday, request.Grant.IncludeSunday, cancellationToken, request.Grant.DayCount);
         var state = await repository.PreviewAsync(students, request.Grant.MealTypeId, dates, cancellationToken);
         var expected = Token(request.Grant, students, dates, state.StateHash);
         if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(request.PreviewToken)))
@@ -58,11 +58,23 @@ public sealed class MealEntitlementService(
         var unit = await repository.MealPriceAsync(request.Grant.MealTypeId, cancellationToken);
         var perStudent = unit * dates.Count * request.Grant.Quantity;
         if (perStudent <= 0) return result;
+        // Ucret YENI yaratilan gunler uzerinden hesaplanir, aralik uzunlugu uzerinden
+        // DEGIL: ayni hakedis ikinci kez verildiginde hakedis satiri guncellenir ve
+        // ogrencinin yeni borcu yoktur. Once burada dates.Count kullaniliyordu ve tekrar
+        // uygulanan her hakedis kasaya ikinci kez tam tutar yaziyordu.
+        var amountOverrides = result.CreatedPerStudent?
+            .ToDictionary(pair => pair.Key, pair => unit * pair.Value * request.Grant.Quantity);
+        var chargedStudents = amountOverrides is null
+            ? students
+            : students.Where(x => amountOverrides.GetValueOrDefault(x) > 0).ToArray();
+        if (chargedStudents.Count == 0 && !request.Grant.NotifyParents) return result;
         // Kasaya yazma kapaliysa tutar 0 gonderilir: servis para yazmaz, yalnizca SMS kuyruklar.
         var charge = await billing.ChargeAsync(new EntitlementChargeRequest(
-            request.Grant.OperationId ?? Guid.NewGuid(), students, request.Grant.MealTypeId,
+            request.Grant.OperationId ?? Guid.NewGuid(),
+            request.Grant.ChargeToCash ? chargedStudents : students, request.Grant.MealTypeId,
             request.Grant.ChargeToCash ? perStudent : 0m,
-            request.Grant.StartsOn, request.Grant.EndsOn, dates.Count, request.Grant.NotifyParents),
+            request.Grant.StartsOn, request.Grant.EndsOn, dates.Count, request.Grant.NotifyParents,
+            request.Grant.ChargeToCash ? amountOverrides : null),
             actorId, cancellationToken);
         return result with
         {
@@ -110,21 +122,48 @@ public sealed class MealEntitlementService(
     public Task<bool> CancelAsync(Guid entitlementId, CancellationToken cancellationToken = default) => repository.CancelAsync(entitlementId, cancellationToken);
 
     private async Task<IReadOnlyList<DateOnly>> ValidateAndGetDatesAsync(DateOnly startsOn, DateOnly endsOn, int quantity,
-        bool includeSaturday, bool includeSunday, CancellationToken cancellationToken)
+        bool includeSaturday, bool includeSunday, CancellationToken cancellationToken, int? dayCount = null)
     {
-        if (endsOn < startsOn) throw new RequestValidationException("Bitiş tarihi başlangıç tarihinden önce olamaz.");
         if (quantity is < 1 or > 10) throw new RequestValidationException("Günlük öğün hakkı 1-10 arasında olmalıdır.");
+        if (dayCount.HasValue) return await CollectDaysAsync(startsOn, dayCount.Value, includeSaturday, includeSunday, cancellationToken);
+
+        if (endsOn < startsOn) throw new RequestValidationException("Bitiş tarihi başlangıç tarihinden önce olamaz.");
         if ((endsOn.DayNumber - startsOn.DayNumber) >= 366) throw new RequestValidationException("Tek işlemde en fazla 366 günlük aralık seçilebilir.");
         var dates = new List<DateOnly>();
         foreach (var date in Enumerable.Range(0, endsOn.DayNumber - startsOn.DayNumber + 1).Select(startsOn.AddDays))
-        {
-            if (date.DayOfWeek == DayOfWeek.Saturday && !includeSaturday) continue;
-            if (date.DayOfWeek == DayOfWeek.Sunday && !includeSunday) continue;
-            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) { dates.Add(date); continue; }
-            if (await businessDayService.IsBusinessDayAsync(date, new CalendarScope("AllSchool"), cancellationToken)) dates.Add(date);
-        }
+            if (await IsGrantableAsync(date, includeSaturday, includeSunday, cancellationToken)) dates.Add(date);
         if (dates.Count == 0) throw new RequestValidationException("Seçilen aralıkta uygulanabilir gün bulunamadı.");
         return dates;
+    }
+
+    /// <summary>
+    /// Istenen sayida yemek gunu bulunana kadar ILERLER: hafta sonu ve tatil gunleri
+    /// atlanir, aralik gerektigi kadar uzar. "20 gun" her zaman 20 hak demektir --
+    /// tatile denk gelen istekte hak sayisi dusmez.
+    /// </summary>
+    private async Task<IReadOnlyList<DateOnly>> CollectDaysAsync(DateOnly startsOn, int dayCount,
+        bool includeSaturday, bool includeSunday, CancellationToken cancellationToken)
+    {
+        if (dayCount < 1) throw new RequestValidationException("Gün sayısı en az 1 olmalıdır.");
+        if (dayCount > 366) throw new RequestValidationException("Tek işlemde en fazla 366 gün tanımlanabilir.");
+        var dates = new List<DateOnly>(dayCount);
+        // Guvenlik siniri: hicbir gun uygun degilse (tum hafta kapali) dongu sonsuza
+        // gitmesin. Bes yillik pencere her gercekci istegi karsilar.
+        var cursor = startsOn;
+        for (var scanned = 0; scanned < 365 * 5 && dates.Count < dayCount; scanned++, cursor = cursor.AddDays(1))
+            if (await IsGrantableAsync(cursor, includeSaturday, includeSunday, cancellationToken)) dates.Add(cursor);
+        if (dates.Count < dayCount)
+            throw new RequestValidationException($"Seçilen günlerle {dayCount} günlük hak oluşturulamıyor. Cumartesi/Pazar seçimini ve tatil takvimini gözden geçirin.");
+        return dates;
+    }
+
+    /// <summary>Bu gune hak tanimlanabilir mi: hafta sonu secimi ve tatil takvimi birlikte.</summary>
+    private async Task<bool> IsGrantableAsync(DateOnly date, bool includeSaturday, bool includeSunday,
+        CancellationToken cancellationToken)
+    {
+        if (date.DayOfWeek == DayOfWeek.Saturday) return includeSaturday;
+        if (date.DayOfWeek == DayOfWeek.Sunday) return includeSunday;
+        return await businessDayService.IsBusinessDayAsync(date, new CalendarScope("AllSchool"), cancellationToken);
     }
 
     /// <summary>

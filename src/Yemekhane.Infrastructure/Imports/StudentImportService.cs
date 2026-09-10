@@ -1,4 +1,4 @@
-using Yemekhane.Application.Balances;
+﻿using Yemekhane.Application.Balances;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO.Compression;
@@ -183,9 +183,15 @@ public sealed class StudentImportService(
             foreach (var row in snapshot.Rows.Where(x => x.Errors.Count == 0))
             {
                 // Bos numarali satir HER ZAMAN yeni kayit acar; eslestirilecek anahtar yoktur.
+                // IgnoreQueryFilters SART: onizleme (:282) ve hash (:326) silinmis ogrenciyi
+                // GORUYOR, burasi gormezse onizleme "Guncelle" derken uygulama yeni kayit
+                // acmaya calisip benzersiz indekse carpiyor ve TUM aktarim geri aliniyordu.
                 var student = row.StudentNo.Length == 0
                     ? null
-                    : await dbContext.Students.FirstOrDefaultAsync(x => x.StudentNo == row.StudentNo, cancellationToken);
+                    : await dbContext.Students.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(x => x.StudentNo == row.StudentNo, cancellationToken);
+                // Geri donen ogrenci: silinmis kayit yeniden canlandirilir, kopya acilmaz.
+                if (student is { IsDeleted: true }) { student.IsDeleted = false; student.IsActive = true; }
                 if (student is null)
                 {
                     student = new Student { StudentNo = row.StudentNo, FirstName = row.FirstName, LastName = row.LastName, RegisteredOn = DateOnly.FromDateTime(now.LocalDateTime) };

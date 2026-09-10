@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Net.Http;
@@ -240,8 +240,15 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Girilen gun sayisinin hangi tarihte bitecegini soyler. Kullanici "10 gun"
-    /// yazdiginda hangi tarihe kadar hak olusacagini ONCEDEN gormelidir.
+    /// Girilen gun sayisinin yaklasik hangi tarihte bitecegini soyler.
+    ///
+    /// <para>
+    /// Bu tarih YAKLASIKTIR: burada yalnizca hafta sonu bilinir, TATILLER bilinmez
+    /// (takvim sunucunun verisidir). Tatile denk gelen aralik sunucuda daha ileri bir
+    /// tarihe uzar. Kesin tarih icin "Etkileri Onizle" gerekir; bu yuzden metin kesin
+    /// bir bitis tarihi VAAT ETMEZ, "en erken" der. Eskiden burada kesin tarih yaziyordu
+    /// ve sunucunun bulduguyla tutmuyordu.
+    /// </para>
     /// </summary>
     public string GrantRangeText
     {
@@ -254,7 +261,7 @@ public sealed class MealEntitlementsViewModel : ObservableObject
                 DateOnly.FromDateTime(GrantStartsOn), days, IncludeSaturday, IncludeSunday);
             return end is null
                 ? "Seçilen günlerle bu süre hesaplanamıyor."
-                : $"{GrantStartsOn:dd.MM.yyyy} - {end.Value:dd.MM.yyyy} ({days} gün)";
+                : $"{GrantStartsOn:dd.MM.yyyy} tarihinden itibaren {days} gün (en erken bitiş {end.Value:dd.MM.yyyy}; tatiller varsa uzar)";
         }
     }
     /// <summary>
@@ -467,7 +474,13 @@ public sealed class MealEntitlementsViewModel : ObservableObject
             // (varsayilan +-7 gun) kullanici "uyguladim ama liste degismedi" sanir.
             // Aralik yalnizca genisletilir, daraltilmaz.
             var grantStart = previewRequest.StartsOn.ToDateTime(TimeOnly.MinValue);
-            var grantEnd = previewRequest.EndsOn.ToDateTime(TimeOnly.MinValue);
+            // Bitis, gonderilen EndsOn'dan OKUNAMAZ: gun sayisi kullanildiginda o alan bir
+            // yer tutucudur ve gercek bitisi sunucu hesaplar (tatiller aralig uzatir).
+            // Sunucunun bildirdigi gun sayisi kadar ileri gidilir ve emniyet payi eklenir;
+            // aksi halde kullanici "uyguladim ama liste degismedi" sanirdi.
+            var grantEnd = previewRequest.DayCount is { } days
+                ? grantStart.AddDays(Math.Max(days, result.DayCount) * 2)
+                : previewRequest.EndsOn.ToDateTime(TimeOnly.MinValue);
             if (StartsOn is null || StartsOn > grantStart) StartsOn = grantStart;
             if (EndsOn is null || EndsOn < grantEnd) EndsOn = grantEnd;
             // ARAMA METNI de temizlenir: kutuda kalan eski metin yeni satirlari suzuyor,
@@ -637,16 +650,14 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         if (GrantMeal is null) throw new InvalidOperationException("Öğün seçilmelidir.");
         if (!int.TryParse(QuantityText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var quantity) || quantity is < 1 or > 10)
             throw new InvalidOperationException("Günlük adet 1-10 arasında bir tam sayı olmalıdır.");
-        // Bitis tarihi GUN SAYISINDAN hesaplanir: kullanici "10 gun" der, sistem
-        // hafta sonlarini atlayarak 10 dolu gun bulur. Boylece "10 gun" her zaman
-        // 10 hak demektir; takvim gunu sayilsaydi hafta sonuna denk gelen istekte
-        // hak sayisi degisirdi.
+        // Gun sayisi SUNUCUYA oldugu gibi gonderilir; bitis tarihini sunucu hesaplar.
+        // Burada hesaplanamaz: bitis tarihi tatil takvimine baglidir ve takvim sunucunun
+        // verisidir. Eskiden burada WorkingDayRange ile hesaplaniyordu, tatiller
+        // bilinmedigi icin sunucu ayni araligi yeniden eliyor ve "20 gun" sessizce
+        // 15 gune, 6.000 TL sessizce 4.500 TL'ye dusuyordu.
         if (!int.TryParse(DayCountText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var dayCount)
             || dayCount < 1)
             throw new InvalidOperationException("Gün sayısı 1 veya daha büyük bir tam sayı olmalıdır.");
-        var computedEnd = WorkingDayRange.EndDateFor(
-            DateOnly.FromDateTime(GrantStartsOn), dayCount, IncludeSaturday, IncludeSunday)
-            ?? throw new InvalidOperationException("Seçilen günlerle bu süre hesaplanamıyor. Cumartesi/Pazar seçimini gözden geçirin.");
         var (ids, nos) = ManualStudentInput.Parse(ManualStudentIds);
         // Listeden secilen ogrencilerin KIMLIGI kullanilir: numarasi olmayan ogrenci
         // (anasinifi, misafir) numara kutusuna hicbir sey yazamaz ve eskiden bu ekrandan
@@ -660,10 +671,13 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         if (IsGradeTarget && string.IsNullOrWhiteSpace(Grade)) throw new InvalidOperationException("Kademe / sınıf seviyesi girilmelidir.");
         var target = new EntitlementTarget(TargetType, IsManualTarget ? ids : [], GrantClass?.Id, Empty(Grade), GrantGroup?.Id,
             IsManualTarget && nos.Length > 0 ? nos : null);
-        return new EntitlementGrantRequest(target, GrantMeal.Id, DateOnly.FromDateTime(GrantStartsOn),
-            computedEnd, quantity, IncludeSaturday, IncludeSunday, "WPF Quick Grant",
+        var startsOn = DateOnly.FromDateTime(GrantStartsOn);
+        return new EntitlementGrantRequest(target, GrantMeal.Id, startsOn,
+            // EndsOn gun sayisi verildiginde sunucuda yeniden hesaplanir; sozlesme geriye
+            // donuk uyumlu kalsin diye baslangicla ayni gonderilir.
+            startsOn, quantity, IncludeSaturday, IncludeSunday, "WPF Quick Grant",
             // Ucretsiz ogunde kasaya yazacak tutar yoktur; secenek isaretli olsa da gonderilmez.
-            ChargeToCash && HasGrantMealPrice, NotifyParents, grantOperationId);
+            ChargeToCash && HasGrantMealPrice, NotifyParents, grantOperationId, dayCount);
     }
 
     private void HandleError(Exception ex, string fallback)

@@ -7,8 +7,20 @@ public sealed record BulkEntitlementRequest(IReadOnlyCollection<Guid> StudentIds
 /// <param name="ChargedStudents">Kasaya gelir yazilan ogrenci sayisi (ucretlendirme kapaliysa 0).</param>
 /// <param name="ChargedTotal">Kasaya yazilan toplam tutar.</param>
 /// <param name="NotifiedParents">SMS kuyruguna alinan veli sayisi.</param>
+/// <param name="CreatedPerStudent">
+/// Ogrenci basina YENI yaratilan hak gunu sayisi. Ucret bunun uzerinden hesaplanir:
+/// zaten var olan bir hak guncellendiginde para ikinci kez alinmamalidir.
+///
+/// <para>
+/// Ucret once <c>dates.Count</c> (aralikta kac gun var) uzerinden hesaplaniyordu. Ayni
+/// hakedis ikinci kez verildiginde hakedis satiri upsert ile guncelleniyor ama kasaya
+/// tam tutar TEKRAR yaziliyordu. Ogrenciler farkli sayida yeni gun alabildigi icin
+/// (kismen ortusen aralik) tek bir sayi yetmez, ogrenci basina ayrim gerekir.
+/// </para>
+/// </param>
 public sealed record BulkEntitlementResult(int StudentCount, int DayCount, int CreatedCount, int UpdatedCount,
-    int ChargedStudents = 0, decimal ChargedTotal = 0, int NotifiedParents = 0);
+    int ChargedStudents = 0, decimal ChargedTotal = 0, int NotifiedParents = 0,
+    IReadOnlyDictionary<Guid, int>? CreatedPerStudent = null);
 public sealed record EntitlementDetails(Guid Id, Guid StudentId, Guid MealTypeId, DateOnly Date, int Quantity,
     int ConsumedQuantity, int RemainingQuantity, string Status, string? Source);
 
@@ -47,9 +59,22 @@ public sealed record EntitlementTarget(string Type, IReadOnlyCollection<Guid>? S
 /// Tekrar denemede ayni tahsilatin ikinci kez yazilmamasi icin islem kimligi; masaustu
 /// ayni onizleme icin ayni kimligi gonderir.
 /// </param>
+/// <param name="DayCount">
+/// Kullanicinin istedigi GUN SAYISI. Verilirse <paramref name="EndsOn"/> yok sayilir ve
+/// bitis tarihi SUNUCUDA, tatil takvimi okunarak hesaplanir: istenen sayida yemek gunu
+/// bulunana kadar aralik uzar.
+///
+/// <para>
+/// Bu alan olmadan kullanicinin niyeti sunucuya hic ulasmiyordu. Masaustu bitis tarihini
+/// tatilleri BILMEDEN hesapliyor, sunucu ayni araligi tatil takvimiyle yeniden eliyordu;
+/// "20 gun" sessizce 15 gune, 6.000 TL sessizce 4.500 TL'ye dusuyordu. Gun sayisi tek
+/// dogru kaynak olarak sunucuya tasinir ve hesap yalnizca takvimi bilen tarafta yapilir.
+/// </para>
+/// </param>
 public sealed record EntitlementGrantRequest(EntitlementTarget Target, Guid MealTypeId, DateOnly StartsOn,
     DateOnly EndsOn, int Quantity = 1, bool IncludeSaturday = false, bool IncludeSunday = false,
-    string Source = "Manual", bool ChargeToCash = false, bool NotifyParents = false, Guid? OperationId = null);
+    string Source = "Manual", bool ChargeToCash = false, bool NotifyParents = false, Guid? OperationId = null,
+    int? DayCount = null);
 /// <param name="AmountPerStudent">Ogrenci basina toplam bedel (ogun ucreti x gun x adet); ucretsiz ogunde 0.</param>
 /// <param name="Total">Butun ogrenciler icin toplam; ekranda "Toplam bedel" olarak gorunur.</param>
 public sealed record EntitlementPreview(int StudentCount, int DayCount, int RightsCount, int CreatedCount,

@@ -11,6 +11,18 @@ namespace Yemekhane.Application.Entitlements;
 /// </param>
 /// <param name="StudentIds">Ucretlendirilecek ogrenciler; her biri icin ayri kasa kaydi acilir.</param>
 /// <param name="AmountPerStudent">Ogrenci basina toplam tutar (ogun bedeli x gun x adet).</param>
+/// <param name="AmountOverrides">
+/// Ogrenci basina tutar farkliysa (kismen ortusen hakedis: kimine 3 yeni gun, kimine 5)
+/// o ogrencinin tutari buradan okunur; listede olmayan ogrenci
+/// <paramref name="AmountPerStudent"/> tutarini alir, 0 olan ogrenciye tahsilat
+/// YAZILMAZ.
+///
+/// <para>
+/// Bu ayrim olmadan ucret aralik uzunlugu uzerinden hesaplaniyordu ve ayni hakedis
+/// ikinci kez verildiginde -- hicbir YENI hak yaratilmadigi halde -- kasaya tam tutar
+/// tekrar yaziliyordu.
+/// </para>
+/// </param>
 public sealed record EntitlementChargeRequest(
     Guid OperationId,
     IReadOnlyCollection<Guid> StudentIds,
@@ -19,7 +31,8 @@ public sealed record EntitlementChargeRequest(
     DateOnly StartsOn,
     DateOnly EndsOn,
     int DayCount,
-    bool NotifyParents);
+    bool NotifyParents,
+    IReadOnlyDictionary<Guid, decimal>? AmountOverrides = null);
 
 /// <param name="ChargedStudents">Kasaya yazilan ogrenci sayisi.</param>
 /// <param name="Total">Yazilan toplam tutar.</param>

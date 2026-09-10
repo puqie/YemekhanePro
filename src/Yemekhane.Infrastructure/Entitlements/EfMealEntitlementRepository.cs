@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Audit;
@@ -34,6 +34,9 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
             throw new EntityConflictException("Önizlemeden sonra hakediş verisi değişti. Yeniden önizleyin.");
         var byKey = existing.ToDictionary(x => (x.StudentId, x.EntitlementDate));
         var created = 0; var updated = 0;
+        // Ogrenci basina YENI gun sayisi: ucret bunun uzerinden hesaplanir, aralik
+        // uzunlugu uzerinden DEGIL. Zaten var olan hak guncellenirse para tekrar alinmaz.
+        var createdPerStudent = new Dictionary<Guid, int>();
         foreach (var studentId in studentIds)
         foreach (var date in dates)
         {
@@ -50,6 +53,7 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
                 dbContext.Add(entitlement);
                 LocalOutbox.Enqueue(dbContext, entitlement, LocalOutbox.CreateMealEntitlement, entitlement);
                 created++;
+                createdPerStudent[studentId] = createdPerStudent.GetValueOrDefault(studentId) + 1;
             }
         }
         var operationId = Guid.NewGuid();
@@ -59,7 +63,8 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
             BulkOperationId: operationId));
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return new BulkEntitlementResult(studentIds.Count, dates.Count, created, updated);
+        return new BulkEntitlementResult(studentIds.Count, dates.Count, created, updated,
+            CreatedPerStudent: createdPerStudent);
     }
 
     /// <summary>Ogunun birim ucreti; fiyat satiri yoksa ucretsiz ogun sayilir (0).</summary>
