@@ -274,6 +274,36 @@ public sealed class IncomeTransaction : Entity
     public DateTimeOffset? VoidedAt { get; set; }
     public Guid? VoidedBy { get; set; }
     public string? VoidReason { get; set; }
+
+    /// <summary>
+    /// Hakedis tahsilatiysa: hangi OGUN icin. Hakedis disi gelirlerde <c>null</c>.
+    ///
+    /// <para>
+    /// Iade, tahsilati hakedise baglamak zorunda. Once bu bag YOKTU: eslestirme
+    /// <c>Description</c> alanindaki "Yemek hakedisi" onekinden TAHMIN ediliyor ve
+    /// ogrencinin EN SON tahsilati seciliyordu. Ogle iptal edilince Kahvalti'nin parasi
+    /// iade edilebiliyordu.
+    /// </para>
+    /// </summary>
+    public Guid? MealTypeId { get; set; }
+
+    /// <summary>Hakedis tahsilatiysa: ucretlendirilen ilk gun.</summary>
+    public DateOnly? EntitlementStartsOn { get; set; }
+
+    /// <summary>Hakedis tahsilatiysa: ucretlendirilen son gun.</summary>
+    public DateOnly? EntitlementEndsOn { get; set; }
+
+    /// <summary>
+    /// Hakedis tahsilatiysa: kac GUN icin ucret alindi. Kismi iade bunu kullanir --
+    /// iptal edilen gun sayisi kadar orantili iade yapilir.
+    ///
+    /// <para>
+    /// Onceden kismi iptalde tahsilatin TAMAMI void ediliyordu ("tutar kasada asili
+    /// kalmasin" gerekcesiyle): 20 gunun 10'u yenmis, kalan 10'u iptal edilmisse okul
+    /// yenen 10 ogunun parasini da kaybediyordu.
+    /// </para>
+    /// </summary>
+    public int? EntitlementDayCount { get; set; }
 }
 
 public sealed class SmsTemplate : Entity { public required string Name { get; set; } public required string Body { get; set; } public bool IsActive { get; set; } = true; }

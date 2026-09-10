@@ -268,8 +268,25 @@ public sealed class TuitionViewModel : ObservableObject
         return $"{year}-{year + 1}";
     }
 
+    /// <summary>
+    /// Tutar ayristirma. KULTUR GUVENLI ayristiriciyi kullanir; <c>decimal.TryParse</c> +
+    /// tr-TR DEGIL.
+    ///
+    /// <para>
+    /// Eskiden <c>decimal.TryParse(text, NumberStyles.Number, Turkish, ...)</c> idi.
+    /// <c>NumberStyles.Number</c> <c>AllowThousands</c> icerir ve tr-TR'de grup ayiraci
+    /// NOKTA'dir: "6000.00" 600000 olarak okunuyor, yanindaki
+    /// <c>decimal.Round(value, 2) == value</c> kontrolu de hicbir sey yakalamiyordu
+    /// (sonuc zaten tam sayi). Sinif planina 6.000 TL yazan kullanici siniftaki her
+    /// ogrenciye 600.000 TL borc yaziyordu.
+    /// </para>
+    /// <para>
+    /// <see cref="CashViewModel.TryParseAmount"/> ayni hatayi Kasa'da cozmustu; ayni
+    /// ayristirici burada da kullanilir ki iki ekran ayni yazimi ayni okusun.
+    /// </para>
+    /// </summary>
     private static bool TryMoney(string? text, out decimal value) =>
-        decimal.TryParse(text, NumberStyles.Number, Turkish, out value) && value > 0 && decimal.Round(value, 2) == value;
+        CashViewModel.TryParseAmount(text, out value) && decimal.Round(value, 2) == value;
 
     private static bool IsApiFailure(Exception exception) =>
         exception is HttpRequestException or TaskCanceledException or InvalidDataException or LoginRequiredException;

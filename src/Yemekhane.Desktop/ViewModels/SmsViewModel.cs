@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Globalization;
 using System.Net.Http;
@@ -304,7 +304,11 @@ public sealed class SmsViewModel : ObservableObject, IDisposable
                 return "Şablon 'Son tarih' değişkeni kullanıyor; gg.aa.yyyy biçiminde bir tarih girin.";
             if (body.Contains("{{EntryTime}}", StringComparison.Ordinal) && !TimeOnly.TryParse(EntryTime, CultureInfo.CurrentCulture, out _))
                 return "Şablon 'Giriş saati' değişkeni kullanıyor; SS:dd biçiminde bir saat girin.";
-            if (body.Contains("{{Amount}}", StringComparison.Ordinal) && !decimal.TryParse(Amount, NumberStyles.Number, CultureInfo.CurrentCulture, out _))
+            // Kultur guvenli ayristirici: tr-TR'de nokta BINLIK ayiracidir, bu yuzden
+            // decimal.TryParse "250.50" degerini 25050 okuyor ve veliye "25.050,00 TL"
+            // yazan bir SMS gidiyordu. Yanlis rakam kullaniciya degil VELIYE ulastigi
+            // icin geri alinamiyor.
+            if (body.Contains("{{Amount}}", StringComparison.Ordinal) && !CashViewModel.TryParseAmount(Amount, out _))
                 return "Şablon 'Tutar' değişkeni kullanıyor; sayısal bir tutar girin (örn. 250,50).";
         }
         return null;
@@ -326,7 +330,7 @@ public sealed class SmsViewModel : ObservableObject, IDisposable
         var variables = new Dictionary<string, object?>();
         if (DateOnly.TryParse(ExpiryDate, CultureInfo.CurrentCulture, out var date)) variables["ExpiryDate"] = date;
         if (TimeOnly.TryParse(EntryTime, CultureInfo.CurrentCulture, out var time)) variables["EntryTime"] = time;
-        if (decimal.TryParse(Amount, NumberStyles.Number, CultureInfo.CurrentCulture, out var value)) variables["Amount"] = value;
+        if (CashViewModel.TryParseAmount(Amount, out var value)) variables["Amount"] = value;
         return new(Guid.NewGuid().ToString("N"), new(TargetType, id, ids, TargetType == "Filter" ? Search : null),
             UseTemplate ? null : CustomMessage, UseTemplate ? SelectedTemplate?.Id : null, variables);
     }

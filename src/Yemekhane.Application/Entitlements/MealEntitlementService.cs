@@ -73,7 +73,10 @@ public sealed class MealEntitlementService(
             request.Grant.OperationId ?? Guid.NewGuid(),
             request.Grant.ChargeToCash ? chargedStudents : students, request.Grant.MealTypeId,
             request.Grant.ChargeToCash ? perStudent : 0m,
-            request.Grant.StartsOn, request.Grant.EndsOn, dates.Count, request.Grant.NotifyParents,
+            // Gercek aralik SUNUCUNUN hesapladigi gun listesinden alinir; istekteki
+            // EndsOn gun sayisi kullanildiginda yer tutucudur (baslangicla ayni) ve
+            // kismi iade tarih araligini bu alanlardan okudugu icin yanlis olurdu.
+            dates[0], dates[^1], dates.Count, request.Grant.NotifyParents,
             request.Grant.ChargeToCash ? amountOverrides : null),
             actorId, cancellationToken);
         return result with

@@ -82,7 +82,17 @@ public sealed class EfEntitlementBillingService(
                 Amount = amount,
                 Description = description,
                 CreatedBy = actorId,
-                CreatedAt = now
+                CreatedAt = now,
+                // Hakedis bagi: iade bu alanlari okur. Description onegine bakip
+                // "en son tahsilati" tahmin etmek yanlis ogunun parasini iade ediyordu.
+                MealTypeId = request.MealTypeId,
+                EntitlementStartsOn = request.StartsOn,
+                EntitlementEndsOn = request.EndsOn,
+                // Ucretlendirilen gun sayisi: kismi iade bunu kullanir. Ogrenci basina
+                // farkli olabilir (kismen ortusen hakedis), o yuzden tutardan turetilir.
+                EntitlementDayCount = request.DayCount <= 0 || request.AmountPerStudent <= 0
+                    ? request.DayCount
+                    : (int)Math.Round(amount / (request.AmountPerStudent / request.DayCount), MidpointRounding.AwayFromZero)
             });
             charged++; total += amount;
         }
@@ -98,16 +108,34 @@ public sealed class EfEntitlementBillingService(
         return new EntitlementChargeResult(charged, total, notified);
     }
 
+    /// <summary>
+    /// Iptal edilen haklarin tahsilatini ORANTILI olarak geri alir.
+    ///
+    /// <para>
+    /// Eskiden ogrencinin EN SON hakedis tahsilati bulunup TAMAMI void ediliyordu. Iki
+    /// ayri hata uretiyordu: (1) kismi iptalde yenen ogunlerin parasi da iade ediliyor,
+    /// (2) eslestirme yalnizca aciklama onegine baktigi icin Ogle iptal edilince
+    /// Kahvalti'nin parasi iade edilebiliyordu.
+    /// </para>
+    /// <para>
+    /// Simdi tahsilat OGUN ve TARIH ARALIGI uzerinden eslestirilir; iptal edilen gun
+    /// sayisi kadar orantili iade yapilir. Kismi iadede tahsilat void edilir ve KALAN
+    /// gunler icin yeni bir tahsilat yazilir: <c>Amount &gt; 0</c> kisiti negatif satira
+    /// izin vermiyor, ayrica kasa gecmisinde "su tahsilat iptal edildi, yerine su
+    /// yazildi" izi kaliyor.
+    /// </para>
+    /// </summary>
     public async Task<int> RefundAsync(IReadOnlyCollection<Guid> entitlementIds, Guid actorId,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entitlementIds);
         if (entitlementIds.Count == 0) return 0;
 
-        // Iptal edilen haklarin ogrencileri ve tarih araligi; ayni araligin tahsilati geri alinir.
+        // Iptal edilen haklar: ogrenci, OGUN ve tarih. Ogun bilgisi sart -- ayni ogrencinin
+        // farkli ogunlerinin tahsilatlari birbirine karismamali.
         var rows = await dbContext.MealEntitlements.AsNoTracking()
             .Where(x => entitlementIds.Contains(x.Id))
-            .Select(x => new { x.StudentId, x.EntitlementDate }).ToListAsync(cancellationToken);
+            .Select(x => new { x.StudentId, x.MealTypeId, x.EntitlementDate }).ToListAsync(cancellationToken);
         if (rows.Count == 0) return 0;
 
         var studentIds = rows.Select(x => x.StudentId).Distinct().ToList();
@@ -118,20 +146,73 @@ public sealed class EfEntitlementBillingService(
         if (candidates.Count == 0) return 0;
 
         var now = timeProvider.GetUtcNow();
+        var incomeType = await EnsureIncomeTypeAsync(now, cancellationToken);
         var voided = 0;
-        foreach (var studentId in studentIds)
+
+        foreach (var group in rows.GroupBy(x => new { x.StudentId, x.MealTypeId }))
         {
-            // Ogrencinin en son hakedis tahsilati geri alinir; kismi iptalde de tutar
-            // kasada asili kalmasin diye tamami iptal edilir ve gerekcesi yazilir.
-            var target = candidates.Where(x => x.StudentId == studentId)
-                .OrderByDescending(x => x.TransactionAt).FirstOrDefault();
-            if (target is null) continue;
-            target.IsVoided = true;
-            target.VoidedAt = now;
-            target.VoidedBy = actorId;
-            target.VoidReason = "Yemek hakedişi iptal edildi.";
-            target.UpdatedAt = now;
-            voided++;
+            var cancelledDates = group.Select(x => x.EntitlementDate).Distinct().ToList();
+            // Ayni ogrenci + ayni OGUN icin, iptal edilen gunleri kapsayan tahsilatlar.
+            // Eski kayitlarda bag alanlari bos olabilir; o durumda aciklama onegiyle
+            // eslesen en son tahsilata dusulur (gecis donemi davranisi).
+            var linked = candidates
+                .Where(x => x.StudentId == group.Key.StudentId && !x.IsVoided
+                    && x.MealTypeId == group.Key.MealTypeId)
+                .OrderBy(x => x.TransactionAt).ToList();
+            if (linked.Count == 0)
+            {
+                var legacy = candidates.Where(x => x.StudentId == group.Key.StudentId && !x.IsVoided
+                        && x.MealTypeId == null)
+                    .OrderByDescending(x => x.TransactionAt).FirstOrDefault();
+                if (legacy is null) continue;
+                Void(legacy, "Yemek hakedişi iptal edildi.");
+                voided++;
+                continue;
+            }
+
+            var remaining = cancelledDates.Count;
+            foreach (var charge in linked)
+            {
+                if (remaining <= 0) break;
+                // Bu tahsilatin kapsadigi gunlerden kaci iptal edildi.
+                var covered = charge.EntitlementStartsOn is { } from && charge.EntitlementEndsOn is { } to
+                    ? cancelledDates.Count(date => date >= from && date <= to)
+                    : cancelledDates.Count;
+                if (covered <= 0) continue;
+                var chargedDays = charge.EntitlementDayCount is > 0 ? charge.EntitlementDayCount.Value : covered;
+                var refundDays = Math.Min(covered, chargedDays);
+                remaining -= refundDays;
+
+                Void(charge, refundDays >= chargedDays
+                    ? "Yemek hakedişi iptal edildi."
+                    : string.Create(Turkish, $"Yemek hakedişi kısmen iptal edildi: {refundDays}/{chargedDays} gün iade."));
+                voided++;
+
+                // Kismi iade: kalan gunlerin bedeli icin yeni tahsilat. Yenen ogunlerin
+                // parasi okulda kalir.
+                if (refundDays >= chargedDays) continue;
+                var perDay = charge.Amount / chargedDays;
+                var keptDays = chargedDays - refundDays;
+                var keptAmount = decimal.Round(perDay * keptDays, 2, MidpointRounding.AwayFromZero);
+                if (keptAmount <= 0) continue;
+                dbContext.Add(new IncomeTransaction
+                {
+                    // Turetilmis kimlik: ayni iptal iki kez islenirse ikinci kayit acilmaz.
+                    OperationId = DeriveOperationId(charge.OperationId, charge.Id),
+                    StudentId = charge.StudentId,
+                    IncomeTypeId = incomeType.Id,
+                    CardNumber = charge.CardNumber,
+                    TransactionAt = now,
+                    Amount = keptAmount,
+                    Description = string.Create(Turkish, $"{charge.Description} · kısmi iptal sonrası {keptDays} gün"),
+                    CreatedBy = actorId,
+                    CreatedAt = now,
+                    MealTypeId = charge.MealTypeId,
+                    EntitlementStartsOn = charge.EntitlementStartsOn,
+                    EntitlementEndsOn = charge.EntitlementEndsOn,
+                    EntitlementDayCount = keptDays
+                });
+            }
         }
         if (voided == 0) return 0;
 
@@ -139,6 +220,15 @@ public sealed class EfEntitlementBillingService(
             string.Create(Turkish, $"İptal edilen hakedişlerin tahsilatı geri alındı: {voided} kayıt."), voided));
         await dbContext.SaveChangesAsync(cancellationToken);
         return voided;
+
+        void Void(IncomeTransaction target, string reason)
+        {
+            target.IsVoided = true;
+            target.VoidedAt = now;
+            target.VoidedBy = actorId;
+            target.VoidReason = reason;
+            target.UpdatedAt = now;
+        }
     }
 
     /// <summary>Veliye "hakkiniz tanimlandi" bilgisi; SMS ana anahtari kapaliysa kuyrukta bekler.</summary>

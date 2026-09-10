@@ -1,4 +1,4 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Organization;
 using Yemekhane.Application.Statements;
@@ -238,6 +238,89 @@ public sealed class TuitionViewModelTests
             new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 2, new DateOnly(2026, 11, 5), 4_800m, 0m, 4_800m,
                 TuitionInstallmentStatuses.Overdue, "Gecikmiş", false, null)
         ]);
+
+    /// <summary>
+    /// Ucret plani tutari NOKTA-ONDALIK yazimda 100 kat sismemelidir.
+    ///
+    /// <para>
+    /// <c>decimal.TryParse(text, NumberStyles.Number, tr-TR, ...)</c> -- <c>AllowThousands</c>
+    /// acik ve tr-TR'de grup ayiraci NOKTA. "6000.00" 600000 olarak okunuyordu; yanindaki
+    /// <c>decimal.Round(value, 2) == value</c> kontrolu hicbir sey yakalamiyordu, cunku sonuc
+    /// zaten tam sayi. <c>MaxAmount = 1.000.000</c> siniri da 600.000'i geciriyordu.
+    /// </para>
+    /// <para>
+    /// Sonuc: sinif planina 6.000 TL yazan kullanici SINIFTAKI HER OGRENCIYE 600.000 TL borc
+    /// yaziyordu. Ayni hata daha once Kasa'da bulunup duzeltilmisti
+    /// (CashViewModelRegressionTests: "1250.50 tr-TR ile 125.050 okunuyordu: yuz kat fazla
+    /// tahsilat kaydediliyordu") ama cozum yalnizca o ekrana uygulanmisti.
+    /// </para>
+    /// <para>
+    /// QA'de kacmasinin sebebi: doldur-kaydet-ac-kaydet dongusu DOGRU calisiyor, cunku ekran
+    /// tutari "N2" ile "48.000,00" yaziyor ve tr-TR bunu dogru okuyor. Yalnizca ELLE
+    /// nokta-ondalik yazan kullanici patlatiyor.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("6000.00", 6_000)]      // Ingilizce klavye aliskanligi -- ONCE 600.000 oluyordu
+    [InlineData("4800.50", 4_800.50)]   // sinirin altinda kaldigi icin SESSIZCE kabul ediliyordu
+    [InlineData("1250.50", 1_250.50)]   // Kasa'daki regresyonun birebir esi
+    [InlineData("250.75", 250.75)]
+    [InlineData("48.000,00", 48_000)]   // tr-TR dogru yazim korunmali
+    [InlineData("48000,50", 48_000.50)]
+    [InlineData("48.000", 48_000)]      // tam ucluk grup: binlik ayiraci
+    [InlineData("6000", 6_000)]
+    public void NoktaOndalikTutarYuzKatSismez(string text, decimal expected)
+    {
+        var vm = Ready(new FakeApi());
+        vm.SelectedClass = vm.Classes[0];
+        vm.AmountText = text;
+        vm.InstallmentCountText = "10";
+        vm.DueDayText = "5";
+
+        var request = vm.BuildRequest(out var error);
+
+        Assert.Null(error);
+        Assert.NotNull(request);
+        Assert.Equal(expected, request!.Amount);
+    }
+
+    /// <summary>Pesinat ayni ayristiriciyi kullanir; orada da sismemeli.</summary>
+    [Fact]
+    public void PesinatNoktaOndalikYazimdaSismez()
+    {
+        var vm = Ready(new FakeApi());
+        vm.SelectedClass = vm.Classes[0];
+        vm.AmountText = "10000";
+        vm.DownPaymentText = "1500.50";
+        vm.InstallmentCountText = "10";
+        vm.DueDayText = "5";
+
+        var request = vm.BuildRequest(out var error);
+
+        Assert.Null(error);
+        Assert.Equal(1_500.50m, request!.DownPayment);
+    }
+
+    /// <summary>Gecersiz yazim REDDEDILMELI; sessizce baska bir sayiya donusmemeli.</summary>
+    [Theory]
+    [InlineData("6000.123")]   // ikiden fazla ondalik
+    [InlineData("abc")]
+    [InlineData("0")]
+    [InlineData("-500")]
+    [InlineData("")]
+    public void GecersizTutarReddedilir(string text)
+    {
+        var vm = Ready(new FakeApi());
+        vm.SelectedClass = vm.Classes[0];
+        vm.AmountText = text;
+        vm.InstallmentCountText = "10";
+        vm.DueDayText = "5";
+
+        var request = vm.BuildRequest(out var error);
+
+        Assert.NotNull(error);
+        Assert.Null(request);
+    }
 
     private sealed class FakeApi : ITuitionApiClient
     {

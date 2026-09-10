@@ -241,6 +241,9 @@ public sealed class YemekhaneDbContext(DbContextOptions<YemekhaneDbContext> opti
             e.HasIndex(x => new { x.IncomeTypeId, x.TransactionAt });
             e.HasIndex(x => new { x.StudentId, x.TransactionAt });
             e.Property(x => x.Amount).HasPrecision(18, 2);
+            // Hakedis tahsilatinin hangi ogune ve hangi gunlere ait oldugu: kismi iade
+            // ve dogru tahsilat eslestirmesi bunlari okur. Hakedis disi gelirlerde null.
+            e.HasIndex(x => new { x.StudentId, x.MealTypeId });
             e.Property(x => x.CardNumber).HasMaxLength(128);
             e.Property(x => x.Description).HasMaxLength(500);
             e.Property(x => x.VoidReason).HasMaxLength(500);

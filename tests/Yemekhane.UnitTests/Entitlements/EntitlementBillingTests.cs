@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Yemekhane.Application.Entitlements;
 using Yemekhane.Application.Sms;
@@ -149,9 +149,19 @@ public sealed class EntitlementBillingTests : IAsyncDisposable
         Assert.Empty(sms.Sent);
     }
 
-    /// <summary>Hakedis iptal edilince tahsilat GERI ALINIR; kasa ile hak birbirini tutmali.</summary>
+    /// <summary>
+    /// Hakedis KISMEN iptal edilince tahsilat ORANTILI geri alinir: 20 gunluk tahsilatin
+    /// 1 gunu iptal edilirse kalan 19 gunun bedeli okulda kalir.
+    ///
+    /// <para>
+    /// Bu test once tahsilatin TAMAMININ iade edilmesini bekliyordu ("tutar kasada asili
+    /// kalmasin" gerekcesiyle). O davranis okula para kaybettiriyordu: yenen ogunlerin
+    /// bedeli de geri veriliyordu. Artik eski tahsilat void edilir ve KALAN gunler icin
+    /// yeni bir tahsilat yazilir -- denetim izi korunur, kasa dogru kalir.
+    /// </para>
+    /// </summary>
     [Fact]
-    public async Task CancellingRefundsTheCharge()
+    public async Task CancellingRefundsTheChargeProportionally()
     {
         var student = AddStudent("1001");
         await Service().ChargeAsync(Request([student], mealTypeId), actor);
@@ -166,11 +176,39 @@ public sealed class EntitlementBillingTests : IAsyncDisposable
         var refunded = await Service().RefundAsync([entitlement.Id], actor);
 
         Assert.Equal(1, refunded);
+        // Eski kayit SILINMEZ, void edilir: denetim izi korunur.
+        var original = await db.Set<IncomeTransaction>().SingleAsync(x => x.IsVoided);
+        Assert.Equal(5_000m, original.Amount);
+        Assert.Equal(actor, original.VoidedBy);
+        Assert.Contains("kısmen iptal", original.VoidReason!, StringComparison.Ordinal);
+        // 20 gunun 1'i iptal edildi; kalan 19 gunun bedeli yeniden yazilir.
+        var kept = await db.Set<IncomeTransaction>().SingleAsync(x => !x.IsVoided);
+        Assert.Equal(4_750m, kept.Amount);
+        Assert.Equal(19, kept.EntitlementDayCount);
+    }
+
+    /// <summary>Tum gunler iptal edilirse tahsilatin tamami geri alinir; kasada kalinti olmaz.</summary>
+    [Fact]
+    public async Task CancellingEveryDayRefundsTheWholeCharge()
+    {
+        var student = AddStudent("1002");
+        await Service().ChargeAsync(Request([student], mealTypeId), actor);
+        var days = Enumerable.Range(0, 20)
+            .Select(offset => new MealEntitlement
+            {
+                StudentId = student, MealTypeId = mealTypeId,
+                EntitlementDate = new DateOnly(2026, 10, 1).AddDays(offset),
+                Quantity = 1, Status = "Cancelled"
+            }).ToList();
+        db.AddRange(days);
+        await db.SaveChangesAsync();
+
+        var refunded = await Service().RefundAsync(days.Select(x => x.Id).ToList(), actor);
+
+        Assert.Equal(1, refunded);
         var row = await db.Set<IncomeTransaction>().SingleAsync();
         Assert.True(row.IsVoided);
         Assert.Equal("Yemek hakedişi iptal edildi.", row.VoidReason);
-        Assert.Equal(actor, row.VoidedBy);
-        // Kayit SILINMEZ: denetim izi korunur.
         Assert.Equal(5_000m, row.Amount);
     }
 
