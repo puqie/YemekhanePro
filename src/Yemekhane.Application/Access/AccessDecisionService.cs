@@ -47,14 +47,16 @@ public sealed class AccessDecisionService(
         // dusen aktif hak bilincli bir karardir. Tatil aktarimi calistiysa hak "Transferred"
         // olur ve bu dala girilmez. Hak yoksa kapali gun eskisi gibi "Bugün tatil" ile
         // reddedilir: bakiye yolu tatilde acilmaz.
-        var hasActiveRight = snapshot.EntitlementId.HasValue && snapshot.EntitlementStatus == "Active";
-        if (!hasActiveRight)
+        // Guid? olarak tutulur: derleyici null akisini bool uzerinden izleyemez ve .Value
+        // CS8629 verir (Release -warnaserror ile derleme durur); "is { } id" deseni bunu cozer.
+        var activeRightId = snapshot.EntitlementStatus == "Active" ? snapshot.EntitlementId : null;
+        if (activeRightId is null)
         {
             if (snapshot.GroupHoliday) return await DenyAndLog("Bugün tatil");
             if (!await businessDayService.IsBusinessDayAsync(localDate, new CalendarScope("Class", snapshot.ClassId), cancellationToken)) return await DenyAndLog("Bugün tatil");
         }
         if (snapshot.IsOnLeave) return await DenyAndLog("Öğrenci bugün izinli");
-        if (!hasActiveRight)
+        if (activeRightId is not { } entitlementId)
         {
             // Hakedis yoksa on odemeli bakiye devreye girer (eski programdaki "TL Bakiye Yukleme").
             // Ucreti 0 olan ogunde bakiye kurali yoktur: bedelsiz ogun icin para dusulmez, hak aranir.
@@ -75,7 +77,7 @@ public sealed class AccessDecisionService(
         if (snapshot.ConsumedQuantity >= snapshot.Quantity) return await DenyAndLog("Bu öğün daha önce kullanılmış");
         var allowed = new AccessDecision("ALLOW", "Geçiş onaylandı", snapshot.StudentId, snapshot.StudentName,
             request.DeviceId, request.MealTypeId, request.Timestamp, operationId);
-        if (!await repository.TryConsumeAndLogAsync(snapshot.EntitlementId.Value, request, allowed, cancellationToken))
+        if (!await repository.TryConsumeAndLogAsync(entitlementId, request, allowed, cancellationToken))
             return await DenyAndLog("Bu öğün daha önce kullanılmış");
         await PublishAsync(allowed);
         return allowed;
