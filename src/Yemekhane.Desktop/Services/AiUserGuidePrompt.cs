@@ -197,6 +197,12 @@ public static class AiUserGuidePrompt
           göre metni değişen "Kart Ata" / "Kart Değiştir" düğmesi. YENİ
           KAYDEDİLMİŞ BİR ÖĞRENCİYE İLK KARTI VERMEK de AYNI "Kart Ata"
           düğmesinden yapılır — ayrı bir "ilk kart atama" ekranı yoktur.
+        - "Eski Kartı Geri Aç" (yalnızca öğrencinin aktif kartı yokken görünür):
+          en son pasife düşen kartı yeniden aktif eder; turnike kartı yine tanır.
+          Turnike "Kart pasif" diyorsa gidilecek yer budur. Aynı öğrencinin
+          pasif kart numarasını "Arka yüz (kart no)" kutusuna yazıp "Kart Ata"
+          demek de kartı geri açar. Başka öğrencinin kartı olan numara -- pasif
+          olsa bile -- verilemez ("Kart No daha önce sisteme tanımlanmış").
 
         Detay sekmeleri (sabit sıralı şerit): "Genel", "Kartlar", "Veliler",
         "Hakedişler", "Geçiş Geçmişi", "İzinler", "Tatil/Aktarım", "Ödemeler",

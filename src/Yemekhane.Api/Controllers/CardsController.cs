@@ -25,6 +25,10 @@ public sealed class CardsController(CardService service) : ControllerBase
     [HttpPost("students/{studentId:guid}/cards/replace")]
     public Task<CardDetails> Replace(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken) => service.ReplaceAsync(studentId, request, cancellationToken);
 
+    /// <summary>Ogrencinin en son pasife dusen kartini yeniden aktif eder; aktif karti varsa 409.</summary>
+    [HttpPost("students/{studentId:guid}/cards/reactivate")]
+    public Task<CardDetails> Reactivate(Guid studentId, CancellationToken cancellationToken) => service.ReactivateAsync(studentId, cancellationToken);
+
     [HttpDelete("cards/{cardId:guid}")]
     public async Task<IActionResult> Deactivate(Guid cardId, [FromQuery] string reason, CancellationToken cancellationToken)
     {

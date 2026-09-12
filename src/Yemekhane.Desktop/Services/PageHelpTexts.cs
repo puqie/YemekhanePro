@@ -31,6 +31,7 @@ public static class PageHelpTexts
             "Yeni kaydedilen bir öğrenciye kart atamak için kartı burada okutun; ekran hem ilk atamayı hem değişimi aynı akışla yönetir.",
             "Öğrenci numarası, kart no ve veli adı zorunlu değildir; yalnızca ad ve soyad gerekir. Kartsız öğrenci (anasınıfı gibi) kaydedilir, sayımlarda ve hakedişlerde görünür.",
             "Kartın iki numarası vardır: ARKA yüzdeki çip numarası turnikenin okuduğu \"Kart No\"dur, ÖN yüzdeki kısa basılı numara \"Baskı No\" kutusuna yazılır. Yanlış kutuya yazılan numara turnikede \"Kart tanımsız\" olur.",
+            "Turnike \"Kart pasif\" diyorsa kart yanlışlıkla değiştirilmiş ya da pasifleştirilmiştir: öğrenciyi seçip \"Eski Kartı Geri Aç\" düğmesine basın (aktif kartı yokken görünür). Kartın numarasını yazıp \"Kart Ata\" demek de aynı öğrencinin pasif kartını yeniden aktif eder.",
             "F2 arama kutusuna odaklanır. F3 \"Kartla Öğrenci Bul\" penceresini açar; bunun için kart yetkisi (cards.manage) ve bağlı bir kart okuyucu gerekir.",
             "Bir öğrenciye tıklayınca detay panelinde hakediş, ödeme ve geçiş geçmişi görünür.",
             "Detay panelinde her öğün için dönem kutusu vardır: kalan öğün, dönemin ilk/son günü ve yenilemenin başlaması gereken gün. Veli \"kaç öğün kaldı, ne zaman bitiyor\" diye sorduğunda buraya bakın.",

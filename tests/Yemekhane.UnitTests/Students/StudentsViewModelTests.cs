@@ -266,6 +266,51 @@ public sealed class StudentsViewModelTests
     }
 
     /// <summary>
+    /// "Eski Kartı Geri Aç" yalnizca AKTIF karti olmayan ogrencide gorunur; basinca geri acma
+    /// ucu cagrilir ve acilan kart numarasi mesajda soylenir. Turnike "Kart pasif" deyince
+    /// kullanicinin gidecegi yer once hic yoktu.
+    /// </summary>
+    [Fact]
+    public async Task PasifKartAktifKartiOlmayanOgrencideGeriAcilir()
+    {
+        var api = new FakeApi(); using var vm = Create(api, "cards.manage");
+        var cardless = Row() with { CardNumber = null };
+        api.SearchResult = new PagedResult<StudentListItem>([cardless], 1, 50, 1);
+        vm.OpenFullDetailCommand.Execute(cardless);
+        await Until(() => vm.Details?.Id == cardless.Id);
+        Assert.True(vm.ShowReactivateCard);
+        Assert.True(vm.ReactivateCardCommand.CanExecute(null));
+
+        vm.ReactivateCardCommand.Execute(null);
+        await Until(() => api.ReactivateCount == 1 && vm.InfoMessage is not null);
+        Assert.Contains("CARD42", vm.InfoMessage);
+        Assert.Null(vm.ErrorMessage);
+
+        var carded = Row();
+        api.SearchResult = new PagedResult<StudentListItem>([carded], 1, 50, 1);
+        vm.OpenFullDetailCommand.Execute(carded);
+        await Until(() => vm.Details?.Id == carded.Id);
+        Assert.False(vm.ShowReactivateCard);
+    }
+
+    /// <summary>Sunucu reddederse (pasif kart yok) mesaji AYNEN gosterilir; kullanici ne olduguna bakmaz.</summary>
+    [Fact]
+    public async Task PasifKartYoksaSunucuMesajiGosterilir()
+    {
+        var api = new FakeApi { ReactivateFailure = new ApiRequestException("Öğrencinin geri açılacak pasif kartı yok.", System.Net.HttpStatusCode.NotFound) };
+        using var vm = Create(api, "cards.manage");
+        var cardless = Row() with { CardNumber = null };
+        api.SearchResult = new PagedResult<StudentListItem>([cardless], 1, 50, 1);
+        vm.OpenFullDetailCommand.Execute(cardless);
+        await Until(() => vm.Details?.Id == cardless.Id);
+
+        vm.ReactivateCardCommand.Execute(null);
+        await Until(() => vm.ErrorMessage is not null);
+
+        Assert.Equal("Öğrencinin geri açılacak pasif kartı yok.", vm.ErrorMessage);
+        Assert.Equal(1, api.ReactivateCount);
+    }
+    /// <summary>
     /// Kartsiz ogrenciye "Kart Ata" ATAMA ucunu cagirir; kartli ogrencide DEGISTIRME.
     /// Onceden her zaman degistirme cagriliyordu ve kartsiz ogrenciye ilk kart verilemiyordu.
     /// </summary>
@@ -571,6 +616,15 @@ public sealed class StudentsViewModelTests
         public AssignCardRequest? LastAssign { get; private set; }
         public SetPrintedNumberRequest? LastPrinted { get; private set; }
         public Task SetPrintedNumberAsync(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken = default) { LastPrinted = request; return Task.CompletedTask; }
+        public int ReactivateCount;
+        public Exception? ReactivateFailure;
+        public Task<CardDetails> ReactivateCardAsync(Guid studentId, CancellationToken cancellationToken = default)
+        {
+            ReactivateCount++;
+            return ReactivateFailure is null
+                ? Task.FromResult(new CardDetails(Guid.NewGuid(), studentId, "42", "Ada Yılmaz", "CARD42", DateTimeOffset.UtcNow, null, null, true))
+                : Task.FromException<CardDetails>(ReactivateFailure);
+        }
     }
 
     private sealed class FakeCardSource(bool available) : ICardReadEventSource

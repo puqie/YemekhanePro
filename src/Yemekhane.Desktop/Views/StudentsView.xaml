@@ -376,6 +376,11 @@
                             <WrapPanel Grid.Row="1" Grid.Column="4" VerticalAlignment="Center">
                                 <Button Style="{StaticResource Action}" Content="Okuyucudan Al" Command="{Binding ReadCardCommand}" Margin="0,0,7,0" Visibility="{Binding HasCardReader, Converter={StaticResource BoolToVisibility}}" ToolTip="Masa tipi okuyucudan kart numarasını alır"/>
                                 <Button Style="{StaticResource Action}" Content="{Binding CardActionText}" Command="{Binding ReplaceCardCommand}" Margin="0"/>
+                                <!-- Aktif karti olmayan ogrencide: son pasif kart numara yazmadan geri acilir.
+                                     Turnike "Kart pasif" deyince kullanicinin gidecegi yer burasi. -->
+                                <Button Style="{StaticResource Action}" Content="Eski Kartı Geri Aç" Command="{Binding ReactivateCardCommand}" Margin="7,0,0,0"
+                                        Visibility="{Binding ShowReactivateCard, Converter={StaticResource BoolToVisibility}}"
+                                        ToolTip="Öğrencinin en son pasife düşen kartını yeniden aktif eder; turnike o kartı yine tanır"/>
                             </WrapPanel>
                         </Grid>
                     </StackPanel>

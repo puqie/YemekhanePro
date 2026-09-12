@@ -22,4 +22,9 @@ public interface ICardRepository
     /// <summary>Aktif kartin baski numarasini gunceller; aktif kart yoksa null.</summary>
     Task<CardDetails?> SetPrintedNumberAsync(Guid studentId, string? printedNumber, DateTimeOffset effectiveAt, CancellationToken cancellationToken);
     Task<bool> DeactivateAsync(Guid cardId, string reason, DateTimeOffset effectiveAt, CancellationToken cancellationToken);
+    /// <summary>
+    /// Ogrencinin EN SON pasife dusen kartini yeniden aktif eder; pasif karti yoksa null.
+    /// Aktif karti varsa EntityConflictException: bir ogrencide tek aktif kart olur.
+    /// </summary>
+    Task<CardDetails?> ReactivateLatestAsync(Guid studentId, DateTimeOffset effectiveAt, CancellationToken cancellationToken);
 }

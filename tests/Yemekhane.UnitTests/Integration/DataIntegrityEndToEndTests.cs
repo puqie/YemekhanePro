@@ -166,6 +166,31 @@ public sealed class DataIntegrityEndToEndTests : IAsyncLifetime, IDisposable
         Assert.True(stored.IsActive);
     }
 
+    /// <summary>
+    /// Pasife dusen kart API uzerinden geri acilir (POST .../cards/reactivate). Once bu uc yoktu
+    /// ve pasif numara tekil indeks yuzunden bir daha kimseye verilemiyordu. Aktif kart varken
+    /// ikinci cagri 409 doner: bir ogrencide tek aktif kart.
+    /// </summary>
+    [Fact]
+    public async Task DeactivatedCardCanBeReactivated()
+    {
+        var created = await client.PostAsJsonAsync("api/students",
+            new { StudentNo = "2026-0433", FirstName = "Pasif", LastName = "Kart" });
+        var id = (await created.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+        var assigned = await client.PostAsJsonAsync($"api/students/{id}/cards", new { CardNumber = "KART-0433" });
+        var cardId = (await assigned.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+        (await client.DeleteAsync($"api/cards/{cardId}?reason=Test")).EnsureSuccessStatusCode();
+        Assert.False(await InScope(db => db.StudentCards.AsNoTracking().Where(x => x.Id == cardId).Select(x => x.IsActive).SingleAsync()));
+
+        var reactivated = await client.PostAsync($"api/students/{id}/cards/reactivate", content: null);
+
+        reactivated.EnsureSuccessStatusCode();
+        var stored = await InScope(db => db.StudentCards.AsNoTracking().SingleAsync(x => x.Id == cardId));
+        Assert.True(stored.IsActive);
+        Assert.Null(stored.ValidTo);
+        var again = await client.PostAsync($"api/students/{id}/cards/reactivate", content: null);
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+    }
     [Fact]
     public async Task SameCardNumberCannotBeGivenToTwoStudents()
     {

@@ -35,6 +35,15 @@ public sealed class CardService(ICardRepository repository, TimeProvider timePro
             throw new EntityNotFoundException("Aktif kart bulunamadı.");
     }
 
+    /// <summary>
+    /// Ogrencinin en son pasife dusen kartini geri acar. Saha: kart yanlislikla degistirilip
+    /// pasife dusunce turnike "Kart pasif" diyordu; programda geri acacak yer yoktu ve numara
+    /// tekil oldugu icin yeniden de atanamiyordu. SMS kancasi calismaz: veli karti zaten bilir.
+    /// </summary>
+    public async Task<CardDetails> ReactivateAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        await repository.ReactivateLatestAsync(studentId, timeProvider.GetUtcNow(), cancellationToken)
+        ?? throw new EntityNotFoundException("Öğrencinin geri açılacak pasif kartı yok.");
+
     /// <summary>Aktif kartin baski numarasini gunceller; kart degismez.</summary>
     public async Task<CardDetails> SetPrintedNumberAsync(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken = default) =>
         await repository.SetPrintedNumberAsync(studentId, NormalizePrintedNumber(request.PrintedNumber), timeProvider.GetUtcNow(), cancellationToken)

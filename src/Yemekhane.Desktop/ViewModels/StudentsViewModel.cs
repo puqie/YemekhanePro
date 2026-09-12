@@ -159,6 +159,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         SaveLeaveCommand = new AsyncCommand(GiveLeaveAsync, () => CanWrite && Details is not null);
         CloseLeaveCommand = new RelayCommand(() => IsLeaveOpen = false);
         ReplaceCardCommand = new AsyncCommand(ReplaceCardAsync, () => CanManageCards && Details is not null);
+        ReactivateCardCommand = new AsyncCommand(ReactivateCardAsync, () => ShowReactivateCard);
         ReadCardCommand = new AsyncCommand(ReadCardAsync, () => CanManageCards && this.cardReadSource.IsAvailable);
         OpenCardWorkflowCommand = new AsyncCommand(OpenCardWorkflowAsync, () => CanManageCards);
         CloseCardWorkflowCommand = new RelayCommand(CloseCardWorkflow);
@@ -310,7 +311,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             if (!Set(ref selectedStudent, value)) return;
             FillFormFromSelection(value);
             IsDeleteArmed = false; InfoMessage = null;
-            Raise(nameof(CardActionText)); Raise(nameof(DetailCardNumber)); Raise(nameof(DetailDepartmentName));
+            Raise(nameof(CardActionText)); Raise(nameof(ShowReactivateCard)); Raise(nameof(DetailCardNumber)); Raise(nameof(DetailDepartmentName));
             RefreshCommands();
         }
     }
@@ -347,7 +348,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             // basmadan gorebilmelidir.
             if (!IsFormOpen) { FormNotes = value?.Notes; Raise(nameof(FormNotes)); }
             IsDeleteArmed = false;
-            Raise(nameof(CardActionText)); Raise(nameof(ShowDeactivate)); Raise(nameof(ShowActivate));
+            Raise(nameof(CardActionText)); Raise(nameof(ShowReactivateCard)); Raise(nameof(ShowDeactivate)); Raise(nameof(ShowActivate));
             Raise(nameof(FormSubtitle)); Raise(nameof(DetailDepartmentName)); Raise(nameof(DetailJobName)); Raise(nameof(PhotoPath)); Raise(nameof(DetailCardNumber));
             RefreshCommands();
         }
@@ -391,6 +392,12 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     /// Sunucuda ise iki ayri uc nokta vardir (atama / degistirme); ayrimi ReplaceCardAsync yapar.
     /// </summary>
     public string CardActionText => HasActiveCard ? "Kart Değiştir" : "Kart Ata";
+    /// <summary>
+    /// "Eski Kartı Geri Aç": secili ogrencinin AKTIF karti yokken gorunur. Kart yanlislikla
+    /// degistirilip/pasiflestirilip turnike "Kart pasif" deyince, numarayi yeniden yazmaya
+    /// gerek kalmadan son pasif kart geri acilir. Once bunun icin hicbir yol yoktu.
+    /// </summary>
+    public bool ShowReactivateCard => CanManageCards && Details is not null && !HasActiveCard;
     private bool HasActiveCard => SelectedStudent is not null && SelectedStudent.Id == Details?.Id
         ? !string.IsNullOrWhiteSpace(SelectedStudent.CardNumber)
         : true;
@@ -516,6 +523,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public ICommand SaveLeaveCommand { get; }
     public ICommand CloseLeaveCommand { get; }
     public ICommand ReplaceCardCommand { get; }
+    public ICommand ReactivateCardCommand { get; }
     public ICommand ReadCardCommand { get; }
     public ICommand OpenCardWorkflowCommand { get; }
     public ICommand CloseCardWorkflowCommand { get; }
@@ -543,6 +551,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         (DeleteCommand as AsyncCommand)?.Refresh();
         (GiveLeaveCommand as AsyncCommand)?.Refresh();
         (ReplaceCardCommand as AsyncCommand)?.Refresh();
+        (ReactivateCardCommand as AsyncCommand)?.Refresh();
         (GrantEntitlementCommand as RelayCommand)?.Refresh();
         (OpenSmsCommand as RelayCommand)?.Refresh();
         (SelectPhotoCommand as RelayCommand)?.Refresh();
@@ -1124,6 +1133,25 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             await ReloadTabAsync("Cards");
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Kart değiştirilemedi."); }
+    }
+
+    /// <summary>
+    /// Son pasif karti geri acar; sunucu acilan karti doner, numarasi mesajda soylenir.
+    /// Mesaj TAZELEMEDEN SONRA yazilir: liste yenilenirken secim degisir ve InfoMessage silinir.
+    /// </summary>
+    private async Task ReactivateCardAsync()
+    {
+        if (Details is null) return;
+        try
+        {
+            var id = Details.Id;
+            var card = await api.ReactivateCardAsync(id);
+            ErrorMessage = null;
+            await RefreshAfterWriteAsync(id);
+            await ReloadTabAsync("Cards");
+            InfoMessage = $"{card.CardNumber} numaralı kart yeniden aktif; turnike bu kartı yine tanır.";
+        }
+        catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Kart geri açılamadı."); }
     }
 
     /// <summary>Kullaniciya gosterilebilir yazma hatalari; digerleri yukari birakilir.</summary>

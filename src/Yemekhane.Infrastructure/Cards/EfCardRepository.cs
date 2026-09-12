@@ -30,13 +30,27 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
     public async Task<CardDetails> AssignAsync(Guid studentId, string cardNumber, string? printedNumber, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        await EnsureStudentAndCardAvailable(studentId, cardNumber, cancellationToken);
+        await EnsureStudentActive(studentId, cancellationToken);
+        // Ayni ogrencinin PASIF karti yeniden yaziliyorsa kart GERI ACILIR: numara tekil oldugu
+        // icin yeni satir acilamaz ve once "Kart No daha once sisteme tanimlanmis" deniyordu --
+        // yanlislikla pasife dusen kart bir daha hic kullanilamiyordu (saha: "Kart pasif").
+        var card = await FindOwnPassiveCard(studentId, cardNumber, cancellationToken);
+        if (card is null) await EnsureCardNumberFree(cardNumber, cancellationToken);
         if (await dbContext.StudentCards.AnyAsync(x => x.StudentId == studentId && x.IsActive, cancellationToken))
             throw new EntityConflictException("Öğrencinin aktif kartı var; kart değiştirme işlemini kullanın.");
-        var card = CreateCard(studentId, cardNumber, printedNumber, effectiveAt);
-        dbContext.StudentCards.Add(card);
+        if (card is not null)
+        {
+            var before = Snapshot(card);
+            Reactivate(card, printedNumber, effectiveAt);
+            auditService.Record(new AuditEntry("CardReactivated", nameof(StudentCard), card.Id.ToString(), "Pasif kart yeniden aktifleştirildi (numara yeniden atandı).", Before: before, After: Snapshot(card)));
+        }
+        else
+        {
+            card = CreateCard(studentId, cardNumber, printedNumber, effectiveAt);
+            dbContext.StudentCards.Add(card);
+            auditService.Record(new AuditEntry("CardAssigned", nameof(StudentCard), card.Id.ToString(), "Öğrenciye kart atandı.", After: card));
+        }
         LocalOutbox.Enqueue(dbContext, card, LocalOutbox.UpdateCard, card, timestamp: effectiveAt);
-        auditService.Record(new AuditEntry("CardAssigned", nameof(StudentCard), card.Id.ToString(), "Öğrenciye kart atandı.", After: card));
         await dbContext.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
         return await GetRequired(card.Id, cancellationToken);
     }
@@ -44,12 +58,26 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
     public async Task<CardDetails> ReplaceAsync(Guid studentId, string cardNumber, string? printedNumber, string reason, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        await EnsureStudentAndCardAvailable(studentId, cardNumber, cancellationToken);
+        await EnsureStudentActive(studentId, cancellationToken);
+        // Eski karta GERI DONUS: numara ayni ogrencinin pasif kartiysa o kart yeniden aktif olur.
+        var card = await FindOwnPassiveCard(studentId, cardNumber, cancellationToken);
+        if (card is null) await EnsureCardNumberFree(cardNumber, cancellationToken);
         var activeCards = await dbContext.StudentCards.Where(x => x.StudentId == studentId && x.IsActive).ToListAsync(cancellationToken);
         if (activeCards.Count == 0) throw new EntityNotFoundException("Öğrencinin değiştirilecek aktif kartı bulunamadı.");
         foreach (var oldCard in activeCards) { oldCard.IsActive = false; oldCard.ValidTo = effectiveAt; oldCard.ReplacementReason = reason; oldCard.UpdatedAt = effectiveAt; }
-        var card = CreateCard(studentId, cardNumber, printedNumber, effectiveAt);
-        dbContext.StudentCards.Add(card);
+        if (card is not null)
+        {
+            // ONCE eski kartlar pasife yazilir: ogrenci basina tek aktif kart tekil indeksi
+            // ayni toplu yazmada gecici olarak ihlal ediliyordu (SQLite Error 19). Iki yazma da
+            // ayni islem (transaction) icinde kalir; yarim sonuc olusmaz.
+            await dbContext.SaveChangesAsync(cancellationToken);
+            Reactivate(card, printedNumber, effectiveAt);
+        }
+        else
+        {
+            card = CreateCard(studentId, cardNumber, printedNumber, effectiveAt);
+            dbContext.StudentCards.Add(card);
+        }
         foreach (var oldCard in activeCards)
             LocalOutbox.Enqueue(dbContext, oldCard, LocalOutbox.UpdateCard, oldCard, timestamp: effectiveAt);
         LocalOutbox.Enqueue(dbContext, card, LocalOutbox.UpdateCard, card, timestamp: effectiveAt);
@@ -82,10 +110,51 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
         await dbContext.SaveChangesAsync(cancellationToken); return true;
     }
 
-    private async Task EnsureStudentAndCardAvailable(Guid studentId, string cardNumber, CancellationToken cancellationToken)
+    /// <summary>
+    /// Ogrencinin EN SON pasife dusen kartini geri acar. Saha: kart yanlislikla degistirilip
+    /// pasife dusunce turnike "Kart pasif" diyordu; programda geri acacak yer yoktu ve numara
+    /// tekil oldugu icin yeniden atanamiyordu da. Aktif kart varken reddedilir (tek aktif kart).
+    /// </summary>
+    public async Task<CardDetails?> ReactivateLatestAsync(Guid studentId, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        await EnsureStudentActive(studentId, cancellationToken);
+        if (await dbContext.StudentCards.AnyAsync(x => x.StudentId == studentId && x.IsActive, cancellationToken))
+            throw new EntityConflictException("Öğrencinin zaten aktif kartı var.");
+        // Siralama BELLEKTE: SQLite DateTimeOffset ile ORDER BY yapamaz; ogrencinin kart
+        // sayisi kucuktur. Pasiflestirme ani (ValidTo) en yeni olan geri acilir.
+        var passive = await dbContext.StudentCards.Where(x => x.StudentId == studentId && !x.IsActive).ToListAsync(cancellationToken);
+        var card = passive.OrderByDescending(x => x.ValidTo ?? x.ValidFrom).ThenByDescending(x => x.ValidFrom).FirstOrDefault();
+        if (card is null) return null;
+        var before = Snapshot(card);
+        Reactivate(card, printedNumber: null, effectiveAt);
+        LocalOutbox.Enqueue(dbContext, card, LocalOutbox.UpdateCard, card, timestamp: effectiveAt);
+        auditService.Record(new AuditEntry("CardReactivated", nameof(StudentCard), card.Id.ToString(), "Pasif kart yeniden aktifleştirildi.", Before: before, After: Snapshot(card)));
+        await dbContext.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+        return await GetRequired(card.Id, cancellationToken);
+    }
+
+    /// <summary>Gecerlilik YENIDEN baslar; eski donem denetim kaydinda (Before) kalir.</summary>
+    private static void Reactivate(StudentCard card, string? printedNumber, DateTimeOffset effectiveAt)
+    {
+        card.IsActive = true; card.ValidTo = null; card.ReplacementReason = null;
+        card.ValidFrom = effectiveAt; card.UpdatedAt = effectiveAt;
+        if (printedNumber is not null) card.PrintedNumber = printedNumber;
+    }
+
+    /// <summary>Numara tekildir: ayni ogrencinin pasif karti en fazla bir satirdir.</summary>
+    private Task<StudentCard?> FindOwnPassiveCard(Guid studentId, string cardNumber, CancellationToken cancellationToken) =>
+        dbContext.StudentCards.SingleOrDefaultAsync(x => x.CardNumber == cardNumber && x.StudentId == studentId && !x.IsActive, cancellationToken);
+
+    private async Task EnsureStudentActive(Guid studentId, CancellationToken cancellationToken)
     {
         if (!await dbContext.Students.AnyAsync(x => x.Id == studentId && x.IsActive, cancellationToken))
             throw new EntityNotFoundException("Aktif öğrenci bulunamadı.");
+    }
+
+    /// <summary>Baska ogrencinin karti -- pasif olsa bile -- verilemez; numara sistem genelinde tekildir.</summary>
+    private async Task EnsureCardNumberFree(string cardNumber, CancellationToken cancellationToken)
+    {
         if (await dbContext.StudentCards.AnyAsync(x => x.CardNumber == cardNumber, cancellationToken))
             throw new EntityConflictException("Kart No daha önce sisteme tanımlanmış.");
     }

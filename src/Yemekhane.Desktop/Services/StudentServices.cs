@@ -47,6 +47,12 @@ public interface IStudentApiClient
     Task SetPrintedNumberAsync(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Bu istemci baskı numarası güncellemeyi desteklemiyor.");
     /// <summary>
+    /// Ogrencinin en son pasife dusen kartini geri acar (POST .../cards/reactivate); acilan
+    /// karti doner ki numarasi kullaniciya soylenebilsin. Varsayilan govde ayni gerekceyle.
+    /// </summary>
+    Task<CardDetails> ReactivateCardAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci kart geri açmayı desteklemiyor.");
+    /// <summary>
     /// Aktif karti OLMAYAN ogrenciye ilk kartini atar (POST /students/{id}/cards).
     /// Varsayilan govde: baska ekranlarin (SMS gibi) yalnizca arama icin kullandigi
     /// sahte istemciler bu ucu uygulamak zorunda kalmasin; gercek istemci ve ogrenci
@@ -202,6 +208,12 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         message.Content = JsonContent.Create(request);
         using var response = await client.SendAsync(message, cancellationToken);
         await EnsureAsync(response, cancellationToken);
+    }
+
+    public async Task<CardDetails> ReactivateCardAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Post, $"api/students/{studentId:D}/cards/reactivate");
+        return await SendAsync<CardDetails>(message, cancellationToken);
     }
 
     public async Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default)
