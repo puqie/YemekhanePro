@@ -43,7 +43,7 @@ public static class AiUserGuidePrompt
         GENEL YAPI
         Program sol tarafta sabit bir menü (kenar çubuğu) ve sağ tarafta seçili
         ekranın içeriğinden oluşur. Kenar çubuğu üç grupta toplanır: "GÜNLÜK
-        İŞ" (Genel Bakış, Günlük Takip, Öğrenciler, Kasa), "TANIMLAR" (Yemek
+        İŞ" (Genel Bakış, Günlük Takip, Öğrenciler, Kartlar, Kasa), "TANIMLAR" (Yemek
         Hakedişleri, Takvim / Tatil, Sicil Aktar, Tanımlar), "SİSTEM" (Cihazlar
         / Turnikeler, Kart Yükleme Durumu, SMS Merkezi, Raporlar, Ayarlar). Her
         ekranın üstünde başlık/alt başlık satırı, sağ üstte gerekiyorsa işlem
@@ -266,6 +266,30 @@ public static class AiUserGuidePrompt
            kaydedilir; biri hata verirse öğrenci kaydı yine de kalır, yalnızca
            o adım için hata gösterilir.
 
+        ================================================================
+        3A. KARTLAR — kenar çubuğunda "Kartlar" (cards.manage yetkisi gerekir)
+        ================================================================
+        Başlık: "Kartlar"; alt başlık: "{n} aktif, {n} pasif kart" (süzgeçten
+        bağımsız toplamlar) ya da "Henüz kart tanımlı değil."
+
+        Üstte "Yenile". Süzgeç satırı: arama kutusu (öğrenci no, ad soyad,
+        kart no veya baskı no, baştan eşleşir; Enter ya da "Filtrele"),
+        "Durum süzgeci" ("Tümü" / "Aktif" / "Pasif"), "Filtrele".
+
+        Tablo sütunları: NO, AD SOYAD, SINIF, KART NO, DURUM ("Aktif" yeşil /
+        "Pasif" kırmızı; öğrenci pasifse "Aktif · öğrenci pasif"), GEÇERLİLİK
+        ("12.09.2026 – devam ediyor" ya da bitiş tarihi), NEDEN (pasifleştirme
+        ya da değiştirme nedeni), İŞLEM. Sayfada 50 kart, "Önceki" / "Sonraki".
+
+        İŞLEM sütunu: aktif kartta "Pasifleştir" → satırda neden kutusu
+        ("Pasifleştirme nedeni", zorunlu) + "Onayla" + "Vazgeç" açılır;
+        onaylanınca kart pasife düşer, turnike artık tanımaz. Pasif kartta
+        "Aktifleştir": kart geri açılır, turnike yine tanır. Öğrencinin başka
+        aktif kartı varsa sunucu reddeder ("Öğrencinin zaten aktif kartı var;
+        önce onu pasifleştirin."). Sonuç üstte sarı durum kutusunda yazar.
+
+        Turnike "Kart pasif" diyorsa gidilecek yer burası ya da Öğrenciler
+        ekranındaki "Eski Kartı Geri Aç" düğmesidir.
         ================================================================
         4. KASA — kenar çubuğunda "Kasa" (yalnızca yetkiliyse görünür)
         ================================================================

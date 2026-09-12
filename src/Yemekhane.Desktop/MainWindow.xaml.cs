@@ -107,6 +107,12 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         set => DeviceCardsHost.DataContext = value;
     }
 
+    public object? CardListDataContext
+    {
+        get => CardListHost.DataContext;
+        set => CardListHost.DataContext = value;
+    }
+
     public object? SmsDataContext
     {
         get => SmsHost.DataContext;
@@ -159,6 +165,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         // dusuyordu ve hicbir menu ogesi secili gorunmuyordu.
         var devices = route == Services.ShellRoutes.Devices || route.StartsWith(Services.ShellRoutes.Devices + "/", StringComparison.Ordinal);
         var deviceCards = route == Services.ShellRoutes.DeviceCards;
+        var cardList = route == Services.ShellRoutes.CardList;
         var sms = route == Services.ShellRoutes.Sms || route.StartsWith(Services.ShellRoutes.Sms + "/", StringComparison.Ordinal);
         var cash = route == Services.ShellRoutes.Cash;
         // "reports/StudentList": Ogrenciler ekranindaki "Dışa Aktar" Sicil Listesi secili acar.
@@ -166,13 +173,14 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         var settings = route == Services.ShellRoutes.Settings;
         var studentImport = route == Services.ShellRoutes.StudentImport;
         var definitions = route == Services.ShellRoutes.Definitions;
-        DashboardHost.Visibility = tracking || students || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings || studentImport || definitions ? Visibility.Collapsed : Visibility.Visible;
+        DashboardHost.Visibility = tracking || students || cardList || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings || studentImport || definitions ? Visibility.Collapsed : Visibility.Visible;
         DailyTrackingHost.Visibility = tracking ? Visibility.Visible : Visibility.Collapsed;
         StudentsHost.Visibility = students ? Visibility.Visible : Visibility.Collapsed;
         MealEntitlementsHost.Visibility = entitlements ? Visibility.Visible : Visibility.Collapsed;
         CalendarHost.Visibility = calendar ? Visibility.Visible : Visibility.Collapsed;
         DevicesHost.Visibility = devices ? Visibility.Visible : Visibility.Collapsed;
         DeviceCardsHost.Visibility = deviceCards ? Visibility.Visible : Visibility.Collapsed;
+        CardListHost.Visibility = cardList ? Visibility.Visible : Visibility.Collapsed;
         SmsHost.Visibility = sms ? Visibility.Visible : Visibility.Collapsed;
         CashHost.Visibility = cash ? Visibility.Visible : Visibility.Collapsed;
         ReportsHost.Visibility = reports ? Visibility.Visible : Visibility.Collapsed;
@@ -332,6 +340,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         ShellRoutes.HolidayTransfer => (CalendarDataContext as CalendarViewModel)?.RefreshCommand,
         ShellRoutes.Devices => (DevicesDataContext as DevicesViewModel)?.RefreshCommand,
         ShellRoutes.DeviceCards => (DeviceCardsDataContext as DeviceCardsViewModel)?.RefreshCommand,
+        ShellRoutes.CardList => (CardListDataContext as CardListViewModel)?.RefreshCommand,
         ShellRoutes.Cash => (CashDataContext as CashViewModel)?.RefreshCommand,
         ShellRoutes.Reports => (ReportsDataContext as ReportsViewModel)?.ApplyCommand,
         ShellRoutes.Settings => (SettingsDataContext as SettingsViewModel)?.RefreshCommand,

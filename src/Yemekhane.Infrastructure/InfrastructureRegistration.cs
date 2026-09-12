@@ -137,6 +137,7 @@ public static class InfrastructureRegistration
         services.AddSingleton<IStudentPhotoStore>(new FileStudentPhotoStore(FileStudentPhotoStore.ResolveRoot(connectionString)));
         services.AddScoped<StudentPhotoService>();
         services.AddScoped<IDeviceCardListQuery, EfDeviceCardListQuery>();
+        services.AddScoped<Yemekhane.Application.Cards.ICardListQuery, Yemekhane.Infrastructure.Cards.EfCardListQuery>();
         return services;
     }
 

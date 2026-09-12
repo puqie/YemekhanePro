@@ -20,7 +20,7 @@ public sealed class FieldLabelTests
 {
     public static TheoryData<string> Views() =>
     [
-        "students", "daily", "entitlements", "devices", "sms", "cash", "reports", "settings", "definitions"
+        "students", "daily", "entitlements", "devices", "sms", "cash", "reports", "settings", "definitions", "cardlist"
     ];
 
     [Theory]
@@ -86,6 +86,7 @@ public sealed class FieldLabelTests
             "reports" => new ReportsView(),
             "settings" => new SettingsView(),
             "definitions" => new DefinitionsView(),
+            "cardlist" => new CardListView(),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Bilinmeyen görünüm.")
         };
         var host = UiThread.Host(view, width, height);

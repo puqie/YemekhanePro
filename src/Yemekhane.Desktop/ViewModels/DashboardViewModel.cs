@@ -52,6 +52,8 @@ public sealed class DashboardViewModel : ObservableObject
             () => navigation.IsAvailable(ShellRoutes.Devices));
         NavigateDeviceCardsCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.DeviceCards),
             () => navigation.IsAvailable(ShellRoutes.DeviceCards));
+        NavigateCardListCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.CardList),
+            () => navigation.IsAvailable(ShellRoutes.CardList));
         NavigateSmsCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Sms),
             () => navigation.IsAvailable(ShellRoutes.Sms));
         NavigateCashCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Cash),
@@ -69,6 +71,7 @@ public sealed class DashboardViewModel : ObservableObject
         CanNavigateReports = navigation.IsAvailable(ShellRoutes.Reports);
         CanNavigateSettings = navigation.IsAvailable(ShellRoutes.Settings);
         CanNavigateStudentImport = navigation.IsAvailable(ShellRoutes.StudentImport);
+        CanNavigateCardList = navigation.IsAvailable(ShellRoutes.CardList);
         NavigateDefinitionsCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Definitions),
             () => navigation.IsAvailable(ShellRoutes.Definitions));
         CanNavigateDefinitions = navigation.IsAvailable(ShellRoutes.Definitions);
@@ -107,6 +110,7 @@ public sealed class DashboardViewModel : ObservableObject
     public ICommand NavigateCalendarCommand { get; }
     public ICommand NavigateDevicesCommand { get; }
     public ICommand NavigateDeviceCardsCommand { get; }
+    public ICommand NavigateCardListCommand { get; }
     public ICommand NavigateSmsCommand { get; }
     public ICommand NavigateCashCommand { get; }
     public ICommand NavigateReportsCommand { get; }
@@ -119,6 +123,7 @@ public sealed class DashboardViewModel : ObservableObject
     public bool CanNavigateReports { get; }
     public bool CanNavigateSettings { get; }
     public bool CanNavigateStudentImport { get; }
+    public bool CanNavigateCardList { get; }
     public ICommand NavigateDefinitionsCommand { get; }
     public bool CanNavigateDefinitions { get; }
 

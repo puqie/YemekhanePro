@@ -84,6 +84,12 @@
                     <Button Tag="students" Style="{StaticResource NavItem}" Content="Öğrenciler"
                             Command="{Binding NavigateStudentsCommand}"
                             AutomationProperties.Name="Öğrenciler sayfasını aç" />
+                    <!-- Kartlar: tum kartlarin aktif/pasif durumu tek listede; oradan pasiflestir/aktiflestir.
+                         Saha: turnike "Kart pasif" deyince operator karti nereden acacagini bilmiyordu. -->
+                    <Button Tag="card-list" Style="{StaticResource NavItem}" Content="Kartlar"
+                            Command="{Binding NavigateCardListCommand}"
+                            AutomationProperties.Name="Kartlar sayfasını aç"
+                            Visibility="{Binding CanNavigateCardList, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     <Button Tag="cash" Style="{StaticResource NavItem}" Content="Kasa"
                             Command="{Binding NavigateCashCommand}"
                             AutomationProperties.Name="Kasa sayfasını aç"
@@ -289,6 +295,7 @@
         </Grid>
         <views:DailyTrackingView x:Name="DailyTrackingHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:StudentsView x:Name="StudentsHost" Grid.Column="1" Visibility="Collapsed"/>
+        <views:CardListView x:Name="CardListHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:MealEntitlementsView x:Name="MealEntitlementsHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:CalendarView x:Name="CalendarHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:DevicesView x:Name="DevicesHost" Grid.Column="1" Visibility="Collapsed"/>

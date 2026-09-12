@@ -7,8 +7,17 @@ namespace Yemekhane.Api.Controllers;
 [ApiController]
 [PermissionAuthorize(Permissions.CardsManage)]
 [Route("api")]
-public sealed class CardsController(CardService service) : ControllerBase
+public sealed class CardsController(CardService service, ICardListQuery cards) : ControllerBase
 {
+    /// <summary>Kartlar ekrani: TUM kartlar (aktif + pasif), arama, durum suzgeci ve sayfalama.</summary>
+    [HttpGet("cards")]
+    public Task<CardListResult> List([FromQuery] string? search = null, [FromQuery] bool? isActive = null,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken cancellationToken = default) =>
+        cards.ListAsync(new CardListQuery(search, isActive, page, pageSize), cancellationToken);
+
+    /// <summary>Kartlar ekranindan SECILEN pasif karti geri acar; ogrencinin aktif karti varsa 409.</summary>
+    [HttpPost("cards/{cardId:guid}/reactivate")]
+    public Task<CardDetails> ReactivateCard(Guid cardId, CancellationToken cancellationToken) => service.ReactivateCardAsync(cardId, cancellationToken);
     [HttpGet("cards/{cardNumber}")]
     public Task<CardDetails> Find(string cardNumber, CancellationToken cancellationToken) => service.FindAsync(cardNumber, cancellationToken);
 

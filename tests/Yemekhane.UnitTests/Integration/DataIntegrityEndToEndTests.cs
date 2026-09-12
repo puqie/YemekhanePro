@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Yemekhane.Application.Cards;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.UnitTests.Api;
@@ -190,6 +191,33 @@ public sealed class DataIntegrityEndToEndTests : IAsyncLifetime, IDisposable
         Assert.Null(stored.ValidTo);
         var again = await client.PostAsync($"api/students/{id}/cards/reactivate", content: null);
         Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+    }
+    /// <summary>
+    /// Kartlar ekraninin sunucu tarafi: GET api/cards tum kartlari durumla listeler; satirdan
+    /// pasiflestirme (DELETE) ve kimlikle geri acma (POST .../reactivate) ayni listeye yansir.
+    /// </summary>
+    [Fact]
+    public async Task CardListShowsBothStatesAndTogglesFromTheList()
+    {
+        var created = await client.PostAsJsonAsync("api/students",
+            new { StudentNo = "2026-0434", FirstName = "Liste", LastName = "Kart" });
+        var id = (await created.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+        var assigned = await client.PostAsJsonAsync($"api/students/{id}/cards", new { CardNumber = "KART-0434" });
+        var cardId = (await assigned.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+
+        var active = await client.GetFromJsonAsync<CardListResult>("api/cards?search=2026-0434");
+        var row = Assert.Single(active!.Items);
+        Assert.True(row.IsActive); Assert.Equal("KART-0434", row.CardNumber); Assert.True(active.ActiveCount >= 1);
+
+        (await client.DeleteAsync($"api/cards/{cardId}?reason=Kay%C4%B1p")).EnsureSuccessStatusCode();
+        var passive = await client.GetFromJsonAsync<CardListResult>("api/cards?search=2026-0434&isActive=false");
+        row = Assert.Single(passive!.Items);
+        Assert.False(row.IsActive); Assert.Equal("Kayıp", row.ReplacementReason);
+        Assert.Empty((await client.GetFromJsonAsync<CardListResult>("api/cards?search=2026-0434&isActive=true"))!.Items);
+
+        (await client.PostAsync($"api/cards/{cardId}/reactivate", content: null)).EnsureSuccessStatusCode();
+        var back = await client.GetFromJsonAsync<CardListResult>("api/cards?search=2026-0434");
+        Assert.True(Assert.Single(back!.Items).IsActive);
     }
     [Fact]
     public async Task SameCardNumberCannotBeGivenToTwoStudents()

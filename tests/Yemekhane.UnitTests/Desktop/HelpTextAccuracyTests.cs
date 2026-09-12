@@ -42,7 +42,7 @@ public sealed class HelpTextAccuracyTests
     }
 
     [Theory]
-    [InlineData("MainWindow.xaml", "Genel Bakış", "Günlük Takip", "Öğrenciler", "Kasa", "Yemek Hakedişleri", "Takvim / Tatil", "Sicil Aktar", "Tanımlar", "Cihazlar / Turnikeler", "Kart Yükleme Durumu", "SMS Merkezi", "Raporlar", "Ayarlar", "Kısayollar  F1", "Öğrenci, kart, sınıf, tarih veya modül ara...")]
+    [InlineData("MainWindow.xaml", "Genel Bakış", "Günlük Takip", "Öğrenciler", "Kartlar", "Kasa", "Yemek Hakedişleri", "Takvim / Tatil", "Sicil Aktar", "Tanımlar", "Cihazlar / Turnikeler", "Kart Yükleme Durumu", "SMS Merkezi", "Raporlar", "Ayarlar", "Kısayollar  F1", "Öğrenci, kart, sınıf, tarih veya modül ara...")]
     [InlineData("Views/SettingsView.xaml", "Yardım / AI Kılavuzu", "Panoya Kopyala", "Cihazlar / Kart Okuyucular", "SMS sınama", "Test SMS Gönder", "Kontör Sorgula", "Veliye yemek hakkı uyarısı", "Gelir girişinde yetkiliye bildirim", "Kart yenileme", "Gönderim saati (SS:dd)", "Logları Yenile", "Şimdi Senkronize Et")]
     [InlineData("Views/CashView.xaml", "Anasınıfı Ücretleri", "Öğrenci Ekstresi", "Öğrenciye bağlı olmayan gelir", "PDF Kaydet", "Planı Kaydet", "Yeni Plan")]
     [InlineData("Views/DevicesView.xaml", "Loglar", "Cihaz logları")]

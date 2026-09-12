@@ -27,4 +27,31 @@ public interface ICardRepository
     /// Aktif karti varsa EntityConflictException: bir ogrencide tek aktif kart olur.
     /// </summary>
     Task<CardDetails?> ReactivateLatestAsync(Guid studentId, DateTimeOffset effectiveAt, CancellationToken cancellationToken);
+    /// <summary>
+    /// Kartlar ekrani: SECILEN pasif karti kimligiyle geri acar. Kart yoksa ya da zaten aktifse null;
+    /// ogrencinin baska aktif karti varsa EntityConflictException.
+    /// </summary>
+    Task<CardDetails?> ReactivateAsync(Guid cardId, DateTimeOffset effectiveAt, CancellationToken cancellationToken);
+}
+
+/// <summary>Kartlar ekraninin tek satiri: ogrenci kimligi + kartin durumu ve gecerlilik araligi.</summary>
+/// <param name="StudentActive">Pasif/silinmis ogrencinin karti aktif olsa da turnikeden gecemez; ekranda soylenir.</param>
+public sealed record CardListRow(Guid CardId, Guid StudentId, string StudentNo, string StudentName, string? ClassName,
+    string CardNumber, string? PrintedNumber, bool IsActive, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo,
+    string? ReplacementReason, bool StudentActive);
+
+/// <param name="IsActive">null = tumu, true = yalnizca aktif, false = yalnizca pasif.</param>
+public sealed record CardListQuery(string? Search = null, bool? IsActive = null, int Page = 1, int PageSize = 50)
+{
+    public const int MaximumPageSize = 200;
+}
+
+/// <param name="ActiveCount">Suzgecten BAGIMSIZ toplam aktif kart; baslik ozetinde gosterilir.</param>
+public sealed record CardListResult(IReadOnlyList<CardListRow> Items, int Page, int PageSize, int TotalCount,
+    int ActiveCount, int PassiveCount);
+
+/// <summary>Kartlar ekraninin liste sorgusu; depodan ayri tutulur (salt okunur, sayfali).</summary>
+public interface ICardListQuery
+{
+    Task<CardListResult> ListAsync(CardListQuery query, CancellationToken cancellationToken);
 }

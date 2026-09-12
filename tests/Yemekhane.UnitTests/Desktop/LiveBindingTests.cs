@@ -34,7 +34,7 @@ public sealed class LiveBindingTests
     public static TheoryData<string> Views() =>
     [
         "students", "cash", "entitlements", "calendar", "devices",
-        "devicecards", "sms", "reports", "settings", "daily", "bulk", "definitions",
+        "devicecards", "sms", "reports", "settings", "daily", "bulk", "definitions", "cardlist",
     ];
 
     /// <summary>
@@ -48,7 +48,7 @@ public sealed class LiveBindingTests
         var session = new OfflineSession();
         var routes = new ShellNavigationService([
             ShellRoutes.Students, ShellRoutes.Entitlements, ShellRoutes.Cash, ShellRoutes.Sms,
-            ShellRoutes.Reports, ShellRoutes.Devices, ShellRoutes.DeviceCards,
+            ShellRoutes.Reports, ShellRoutes.Devices, ShellRoutes.DeviceCards, ShellRoutes.CardList,
             ShellRoutes.Settings, ShellRoutes.HolidayTransfer, ShellRoutes.DailyTracking,
         ]);
 
@@ -73,6 +73,9 @@ public sealed class LiveBindingTests
 
             "devicecards" => (new DeviceCardsView(), new DeviceCardsViewModel(
                 new DeviceCardsApiClient(http, session))),
+
+            "cardlist" => (new CardListView(), new CardListViewModel(
+                new CardListApiClient(http, session), ["cards.manage"])),
 
             "sms" => (new SmsView(), new SmsViewModel(
                 new SmsApiClient(http, session), ["sms.read", "sms.send", "sms.manage"])),

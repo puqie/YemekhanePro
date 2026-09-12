@@ -46,6 +46,7 @@ public sealed class LiveUiHarness
     public BulkOperationWizardViewModel CalendarBulk { get; }
     public DevicesViewModel Devices { get; }
     public DeviceCardsViewModel DeviceCards { get; }
+    public CardListViewModel CardList { get; }
     public SmsViewModel Sms { get; }
     public CashViewModel Cash { get; }
     public ReportsViewModel Reports { get; }
@@ -71,7 +72,7 @@ public sealed class LiveUiHarness
 
         var routes = new List<string> { ShellRoutes.Dashboard, ShellRoutes.DailyTracking, ShellRoutes.Students, ShellRoutes.StudentDetail };
         if (Permissions.Contains("students.write")) { routes.Add(ShellRoutes.StudentsCreate); routes.Add(ShellRoutes.StudentImport); }
-        if (Permissions.Contains("cards.manage")) { routes.Add(ShellRoutes.Cards); routes.Add(ShellRoutes.CardReader); }
+        if (Permissions.Contains("cards.manage")) { routes.Add(ShellRoutes.Cards); routes.Add(ShellRoutes.CardReader); routes.Add(ShellRoutes.CardList); }
         if (Permissions.Contains("entitlements.manage") || Permissions.Contains("entitlements.bulk")) routes.Add(ShellRoutes.Entitlements);
         if (Permissions.Contains("calendar.manage")) routes.Add(ShellRoutes.HolidayTransfer);
         if (Permissions.Contains("devices.read") || Permissions.Contains("devices.manage")) { routes.Add(ShellRoutes.Devices); routes.Add(ShellRoutes.DeviceCards); }
@@ -104,6 +105,7 @@ public sealed class LiveUiHarness
         Calendar = new CalendarViewModel(new CalendarApiClient(Http, Session), Permissions, bulkWizard: CalendarBulk);
         Devices = new DevicesViewModel(new DeviceApiClient(Http, Session), realtime, Permissions);
         DeviceCards = new DeviceCardsViewModel(new DeviceCardsApiClient(Http, Session));
+        CardList = new CardListViewModel(new CardListApiClient(Http, Session), Permissions);
         Sms = new SmsViewModel(new SmsApiClient(Http, Session), Permissions);
         Cash = new CashViewModel(new CashApiClient(Http, Session), Permissions, navigation: Navigation);
         Reports = new ReportsViewModel(new ReportApiClient(Http, Session), Permissions);
@@ -115,7 +117,7 @@ public sealed class LiveUiHarness
         {
             DataContext = Dashboard, DailyTrackingDataContext = Tracking, StudentsDataContext = Students,
             MealEntitlementsDataContext = Entitlements, CalendarDataContext = Calendar, DevicesDataContext = Devices,
-            DeviceCardsDataContext = DeviceCards, SmsDataContext = Sms, CashDataContext = Cash, ReportsDataContext = Reports,
+            DeviceCardsDataContext = DeviceCards, CardListDataContext = CardList, SmsDataContext = Sms, CashDataContext = Cash, ReportsDataContext = Reports,
             SettingsDataContext = Settings, StudentImportDataContext = StudentImport, DefinitionsDataContext = Definitions,
             Width = 1440, Height = 900, WindowStartupLocation = WindowStartupLocation.Manual,
             Left = -4000, Top = -4000, ShowInTaskbar = false,
@@ -140,7 +142,7 @@ public sealed class LiveUiHarness
             ("Takvim", Calendar.InitializeAsync()), ("Cihazlar", Devices.InitializeAsync()),
             ("SMS", Sms.InitializeAsync()), ("Kasa", Cash.InitializeAsync()),
             ("Raporlar", Reports.InitializeAsync()), ("Ayarlar", Settings.InitializeAsync()),
-            ("Toplu işlem", EntitlementBulk.InitializeAsync()), ("Kart durumları", DeviceCards.InitializeAsync()),
+            ("Toplu işlem", EntitlementBulk.InitializeAsync()), ("Kart durumları", DeviceCards.InitializeAsync()), ("Kartlar", CardList.InitializeAsync()),
             ("Tanımlar", Definitions.InitializeAsync()),
         };
         foreach (var (name, task) in loads)

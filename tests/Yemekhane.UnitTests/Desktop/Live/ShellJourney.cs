@@ -316,14 +316,14 @@ public class ShellJourney
         Assert.False(router.TryExecute(new("E", true), new(false, IsTextInput: true, false)));
         Assert.False(router.TryExecute(new("P", true), new(false, IsTextInput: true, false)));
 
-        // Sol menu: 13 oge, her biri dogru ekrana gider ve yalnizca o oge secili olur.
+        // Sol menu: 14 oge, her biri dogru ekrana gider ve yalnizca o oge secili olur.
         var buttons = ((Panel)window.FindName("NavigationButtons")!).Children.OfType<Button>().ToList();
-        Assert.Equal(13, buttons.Count);
+        Assert.Equal(14, buttons.Count);
         var hosts = new Dictionary<string, string>
         {
             ["dashboard"] = "DashboardHost", ["daily-tracking"] = "DailyTrackingHost", ["students"] = "StudentsHost",
             ["cash"] = "CashHost", ["entitlements"] = "MealEntitlementsHost", ["holiday-transfer"] = "CalendarHost",
-            ["student-import"] = "StudentImportHost", ["devices"] = "DevicesHost", ["device-cards"] = "DeviceCardsHost",
+            ["student-import"] = "StudentImportHost", ["devices"] = "DevicesHost", ["device-cards"] = "DeviceCardsHost", ["card-list"] = "CardListHost",
             ["sms"] = "SmsHost", ["reports"] = "ReportsHost", ["settings"] = "SettingsHost", ["definitions"] = "DefinitionsHost",
         };
         foreach (var button in buttons)

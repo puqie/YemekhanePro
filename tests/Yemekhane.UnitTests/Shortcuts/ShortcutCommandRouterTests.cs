@@ -114,6 +114,7 @@ public sealed class ShortcutCommandRouterTests
     [InlineData(ShellRoutes.Definitions)]
     [InlineData(ShellRoutes.Devices)]
     [InlineData(ShellRoutes.DeviceCards)]
+    [InlineData(ShellRoutes.CardList)]
     [InlineData(ShellRoutes.Sms)]
     [InlineData(ShellRoutes.Cash)]
     [InlineData(ShellRoutes.Reports)]

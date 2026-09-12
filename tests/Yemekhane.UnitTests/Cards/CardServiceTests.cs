@@ -203,6 +203,58 @@ public sealed class CardServiceTests
         Assert.False(retired.IsActive);
         Assert.Equal("Eski kart bulundu", retired.ReplacementReason);
     }
+    /// <summary>Kartlar ekrani belirli bir karti (kimligiyle) geri acar: en son pasif olan degil, SECILEN.</summary>
+    [Fact]
+    public async Task ReactivateByIdBringsBackThatSpecificCard()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.MigrateAsync();
+        var student = await AddStudent(context, "6811");
+        var service = new CardService(new EfCardRepository(context), TimeProvider.System);
+        var a = await service.AssignAsync(student.Id, new AssignCardRequest("8222704"));
+        var b = await service.ReplaceAsync(student.Id, new ReplaceCardRequest("8222705", "Kart hasarlı"));
+        await service.DeactivateAsync(b.Id, "Kayıp");
+
+        // Iki pasif kart var; ESKI olan (a) secilir.
+        var reactivated = await service.ReactivateCardAsync(a.Id);
+
+        Assert.Equal(a.Id, reactivated.Id);
+        Assert.True(reactivated.IsActive);
+        var history = await service.GetHistoryAsync(student.Id);
+        Assert.False(history.Single(x => x.Id == b.Id).IsActive);
+    }
+
+    [Fact]
+    public async Task ReactivateByIdIsRejectedWhileTheStudentHasAnActiveCard()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.MigrateAsync();
+        var student = await AddStudent(context, "6811");
+        var service = new CardService(new EfCardRepository(context), TimeProvider.System);
+        var a = await service.AssignAsync(student.Id, new AssignCardRequest("8222704"));
+        await service.ReplaceAsync(student.Id, new ReplaceCardRequest("8222705", "Kart hasarlı"));
+
+        await Assert.ThrowsAsync<EntityConflictException>(() => service.ReactivateCardAsync(a.Id));
+    }
+
+    [Fact]
+    public async Task ReactivateByIdOnAnActiveOrUnknownCardIsNotFound()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.MigrateAsync();
+        var student = await AddStudent(context, "6811");
+        var service = new CardService(new EfCardRepository(context), TimeProvider.System);
+        var a = await service.AssignAsync(student.Id, new AssignCardRequest("8222704"));
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() => service.ReactivateCardAsync(a.Id));
+        await Assert.ThrowsAsync<EntityNotFoundException>(() => service.ReactivateCardAsync(Guid.NewGuid()));
+    }
     private static async Task<Student> AddStudent(YemekhaneDbContext context, string studentNo)
     {
         var student = new Student { StudentNo = studentNo, FirstName = "Test", LastName = "Öğrenci" };

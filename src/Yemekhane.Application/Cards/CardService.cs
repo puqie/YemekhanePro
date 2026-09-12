@@ -44,6 +44,10 @@ public sealed class CardService(ICardRepository repository, TimeProvider timePro
         await repository.ReactivateLatestAsync(studentId, timeProvider.GetUtcNow(), cancellationToken)
         ?? throw new EntityNotFoundException("Öğrencinin geri açılacak pasif kartı yok.");
 
+    /// <summary>Kartlar ekrani: SECILEN pasif karti (kimligiyle) geri acar; kart yoksa ya da zaten aktifse 404.</summary>
+    public async Task<CardDetails> ReactivateCardAsync(Guid cardId, CancellationToken cancellationToken = default) =>
+        await repository.ReactivateAsync(cardId, timeProvider.GetUtcNow(), cancellationToken)
+        ?? throw new EntityNotFoundException("Geri açılacak pasif kart bulunamadı.");
     /// <summary>Aktif kartin baski numarasini gunceller; kart degismez.</summary>
     public async Task<CardDetails> SetPrintedNumberAsync(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken = default) =>
         await repository.SetPrintedNumberAsync(studentId, NormalizePrintedNumber(request.PrintedNumber), timeProvider.GetUtcNow(), cancellationToken)

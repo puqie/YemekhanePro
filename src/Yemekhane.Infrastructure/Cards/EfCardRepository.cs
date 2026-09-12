@@ -134,6 +134,22 @@ public sealed class EfCardRepository(YemekhaneDbContext dbContext, IAuditService
         return await GetRequired(card.Id, cancellationToken);
     }
 
+    /// <summary>Kartlar ekrani: secilen pasif kart kimligiyle geri acilir (en son pasif olan degil, SECILEN).</summary>
+    public async Task<CardDetails?> ReactivateAsync(Guid cardId, DateTimeOffset effectiveAt, CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var card = await dbContext.StudentCards.SingleOrDefaultAsync(x => x.Id == cardId && !x.IsActive, cancellationToken);
+        if (card is null) return null;
+        await EnsureStudentActive(card.StudentId, cancellationToken);
+        if (await dbContext.StudentCards.AnyAsync(x => x.StudentId == card.StudentId && x.IsActive, cancellationToken))
+            throw new EntityConflictException("Öğrencinin zaten aktif kartı var; önce onu pasifleştirin.");
+        var before = Snapshot(card);
+        Reactivate(card, printedNumber: null, effectiveAt);
+        LocalOutbox.Enqueue(dbContext, card, LocalOutbox.UpdateCard, card, timestamp: effectiveAt);
+        auditService.Record(new AuditEntry("CardReactivated", nameof(StudentCard), card.Id.ToString(), "Pasif kart Kartlar ekranından yeniden aktifleştirildi.", Before: before, After: Snapshot(card)));
+        await dbContext.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+        return await GetRequired(card.Id, cancellationToken);
+    }
     /// <summary>Gecerlilik YENIDEN baslar; eski donem denetim kaydinda (Before) kalir.</summary>
     private static void Reactivate(StudentCard card, string? printedNumber, DateTimeOffset effectiveAt)
     {

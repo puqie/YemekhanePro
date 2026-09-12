@@ -40,6 +40,13 @@ public static class PageHelpTexts
             "Bu iki sekmede üstte tarih aralığı çıkar; GEÇEN YILLARA da bakılır. \"Bu yıl\", \"Geçen yıl\" ve \"Tümü\" düğmeleri aralığı hazır kurar (öğretim yılı 1 Eylül - 31 Ağustos).",
             "Tarih aralığı iki sekmede ORTAKTIR: aralığı değiştirince yüklemeler ve girişler aynı dönem için birlikte görünür.",
         ]),
+        [ShellRoutes.CardList] = new("Kartlar",
+        [
+            "Okuldaki TÜM kartlar tek listede: aktif ve pasif kartlar, geçerlilik aralığı ve pasifleştirme nedeni.",
+            "Arama kutusu öğrenci no, ad soyad, kart no ve baskı no ile baştan eşleşir; Durum süzgeci Tümü / Aktif / Pasif.",
+            "Pasifleştirmek için satırdaki \"Pasifleştir\" düğmesine basın, nedeni yazın ve \"Onayla\" deyin; turnike o kartı artık tanımaz.",
+            "Pasif kartı \"Aktifleştir\" ile geri açın. Öğrencinin başka aktif kartı varsa reddedilir: bir öğrencide tek aktif kart olur.",
+        ]),
         [ShellRoutes.Cash] = new("Kasa",
         [
             "Nakit/bakiye tahsilatı, bakiye yükleme ve iptal (void) işlemleri burada yapılır.",

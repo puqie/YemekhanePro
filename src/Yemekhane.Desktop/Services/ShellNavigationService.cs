@@ -6,6 +6,11 @@ public static class ShellRoutes
     public const string Students = "students";
     public const string StudentsCreate = "students/new";
     public const string Cards = "cards";
+    /// <summary>
+    /// Kartlar ekrani: tum kartlarin aktif/pasif durumu, satirdan pasiflestir/aktiflestir.
+    /// "cards" rotasi Ogrenciler ekranindaki kart okuma akisina ayrilmistir; bu yuzden ayri ad.
+    /// </summary>
+    public const string CardList = "card-list";
     public const string Entitlements = "entitlements";
     public const string HolidayTransfer = "holiday-transfer";
     public const string CardReader = "card-reader";

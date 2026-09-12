@@ -102,6 +102,7 @@ public sealed class ShortcutCommandRouter(IShortcutCommandTarget target)
         ShellRoutes.StudentImport => "Sicil Aktar",
         ShellRoutes.Devices => "Cihazlar / Turnikeler",
         ShellRoutes.DeviceCards => "Kart Yükleme Durumu",
+        ShellRoutes.CardList => "Kartlar",
         ShellRoutes.Sms => "SMS Merkezi",
         ShellRoutes.Cash => "Kasa",
         ShellRoutes.Reports => "Raporlar",

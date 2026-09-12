@@ -170,7 +170,7 @@ public partial class App : System.Windows.Application, IDisposable
         var permissions = JwtPermissions.Read(session.AccessToken);
         var routes = new List<string> { ShellRoutes.Dashboard, ShellRoutes.DailyTracking, ShellRoutes.Students, ShellRoutes.StudentDetail };
         if (permissions.Contains("students.write")) { routes.Add(ShellRoutes.StudentsCreate); routes.Add(ShellRoutes.StudentImport); }
-        if (permissions.Contains("cards.manage")) { routes.Add(ShellRoutes.Cards); routes.Add(ShellRoutes.CardReader); }
+        if (permissions.Contains("cards.manage")) { routes.Add(ShellRoutes.Cards); routes.Add(ShellRoutes.CardReader); routes.Add(ShellRoutes.CardList); }
         if (permissions.Contains("entitlements.manage") || permissions.Contains("entitlements.bulk")) routes.Add(ShellRoutes.Entitlements);
         if (permissions.Contains("calendar.manage")) routes.Add(ShellRoutes.HolidayTransfer);
         if (permissions.Contains("devices.read") || permissions.Contains("devices.manage"))
@@ -198,6 +198,10 @@ public partial class App : System.Windows.Application, IDisposable
         deviceCards = permissions.Contains("devices.read") || permissions.Contains("devices.manage")
             ? new DeviceCardsViewModel(new DeviceCardsApiClient(httpClient, session))
             : null;
+        // Kartlar ekrani yalnizca kart yetkisiyle: liste ucu da cards.manage ister.
+        var cardList = permissions.Contains("cards.manage")
+            ? new CardListViewModel(new CardListApiClient(httpClient, session), permissions)
+            : null;
         sms = new SmsViewModel(new SmsApiClient(httpClient, session), permissions);
         // Ucret plani ve ekstre kasanin sekmeleridir; yetkisi olmayana hic olusturulmaz.
         var tuitionApi = new TuitionApiClient(httpClient, session);
@@ -217,7 +221,7 @@ public partial class App : System.Windows.Application, IDisposable
         var definitions = new DefinitionsViewModel(new DefinitionsApiClient(httpClient, session), permissions);
         var window = new MainWindow { DataContext = viewModel, DailyTrackingDataContext = tracking,
             StudentsDataContext = students, MealEntitlementsDataContext = entitlements, CalendarDataContext = calendar,
-            DevicesDataContext = devices, DeviceCardsDataContext = deviceCards, SmsDataContext = sms, CashDataContext = cash, ReportsDataContext = reports,
+            DevicesDataContext = devices, DeviceCardsDataContext = deviceCards, CardListDataContext = cardList, SmsDataContext = sms, CashDataContext = cash, ReportsDataContext = reports,
              SettingsDataContext = settings, StudentImportDataContext = studentImport, DefinitionsDataContext = definitions,
              GlobalSearchDataContext = globalSearch, NotificationDataContext = notifications };
         window.ConfigureShortcuts(permissions);
@@ -269,6 +273,7 @@ public partial class App : System.Windows.Application, IDisposable
             ("Takvim toplu işlem", calendarBulk.InitializeAsync()),
             ("Bildirimler", notifications?.InitializeAsync() ?? Task.CompletedTask),
             ("Kart durumları", deviceCards?.InitializeAsync() ?? Task.CompletedTask),
+            ("Kartlar", cardList?.InitializeAsync() ?? Task.CompletedTask),
             ("Tanımlar", definitions.InitializeAsync()),
         ]);
         if (failures.Count > 0)
