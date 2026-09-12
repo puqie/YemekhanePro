@@ -74,30 +74,40 @@ public sealed class AccessDecisionServiceTests
         Assert.Equal("Kart tanımsız", unknown.Reason);
     }
 
+    /// <summary>
+    /// Grup tatili (gezi) yalnizca UYELERINI kapatir; ayni siniftaki uye olmayan ogrenci gecer.
+    /// Uyenin hakki devredilmisse (tatil aktarimi Status=Transferred birakir) bugune aktif
+    /// hakki yoktur ve ret sebebi "Bugün tatil"dir -- kapsam yalnizca sinifa bakilarak
+    /// degerlendirilse bu sebep cikmaz, "Öğün ücreti tanımlı değil" cikardi. Bilerek
+    /// verilmis AKTIF hak ise grup tatilinde de gecerlidir: uye ama hakli ogrenci gecer.
+    /// </summary>
     [Fact]
     public async Task GroupScopedHolidayClosesTheDayForItsMembersOnly()
     {
-        // Tatil yalnizca "Gezi Grubu" icin tanimlanmistir. Grup uyesi ogrenci
-        // turnikeden GECEMEMELI, uye olmayan ayni siniftaki ogrenci GECEBILMELIDIR.
-        // Kapsam yalnizca sinifa bakilarak degerlendirilirse grup tatili sessizce yok sayilir.
         await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
         await using var context = CreateContext(connection); await context.Database.MigrateAsync();
 
         var schoolClass = new SchoolClass { Name = "5A" };
         var traveller = new Student { StudentNo = "6811", FirstName = "Gezici", LastName = "Ogrenci", ClassId = schoolClass.Id };
         var stayer = new Student { StudentNo = "6812", FirstName = "Kalan", LastName = "Ogrenci", ClassId = schoolClass.Id };
+        var keeper = new Student { StudentNo = "6813", FirstName = "Hakli", LastName = "Uye", ClassId = schoolClass.Id };
         var travellerCard = new StudentCard { StudentId = traveller.Id, CardNumber = "8222704", ValidFrom = DateTimeOffset.UtcNow };
         var stayerCard = new StudentCard { StudentId = stayer.Id, CardNumber = "8222705", ValidFrom = DateTimeOffset.UtcNow };
+        var keeperCard = new StudentCard { StudentId = keeper.Id, CardNumber = "8222706", ValidFrom = DateTimeOffset.UtcNow };
         var group = new StudentGroup { Name = "Gezi Grubu", GroupType = "Manual" };
         var meal = new MealType { Name = "Ogle" };
         var device = new Device { Name = "SF300-1", DeviceType = "SF300", ConnectionType = "Ethernet", Direction = "Entry", ConnectionStatus = "Connected" };
         var date = new DateOnly(2026, 9, 3);
         var timestamp = new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.FromHours(3));
-        context.AddRange(schoolClass, traveller, stayer, travellerCard, stayerCard, group, meal, device);
-        context.Add(new StudentGroupMember { GroupId = group.Id, StudentId = traveller.Id });
+        context.AddRange(schoolClass, traveller, stayer, keeper, travellerCard, stayerCard, keeperCard, group, meal, device);
         context.AddRange(
-            new MealEntitlement { StudentId = traveller.Id, MealTypeId = meal.Id, EntitlementDate = date, Quantity = 1, Status = "Active" },
-            new MealEntitlement { StudentId = stayer.Id, MealTypeId = meal.Id, EntitlementDate = date, Quantity = 1, Status = "Active" });
+            new StudentGroupMember { GroupId = group.Id, StudentId = traveller.Id },
+            new StudentGroupMember { GroupId = group.Id, StudentId = keeper.Id });
+        context.AddRange(
+            // Gezicinin hakki tatil aktarimiyla devredilmis: bugune AKTIF hakki yok.
+            new MealEntitlement { StudentId = traveller.Id, MealTypeId = meal.Id, EntitlementDate = date, Quantity = 1, Status = "Transferred" },
+            new MealEntitlement { StudentId = stayer.Id, MealTypeId = meal.Id, EntitlementDate = date, Quantity = 1, Status = "Active" },
+            new MealEntitlement { StudentId = keeper.Id, MealTypeId = meal.Id, EntitlementDate = date, Quantity = 1, Status = "Active" });
         await context.SaveChangesAsync();
 
         await new HolidayService(new EfHolidayRepository(context)).CreateAsync(
@@ -111,10 +121,13 @@ public sealed class AccessDecisionServiceTests
             new AccessCheckRequest(travellerCard.CardNumber, device.Id, meal.Id, timestamp));
         var stayerDecision = await service.CheckAccessAsync(
             new AccessCheckRequest(stayerCard.CardNumber, device.Id, meal.Id, timestamp));
+        var keeperDecision = await service.CheckAccessAsync(
+            new AccessCheckRequest(keeperCard.CardNumber, device.Id, meal.Id, timestamp));
 
         Assert.Equal("DENY", travellerDecision.Decision);
         Assert.Equal("Bugün tatil", travellerDecision.Reason);
         Assert.Equal("ALLOW", stayerDecision.Decision);
+        Assert.Equal("ALLOW", keeperDecision.Decision);
     }
 
     [Fact]
@@ -161,10 +174,56 @@ public sealed class AccessDecisionServiceTests
         await scenario.AssertDeniedAsync(decision, "Cihaz pasif");
     }
 
+    /// <summary>
+    /// Takvimde KAPALI gune bilerek verilmis AKTIF hak gecerlidir. Saha: "tatil olmasina
+    /// ragmen gun ekledim, o gun hakkim var!" -- operator Cumartesi'ye hak yukledi, turnike
+    /// "Bugün tatil" diye reddetti. Karar once takvime bakiyordu; artik bugune aktif hak
+    /// varsa takvim/hafta sonu kontrolu atlanir, cunku o gunu acan operatorun kendisidir.
+    /// </summary>
     [Fact]
-    public async Task ClosedCalendarDayIsDeniedAndEntitlementIsNotConsumed()
+    public async Task AnActiveRightOnAClosedDayIsHonoured()
     {
         await using var scenario = await AccessScenario.CreateAsync(closedDates: [new DateOnly(2026, 9, 14)]);
+
+        var decision = await scenario.CheckAsync();
+
+        Assert.Equal("ALLOW", decision.Decision);
+        Assert.Single(await scenario.Context.MealUsages.ToListAsync());
+    }
+
+    /// <summary>Kapali gunde AKTIF hak yoksa ret sebebi hala "Bugün tatil"dir; hak da bakiye de dusulmez.</summary>
+    [Fact]
+    public async Task AClosedDayWithoutAnActiveRightIsStillDeniedAsHoliday()
+    {
+        await using var scenario = await AccessScenario.CreateAsync(closedDates: [new DateOnly(2026, 9, 14)],
+            entitlement: right => right.Status = "Transferred");
+
+        var decision = await scenario.CheckAsync();
+
+        await scenario.AssertDeniedAsync(decision, "Bugün tatil");
+    }
+
+    /// <summary>
+    /// Hafta sonu hakki yalnizca "Cumartesi/Pazar dahil" isaretlenince verilir; verildiyse
+    /// hafta sonu kurali (WeekendPolicy) onu engellememeli. 12 Eylul 2026 Cumartesidir.
+    /// </summary>
+    [Fact]
+    public async Task AWeekendRightGrantedOnPurposeIsHonoured()
+    {
+        await using var scenario = await AccessScenario.CreateAsync(day: new DateOnly(2026, 9, 12));
+
+        var decision = await scenario.CheckAsync();
+
+        Assert.Equal("ALLOW", decision.Decision);
+        Assert.Equal("Geçiş onaylandı", decision.Reason);
+    }
+
+    /// <summary>Hafta sonu hak YOKSA "Bugün tatil": bakiye yolu hafta sonu acilmaz.</summary>
+    [Fact]
+    public async Task AWeekendWithoutARightIsDeniedAsHoliday()
+    {
+        await using var scenario = await AccessScenario.CreateAsync(day: new DateOnly(2026, 9, 12),
+            entitlement: right => right.Status = "Cancelled");
 
         var decision = await scenario.CheckAsync();
 
@@ -250,15 +309,16 @@ public sealed class AccessDecisionServiceTests
     private sealed class AccessScenario : IAsyncDisposable
     {
         private static readonly DateOnly Day = new(2026, 9, 14);
-        private static readonly DateTimeOffset Timestamp = new(2026, 9, 14, 12, 0, 0, TimeSpan.FromHours(3));
 
         private readonly SqliteConnection connection;
 
         private AccessScenario(SqliteConnection connection, YemekhaneDbContext context,
-            AccessDecisionService service, StudentCard card, Device device, MealType meal, MealEntitlement entitlement)
+            AccessDecisionService service, StudentCard card, Device device, MealType meal, MealEntitlement entitlement,
+            DateTimeOffset timestamp)
         {
             this.connection = connection;
             Context = context; Service = service; Card = card; Device = device; Meal = meal; Entitlement = entitlement;
+            Timestamp = timestamp;
         }
 
         public YemekhaneDbContext Context { get; }
@@ -267,6 +327,8 @@ public sealed class AccessDecisionServiceTests
         public Device Device { get; }
         public MealType Meal { get; }
         public MealEntitlement Entitlement { get; }
+        /// <summary>Senaryo gununun ogle saati (Istanbul); hafta sonu senaryolari icin gun secilebilir.</summary>
+        public DateTimeOffset Timestamp { get; }
 
         public static async Task<AccessScenario> CreateAsync(
             Action<StudentCard>? card = null,
@@ -274,12 +336,15 @@ public sealed class AccessDecisionServiceTests
             Action<Device>? device = null,
             Action<MealEntitlement>? entitlement = null,
             IReadOnlyCollection<DateOnly>? closedDates = null,
-            bool onLeave = false)
+            bool onLeave = false,
+            DateOnly? day = null)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
             var context = CreateContext(connection);
             await context.Database.MigrateAsync();
+            var dayValue = day ?? Day;
+            var timestamp = new DateTimeOffset(dayValue.Year, dayValue.Month, dayValue.Day, 12, 0, 0, TimeSpan.FromHours(3));
 
             var studentValue = new Student { StudentNo = "6811", FirstName = "Ayşe", LastName = "Yılmaz", IsActive = true };
             student?.Invoke(studentValue);
@@ -290,7 +355,7 @@ public sealed class AccessDecisionServiceTests
             device?.Invoke(deviceValue);
             var mealValue = new MealType { Name = "Öğle" };
             var entitlementValue = new MealEntitlement { StudentId = studentValue.Id, MealTypeId = mealValue.Id,
-                EntitlementDate = Day, Quantity = 1, Status = "Active" };
+                EntitlementDate = dayValue, Quantity = 1, Status = "Active" };
             entitlement?.Invoke(entitlementValue);
 
             context.AddRange(studentValue, cardValue, mealValue, deviceValue, entitlementValue);
@@ -299,14 +364,14 @@ public sealed class AccessDecisionServiceTests
             // değil" olur ve asil olculen dal golgelenirdi.
             context.Add(new MealTypePrice { MealTypeId = mealValue.Id, PriceCents = 0 });
             if (onLeave)
-                context.Add(new StudentLeave { StudentId = studentValue.Id, StartsOn = Day, EndsOn = Day,
+                context.Add(new StudentLeave { StudentId = studentValue.Id, StartsOn = dayValue, EndsOn = dayValue,
                     LeaveType = "Sağlık", EntitlementBehavior = "Keep" });
             await context.SaveChangesAsync();
 
             var service = new AccessDecisionService(new EfAccessDecisionRepository(context),
                 new BusinessDayService(new ClosedCalendar(closedDates ?? []), new WeekendPolicy()),
                 new RecordingRealtimeEventPublisher());
-            return new AccessScenario(connection, context, service, cardValue, deviceValue, mealValue, entitlementValue);
+            return new AccessScenario(connection, context, service, cardValue, deviceValue, mealValue, entitlementValue, timestamp);
         }
 
         public Task<AccessDecision> CheckAsync(string? cardNumber = null) =>

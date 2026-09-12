@@ -151,10 +151,14 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
             // ekranda bu, aradigi kaydin "yok" gorunmesi demekti.
             // Iki bicim var: gecis gecmisi "hasMore" bayragi, sayfali uclar (Odemeler,
             // SMS, Denetim) ise "totalCount" doner. Ikisi de kontrol edilir.
-            var truncated = document.RootElement.TryGetProperty("hasMore", out var hasMore)
-                    && hasMore.ValueKind == JsonValueKind.True
-                || (document.RootElement.TryGetProperty("totalCount", out var totalCount)
-                    && totalCount.TryGetInt32(out var total) && total > rows.Count);
+            // Duz liste donen uclarda (Kartlar, Veliler, Hakedisler, Izinler, Tatil/Aktarim)
+            // kok bir DIZIDIR; dizide alan aramak InvalidOperationException atar ve bes sekme
+            // birden "Sekme verisi alınamadı" oluyordu. Bayraklar yalnizca NESNE kokte aranir.
+            var truncated = document.RootElement.ValueKind == JsonValueKind.Object
+                && (document.RootElement.TryGetProperty("hasMore", out var hasMore)
+                        && hasMore.ValueKind == JsonValueKind.True
+                    || (document.RootElement.TryGetProperty("totalCount", out var totalCount)
+                        && totalCount.TryGetInt32(out var total) && total > rows.Count));
             if (truncated)
             {
                 rows.Add(new StudentDetailRow(

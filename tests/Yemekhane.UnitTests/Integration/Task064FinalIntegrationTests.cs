@@ -76,8 +76,12 @@ public sealed class Task064FinalIntegrationTests
                 var meal = await PostAsync<MealTypeDetails>(client, "/api/meal-types",
                     new SaveMealTypeRequest("Öğle"));
                 var today = IstanbulToday();
+                // "Bugun" hafta sonuna denk gelince hak ancak Cumartesi/Pazar ACIKCA istenince verilir;
+                // aksi halde 400 doner ve test yalnizca hafta ici gecerdi (12 Eylul 2026 Cumartesi'de olculdu).
+                // Bilerek verilen hafta sonu hakki turnikede de gecerlidir; test boylece yedi gun kosar.
                 var entitlement = await PostAsync<BulkEntitlementResult>(client, "/api/meal-entitlements/bulk",
-                    new BulkEntitlementRequest([student.Id], meal.Id, today, today, Source: "Task064"));
+                    new BulkEntitlementRequest([student.Id], meal.Id, today, today,
+                        IncludeSaturday: true, IncludeSunday: true, Source: "Task064"));
                 Assert.Equal(1, entitlement.CreatedCount);
 
                 var device = await PostAsync<DeviceDto>(client, "/api/devices", new DeviceWriteRequest(

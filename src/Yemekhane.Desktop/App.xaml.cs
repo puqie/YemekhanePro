@@ -189,9 +189,7 @@ public partial class App : System.Windows.Application, IDisposable
             : null;
         var tracking = new DailyTrackingViewModel(new DailyTrackingApiClient(httpClient, session), realtimeClient,
             new FileDailyTrackingPreferences(), new SystemTrackingSoundPlayer());
-        // Form alan tercihleri diske yazilir: okul kullanmadigi alanlari kalici kapatir.
-        students = new StudentsViewModel(new StudentApiClient(httpClient, session), navigation, permissions,
-            formPreferences: new FileStudentFormPreferences());
+        students = new StudentsViewModel(new StudentApiClient(httpClient, session), navigation, permissions);
         var entitlementBulk = new BulkOperationWizardViewModel(new BulkOperationApiClient(httpClient, session), permissions);
         var calendarBulk = new BulkOperationWizardViewModel(new BulkOperationApiClient(httpClient, session), permissions);
         entitlements = new MealEntitlementsViewModel(new MealEntitlementApiClient(httpClient, session), permissions, entitlementBulk);

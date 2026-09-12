@@ -82,6 +82,36 @@ public sealed class TabTruncationNoticeTests
         Assert.Contains(Notice, rows[^1], StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// DUZ LISTE donen sekmeler (Kartlar, Veliler, Hakedisler, Izinler, Tatil/Aktarim)
+    /// kesilme kontrolunden ETKILENMEMELI. Olculdu: "hasMore" aramasi listenin kokunde
+    /// nesne alani aradigi icin InvalidOperationException atiyor, bes sekme birden
+    /// "Sekme verisi alınamadı: The requested operation requires an element of type
+    /// 'Object'..." diyordu. Sahada Kartlar sekmesi bu hatayla acilmiyordu.
+    /// </summary>
+    [Theory]
+    [InlineData("Cards", """[{"cardNumber":"8247129","isActive":true}]""")]
+    [InlineData("Parents", """[{"fullName":"Veli Veli","phone":"05551112233"}]""")]
+    [InlineData("Entitlements", """[{"entitlementDate":"2026-09-12","quantity":1,"status":"Active"}]""")]
+    [InlineData("Leaves", """[{"startsOn":"2026-09-12","endsOn":"2026-09-12","leaveType":"Sağlık"}]""")]
+    [InlineData("Holiday/Transfer", """[{"transferDate":"2026-09-12","status":"Transferred"}]""")]
+    public async Task ArrayRootedTabsLoadWithoutTheTruncationCheckBreakingThem(string tab, string json)
+    {
+        var rows = await RowsAsync(tab, json);
+
+        Assert.Single(rows);
+        Assert.DoesNotContain(rows, x => x.Contains(Notice, StringComparison.Ordinal));
+    }
+
+    /// <summary>Bos liste de sorunsuz: "kayit yok" durumu hata gibi gorunmemeli.</summary>
+    [Fact]
+    public async Task AnEmptyArrayRootedTabYieldsNoRowsAndNoError()
+    {
+        var rows = await RowsAsync("Cards", "[]");
+
+        Assert.Empty(rows);
+    }
+
     private sealed class StubHandler(string json) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,

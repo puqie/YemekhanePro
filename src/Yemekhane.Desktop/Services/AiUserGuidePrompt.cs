@@ -192,7 +192,7 @@ public static class AiUserGuidePrompt
         - "Sil" → "Silmeyi Onayla" → "Vazgeç" (iki adımlı silme). "Kayıt
           silinir ve listelerden kaybolur; Sicil Aktar ile yeniden içe
           aktarılırsa geri gelir."
-        - Kart bölümü (cards.manage gerekir): "Yeni kart no", "Baskı no"
+        - Kart bölümü (cards.manage gerekir): "Arka yüz (kart no)", "Ön yüz (baskı no)"
           (isteğe bağlı), "Okuyucudan Al" (masa tipi okuyucu varsa), ve duruma
           göre metni değişen "Kart Ata" / "Kart Değiştir" düğmesi. YENİ
           KAYDEDİLMİŞ BİR ÖĞRENCİYE İLK KARTI VERMEK de AYNI "Kart Ata"
@@ -236,11 +236,12 @@ public static class AiUserGuidePrompt
         görünür, ad/soyadla bulunur, hakediş alır ve sayımlara girer. Kart yalnızca
         turnikeden geçiş için gerekir ve sonradan da verilebilir.
 
-        FORM ALANLARI: form başlığındaki "Alanlar" düğmesi, okulun kullanmadığı
-        isteğe bağlı alanları (TC Kimlik No, Doğum tarihi, Bölüm, Görev, Baskı No,
-        Fotoğraf, Parmak izi ID, PI ID, Adres, Not) KALICI olarak gizler; seçim
-        diske yazılır, her açılışta yeniden kapatmak gerekmez. Ad ve soyad her
-        zaman görünür; gizlenen alanın kayıtlı değeri silinmez.
+        KARTIN İKİ NUMARASI: "Kart No" kartın ARKA yüzündeki çip numarasıdır
+        (turnikenin okuduğu numara); "Baskı No" ÖN yüzdeki kısa basılı numaradır
+        (örn. 6296), isteğe bağlıdır ve kayıp kart bulununca sahibini bulmak için
+        aranır. Sağ paneldeki "Arka yüz (kart no)" / "Ön yüz (baskı no)" kutuları
+        da aynı ayrımı taşır. Numara yanlış kutuya yazılırsa turnike kartı
+        "Kart tanımsız" diye reddeder.
 
         Kart okuma modalı ("Kartla Öğrenci Bul", F3 ile de açılır; cards.manage
         izni ve bağlı kart okuyucu gerekir): "Kart numarasını yazın ve Ara'ya

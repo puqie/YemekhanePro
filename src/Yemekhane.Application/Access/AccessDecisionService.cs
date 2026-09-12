@@ -41,10 +41,20 @@ public sealed class AccessDecisionService(
         if (!snapshot.CardActive) return await DenyAndLog("Kart pasif");
         if (!snapshot.StudentActive) return await DenyAndLog("Öğrenci pasif");
         if (!snapshot.DeviceActive) return await DenyAndLog("Cihaz pasif");
-        if (snapshot.GroupHoliday) return await DenyAndLog("Bugün tatil");
-        if (!await businessDayService.IsBusinessDayAsync(localDate, new CalendarScope("Class", snapshot.ClassId), cancellationToken)) return await DenyAndLog("Bugün tatil");
+        // BUGUNE AKTIF HAK varsa tatil / hafta sonu kontrolu ATLANIR: o gunu acan operatorun
+        // kendisidir ("tatil olmasina ragmen gun ekledim, o gun hakkim var!"). Hakedis verme
+        // akisi hafta sonunu ancak acikca istenince, takvim tatilini ise hic vermez; kapali gune
+        // dusen aktif hak bilincli bir karardir. Tatil aktarimi calistiysa hak "Transferred"
+        // olur ve bu dala girilmez. Hak yoksa kapali gun eskisi gibi "Bugün tatil" ile
+        // reddedilir: bakiye yolu tatilde acilmaz.
+        var hasActiveRight = snapshot.EntitlementId.HasValue && snapshot.EntitlementStatus == "Active";
+        if (!hasActiveRight)
+        {
+            if (snapshot.GroupHoliday) return await DenyAndLog("Bugün tatil");
+            if (!await businessDayService.IsBusinessDayAsync(localDate, new CalendarScope("Class", snapshot.ClassId), cancellationToken)) return await DenyAndLog("Bugün tatil");
+        }
         if (snapshot.IsOnLeave) return await DenyAndLog("Öğrenci bugün izinli");
-        if (!snapshot.EntitlementId.HasValue || snapshot.EntitlementStatus != "Active")
+        if (!hasActiveRight)
         {
             // Hakedis yoksa on odemeli bakiye devreye girer (eski programdaki "TL Bakiye Yukleme").
             // Ucreti 0 olan ogunde bakiye kurali yoktur: bedelsiz ogun icin para dusulmez, hak aranir.

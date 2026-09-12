@@ -264,6 +264,46 @@ public sealed class StudentsLayoutTests
         });
 
     /// <summary>
+    /// SAHA: 1525x842 pencerede (kenar cubugu ve baslik dusulunce gorunum ~1300x790)
+    /// sekme icerigi "altta kaliyor"du; Kartlar/Bakiye sekmesinin icerigi HIC gorunmuyordu.
+    /// Sabit (Auto) satirlar -- baslik, 215px form, dugmeler, uc satirlik sekme seridi,
+    /// tarih araligi -- toplamda paneli asiyor ve "*" satiri pencerenin altina tasiyordu.
+    /// En kotu durum olculur: gecmis sekmesi secili, tarih araligi paneli acik.
+    /// 1144x690 = en kucuk pencere (MinHeight 720) ve 1366x768 dizustu; orada esik 100px.
+    /// </summary>
+    [Theory]
+    [InlineData(1300, 790, 150)]
+    [InlineData(1144, 690, 100)]
+    public void DetaySekmeIcerigiKucukEkrandaDaGorunur(double width, double height, double minContent) =>
+        UiThread.Run(() =>
+        {
+            var api = new FakeStudentApi();
+            using var vm = MakeViewModel(api, ["students.read", "students.write", "students.deactivate", "cards.manage"]);
+            vm.OpenFullDetailCommand.Execute(SampleItem("Ada", "Katırcı", "1001", "CARD-1"));
+            vm.SelectedTab = vm.Tabs.First(x => x.Key == "Access History");
+
+            var view = new StudentsView { DataContext = vm };
+            UiThread.ApplyResources(view);
+            var host = new Border { Width = width, Height = height, Child = view };
+            host.Measure(new Size(width, height));
+            host.Arrange(new Rect(0, 0, width, height));
+            host.UpdateLayout();
+
+            var panel = (FrameworkElement)view.FindName("StudentFormPanel")!;
+            var strip = (FrameworkElement)view.FindName("DetailTabStrip")!;
+            var content = (FrameworkElement)view.FindName("DetailTabContent")!;
+            var panelTop = panel.TransformToAncestor(host).Transform(new Point(0, 0)).Y;
+            var contentTop = content.TransformToAncestor(host).Transform(new Point(0, 0)).Y;
+            // Satir yukseklikleri hata mesajinda: hangi sabit satirin sistigi bir bakista gorulsun.
+            var rows = string.Join("/", ((Grid)((Border)panel).Child).RowDefinitions.Select(r => $"{r.ActualHeight:F0}"));
+            var detail = $"{width}x{height}: panel {panel.ActualHeight:F0}px, satirlar {rows}, serit {strip.ActualHeight:F0}px, " +
+                         $"icerik ustu {contentTop - panelTop:F0}px, icerik {content.ActualHeight:F0}px";
+            Assert.True(content.ActualHeight >= minContent, $"Sekme icerigi cok kucuk (en az {minContent}px) -> " + detail);
+            Assert.True(contentTop + content.ActualHeight <= panelTop + panel.ActualHeight + 0.5,
+                "Sekme icerigi panelin altindan tasiyor -> " + detail);
+        });
+
+    /// <summary>
     /// FieldWidthTests deseni: StudentsView formundaki metin kutulari, adres/not
     /// gibi uzun bir metni yazmaya yetecek genislikte olmali (>= 220px). Mevcut
     /// FieldWidthTests suiti yalnizca SettingsView'i olcuyordu; bu ekran icin
