@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Data;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -9,6 +10,7 @@ using Yemekhane.Application.Cards;
 using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Organization;
 using Yemekhane.Application.Parents;
+using Yemekhane.Application.Settings;
 using Yemekhane.Application.Students;
 using Yemekhane.Desktop.Services;
 
@@ -16,36 +18,33 @@ namespace Yemekhane.Desktop.ViewModels;
 
 public sealed class StudentDetailTabViewModel(string key, Func<Task<IReadOnlyList<object>>> loader) : ObservableObject
 {
+    private readonly DataTable table = CreateTable(key);
     private bool isLoaded, isLoading;
     private string? error;
+    private StudentBalanceHeadline? balanceHeadline;
 
-    /// <summary>
-    /// API'ye giden KIMLIK. Ingilizce kalir cunku LoadTabAsync bu degeri switch'liyor;
-    /// ekranda gorunen metinle karistirilirsa sunucu sekmeyi tanimaz.
-    /// </summary>
+    /// <summary>API'ye giden sabit kimlik; ekranda Title gösterilir.</summary>
     public string Key { get; } = key;
+    public string Title { get; } = StudentTabFormatter.TabTitle(key);
+    public bool IsGeneral => Key == "General";
 
     /// <summary>
-    /// Ekranda gorunen Turkce baslik; bilinmeyen anahtar oldugu gibi gosterilir.
-    /// Baslik sozlugu StudentTabFormatter'da, alan tanimlariyla ayni yerde tutulur:
-    /// bir sekme eklendiginde baslik ve alan listesi birlikte yazilsin diye.
+    /// Items eski canlı testler ve durum denetimleri için korunur. Ekran ise aynı kayıtların
+    /// hücrelere ayrılmış DataView karşılığını kullanır; böylece gerçek sütun başlıkları,
+    /// yatay/dikey kaydırma ve satır seçimi çalışır.
     /// </summary>
-    public string Title { get; } = StudentTabFormatter.TabTitle(key);
-
     public ObservableCollection<object> Items { get; } = [];
+    public DataView TableRows => table.DefaultView;
+    public StudentBalanceHeadline? BalanceHeadline
+    {
+        get => balanceHeadline;
+        private set { if (Set(ref balanceHeadline, value)) Raise(nameof(HasBalanceHeadline)); }
+    }
+    public bool HasBalanceHeadline => BalanceHeadline is not null;
     public bool IsLoaded { get => isLoaded; private set { if (Set(ref isLoaded, value)) Raise(nameof(IsEmpty)); } }
     public bool IsLoading { get => isLoading; private set => Set(ref isLoading, value); }
     public string? Error { get => error; private set { if (Set(ref error, value)) Raise(nameof(IsEmpty)); } }
-
-    /// <summary>
-    /// "Kayit yok" YALNIZCA yukleme basariyla bitip hic satir gelmediyse dogrudur.
-    /// Yuklenmeden once (henuz bilinmiyor) ya da hata varsa (alinamadi) false kalir:
-    /// aksi halde kullanici gercek kaydini kaybettigini sanir.
-    /// </summary>
     public bool IsEmpty => IsLoaded && Error is null && Items.Count == 0;
-    // CA1822 (static yapilabilir) BILEREK bastirildi: bu uye XAML'de {Binding EmptyText}
-    // ile baglanir ve WPF baglamalari static uyeleri COZEMEZ; static yapilirsa metin
-    // ekranda sessizce bos kalir.
 #pragma warning disable CA1822
     public string EmptyText => StudentTabFormatter.EmptyText;
 #pragma warning restore CA1822
@@ -54,24 +53,49 @@ public sealed class StudentDetailTabViewModel(string key, Func<Task<IReadOnlyLis
     {
         if (IsLoaded || IsLoading) return;
         IsLoading = true; Error = null;
-        try { foreach (var item in await loader()) Items.Add(item); IsLoaded = true; }
-        // HER hata gorunur olmali: once yalnizca uc tur yakalaniyordu; sunucunun 4xx cevabi
-        // (ApiRequestException) ya da beklenmeyen yanit bicimi ates-ve-unut yoldan sessizce
-        // yutuluyor, sekme bombos kaliyordu (sahada "tiklayinca hicbir sey olmuyor").
+        try
+        {
+            foreach (var item in await loader())
+            {
+                Items.Add(item);
+                if (item is StudentBalanceHeadline headline) BalanceHeadline = headline;
+                else if (item is StudentDetailRow row) AddTableRow(row);
+            }
+            IsLoaded = true;
+        }
         catch (LoginRequiredException) { Error = "Bu sekme için yetkiniz yok veya oturum sona erdi."; }
         catch (Exception ex) { Error = "Sekme verisi alınamadı: " + ex.Message; }
         finally { IsLoading = false; Raise(nameof(IsEmpty)); }
     }
 
-    /// <summary>
-    /// Sekmeyi "hic yuklenmemis" durumuna dondurup yeniden yukler. Izin verildikten ya da
-    /// kart degistirildikten sonra cagrilir: aksi halde daha once acilmis sekme eski
-    /// listeyi gostermeye devam eder ve kullanici islemin yapilmadigini sanir.
-    /// </summary>
     public Task ReloadAsync()
     {
-        Items.Clear(); IsLoaded = false; Error = null;
+        Items.Clear(); table.Rows.Clear(); BalanceHeadline = null; IsLoaded = false; Error = null;
         return LoadAsync();
+    }
+
+    private static DataTable CreateTable(string tab)
+    {
+        var result = new DataTable(StudentTabFormatter.TabTitle(tab))
+        {
+            Locale = System.Globalization.CultureInfo.GetCultureInfo("tr-TR"),
+            CaseSensitive = false
+        };
+        foreach (var label in StudentTabFormatter.ColumnLabels(tab)) result.Columns.Add(label, typeof(string));
+        return result;
+    }
+
+    private void AddTableRow(StudentDetailRow row)
+    {
+        var cells = row.Cells is { Count: > 0 }
+            ? row.Cells
+            : [new StudentDetailCell("Açıklama", row.Summary)];
+        foreach (var cell in cells)
+            if (!table.Columns.Contains(cell.Label)) table.Columns.Add(cell.Label, typeof(string));
+
+        var data = table.NewRow();
+        foreach (var cell in cells) data[cell.Label] = cell.Value;
+        table.Rows.Add(data);
     }
 }
 
@@ -81,9 +105,13 @@ public sealed record LeaveBehaviorOption(string Name, string Value);
 public sealed class StudentsViewModel : ObservableObject, IDisposable
 {
     private readonly IStudentApiClient api;
+    private readonly ISettingsApiClient? settingsApi;
     private readonly IShellNavigationService navigation;
     private readonly HashSet<string> permissions;
     private readonly ICardReadEventSource cardReadSource;
+    private readonly IFileDialogService fileDialog;
+    private readonly ITuitionApiClient? statementApi;
+    private readonly IStatementFileDialog? statementDialogs;
     private readonly bool task43Available;
     /// <summary>
     /// Arayuz is parcaciginin baglami. Gecikmeli arama (DebounceSearch) bir havuz is
@@ -95,12 +123,18 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private readonly SynchronizationContext? uiContext;
     private CancellationTokenSource? searchDelay;
     private string? search, studentNo, cardNumber, firstName, lastName, classId, sectionId, departmentId, errorMessage;
-    private bool? isActive = true;
+    // Varsayilan "Tümü": once "Aktif" ile aciliyordu ve pasif ogrenci listede HIC
+    // gorunmuyordu. Kasada adi gecen bir ogrenciyi burada bulamamak (saha: "Yiğithan
+    // Eker kasada var, ogrencilerde yok") tam olarak bundan kaynaklaniyordu.
+    private bool? isActive;
     private bool isLoading, isOffline, isQuickDetailOpen, isDetailOpen, isFormOpen, isCardWorkflowOpen;
     private string? cardWorkflowMessage, infoMessage;
     private bool isDeleteArmed;
     private CancellationTokenSource? cardReadOperation;
-    private int page = 1, pageSize = 50, totalCount;
+    // Sayfa boyutu sunucunun izin verdigi ust sinir (200): 50 iken tipik bir okulun
+    // sicili ikinci/ucuncu sayfaya tasiyor, kullanici listede olmayan ogrenciyi "kayit
+    // yok" saniyordu (saha: "kasada var, ogrencilerde yok").
+    private int page = 1, pageSize = 200, totalCount, detailRequestVersion;
     private StudentListItem? selectedStudent;
     private StudentDetails? details;
     private StudentDetailTabViewModel? selectedTab;
@@ -114,6 +148,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private byte[]? photoBytes, pendingPhoto;
     private string? pendingPhotoName, photoError;
     private bool photoRemoved, lookupsLoaded;
+    private StudentFormSettings studentFormSettings = new();
     private ImageSource? photoImage;
     private DateTime? formBirthDate;
     private string formStudentNo = "", formFirstName = "", formLastName = "";
@@ -123,14 +158,16 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private string? formParentName, formParentPhone;
     private Guid? parentId;
     private string? savedParentName, savedParentPhone;
-    private readonly IFileDialogService fileDialog;
 
     public StudentsViewModel(IStudentApiClient api, IShellNavigationService navigation, IEnumerable<string> permissions,
-        bool task43Available = false, ICardReadEventSource? cardReadSource = null, IFileDialogService? fileDialog = null)
+        bool task43Available = false, ICardReadEventSource? cardReadSource = null, IFileDialogService? fileDialog = null,
+        ITuitionApiClient? statementApi = null, IStatementFileDialog? statementDialogs = null,
+        ISettingsApiClient? settingsApi = null)
     {
-        this.api = api; this.navigation = navigation; this.permissions = permissions.ToHashSet(StringComparer.Ordinal);
-        // Varsayilan gercek diyalog: App.xaml.cs'e dokunmadan uretimde calisir; testler kendi sahtesini verir.
+        this.api = api; this.settingsApi = settingsApi; this.navigation = navigation; this.permissions = permissions.ToHashSet(StringComparer.Ordinal);
         this.fileDialog = fileDialog ?? new FileDialogService();
+        this.statementApi = statementApi;
+        this.statementDialogs = statementDialogs;
         FormClass = new LookupPickerViewModel(LookupKind.Class, api);
         FormSection = new LookupPickerViewModel(LookupKind.Section, api);
         FormDepartment = new LookupPickerViewModel(LookupKind.Department, api);
@@ -151,7 +188,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         SaveStudentCommand = new AsyncCommand(SaveAsync, () => CanWrite && IsFormOpen);
         DeactivateCommand = new AsyncCommand(() => SetActiveAsync(false, "Öğrenci pasife alınamadı."), () => CanWrite && Details?.IsActive == true);
         ActivateCommand = new AsyncCommand(() => SetActiveAsync(true, "Öğrenci aktifleştirilemedi."), () => CanWrite && Details?.IsActive == false);
-        DeleteCommand = new AsyncCommand(DeleteAsync, () => CanDeactivate && Details is not null);
+        DeleteCommand = new AsyncCommand(DeleteAsync, () => CanDeactivate && Details is { IsDeleted: false });
+        RestoreCommand = new AsyncCommand(RestoreAsync, () => CanWrite && Details?.IsDeleted == true);
         CancelDeleteCommand = new RelayCommand(() => IsDeleteArmed = false, () => IsDeleteArmed);
         // "İzin Ver" artik dogrudan kaydetmez, FORMU ACAR: tarih ve davranis
         // kullaniciya sorulur. Once hicbir sey sorulmadan bugun icin kayit aciliyordu.
@@ -171,8 +209,11 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         HistoryLastYearCommand = new RelayCommand(() => SetSchoolYear(-1));
         HistoryAllCommand = new RelayCommand(SetAllTime);
         OpenSmsCommand = new RelayCommand(OpenSms, () => CanSendSms && (SelectedStudent is not null || Details is not null));
-        // Eski programdaki "Sicil Listesi" disa aktarimi: Raporlar'a Sicil Listesi secili gider; CSV/Excel/PDF orada.
+        // Sicil listesinin tamamini Raporlar ekranina acar; secili ogrencinin veliye verilecek
+        // ekstresi ise alt detay panelindeki ayri PDF dugmesinden dogrudan kaydedilir.
         ExportCommand = new RelayCommand(() => navigation.Navigate($"{ShellRoutes.Reports}/{Yemekhane.Application.Reports.ReportType.StudentList}"), () => CanExport);
+        ExportStatementPdfCommand = new AsyncCommand(ExportStatementPdfAsync,
+            () => CanExportStatement && Details is not null && !IsLoading);
     }
 
     public ObservableCollection<StudentListItem> Students { get; } = [];
@@ -235,6 +276,26 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private string? periodsError;
     public IReadOnlyList<StudentStatusOption> Statuses { get; } =
         [new("Tümü", null), new("Aktif", true), new("Pasif", false)];
+
+    /// <summary>
+    /// Silinen öğrenciler ayrı bir görünümdedir: normal listede görünmezler, buradan
+    /// bulunup Geri Al ile kartsız olarak geri alınırlar.
+    /// </summary>
+    public bool ShowDeleted
+    {
+        get => showDeleted;
+        set
+        {
+            if (!Set(ref showDeleted, value)) return;
+            Raise(nameof(ShowRestore));
+            _ = LoadAsync(1);
+        }
+    }
+
+    private bool showDeleted;
+
+    /// <summary>Geri Al yalnızca silinmiş öğrenci seçiliyken görünür.</summary>
+    public bool ShowRestore => CanWrite && Details?.IsDeleted == true;
     public string? Search { get => search; set { if (Set(ref search, value)) DebounceSearch(); } }
     public string? StudentNo { get => studentNo; set => Set(ref studentNo, value); }
     public string? CardNumber { get => cardNumber; set { if (Set(ref cardNumber, value)) (SearchByReadCardCommand as AsyncCommand)?.Refresh(); } }
@@ -260,7 +321,19 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         (PreviousPageCommand as AsyncCommand)?.Refresh();
         (NextPageCommand as AsyncCommand)?.Refresh();
     }
-    public string PageText => $"Sayfa {Page} / {Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize))} • {TotalCount:N0} kayıt";
+    /// <summary>
+    /// Sayfa bilgisi. Birden fazla sayfa varsa bu ACIKCA yazilir: kullanici aradigi
+    /// ogrenciyi ilk sayfada bulamayinca kaydin hic olmadigini saniyordu.
+    /// </summary>
+    public string PageText
+    {
+        get
+        {
+            var pages = Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
+            var text = $"Sayfa {Page} / {pages} • {TotalCount:N0} kayıt";
+            return pages > 1 ? text + " · diğer sayfalar için Sonraki" : text;
+        }
+    }
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) Raise(nameof(ShowGrid)); } }
     public bool IsOffline { get => isOffline; private set => Set(ref isOffline, value); }
     public string? ErrorMessage { get => errorMessage; private set { if (Set(ref errorMessage, value)) Raise(nameof(HasError)); } }
@@ -350,6 +423,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             IsDeleteArmed = false;
             Raise(nameof(CardActionText)); Raise(nameof(ShowReactivateCard)); Raise(nameof(ShowDeactivate)); Raise(nameof(ShowActivate));
             Raise(nameof(FormSubtitle)); Raise(nameof(DetailDepartmentName)); Raise(nameof(DetailJobName)); Raise(nameof(PhotoPath)); Raise(nameof(DetailCardNumber));
+            Raise(nameof(DetailPanelTitle));
+            (ExportStatementPdfCommand as AsyncCommand)?.Refresh();
             RefreshCommands();
         }
     }
@@ -381,9 +456,18 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public bool CanManageCards => permissions.Contains("cards.manage");
     public bool CanReadSensitive => permissions.Contains("students.sensitive.read");
     public bool CanGrantEntitlement => task43Available && permissions.Contains("entitlements.bulk");
+    public bool ShowDepartmentField => studentFormSettings.ShowDepartment;
+    public bool ShowJobField => studentFormSettings.ShowJob;
+    public bool ShowAddressField => studentFormSettings.ShowAddress;
+    public bool ShowFingerprintIdField => studentFormSettings.ShowFingerprintId;
+    public bool ShowPidField => studentFormSettings.ShowPid;
     public bool CanSendSms => permissions.Contains("sms.send") && navigation.IsAvailable(ShellRoutes.Sms);
     /// <summary>Raporlar rotasi yalnizca reports.read ile acilir (App.xaml.cs); dugme de ona bagli.</summary>
     public bool CanExport => navigation.IsAvailable(ShellRoutes.Reports);
+    public bool CanExportStatement => permissions.Contains("reports.export") && statementApi is not null && statementDialogs is not null;
+    public string DetailPanelTitle => Details is null
+        ? "Öğrenci kayıtları"
+        : $"{Details.FirstName} {Details.LastName} · Kayıtlar";
     public string GrantEntitlementReason => CanGrantEntitlement ? string.Empty : "Toplu hakediş yetkisi gerekiyor.";
 
     /// <summary>
@@ -518,6 +602,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public ICommand DeactivateCommand { get; }
     public ICommand ActivateCommand { get; }
     public ICommand DeleteCommand { get; }
+    public ICommand RestoreCommand { get; }
     public ICommand CancelDeleteCommand { get; }
     public ICommand GiveLeaveCommand { get; }
     public ICommand SaveLeaveCommand { get; }
@@ -534,6 +619,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public ICommand SelectPhotoCommand { get; }
     public ICommand RemovePhotoCommand { get; }
     public ICommand ExportCommand { get; }
+    public ICommand ExportStatementPdfCommand { get; }
 
     /// <summary>
     /// Dugmelerin etkin/pasif durumu Details, SelectedStudent ve IsFormOpen'a baglidir; WPF
@@ -558,9 +644,30 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         (RemovePhotoCommand as RelayCommand)?.Refresh();
     }
 
-    public async Task InitializeAsync() => await LoadAsync(1);
+    public async Task InitializeAsync()
+    {
+        await RefreshStudentFormSettingsAsync();
+        await LoadAsync(1);
+    }
+
+    private async Task RefreshStudentFormSettingsAsync()
+    {
+        if (settingsApi is null) return;
+        try
+        {
+            studentFormSettings = await settingsApi.GetStudentFormAsync();
+            Raise(nameof(ShowDepartmentField)); Raise(nameof(ShowJobField)); Raise(nameof(ShowAddressField));
+            Raise(nameof(ShowFingerprintIdField)); Raise(nameof(ShowPidField));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException or LoginRequiredException or ApiRequestException)
+        {
+            // Tercihler yüklenemezse geriye uyumlu varsayılan kullanılır: tüm alanlar görünür.
+        }
+    }
+
     public void HandleRoute(string route)
     {
+        _ = RefreshStudentFormSettingsAsync();
         if (route == ShellRoutes.StudentsCreate) OpenCreate();
         else if (route is ShellRoutes.Cards or ShellRoutes.CardReader) _ = OpenCardWorkflowAsync();
         else if (route.StartsWith(ShellRoutes.StudentDetail + "/", StringComparison.Ordinal)
@@ -579,18 +686,22 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         // neden hicbir sey olmadigini anlamiyordu. Kural artik ekranda yaziyor.
         if (!string.IsNullOrWhiteSpace(Search) && Search.Trim().Length < 2)
         {
-            ErrorMessage = "Aramak için en az 2 karakter yazın (ad, soyad, öğrenci no ya da kart no).";
+            ErrorMessage = "Aramak için en az 2 karakter yazın (ad, soyad, no, kart, sınıf, şube, bölüm, görev ya da veli).";
             return;
         }
         IsLoading = true; ErrorMessage = null; IsOffline = false;
         // Liste yenilenirken DataGrid secimi null'a ceker (Clear); ayni ogrenci yeni sayfada
         // da varsa secim GERI VERILIR. Aksi halde "Yenile"ye her basista form bosaliyordu.
         var keepId = SelectedStudent?.Id;
+        // Ekranda TEK arama kutusu vardir. Sinif/sube/bolum dahil metin eslesmeleri
+        // repository'deki Search kapsamindadir; rota ile gelen kimlik filtreleri korunur.
         try
         {
-            var result = await api.SearchAsync(new StudentQuery(Search: Empty(Search), StudentNo: Empty(StudentNo), CardNumber: Empty(CardNumber),
-                FirstName: Empty(FirstName), LastName: Empty(LastName), IsActive: IsActive, Page: targetPage, PageSize: PageSize,
-                ClassId: routeClassId, ClassName: Empty(ClassId), SectionName: Empty(SectionId), DepartmentName: Empty(DepartmentId), GroupId: routeGroupId));
+            var result = await api.SearchAsync(new StudentQuery(Search: Empty(Search), StudentNo: Empty(StudentNo),
+                CardNumber: Empty(CardNumber), FirstName: Empty(FirstName), LastName: Empty(LastName),
+                IsActive: ShowDeleted ? null : IsActive,
+                Page: targetPage, PageSize: PageSize, ClassId: routeClassId, GroupId: routeGroupId,
+                DeletedOnly: ShowDeleted));
             Students.Clear(); foreach (var item in result.Items) Students.Add(item);
             Page = result.Page; TotalCount = result.TotalCount;
             if (keepId.HasValue) SelectedStudent = Students.FirstOrDefault(x => x.Id == keepId.Value);
@@ -599,6 +710,29 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException)
         { IsOffline = true; ErrorMessage = "Öğrenci verileri alınamadı. API bağlantısını kontrol edin."; }
         finally { IsLoading = false; Raise(nameof(IsEmpty)); }
+    }
+
+    private async Task ExportStatementPdfAsync()
+    {
+        if (Details is null || statementApi is null || statementDialogs is null) return;
+        var from = AsDate(HistoryFrom) ?? new DateOnly(2000, 1, 1);
+        var to = AsDate(HistoryTo) ?? DateOnly.FromDateTime(DateTime.Today);
+        if (to < from) { ErrorMessage = "PDF için bitiş tarihi başlangıçtan önce olamaz."; return; }
+
+        var identity = string.IsNullOrWhiteSpace(Details.StudentNo) ? Details.Id.ToString("N") : Details.StudentNo;
+        var safeIdentity = new string(identity.Where(char.IsLetterOrDigit).ToArray());
+        var path = statementDialogs.ChoosePdfPath($"ekstre-{safeIdentity}-{from:yyyyMMdd}");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        ErrorMessage = InfoMessage = null;
+        try
+        {
+            await statementApi.DownloadStatementPdfAsync(Details.Id, from, to, path);
+            InfoMessage = "Öğrenci ekstresi PDF olarak kaydedildi: " + path;
+        }
+        catch (ApiRequestException ex) { ErrorMessage = ex.Message; }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException or LoginRequiredException)
+        { ErrorMessage = "PDF kaydedilemedi. Bağlantıyı ve dosya yolunu kontrol edin."; }
     }
 
     private void DebounceSearch()
@@ -627,20 +761,27 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private async Task OpenDetailByIdAsync(Guid id)
     {
         IsFormOpen = false;
-        Details = await api.GetAsync(id); IsQuickDetailOpen = false; IsDetailOpen = true;
+        var version = ++detailRequestVersion;
+        var loaded = await api.GetAsync(id);
+        // Yalnızca son detay isteği ekrana yazabilir. Bu, hem liste tıklamalarında hem
+        // art arda gelen doğrudan rotalarda geç dönen eski öğrenciyi engeller.
+        if (version != detailRequestVersion) return;
+        if (SelectedStudent is not null && SelectedStudent.Id != id) return;
+        Details = loaded; IsQuickDetailOpen = false; IsDetailOpen = true;
         // Rota ile (orn. Panel'den) acilan detay listede secili olmayabilir; form yine de
         // bu ogrenciyi gostermeli, onceki secimin adini degil.
         if (SelectedStudent?.Id != id) FillFormFromDetails(Details);
         // Fotograf ve tanim adlari (Bolum/Gorev) detayla birlikte gelir; hata olursa panel
         // bos kalir ama ogrenci detayi acilmaya devam eder.
         _ = LoadPhotoAsync(Details);
-        // Donem ozeti detayla birlikte gelir; hata olursa kutu bos kalir ama
-        // ogrenci detayi acilmaya devam eder.
-        _ = LoadPeriodsAsync(id);
+        // Dönem özeti Genel tablonun tarih/hak sütunlarını da besler; önce yüklenir.
+        // Hata olsa bile LoadPeriodsAsync bunu kullanıcıya bildirir ve detay açılmaya devam eder.
+        await LoadPeriodsAsync(id);
+        if (version != detailRequestVersion) return;
         if (!lookupsLoaded) _ = EnsureLookupsAsync();
         Tabs.Clear();
-        Tabs.Add(new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
-            ([new StudentDetailRow($"No: {Details.StudentNo}  |  Ad Soyad: {Details.FirstName} {Details.LastName}  |  Durum: {(Details.IsActive ? "Aktif" : "Pasif")}")])));
+        Tabs.Add(new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>(
+            CreateGeneralRows(Details, Periods))));
         foreach (var name in new[] { "Cards", "Parents", "Entitlements", "Access History", "Leaves", "Holiday/Transfer", "Payments", "Balance", "SMS History", "Audit" })
             Tabs.Add(new StudentDetailTabViewModel(name, () => LoadTabAsync(name, id)));
         SelectedTab = Tabs[0];
@@ -673,9 +814,57 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             await ReloadTabAsync("General");
         }
         SelectedStudent = listed;
-        FillFormFromSelection(listed);
+        // Ad/soyad/numara değişikliği formda ve listede ANINDA görünür: taze kayıt
+        // seçili satırın üzerine yazılır, aksi halde kullanıcı "düzenlenmedi" sanıyordu.
+        FillFormFromDetails(fresh);
         FormNotes = fresh.Notes; Raise(nameof(FormNotes));
+        Raise(nameof(ShowRestore));
         await LoadPhotoAsync(fresh);
+    }
+
+    private static object[] CreateGeneralRows(StudentDetails? details,
+        IEnumerable<EntitlementPeriodViewModel> periods)
+    {
+        var no = details?.StudentNo ?? "";
+        var name = details is null ? "" : $"{details.FirstName} {details.LastName}".Trim();
+        var status = details?.IsActive == true ? "Aktif" : "Pasif";
+        var items = periods.ToArray();
+        if (items.Length == 0)
+        {
+            return
+            [
+                new StudentDetailRow($"No: {no} | Ad Soyad: {name} | Durum: {status} | Aktif hakediş yok",
+                [
+                    new StudentDetailCell("No", no),
+                    new StudentDetailCell("Ad Soyad", name),
+                    new StudentDetailCell("Durum", status),
+                    new StudentDetailCell("Öğün", "Aktif hakediş yok"),
+                    new StudentDetailCell("Başlangıç", "-"),
+                    new StudentDetailCell("Bitiş", "-"),
+                    new StudentDetailCell("Toplam", "0"),
+                    new StudentDetailCell("Kullanılan", "0"),
+                    new StudentDetailCell("Kalan", "0"),
+                    new StudentDetailCell("Yenileme", "-"),
+                    new StudentDetailCell("Hak Durumu", "Hakediş bekleniyor"),
+                ])
+            ];
+        }
+
+        return items.Select(period => (object)new StudentDetailRow(
+            $"{period.MealName}: {period.FirstDate:dd.MM.yyyy} - {period.LastDate:dd.MM.yyyy} | Kalan: {period.RemainingQuantity:N0}",
+            [
+                new StudentDetailCell("No", no),
+                new StudentDetailCell("Ad Soyad", name),
+                new StudentDetailCell("Durum", status),
+                new StudentDetailCell("Öğün", period.MealName),
+                new StudentDetailCell("Başlangıç", period.FirstDate.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture)),
+                new StudentDetailCell("Bitiş", period.LastDate.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture)),
+                new StudentDetailCell("Toplam", period.TotalQuantity.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)),
+                new StudentDetailCell("Kullanılan", period.ConsumedQuantity.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)),
+                new StudentDetailCell("Kalan", period.RemainingQuantity.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)),
+                new StudentDetailCell("Yenileme", period.RenewFrom.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture)),
+                new StudentDetailCell("Hak Durumu", period.DaysLeftText),
+            ])).ToArray();
     }
 
     /// <summary>
@@ -735,8 +924,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         if (index < 0) return;
         var id = Details?.Id ?? Guid.Empty;
         var fresh = key == "General"
-            ? new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>
-                ([new StudentDetailRow($"No: {Details?.StudentNo}  |  Ad Soyad: {Details?.FirstName} {Details?.LastName}  |  Durum: {(Details?.IsActive == true ? "Aktif" : "Pasif")}")]))
+            ? new StudentDetailTabViewModel("General", () => Task.FromResult<IReadOnlyList<object>>(
+                CreateGeneralRows(Details, Periods)))
             : new StudentDetailTabViewModel(key, () => LoadTabAsync(key, id));
         var old = Tabs[index];
         var wasSelected = ReferenceEquals(SelectedTab, old);
@@ -753,6 +942,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     /// </summary>
     private void OpenCreate()
     {
+        detailRequestVersion++;
         IsFormOpen = false; Details = null; ClearForm(); ResetPhotoState(null);
         IsFormOpen = true; IsDetailOpen = true; IsQuickDetailOpen = false;
         _ = PrepareFormAsync(null);
@@ -1000,6 +1190,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         ErrorMessage = ValidateForm(); if (ErrorMessage is not null) return;
         try
         {
+            var isNew = Details is null;
             var saved = await api.SaveAsync(Details?.Id, BuildSaveRequest(Details?.IsActive ?? true));
             string? photoFailure = null;
             // Fotograf kayittan SONRA gider (yeni ogrencide kimlik ancak simdi var). Yukleme
@@ -1019,6 +1210,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             try { await CommitCardAsync(saved.Id); }
             catch (Exception ex) when (IsWriteFailure(ex)) { cardFailure = Describe(ex, "Kart atanamadı."); }
             await RefreshAfterWriteAsync(saved.Id);
+            InfoMessage = isNew
+                ? $"{saved.FirstName} {saved.LastName} kaydedildi."
+                : $"{saved.FirstName} {saved.LastName} bilgileri güncellendi.";
             if (photoFailure is not null) ErrorMessage = "Öğrenci kaydedildi ancak fotoğraf işlenemedi: " + photoFailure;
             if (parentFailure is not null)
                 ErrorMessage = (ErrorMessage is null ? "" : ErrorMessage + " ") + "Öğrenci kaydedildi ancak veli işlenemedi: " + parentFailure;
@@ -1078,10 +1272,30 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
             IsDeleteArmed = false; IsFormOpen = false; Details = null; Tabs.Clear(); SelectedTab = null;
             await LoadAsync(Page);
             SelectedStudent = null; ClearForm(); ResetPhotoState(null); photoBytes = null; ErrorMessage = null;
-            InfoMessage = $"{deleted.StudentNo} numaralı öğrenci ({deleted.FirstName} {deleted.LastName}) silindi.";
+            InfoMessage = $"{deleted.FirstName} {deleted.LastName} silindi; kart zimmeti kaldırıldı ve kart numarası yeniden kullanılabilir. "
+                + "Geri almak için \"Silinenleri göster\" kutusunu işaretleyin.";
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { IsDeleteArmed = false; ErrorMessage = Describe(ex, "Öğrenci silinemedi."); }
     }
+    /// <summary>
+    /// Silinen öğrenciyi geri alır. Öğrenci AKTİF ama KARTSIZ döner: eski kart zimmeti
+    /// silme sırasında serbest bırakıldığı için numara başka öğrenciye verilmiş olabilir.
+    /// </summary>
+    private async Task RestoreAsync()
+    {
+        if (Details is null) return;
+        try
+        {
+            var id = Details.Id;
+            var restored = await api.RestoreAsync(id);
+            ErrorMessage = null;
+            ShowDeleted = false;
+            await RefreshAfterWriteAsync(id);
+            InfoMessage = $"{restored.FirstName} {restored.LastName} geri alındı. Kartsız olarak aktif; gerekirse yeni kart atayın.";
+        }
+        catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Öğrenci geri alınamadı."); }
+    }
+
     /// <summary>Izin formunu bugunun tarihiyle acar.</summary>
     private void OpenLeave()
     {
@@ -1218,7 +1432,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     }
     private void GrantEntitlement()
     {
-        var id = Details?.Id ?? SelectedStudent?.Id;
+        // Kullanıcının en son tıkladığı satır tek kaynaktır. Detay isteği hâlâ eski
+        // öğrenci için dönüyor olsa bile yanlış kişiye hakediş ekranı açılmaz.
+        var id = SelectedStudent?.Id ?? Details?.Id;
         if (id.HasValue) navigation.Navigate($"{ShellRoutes.Entitlements}/{id.Value:D}");
     }
     private void OpenSms()

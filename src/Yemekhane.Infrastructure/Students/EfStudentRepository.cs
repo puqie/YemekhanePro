@@ -18,7 +18,9 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         : this(dbContext, new AuditService(new EfAuditRepository(dbContext, TimeProvider.System), new SystemAuditContext())) { }
     public async Task<PagedResult<StudentListItem>> SearchAsync(StudentQuery query, CancellationToken cancellationToken)
     {
-        var students = dbContext.Students.AsNoTracking();
+        var students = query.DeletedOnly
+            ? dbContext.Students.IgnoreQueryFilters().AsNoTracking().Where(x => x.IsDeleted)
+            : dbContext.Students.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(query.StudentNo)) students = students.Where(x => x.StudentNo == query.StudentNo.Trim());
         // Ad/Soyad/genel arama SearchName uzerinden yapilir, ham sutunlar uzerinden DEGIL:
         // SQLite'in LIKE'i yalnizca ASCII harflerde buyuk/kucuk harf duyarsizdir. Ham
@@ -72,10 +74,18 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
             var term = query.Search.Trim();
             var normalized = TurkishSearchText.Normalize(term);
             var lastNameTerm = " " + normalized;
+            var contains = $"%{term}%";
             students = students.Where(x => x.StudentNo.StartsWith(term)
                 || x.SearchName.StartsWith(normalized) || x.SearchName.Contains(lastNameTerm)
                 || dbContext.StudentCards.Any(card => card.StudentId == x.Id && card.IsActive
-                    && (card.CardNumber.StartsWith(term) || (card.PrintedNumber != null && card.PrintedNumber.StartsWith(term)))));
+                    && (card.CardNumber.StartsWith(term) || (card.PrintedNumber != null && card.PrintedNumber.StartsWith(term))))
+                || dbContext.Set<SchoolClass>().Any(c => c.Id == x.ClassId
+                    && (c.SearchName.Contains(normalized) || EF.Functions.Like(c.Name, contains)))
+                || dbContext.Set<Section>().Any(s => s.Id == x.SectionId && EF.Functions.Like(s.Name, contains))
+                || dbContext.Set<Department>().Any(d => d.Id == x.DepartmentId && EF.Functions.Like(d.Name, contains))
+                || dbContext.Set<Job>().Any(j => j.Id == x.JobId && EF.Functions.Like(j.Name, contains))
+                || dbContext.Parents.Any(parent => parent.StudentId == x.Id && parent.IsActive
+                    && (EF.Functions.Like(parent.Name, contains) || parent.NormalizedPhone.StartsWith(term))));
         }
 
         var total = await students.CountAsync(cancellationToken);
@@ -103,29 +113,24 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
                 dbContext.AccessLogs.Where(x => x.StudentId == student.Id && x.Decision == "ALLOW")
                     .OrderByDescending(x => YemekhaneDbContext.JulianDay(x.Timestamp))
                     .Select(x => (DateTimeOffset?)x.Timestamp).FirstOrDefault(),
-                dbContext.StudentCards.Where(card => card.StudentId == student.Id && card.IsActive).Select(card => card.PrintedNumber).FirstOrDefault()))
+                dbContext.StudentCards.Where(card => card.StudentId == student.Id && card.IsActive).Select(card => card.PrintedNumber).FirstOrDefault(),
+                student.IsDeleted))
             .ToListAsync(cancellationToken);
         return new PagedResult<StudentListItem>(items, query.Page, query.PageSize, total);
     }
 
-    public Task<StudentDetails?> GetAsync(Guid id, CancellationToken cancellationToken) => dbContext.Students.AsNoTracking()
+    public Task<StudentDetails?> GetAsync(Guid id, CancellationToken cancellationToken) => dbContext.Students
+        .IgnoreQueryFilters().AsNoTracking()
         .Where(x => x.Id == id).Select(x => new StudentDetails(x.Id, x.StudentNo, x.NationalId, x.FirstName, x.LastName, x.BirthDate,
-            x.ClassId, x.SectionId, x.DepartmentId, x.JobId, x.FingerprintId, x.Pid, x.Address, x.PhotoPath, x.Notes, x.IsActive, x.RegisteredOn))
+            x.ClassId, x.SectionId, x.DepartmentId, x.JobId, x.FingerprintId, x.Pid, x.Address, x.PhotoPath, x.Notes, x.IsActive, x.RegisteredOn, x.IsDeleted))
         .SingleOrDefaultAsync(cancellationToken);
 
     /// <summary>
-    /// Ogrenci listesinin sayfalama siralamasi. Numaraya gore siralar, ardindan TEKIL
-    /// kimlige gore ayirir.
-    ///
-    /// <para>
-    /// Ikincil anahtar sart: ogrenci numarasi istege bagli oldugundan bircok satir ayni
-    /// BOS numarayi tasiyor ve esit anahtarli satirlarin sirasi SQLite'ta LIMIT/OFFSET
-    /// sorgulari arasinda garanti degil. Tie-break olmadan sayfa 1 ile sayfa 2 sinirinda
-    /// bazi ogrenciler hic gorunmuyor, bazilari iki kez cikiyordu.
-    /// </para>
+    /// Öğrenci listesinin varsayılan sırası: Türkçe arama için normalize edilmiş Ad Soyad,
+    /// ardından tekil kimlik. Böylece bütün sayfalar isim sırasında ve kararlı gelir.
     /// </summary>
     public static IOrderedQueryable<Student> OrderForPaging(IQueryable<Student> students) =>
-        students.OrderBy(x => x.StudentNo).ThenBy(x => x.Id);
+        students.OrderBy(x => x.SearchName).ThenBy(x => x.Id);
 
     /// <summary>
     /// Numara kullanimda mi. SILINMIS ogrenciler de sayilir.
@@ -194,6 +199,41 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         await dbContext.SaveChangesAsync(cancellationToken); return true;
     }
 
+    public async Task<bool> ActivateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var student = await dbContext.Students.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (student is null) return false;
+        if (student.IsDeleted)
+            throw new EntityConflictException("Silinmiş öğrenci doğrudan aktifleştirilemez; Sicil Aktar ile geri alınmalıdır.");
+        if (student.IsActive) return true;
+        var before = Snapshot(student);
+        student.IsActive = true;
+        student.UpdatedAt = DateTimeOffset.UtcNow;
+        LocalOutbox.Enqueue(dbContext, student, LocalOutbox.UpdateStudent, student);
+        auditService.Record(new AuditEntry("StudentActivated", nameof(Student), id.ToString(),
+            "Öğrenci yeniden aktifleştirildi.", Before: before, After: student));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> RestoreAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var student = await dbContext.Students.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (student is null) return false;
+        if (!student.IsDeleted) return true;
+        var before = Snapshot(student);
+        student.IsDeleted = false;
+        student.IsActive = true;
+        student.UpdatedAt = DateTimeOffset.UtcNow;
+        LocalOutbox.Enqueue(dbContext, student, LocalOutbox.UpdateStudent, student);
+        auditService.Record(new AuditEntry("StudentRestored", nameof(Student), id.ToString(),
+            "Silinen öğrenci geri alındı; kart zimmeti olmadan aktif edildi.", Before: before, After: student));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<bool> SoftDeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         var student = await dbContext.Students.SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -212,6 +252,16 @@ public sealed class EfStudentRepository(YemekhaneDbContext dbContext, IAuditServ
         var unusedRights = await dbContext.MealEntitlements.AsNoTracking()
             .Where(x => x.StudentId == id && x.Status == "Active" && x.ConsumedQuantity < x.Quantity)
             .SumAsync(x => (int?)(x.Quantity - x.ConsumedQuantity), cancellationToken) ?? 0;
+
+        var cards = await dbContext.StudentCards.Where(x => x.StudentId == id).ToListAsync(cancellationToken);
+        if (cards.Count > 0)
+        {
+            auditService.Record(new AuditEntry("StudentCardsReleased", nameof(StudentCard), null,
+                $"Öğrenci silindiği için {cards.Count} kart zimmeti kaldırıldı; kart numaraları yeniden kullanılabilir.",
+                cards.Count, Before: cards.Select(card => new { card.Id, card.CardNumber, card.IsActive }).ToArray()));
+            // DeviceCardState ilişkisi Cascade: kart silinince bağlı geçici cihaz durumları da gider.
+            dbContext.StudentCards.RemoveRange(cards);
+        }
 
         student.IsDeleted = true; student.IsActive = false; student.UpdatedAt = DateTimeOffset.UtcNow;
         LocalOutbox.Enqueue(dbContext, student, LocalOutbox.UpdateStudent, student);

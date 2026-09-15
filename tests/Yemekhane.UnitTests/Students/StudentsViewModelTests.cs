@@ -2,7 +2,9 @@ using Yemekhane.Api.Controllers;
 using Yemekhane.Application.Cards;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Leaves;
+using Yemekhane.Application.Statements;
 using Yemekhane.Application.Students;
+using Yemekhane.Application.Tuition;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
 using Yemekhane.Devices.Abstractions;
@@ -570,6 +572,29 @@ public sealed class StudentsViewModelTests
         Assert.True(vm.IsHistoryTabSelected);
     }
 
+    [Fact]
+    public async Task SelectedStudentStatementCanBeSavedAsPdf()
+    {
+        var api = new FakeApi();
+        var statementApi = new FakeStatementApi();
+        var dialog = new FakeStatementDialog("C:\\exports\\ogrenci-ekstresi.pdf");
+        using var vm = new StudentsViewModel(api,
+            new ShellNavigationService([ShellRoutes.Students, ShellRoutes.StudentDetail]),
+            ["students.read", "reports.export"], statementApi: statementApi, statementDialogs: dialog);
+        var row = Row();
+
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.Details is not null);
+        vm.ExportStatementPdfCommand.Execute(null);
+        await Until(() => statementApi.DownloadCount == 1);
+
+        Assert.Equal(row.Id, statementApi.StudentId);
+        Assert.Equal(DateOnly.FromDateTime(vm.HistoryFrom!.Value), statementApi.From);
+        Assert.Equal(DateOnly.FromDateTime(vm.HistoryTo!.Value), statementApi.To);
+        Assert.Equal(dialog.Path, statementApi.Path);
+        Assert.Contains("PDF olarak kaydedildi", vm.InfoMessage);
+    }
+
     private static StudentsViewModel Create(FakeApi api, params string[] permissions) =>
         new(api, new ShellNavigationService([ShellRoutes.Students, ShellRoutes.StudentDetail]), permissions);
     private static StudentListItem Row() => new(Guid.NewGuid(), "42", "CARD42", "Ada", "Yılmaz", "5", "A", "Ortaokul", "+905551234567", true, 1, true, DateTimeOffset.UtcNow);
@@ -625,6 +650,40 @@ public sealed class StudentsViewModelTests
                 ? Task.FromResult(new CardDetails(Guid.NewGuid(), studentId, "42", "Ada Yılmaz", "CARD42", DateTimeOffset.UtcNow, null, null, true))
                 : Task.FromException<CardDetails>(ReactivateFailure);
         }
+    }
+
+    private sealed class FakeStatementApi : ITuitionApiClient
+    {
+        public int DownloadCount { get; private set; }
+        public Guid StudentId { get; private set; }
+        public DateOnly From { get; private set; }
+        public DateOnly To { get; private set; }
+        public string? Path { get; private set; }
+
+        public Task DownloadStatementPdfAsync(Guid studentId, DateOnly startDate, DateOnly endDate, string path,
+            CancellationToken cancellationToken = default)
+        {
+            DownloadCount++; StudentId = studentId; From = startDate; To = endDate; Path = path;
+            return Task.CompletedTask;
+        }
+
+        public Task<PagedResult<TuitionPlanDetails>> PlansAsync(TuitionPlanFilter filter, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task<StudentTuitionSummary> ForStudentAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task<TuitionPlanDetails> SavePlanAsync(SaveTuitionPlanRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task DeletePlanAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<TuitionInstallmentDetails> ApplyPaymentAsync(ApplyTuitionPaymentRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+        public Task<StudentStatement> StatementAsync(Guid studentId, DateOnly startDate, DateOnly endDate,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class FakeStatementDialog(string path) : IStatementFileDialog
+    {
+        public string Path { get; } = path;
+        public string? ChoosePdfPath(string suggestedFileName) => Path;
     }
 
     private sealed class FakeCardSource(bool available) : ICardReadEventSource

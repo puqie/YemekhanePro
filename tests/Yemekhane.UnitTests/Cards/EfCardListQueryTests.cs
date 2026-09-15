@@ -21,17 +21,20 @@ public sealed class EfCardListQueryTests
 
         var result = await db.Query.ListAsync(new CardListQuery(), default);
 
-        Assert.Equal(4, result.TotalCount);
+        // Silinen ogrencinin karti zimmetten dusurulur; listede GORUNMEZ ve numara serbesttir.
+        Assert.Equal(3, result.TotalCount);
         Assert.Equal(3, result.ActiveCount);
         Assert.Equal(1, result.PassiveCount);
-        Assert.Equal(["8350001", "8350002", "8350005", "8350003"], result.Items.Select(x => x.CardNumber));
+        // Sira: ogrenci adi, sonra kart numarasi (ADA -> ALİ'nin iki karti numara sirasinda).
+        Assert.Equal(["8350001", "8350002", "8350005"], result.Items.Select(x => x.CardNumber));
+        Assert.Equal(["ADA YILMAZ", "ALİ KAYA", "ALİ KAYA"], result.Items.Select(x => x.StudentName));
         var ada = result.Items[0];
         Assert.Equal("ADA YILMAZ", ada.StudentName); Assert.Equal("5A", ada.ClassName); Assert.Equal("6296", ada.PrintedNumber);
         Assert.True(ada.IsActive); Assert.True(ada.StudentActive); Assert.Null(ada.ValidTo);
         var lost = result.Items[1];
         Assert.False(lost.IsActive); Assert.Equal("Kayıp", lost.ReplacementReason); Assert.NotNull(lost.ValidTo);
-        // Silinmis ogrencinin karti listede kalir ama ogrencinin pasif oldugu soylenir.
-        Assert.False(result.Items[3].StudentActive);
+        // Silinmis ogrenci hic listelenmez: karti zimmetten dusmustur.
+        Assert.DoesNotContain(result.Items, x => x.StudentDeleted);
     }
 
     [Fact]
@@ -44,7 +47,7 @@ public sealed class EfCardListQueryTests
 
         Assert.Equal("8350002", Assert.Single(passive.Items).CardNumber);
         Assert.Equal(1, passive.TotalCount); Assert.Equal(3, passive.ActiveCount); Assert.Equal(1, passive.PassiveCount);
-        Assert.Equal(3, active.TotalCount);
+        Assert.Equal(2, active.TotalCount);
         Assert.All(active.Items, x => Assert.True(x.IsActive));
     }
 
@@ -53,7 +56,6 @@ public sealed class EfCardListQueryTests
     [InlineData("yılmaz", "8350001")]     // soyad
     [InlineData("6296", "8350001")]       // baski no
     [InlineData("8350005", "8350005")]    // kart no
-    [InlineData("5003", "8350003")]       // ogrenci no
     public async Task SearchMatchesNumberNameCardOrPrintedNumberFromTheStart(string term, string expectedCard)
     {
         await using var db = await Db.CreateAsync();
@@ -68,10 +70,12 @@ public sealed class EfCardListQueryTests
     {
         await using var db = await Db.CreateAsync();
 
-        var second = await db.Query.ListAsync(new CardListQuery(Page: 2, PageSize: 3), default);
+        var first = await db.Query.ListAsync(new CardListQuery(Page: 1, PageSize: 2), default);
+        var second = await db.Query.ListAsync(new CardListQuery(Page: 2, PageSize: 2), default);
 
-        Assert.Equal("8350003", Assert.Single(second.Items).CardNumber);
-        Assert.Equal(4, second.TotalCount);
+        Assert.Equal(["8350001", "8350002"], first.Items.Select(x => x.CardNumber));
+        Assert.Equal("8350005", Assert.Single(second.Items).CardNumber);
+        Assert.Equal(3, second.TotalCount);
         await Assert.ThrowsAsync<RequestValidationException>(() => db.Query.ListAsync(new CardListQuery(Page: 0), default));
         await Assert.ThrowsAsync<RequestValidationException>(() => db.Query.ListAsync(new CardListQuery(PageSize: 201), default));
     }

@@ -208,7 +208,9 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
     private IQueryable<IncomeTransactionDetails> Project(IQueryable<IncomeTransaction> transactions) =>
         from item in transactions
         join type in dbContext.Set<IncomeType>().AsNoTracking() on item.IncomeTypeId equals type.Id
-        join student in dbContext.Students.AsNoTracking() on item.StudentId equals student.Id into students
+        // IgnoreQueryFilters: silinen ogrencinin tahsilati kasada KALIR; adi da gorunmelidir.
+        // Aksi halde satir adsiz/numarasiz gorunuyor ve "bu para kimin" sorusu yanitsiz kaliyordu.
+        join student in dbContext.Students.IgnoreQueryFilters().AsNoTracking() on item.StudentId equals student.Id into students
         from student in students.DefaultIfEmpty()
         select new IncomeTransactionDetails(item.Id, item.OperationId, item.StudentId,
             student == null ? null : student.FirstName + " " + student.LastName, student == null ? null : student.StudentNo, item.CardNumber,

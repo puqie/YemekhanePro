@@ -54,12 +54,9 @@ public sealed class EfYearEndResetService(
         Delete("sms-logs", "SMS kayıtları", context => context.SmsLogs),
         Delete("bulk-operations", "Toplu işlem geçmişi", context => context.BulkOperations),
         Delete("cards", "Öğrenci kartları", context => context.StudentCards),
-        new("students", "Öğrenciler (pasife alınır, silinmez)", YearEndResetActions.Deactivate,
-            (context, cancellationToken) => context.Students.CountAsync(x => x.IsActive, cancellationToken),
-            (context, now, cancellationToken) => context.Students.Where(x => x.IsActive)
-                .ExecuteUpdateAsync(update => update
-                    .SetProperty(x => x.IsActive, false)
-                    .SetProperty(x => x.UpdatedAt, now), cancellationToken)),
+        new("students", "Öğrenciler korunur", YearEndResetActions.Keep,
+            (context, cancellationToken) => Task.FromResult(0),
+            (context, now, cancellationToken) => Task.FromResult(0)),
     ];
 
     public async Task<YearEndResetPreview> PreviewAsync(CancellationToken cancellationToken)

@@ -27,7 +27,8 @@ public sealed class MealEntitlementsViewModelTests
     {
         var api = new FakeApi(); var vm = Create(api); await vm.InitializeAsync(); var studentId = Guid.NewGuid();
         vm.HandleRoute($"{ShellRoutes.Entitlements}/{studentId:D}");
-        Assert.True(vm.IsGrantOpen); Assert.Contains(studentId.ToString("D"), vm.ManualStudentIds);
+        Assert.True(vm.IsGrantOpen);
+        Assert.DoesNotContain(studentId.ToString("D"), vm.ManualStudentIds);
 
         vm.PreviewCommand.Execute(null); await Until(() => vm.HasPreview);
         Assert.Equal(studentId, api.LastPreview!.Target.StudentIds!.Single());
@@ -77,7 +78,7 @@ public sealed class MealEntitlementsViewModelTests
         Assert.Equal([id], api.LastPreview.Target.StudentIds!);
 
         vm.ManualStudentIds = "   "; vm.PreviewCommand.Execute(null); await Until(() => vm.PreviewMessage is not null);
-        Assert.Contains("numara", vm.PreviewMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("öğrenci", vm.PreviewMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

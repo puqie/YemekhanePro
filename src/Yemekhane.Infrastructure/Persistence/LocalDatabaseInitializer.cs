@@ -30,6 +30,13 @@ public sealed class LocalDatabaseInitializer(YemekhaneDbContext dbContext, Local
             await dbContext.Database.OpenConnectionAsync(cancellationToken);
             await ExecuteScalarAsync("PRAGMA journal_mode=WAL;", cancellationToken);
             await dbContext.Database.MigrateAsync(cancellationToken);
+            // Eski sürümlerde silinen öğrencilerin kartları zimmetli kalıyordu. Kart FK'si
+            // DeviceCardState'e Cascade olduğu için bu idempotent temizlik kart numarasını
+            // serbest bırakır ve bağlı geçici cihaz durumlarını da kaldırır.
+            await dbContext.StudentCards
+                .Where(card => dbContext.Students.IgnoreQueryFilters()
+                    .Any(student => student.Id == card.StudentId && student.IsDeleted))
+                .ExecuteDeleteAsync(cancellationToken);
         }, cancellationToken);
 
         var journalMode = await ExecuteScalarAsync("PRAGMA journal_mode;", cancellationToken);

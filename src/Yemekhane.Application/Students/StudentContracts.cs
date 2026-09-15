@@ -17,7 +17,8 @@ public sealed record StudentQuery(
     string? ClassName = null,
     string? SectionName = null,
     string? DepartmentName = null,
-    Guid? GroupId = null);
+    Guid? GroupId = null,
+    bool DeletedOnly = false);
 
 public sealed record StudentListItem(
     Guid Id,
@@ -33,7 +34,8 @@ public sealed record StudentListItem(
     int TodayEntitlement,
     bool HasEnteredToday,
     DateTimeOffset? LastEntryAt,
-    string? PrintedNumber = null);
+    string? PrintedNumber = null,
+    bool IsDeleted = false);
 
 public sealed record StudentDetails(
     Guid Id,
@@ -52,7 +54,8 @@ public sealed record StudentDetails(
     string? PhotoPath,
     string? Notes,
     bool IsActive,
-    DateOnly RegisteredOn);
+    DateOnly RegisteredOn,
+    bool IsDeleted = false);
 
 public sealed record SaveStudentRequest(
     string StudentNo,
@@ -78,6 +81,12 @@ public interface IStudentRepository
     Task<bool> StudentNoExistsAsync(string studentNo, Guid? excludingId, CancellationToken cancellationToken);
     Task<Guid> AddAsync(SaveStudentRequest request, CancellationToken cancellationToken);
     Task<bool> UpdateAsync(Guid id, SaveStudentRequest request, CancellationToken cancellationToken);
+    /// <summary>Yalnızca pasif, silinmemiş öğrenciyi yeniden aktif eder; diğer sicil alanlarına dokunmaz.</summary>
+    Task<bool> ActivateAsync(Guid id, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Bu öğrenci deposu aktifleştirmeyi desteklemiyor.");
+    /// <summary>Soft-delete edilmiş öğrenciyi kart zimmeti olmadan geri getirir.</summary>
+    Task<bool> RestoreAsync(Guid id, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Bu öğrenci deposu geri almayı desteklemiyor.");
     Task<bool> SoftDeleteAsync(Guid id, CancellationToken cancellationToken);
     /// <summary>Yalnizca fotograf yolunu yazar; tam kaydi yeniden gondermek gerekmez.</summary>
     Task<bool> SetPhotoPathAsync(Guid id, string? photoPath, CancellationToken cancellationToken);

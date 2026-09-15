@@ -19,8 +19,28 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
     public EfMealEntitlementRepository(YemekhaneDbContext dbContext)
         : this(dbContext, new AuditService(new EfAuditRepository(dbContext, TimeProvider.System), new SystemAuditContext())) { }
 
-    public async Task<BulkEntitlementResult> UpsertBulkAsync(IReadOnlyCollection<Guid> studentIds, Guid mealTypeId,
-        IReadOnlyCollection<DateOnly> dates, int quantity, string source, string? expectedStateHash, CancellationToken cancellationToken)
+    public Task<BulkEntitlementResult> UpsertBulkAsync(IReadOnlyCollection<Guid> studentIds, Guid mealTypeId,
+        IReadOnlyCollection<DateOnly> dates, int quantity, string source, string? expectedStateHash,
+        CancellationToken cancellationToken) =>
+        UpsertBulkCoreAsync(studentIds, mealTypeId, dates, quantity, source, expectedStateHash,
+            withinTransaction: null, cancellationToken);
+
+    public Task<BulkEntitlementResult> UpsertBulkAtomicAsync(IReadOnlyCollection<Guid> studentIds,
+        Guid mealTypeId, IReadOnlyCollection<DateOnly> dates, int quantity, string source,
+        string? expectedStateHash,
+        Func<BulkEntitlementResult, CancellationToken, Task<BulkEntitlementResult>> withinTransaction,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(withinTransaction);
+        return UpsertBulkCoreAsync(studentIds, mealTypeId, dates, quantity, source,
+            expectedStateHash, withinTransaction, cancellationToken);
+    }
+
+    private async Task<BulkEntitlementResult> UpsertBulkCoreAsync(
+        IReadOnlyCollection<Guid> studentIds, Guid mealTypeId,
+        IReadOnlyCollection<DateOnly> dates, int quantity, string source, string? expectedStateHash,
+        Func<BulkEntitlementResult, CancellationToken, Task<BulkEntitlementResult>>? withinTransaction,
+        CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var validStudentCount = 0;
@@ -63,9 +83,12 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
             After: new { StudentCount = studentIds.Count, DateCount = dates.Count, mealTypeId, quantity, source, Created = created, Updated = updated },
             BulkOperationId: operationId));
         await dbContext.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return new BulkEntitlementResult(studentIds.Count, dates.Count, created, updated,
+        var result = new BulkEntitlementResult(studentIds.Count, dates.Count, created, updated,
             CreatedPerStudent: createdPerStudent);
+        if (withinTransaction is not null)
+            result = await withinTransaction(result, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     /// <summary>
@@ -205,14 +228,14 @@ public sealed class EfMealEntitlementRepository(YemekhaneDbContext dbContext, IA
 
         joined = (query.SortBy.Trim().ToLowerInvariant(), query.Descending) switch
         {
-            ("studentno", false) => joined.OrderBy(x => x.Student.StudentNo).ThenBy(x => x.Right.EntitlementDate),
-            ("studentno", true) => joined.OrderByDescending(x => x.Student.StudentNo).ThenByDescending(x => x.Right.EntitlementDate),
-            ("name", false) => joined.OrderBy(x => x.Student.FirstName).ThenBy(x => x.Student.LastName).ThenBy(x => x.Right.EntitlementDate),
-            ("name", true) => joined.OrderByDescending(x => x.Student.FirstName).ThenByDescending(x => x.Student.LastName).ThenByDescending(x => x.Right.EntitlementDate),
-            ("meal", false) => joined.OrderBy(x => x.MealName).ThenBy(x => x.Right.EntitlementDate),
-            ("meal", true) => joined.OrderByDescending(x => x.MealName).ThenByDescending(x => x.Right.EntitlementDate),
-            (_, false) => joined.OrderBy(x => x.Right.EntitlementDate).ThenBy(x => x.Student.StudentNo),
-            _ => joined.OrderByDescending(x => x.Right.EntitlementDate).ThenBy(x => x.Student.StudentNo)
+            ("studentno", false) => joined.OrderBy(x => x.Student.StudentNo).ThenBy(x => x.Right.EntitlementDate).ThenBy(x => x.Right.Id),
+            ("studentno", true) => joined.OrderByDescending(x => x.Student.StudentNo).ThenByDescending(x => x.Right.EntitlementDate).ThenBy(x => x.Right.Id),
+            ("name", false) => joined.OrderBy(x => x.Student.SearchName).ThenBy(x => x.Right.EntitlementDate).ThenBy(x => x.Right.Id),
+            ("name", true) => joined.OrderByDescending(x => x.Student.SearchName).ThenByDescending(x => x.Right.EntitlementDate).ThenBy(x => x.Right.Id),
+            ("meal", false) => joined.OrderBy(x => x.MealName).ThenBy(x => x.Right.EntitlementDate).ThenBy(x => x.Right.Id),
+            ("meal", true) => joined.OrderByDescending(x => x.MealName).ThenByDescending(x => x.Right.EntitlementDate).ThenBy(x => x.Right.Id),
+            (_, false) => joined.OrderBy(x => x.Right.EntitlementDate).ThenBy(x => x.Student.StudentNo).ThenBy(x => x.Right.Id),
+            _ => joined.OrderByDescending(x => x.Right.EntitlementDate).ThenBy(x => x.Student.StudentNo).ThenBy(x => x.Right.Id)
         };
         var rows = joined.Select(x => new MealEntitlementListItem(x.Right.Id, x.Student.Id, x.Right.EntitlementDate, x.Student.StudentNo,
                        dbContext.StudentCards.Where(c => c.StudentId == x.Student.Id && c.IsActive)

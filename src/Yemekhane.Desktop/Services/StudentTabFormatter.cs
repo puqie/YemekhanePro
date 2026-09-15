@@ -201,28 +201,51 @@ public static class StudentTabFormatter
     public static string TabTitle(string tab) => Titles.TryGetValue(tab, out var title) ? title : tab;
 
     /// <summary>
-    /// Bir kaydi sekmeye ozel alan listesine gore Turkcelestirir.
-    ///
-    /// Bos/null alanlar hic yazilmaz; aksi halde satir "Açıklama: " diye
-    /// biter ve kullanici eksik veri mi hata mi oldugunu anlayamaz.
+    /// Gercek tablo icin sabit ve anlamli sutun basliklari. Genel sekmesi API JSON'u
+    /// olmadigi icin basliklari burada acikca tanimlanir; bilinmeyen sekme guvenli bir
+    /// "Açıklama" sutununa duser.
     /// </summary>
-    public static string Summarize(string tab, JsonElement value)
-    {
-        if (!Layouts.TryGetValue(tab, out var fields))
-            return Fallback(value);
+    public static IReadOnlyList<string> ColumnLabels(string tab) => tab == "General"
+        ? ["No", "Ad Soyad", "Durum"]
+        : Layouts.TryGetValue(tab, out var fields)
+            ? fields.Select(x => x.Label).ToArray()
+            : ["Açıklama"];
 
-        var parts = new List<string>(fields.Length);
+    /// <summary>
+    /// API kaydini hem geriye uyumlu ozet metnine hem de DataGrid'in ayri sutunlarda
+    /// gosterecegi etiket/deger hucrelerine cevirir.
+    /// </summary>
+    public static StudentDetailRow ToRow(string tab, JsonElement value)
+    {
+        var cells = Cells(tab, value);
+        if (cells.Count == 0)
+        {
+            var fallback = Fallback(value);
+            return new StudentDetailRow(fallback, [new StudentDetailCell("Açıklama", fallback)]);
+        }
+
+        return new StudentDetailRow(
+            string.Join(Separator, cells.Select(x => $"{x.Label}: {x.Value}")), cells);
+    }
+
+    /// <summary>
+    /// Bir kaydi sekmeye ozel alan listesine gore Turkcelestirir.
+    /// Bos/null alanlar hic yazilmaz; aksi halde satir "Açıklama: " diye biter.
+    /// </summary>
+    public static string Summarize(string tab, JsonElement value) => ToRow(tab, value).Summary;
+
+    private static List<StudentDetailCell> Cells(string tab, JsonElement value)
+    {
+        if (!Layouts.TryGetValue(tab, out var fields)) return [];
+
+        var cells = new List<StudentDetailCell>(fields.Length);
         foreach (var field in fields)
         {
             if (!value.TryGetProperty(field.Json, out var raw)) continue;
             var text = Format(raw, field);
-            if (!string.IsNullOrWhiteSpace(text))
-                parts.Add($"{field.Label}: {text}");
+            if (!string.IsNullOrWhiteSpace(text)) cells.Add(new StudentDetailCell(field.Label, text));
         }
-
-        // Tanimli alanlarin hicbiri dolu degilse bos satir gostermek yerine
-        // ham dokume duseriz: veri var ama beklenmedik bicimde demektir.
-        return parts.Count > 0 ? string.Join(Separator, parts) : Fallback(value);
+        return cells;
     }
 
     private static string Format(JsonElement raw, Field field)

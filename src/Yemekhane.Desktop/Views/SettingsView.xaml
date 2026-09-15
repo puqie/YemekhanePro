@@ -54,6 +54,18 @@
                                 <StackPanel Grid.Column="2"><TextBlock Style="{StaticResource Label}" Text="Logo dosya yolu"/><TextBox Style="{StaticResource Field}" Text="{Binding LogoPath, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"/></StackPanel>
                             </Grid>
                         </StackPanel></Border>
+                        <Border Style="{StaticResource SettingsCard}"><StackPanel>
+                            <TextBlock Text="Öğrenci Kartı alanları" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="Okulunuzda kullanılmayan alanları kapatın. Veriler silinmez; yalnızca Öğrenci Kartı ve özet formunda gizlenir."
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,3,0,8" TextWrapping="Wrap"/>
+                            <WrapPanel>
+                                <CheckBox Content="Bölüm alanını göster" IsChecked="{Binding ShowDepartment}" IsEnabled="{Binding CanManage}" Margin="0,0,22,8"/>
+                                <CheckBox Content="Görev alanını göster" IsChecked="{Binding ShowJob}" IsEnabled="{Binding CanManage}" Margin="0,0,22,8"/>
+                                <CheckBox Content="Adres alanını göster" IsChecked="{Binding ShowAddress}" IsEnabled="{Binding CanManage}" Margin="0,0,22,8"/>
+                                <CheckBox Content="Parmak izi ID alanını göster" IsChecked="{Binding ShowFingerprintId}" IsEnabled="{Binding CanManage}" Margin="0,0,22,8"/>
+                                <CheckBox Content="PI ID alanını göster" IsChecked="{Binding ShowPid}" IsEnabled="{Binding CanManage}" Margin="0,0,22,8"/>
+                            </WrapPanel>
+                        </StackPanel></Border>
                     </StackPanel></ScrollViewer>
                 </TabItem>
                 <TabItem Header="Bağlantılar">

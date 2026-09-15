@@ -43,6 +43,22 @@ public sealed class StudentsController(StudentService service, StudentPhotoServi
         return CanReadSensitive() ? updated : StudentSensitiveMasker.Mask(updated);
     }
 
+    [HttpPost("{id:guid}/restore")]
+    [PermissionAuthorize(Permissions.StudentsWrite)]
+    public async Task<StudentDetails> Restore(Guid id, CancellationToken cancellationToken)
+    {
+        var restored = await service.RestoreAsync(id, cancellationToken);
+        return CanReadSensitive() ? restored : StudentSensitiveMasker.Mask(restored);
+    }
+
+    [HttpPost("{id:guid}/activate")]
+    [PermissionAuthorize(Permissions.StudentsWrite)]
+    public async Task<StudentDetails> Activate(Guid id, CancellationToken cancellationToken)
+    {
+        var activated = await service.ActivateAsync(id, cancellationToken);
+        return CanReadSensitive() ? activated : StudentSensitiveMasker.Mask(activated);
+    }
+
     [HttpDelete("{id:guid}")]
     [PermissionAuthorize(Permissions.StudentsDeactivate)]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)

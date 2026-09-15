@@ -454,7 +454,7 @@ public sealed class DefinitionsViewModelTests
         var vm = new MealEntitlementsViewModel(api, ["entitlements.manage", "entitlements.bulk"]);
         await vm.InitializeAsync();
         Assert.False(vm.HasGrantMealPrice);
-        var before = vm.MealTypes.ToList();
+        var breakfastBefore = vm.MealTypes.Single(x => x.Name == "Kahvaltı");
 
         // Kullanici Tanimlar'da ucreti girdi; Hakedis ekrani yeniden baslatilmadi.
         api.LunchPrice = 250;
@@ -465,7 +465,7 @@ public sealed class DefinitionsViewModelTests
         Assert.Equal(2, vm.MealTypes.Count);
         Assert.Equal("Öğle Yemeği", vm.GrantMeal?.Name);
         // Degismeyen kayit (Kahvalti) ayni nesne olarak kalir: liste bosaltilip doldurulmadi.
-        Assert.Same(before[1], vm.MealTypes[1]);
+        Assert.Same(breakfastBefore, vm.MealTypes.Single(x => x.Name == "Kahvaltı"));
     }
 
     private static async Task UntilAsync(Func<bool> condition)

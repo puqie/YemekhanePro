@@ -191,42 +191,26 @@
                      tek tek salt okunur isaretlendi. -->
                 <DataGrid x:Name="EntitlementsGrid" Grid.Row="1" ItemsSource="{Binding Items}" SelectionMode="Single" SelectionUnit="Cell"
                     AutoGenerateColumns="False" IsReadOnly="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0"
-                    GridLinesVisibility="Horizontal"
+                    GridLinesVisibility="Horizontal" RowStyle="{StaticResource SelectableDataGridRow}"
+                    local:SelectionRowToggle.IsEnabled="True"
                     EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Yemek hakediş listesi">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="40">
+                        <DataGridTemplateColumn Width="54" CellTemplate="{StaticResource SelectionIndicatorTemplate}" CanUserSort="False">
                             <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate><TextBlock Text="SEÇ" FontSize="{StaticResource FontXs}"/></DataTemplate>
                             </DataGridTemplateColumn.HeaderTemplate>
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              HorizontalAlignment="Center"
-                                              AutomationProperties.Name="Satırı seç"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <!-- TARIH ve OGUN genisletildi: "09.09.2026" 82px'e sigmiyor
-                             ("09.09.202" olarak kesiliyordu), "Ogle Yemegi" de oyle
-                             ("Ogle Yem"). Yer, tek/iki karakter tasiyan SINIF ile
-                             kisa degerli KAYNAK sutunlarindan alindi. -->
-                        <!-- Width="Auto": DataGridCell stilinde her hucrede 22px yatay
-                             dolgu var (Padding 11,0). Sabit piksel verildiginde bu dolgu
-                             metinden calindigi icin "09.09.2026" 95px'te bile
-                             "09.09.202" olarak kesiliyordu. Auto icerigi VE dolguyu
-                             birlikte olcer; kesme kalmaz. -->
-                        <DataGridTextColumn IsReadOnly="True" Header="TARİH" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}" Width="Auto" MinWidth="95"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="56"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="KART NO" Binding="{Binding CardNumber}" Width="Auto" MinWidth="88"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="ÖĞÜN" Binding="{Binding MealName}" Width="Auto" MinWidth="90"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="AD SOYAD" Binding="{Binding StudentName}" Width="*" MinWidth="130" MaxWidth="240"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="50"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="ADET" Binding="{Binding Quantity}" Width="Auto" MinWidth="46"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="KULL." Binding="{Binding ConsumedQuantity}" Width="Auto" MinWidth="46"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="KALAN" Binding="{Binding RemainingQuantity}" Width="Auto" MinWidth="64"/>
-                        <DataGridTextColumn IsReadOnly="True" Header="DURUM" Binding="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=Status}" Width="Auto" MinWidth="62"/>
-                        <!-- Auto: "Hızlı Hakediş" 80px'te "WPF Quic" gibi kesiliyordu. -->
-                        <DataGridTextColumn IsReadOnly="True" Header="KAYNAK" Binding="{Binding Source, Converter={StaticResource EnumText}, ConverterParameter=Source}" Width="Auto" MinWidth="90"/>
+                        <!-- Sade görünüm: karar vermek için gereken alanlar kalır. Kart no ve
+                             teknik kaynak bilgisi öğrenci/denetim ekranlarında görülebilir. -->
+                        <DataGridTextColumn IsReadOnly="True" Header="TARİH" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}" Width="Auto" MinWidth="105"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="70"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="ÖĞRENCİ" Binding="{Binding StudentName}" Width="*" MinWidth="180"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="70"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="ÖĞÜN" Binding="{Binding MealName}" Width="Auto" MinWidth="110"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="HAK" Binding="{Binding Quantity}" Width="Auto" MinWidth="60"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="KULLANILAN" Binding="{Binding ConsumedQuantity}" Width="Auto" MinWidth="90"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="KALAN" Binding="{Binding RemainingQuantity}" Width="Auto" MinWidth="75"/>
+                        <DataGridTextColumn IsReadOnly="True" Header="DURUM" SortMemberPath="Status" Binding="{Binding Status, Converter={StaticResource EnumText}, ConverterParameter=Status}" Width="Auto" MinWidth="90"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <StackPanel Grid.RowSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Hakedişler yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel>
@@ -243,8 +227,8 @@
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PageText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel></Grid>
 
-        <controls:Drawer Grid.RowSpan="5" IsOpen="{Binding IsGrantOpen}" DrawerWidth="400" Title="Hızlı Hakediş" CloseCommand="{Binding CloseGrantCommand}">
-            <StackPanel>
+        <controls:Drawer Grid.RowSpan="5" IsOpen="{Binding IsGrantOpen}" DrawerWidth="560" Title="Hızlı Hakediş" CloseCommand="{Binding CloseGrantCommand}">
+            <StackPanel Margin="4,0,8,8">
                 <TextBlock Text="Hedef" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding TargetTypes}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding TargetType}"/>
                 <StackPanel Visibility="{Binding IsManualTarget, Converter={StaticResource BoolToVisibility}}">
                     <!-- OGRENCI SECIMI: hakedis listesi ogrenci-GUN satiridir, ayni ogrenci 300 gun
@@ -260,11 +244,14 @@
                         </TextBox>
                     </DockPanel>
                     <Grid Margin="0,6,0,0" Visibility="{Binding HasPickerRows, Converter={StaticResource BoolToVisibility}}">
-                        <DataGrid ItemsSource="{Binding StudentPicker}" AutoGenerateColumns="False" IsReadOnly="False"
+                        <DataGrid x:Name="StudentPickerGrid" ItemsSource="{Binding StudentPicker}" AutoGenerateColumns="False" IsReadOnly="False"
                                   CanUserAddRows="False" HeadersVisibility="Column" MaxHeight="170"
+                                  RowStyle="{StaticResource SelectableDataGridRow}"
+                                  local:SelectionRowToggle.IsEnabled="True"
                                   AutomationProperties.Name="Hakediş öğrenci listesi">
                             <DataGrid.Columns>
-                                <DataGridCheckBoxColumn Header="SEÇ" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="46"/>
+                                <DataGridTemplateColumn Header="SEÇ" Width="54"
+                                                        CellTemplate="{StaticResource SelectionIndicatorTemplate}"/>
                                 <DataGridTextColumn IsReadOnly="True" Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="64"/>
                                 <DataGridTextColumn IsReadOnly="True" Header="AD SOYAD" Binding="{Binding Name}" Width="*" MinWidth="120"/>
                                 <DataGridTextColumn IsReadOnly="True" Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="60"/>
@@ -291,23 +278,11 @@
                             Visibility="{Binding HasHiddenSelection, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="{Binding HiddenSelectionWarning}" TextWrapping="Wrap" FontWeight="SemiBold"/>
                     </Border>
-                    <TextBlock Text="Öğrenci numaraları (elle)" Style="{StaticResource Label}" Margin="0,10,0,0"/>
-                    <Border Background="{StaticResource InfoSoftBrush}" Padding="10,8" x:Name="SelectionSummaryPanel"
-                            Visibility="{Binding SelectedItems.Count, Converter={x:Static local:SelectionCountToVisibilityConverter.Instance}}">
-                        <TextBlock x:Name="SelectionSummaryText" TextWrapping="Wrap"
-                                   Text="{Binding SelectedItems.Count, StringFormat=Seçili {0} öğrenciye verilecek.}"/>
+                    <Border Background="{StaticResource InfoSoftBrush}" Padding="10,8" Margin="0,6,0,0" CornerRadius="4"
+                            Visibility="{Binding HasPickerRows, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Öğrenciyi listeden seçin. Tek sonuç bulunduğunda seçim otomatik yapılır."
+                                   TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}"/>
                     </Border>
-                    <!-- Kullanicinin elinde ogrenci KIMLIGI (GUID) yoktur, NUMARASI vardir. Kutu
-                         numara kabul eder (5012, 5013); sunucu numarayi cozer, bilinmeyen numarayi
-                         adiyla reddeder. Kimlik girisi (derin baglanti) da calismaya devam eder. -->
-                    <TextBox x:Name="ManualStudentIdsBox" Text="{Binding ManualStudentIds, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="58"
-                             TextWrapping="Wrap" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"
-                             ToolTip="Öğrenci numaralarını virgülle ayırarak girin (örn. 5012, 5013)."
-                             AutomationProperties.Name="Öğrenci numaraları"
-                             Visibility="{Binding SelectedItems.Count, Converter={x:Static local:SelectionCountToVisibilityConverter.Instance}, ConverterParameter=Invert}"/>
-                    <TextBlock x:Name="ManualStudentIdsHint" Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,4,0,0"
-                               Text="Virgülle ayırarak öğrenci numarası girin (örn. 5012, 5013) ya da listeden satır seçip Hızlı Hakediş'i açın."
-                               Visibility="{Binding SelectedItems.Count, Converter={x:Static local:SelectionCountToVisibilityConverter.Instance}, ConverterParameter=Invert}"/>
                 </StackPanel>
                 <StackPanel Visibility="{Binding IsClassTarget, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Sınıf" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedItem="{Binding GrantClass}"/></StackPanel>
                 <StackPanel Visibility="{Binding IsGradeTarget, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Kademe / sınıf seviyesi" Style="{StaticResource Label}"/><TextBox Text="{Binding Grade}" ToolTip="Örnek: 5"/></StackPanel>
@@ -315,12 +290,14 @@
                 <TextBlock Text="Öğün" Style="{StaticResource Label}"/><ComboBox ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding GrantMeal}"/>
                 <!-- Ogun bedeli Tanimlar ekraninda girilir; sifirsa satir gizli (ucretsiz ogun). -->
                 <TextBlock x:Name="GrantMealPriceText" Text="{Binding GrantMealPriceText}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" Visibility="{Binding HasGrantMealPrice, Converter={StaticResource BoolToVisibility}}"/>
-                <!-- Ucretli ogunde: bedel kasaya OGRENCI BASINA gelir olarak islenebilir ve
-                     veliye bilgi SMS'i gonderilebilir. Once bedel yalnizca ekranda yaziyordu;
-                     kasaya hicbir sey yansimiyordu. -->
-                <StackPanel Margin="0,8,0,0" Visibility="{Binding CanCharge, Converter={StaticResource BoolToVisibility}}">
-                    <CheckBox Content="Ücreti kasaya gelir olarak işle" IsChecked="{Binding ChargeToCash}"
-                              AutomationProperties.Name="Ücreti kasaya gelir olarak işle"/>
+                <!-- Kasa secenegi KAYBOLMAZ: ucretli ogunde etkin, ucretsiz/fiyatsiz ogunde
+                     gorunur ama devre disidir. Kullanici boylece ozelligin eksik oldugunu
+                     sanmaz; once Tanimlar > Ogunler'den ucret girmesi gerektigini gorur. -->
+                <StackPanel Margin="0,8,0,0">
+                    <CheckBox x:Name="ChargeToCashCheckBox" Content="Ücreti kasaya ekle"
+                              IsChecked="{Binding ChargeToCash}" IsEnabled="{Binding CanCharge}"
+                              ToolTip="Öğün ücreti 0'dan büyükse öğrenci başına kasaya gelir kaydı ekler. Devre dışıysa Tanımlar > Öğünler bölümünden ücret girin."
+                              AutomationProperties.Name="Ücreti kasaya ekle"/>
                     <CheckBox Content="Veliye bilgi SMS'i gönder" IsChecked="{Binding NotifyParents}" Margin="0,6,0,0"
                               AutomationProperties.Name="Veliye bilgi SMS'i gönder"/>
                 </StackPanel>
@@ -346,7 +323,10 @@
                 <Separator Margin="0,16"/>
                 <Button Content="Etkileri Önizle" Command="{Binding PreviewCommand}" Style="{StaticResource Primary}" HorizontalAlignment="Left"
                         ToolTip="Uygulamadan önce kaç öğrenciyi, kaç günü ve kaç hakkı etkileyeceğini gösterir."/>
-                <Border Background="{StaticResource InfoSoftBrush}" Padding="12" Margin="0,12,0,0" Visibility="{Binding HasPreview, Converter={StaticResource BoolToVisibility}}"><StackPanel><TextBlock Text="Önizleme" FontWeight="SemiBold"/><TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" Margin="0,5,0,0"/><TextBlock x:Name="PreviewTotalText" Text="{Binding PreviewTotalText}" FontWeight="SemiBold" Margin="0,4,0,0" Visibility="{Binding HasPreviewTotal, Converter={StaticResource BoolToVisibility}}"/><Button Margin="0,10,0,0" Content="Uygula" Command="{Binding ApplyCommand}" Style="{StaticResource Action}" HorizontalAlignment="Left"/></StackPanel></Border>
+                <Border Background="{StaticResource InfoSoftBrush}" Padding="12" Margin="0,12,0,0" Visibility="{Binding HasPreview, Converter={StaticResource BoolToVisibility}}"><StackPanel><TextBlock Text="Önizleme" FontWeight="SemiBold"/><TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" Margin="0,5,0,0"/><TextBlock x:Name="PreviewTotalText" Text="{Binding PreviewTotalText}" FontWeight="SemiBold" Margin="0,4,0,0" Visibility="{Binding HasPreviewTotal, Converter={StaticResource BoolToVisibility}}"/></StackPanel></Border>
+                <!-- Eylem kaybolmaz: onizleme yokken komut CanExecute=false oldugu icin devre disi,
+                     onizleme alindiginda etkinlesir. Kullanici hangi son adimin eksik oldugunu aramaz. -->
+                <Button x:Name="ProcessMealButton" Margin="0,10,0,0" Content="Öğün İşle" Command="{Binding ApplyCommand}" Style="{StaticResource Primary}" HorizontalAlignment="Left" AutomationProperties.Name="Öğün İşle"/>
                 <TextBlock Text="{Binding PreviewMessage}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
             </StackPanel>
         </controls:Drawer>

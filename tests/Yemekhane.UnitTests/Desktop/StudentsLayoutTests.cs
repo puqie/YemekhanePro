@@ -4,7 +4,9 @@ using System.Windows.Input;
 using Yemekhane.Application.Cards;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Leaves;
+using Yemekhane.Application.Statements;
 using Yemekhane.Application.Students;
+using Yemekhane.Application.Tuition;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
 using Yemekhane.Desktop.Views;
@@ -76,6 +78,19 @@ public sealed class StudentsLayoutTests
 
         Assert.Contains("IsCardWorkflowOpen", xaml);
         Assert.Contains("CardWorkflowHost", xaml);
+    }
+
+    [Fact]
+    public void AnaAracCubugundaTekAramaKutusuVardir()
+    {
+        var xaml = File.ReadAllText(Path.Combine(
+            RepositoryRoot(), "src", "Yemekhane.Desktop", "Views", "StudentsView.xaml"));
+
+        Assert.Contains("x:Name=\"StudentSearchBox\"", xaml);
+        Assert.Contains("Ad, soyad, öğrenci no, kart, sınıf, şube, bölüm, görev veya veli", xaml);
+        Assert.DoesNotContain("AutomationProperties.Name=\"Sınıf filtresi\"", xaml);
+        Assert.DoesNotContain("AutomationProperties.Name=\"Şube filtresi\"", xaml);
+        Assert.DoesNotContain("AutomationProperties.Name=\"Bölüm filtresi\"", xaml);
     }
 
     /// <summary>
@@ -289,18 +304,18 @@ public sealed class StudentsLayoutTests
             host.Arrange(new Rect(0, 0, width, height));
             host.UpdateLayout();
 
-            var panel = (FrameworkElement)view.FindName("StudentFormPanel")!;
+            var panel = (FrameworkElement)view.FindName("StudentDetailPanel")!;
             var strip = (FrameworkElement)view.FindName("DetailTabStrip")!;
             var content = (FrameworkElement)view.FindName("DetailTabContent")!;
+            var table = (FrameworkElement)view.FindName("DetailRecordsGrid")!;
             var panelTop = panel.TransformToAncestor(host).Transform(new Point(0, 0)).Y;
             var contentTop = content.TransformToAncestor(host).Transform(new Point(0, 0)).Y;
-            // Satir yukseklikleri hata mesajinda: hangi sabit satirin sistigi bir bakista gorulsun.
-            var rows = string.Join("/", ((Grid)((Border)panel).Child).RowDefinitions.Select(r => $"{r.ActualHeight:F0}"));
-            var detail = $"{width}x{height}: panel {panel.ActualHeight:F0}px, satirlar {rows}, serit {strip.ActualHeight:F0}px, " +
-                         $"icerik ustu {contentTop - panelTop:F0}px, icerik {content.ActualHeight:F0}px";
+            var detail = $"{width}x{height}: panel {panel.ActualHeight:F0}px, serit {strip.ActualHeight:F0}px, " +
+                         $"icerik {content.ActualHeight:F0}px, tablo {table.ActualHeight:F0}px";
             Assert.True(content.ActualHeight >= minContent, $"Sekme icerigi cok kucuk (en az {minContent}px) -> " + detail);
+            Assert.True(table.ActualHeight >= minContent - 10, "Kaydirilabilir tablo alani cok kucuk -> " + detail);
             Assert.True(contentTop + content.ActualHeight <= panelTop + panel.ActualHeight + 0.5,
-                "Sekme icerigi panelin altindan tasiyor -> " + detail);
+                "Sekme icerigi kendi panelinin altindan tasiyor -> " + detail);
         });
 
     /// <summary>
@@ -512,6 +527,42 @@ public sealed class StudentsLayoutTests
                 "Form secimle dolduruldu ama SameStudent korumasi bozuldu.");
         });
 
+    [Fact]
+    public void YenilenenOgrenciEkraniGercekWpfIleRenderEdilebilir() =>
+        UiThread.Run(() =>
+        {
+            var shotDirectory = Environment.GetEnvironmentVariable("YP_SHOT_DIR");
+            if (string.IsNullOrWhiteSpace(shotDirectory)) return;
+
+            var api = new FakeStudentApi();
+            using var vm = new StudentsViewModel(api, new ShellNavigationService([ShellRoutes.Students]),
+                ["students.read", "students.write", "students.deactivate", "cards.manage", "reports.export"],
+                statementApi: new RenderStatementApi(), statementDialogs: new RenderStatementDialog());
+            var selected = SampleItem("LEVENT EFE", "ERGUVAN", "5012", "8350012");
+            vm.Students.Add(selected);
+            vm.Students.Add(SampleItem("AYŞE", "YILMAZ", "5013", "8350013"));
+            vm.Students.Add(SampleItem("CEM", "KAYA", "5014", "8350014"));
+            vm.OpenFullDetailCommand.Execute(selected);
+            vm.SelectedTab = vm.Tabs.First(x => x.Key == "Payments");
+
+            var view = new StudentsView { DataContext = vm };
+            UiThread.ApplyResources(view);
+            var host = new Border { Width = 1440, Height = 900, Child = view,
+                Background = (System.Windows.Media.Brush)view.FindResource("CanvasBrush") };
+            host.Measure(new Size(host.Width, host.Height));
+            host.Arrange(new Rect(0, 0, host.Width, host.Height));
+            host.UpdateLayout();
+
+            var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
+                (int)host.Width, (int)host.Height, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+            bitmap.Render(host);
+            var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+            encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+            Directory.CreateDirectory(shotDirectory);
+            using var stream = File.Create(Path.Combine(shotDirectory, "students-table-after.png"));
+            encoder.Save(stream);
+        });
+
     /// <summary>Bir metnin Segoe UI ile kaplayacagi gercek genislik (px).</summary>
     private static double TextWidth(string text, double fontSize, FontWeight weight)
     {
@@ -564,6 +615,36 @@ public sealed class StudentsLayoutTests
         return directory?.FullName ?? throw new InvalidOperationException("Depo koku bulunamadi.");
     }
 
+    private sealed class RenderStatementApi : ITuitionApiClient
+    {
+        public Task DownloadStatementPdfAsync(Guid studentId, DateOnly startDate, DateOnly endDate, string path,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task<PagedResult<TuitionPlanDetails>> PlansAsync(TuitionPlanFilter filter,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<StudentTuitionSummary> ForStudentAsync(Guid studentId,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<TuitionPlanDetails> SavePlanAsync(SaveTuitionPlanRequest request,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task DeletePlanAsync(Guid id, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<TuitionInstallmentDetails> ApplyPaymentAsync(ApplyTuitionPaymentRequest request,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<StudentStatement> StatementAsync(Guid studentId, DateOnly startDate, DateOnly endDate,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class RenderStatementDialog : IStatementFileDialog
+    {
+        public string? ChoosePdfPath(string suggestedFileName) =>
+            Path.Combine(Path.GetTempPath(), $"{suggestedFileName}.pdf");
+    }
+
     private sealed class FakeStudentApi : IStudentApiClient
     {
         public Task<PagedResult<StudentListItem>> SearchAsync(StudentQuery query, CancellationToken cancellationToken = default) =>
@@ -586,7 +667,15 @@ public sealed class StudentsLayoutTests
         public Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<object>>([]);
+            Task.FromResult<IReadOnlyList<object>>(tab == "Payments"
+            ?
+            [
+                new StudentDetailRow("14.09.2026 09:15 · ₺750,00 · Yemek Hakedişi",
+                [new("Tarih", "14.09.2026 09:15"), new("Tutar", "₺750,00"), new("Gelir Türü", "Yemek Hakedişi"), new("Açıklama", "Eylül dönemi")]),
+                new StudentDetailRow("02.09.2026 08:40 · ₺250,00 · Günlük Yemek",
+                [new("Tarih", "02.09.2026 08:40"), new("Tutar", "₺250,00"), new("Gelir Türü", "Günlük Yemek"), new("Açıklama", "Tek günlük yükleme")]),
+            ]
+            : []);
 
         public Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
 

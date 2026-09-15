@@ -33,7 +33,7 @@ public sealed record EntitlementDetails(Guid Id, Guid StudentId, Guid MealTypeId
 public sealed record MealEntitlementQuery(
     DateOnly? StartsOn = null, DateOnly? EndsOn = null, string? StudentNo = null, string? CardNumber = null,
     string? Name = null, string? ClassName = null, Guid? GroupId = null, Guid? MealTypeId = null,
-    string? Status = null, int Page = 1, int PageSize = 50, string SortBy = "date", bool Descending = true,
+    string? Status = null, int Page = 1, int PageSize = 50, string SortBy = "name", bool Descending = false,
     string? Search = null);
 public sealed record MealEntitlementListItem(Guid Id, Guid StudentId, DateOnly Date, string StudentNo,
     string? CardNumber, string MealName, string StudentName, string? ClassName, int Quantity,
@@ -90,6 +90,25 @@ public interface IMealEntitlementRepository
     Task<BulkEntitlementResult> UpsertBulkAsync(IReadOnlyCollection<Guid> studentIds, Guid mealTypeId,
         IReadOnlyCollection<DateOnly> dates, int quantity, string source, string? expectedStateHash,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Hakediş değişikliklerini ve bunlara bağlı tahsilatı aynı transaction içinde yürütür.
+    /// <paramref name="withinTransaction"/> başarısız olursa hakedişler de geri alınır.
+    /// Varsayılan gövde test/sahte depoları geriye uyumlu tutar; üretim deposu gerçek
+    /// transaction sınırını uygular.
+    /// </summary>
+    async Task<BulkEntitlementResult> UpsertBulkAtomicAsync(IReadOnlyCollection<Guid> studentIds,
+        Guid mealTypeId, IReadOnlyCollection<DateOnly> dates, int quantity, string source,
+        string? expectedStateHash,
+        Func<BulkEntitlementResult, CancellationToken, Task<BulkEntitlementResult>> withinTransaction,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(withinTransaction);
+        var result = await UpsertBulkAsync(studentIds, mealTypeId, dates, quantity, source,
+            expectedStateHash, cancellationToken);
+        return await withinTransaction(result, cancellationToken);
+    }
+
     Task<IReadOnlyList<Guid>> ResolveTargetAsync(EntitlementTarget target, CancellationToken cancellationToken);
     /// <summary>
     /// Ogunun birim ucreti (₺); fiyat satiri TANIMLANMAMISSA <c>null</c>.

@@ -25,10 +25,9 @@ public sealed class MealEntitlementsUiSmokeTests
                 Assert.Equal(DataGridSelectionUnit.Cell, grid.SelectionUnit);
                 // Onay kutusunun duzenlenebilmesi icin tablo salt okunur OLMAMALI.
                 Assert.False(grid.IsReadOnly);
-                // Gorev 3: view'in kendi RowHeight="29" gecersiz kilmasi silindi;
-                // artik DesignSystem.xaml'in DataGrid stili (34) gecerli.
-                // Gorev 9: coklu secim icin bir SEC checkbox kolonu eklendi (11 -> 12).
-                Assert.Equal(34, grid.RowHeight); Assert.Equal(12, grid.Columns.Count);
+                // Sade görünüm: seçim + 9 karar sütunu. Kart ve teknik kaynak bilgisi
+                // öğrenci/denetim ekranlarında kaldığı için ana listede gösterilmez.
+                Assert.Equal(34, grid.RowHeight); Assert.Equal(10, grid.Columns.Count);
             }
             catch (Exception ex) { failure = ex; }
         });

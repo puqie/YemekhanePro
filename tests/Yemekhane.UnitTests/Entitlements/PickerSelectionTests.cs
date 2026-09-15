@@ -48,7 +48,8 @@ public sealed class PickerSelectionTests
         await SearchAsync(vm, "ela");
 
         Assert.DoesNotContain(vm.StudentPicker, x => x.Name.Contains("Ceylin", StringComparison.Ordinal));
-        Assert.DoesNotContain(vm.StudentPicker, x => x.IsSelected);
+        var ela = Assert.Single(vm.StudentPicker);
+        Assert.True(ela.IsSelected);
     }
 
     /// <summary>Yeni aramadan sonra hak YALNIZCA yeni secilen ogrenciye gider.</summary>

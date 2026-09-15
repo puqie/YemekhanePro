@@ -12,6 +12,7 @@ public interface ICardListApiClient
 {
     Task<CardListResult> ListAsync(string? search, bool? isActive, int page, int pageSize,
         CancellationToken cancellationToken = default);
+    Task ActivateStudentAsync(Guid studentId, CancellationToken cancellationToken = default) => Task.CompletedTask;
     Task DeactivateAsync(Guid cardId, string reason, CancellationToken cancellationToken = default);
     Task<CardDetails> ReactivateAsync(Guid cardId, CancellationToken cancellationToken = default);
 }
@@ -28,6 +29,12 @@ public sealed class CardListApiClient(HttpClient client, IJwtSession session) : 
         await EnsureAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<CardListResult>(cancellationToken: cancellationToken)
             ?? throw new InvalidDataException("Kart listesi yanıtı boş döndü.");
+    }
+
+    public async Task ActivateStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        using var response = await client.SendAsync(Request(HttpMethod.Post, $"api/students/{studentId:D}/activate"), cancellationToken);
+        await EnsureAsync(response, cancellationToken);
     }
 
     public async Task DeactivateAsync(Guid cardId, string reason, CancellationToken cancellationToken = default)

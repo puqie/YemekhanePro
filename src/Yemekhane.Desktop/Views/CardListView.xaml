@@ -67,14 +67,14 @@
             <!-- Sutun genislikleri 1300px gorunume gore: BASKI NO sutunu yok (arama onu da kapsar),
                  ISLEM sabit genislikte ki neden kutusu + Onayla + Vazgec kirpilmasin. -->
             <DataGrid x:Name="CardsGrid" Padding="0,0,0,8" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
-                      CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" RowHeaderWidth="0"
+                      CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="True" HeadersVisibility="Column" RowHeaderWidth="0"
                       GridLinesVisibility="Horizontal" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Kart listesi">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" Width="Auto" MinWidth="70"/>
-                    <DataGridTextColumn Header="AD SOYAD" Binding="{Binding StudentName}" Width="Auto" MinWidth="150"/>
-                    <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="55"/>
-                    <DataGridTextColumn Header="KART NO" Binding="{Binding CardNumber}" Width="Auto" MinWidth="95"/>
-                    <DataGridTextColumn Header="DURUM" Binding="{Binding StatusText}" Width="Auto" MinWidth="70">
+                    <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" SortMemberPath="StudentNo" Width="Auto" MinWidth="70"/>
+                    <DataGridTextColumn Header="AD SOYAD" Binding="{Binding StudentName}" SortMemberPath="StudentName" Width="Auto" MinWidth="150"/>
+                    <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" SortMemberPath="ClassName" Width="Auto" MinWidth="55"/>
+                    <DataGridTextColumn Header="KART NO" Binding="{Binding CardNumber}" SortMemberPath="CardNumber" Width="Auto" MinWidth="95"/>
+                    <DataGridTextColumn Header="DURUM" Binding="{Binding StatusText}" SortMemberPath="StatusText" Width="Auto" MinWidth="70">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="FontWeight" Value="SemiBold"/>
@@ -85,14 +85,21 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="GEÇERLİLİK" Binding="{Binding PeriodText}" Width="Auto" MinWidth="150"/>
-                    <DataGridTextColumn Header="NEDEN" Binding="{Binding ReasonText}" Width="*" MinWidth="70"/>
-                    <DataGridTemplateColumn Header="İŞLEM" Width="300">
+                    <DataGridTextColumn Header="GEÇERLİLİK" Binding="{Binding PeriodText}" SortMemberPath="PeriodText" Width="Auto" MinWidth="150"/>
+                    <DataGridTextColumn Header="NEDEN" Binding="{Binding ReasonText}" SortMemberPath="ReasonText" Width="*" MinWidth="70"/>
+                    <DataGridTemplateColumn Header="İŞLEM" Width="420" CanUserSort="False">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Grid>
                                     <!-- Aktif kart: Pasiflestir -> neden + Onayla / Vazgec (iki adim; sunucu nedeni zorunlu tutar). -->
                                     <StackPanel Orientation="Horizontal" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                                        <Button Style="{StaticResource Primary}" Content="Öğrenciyi Aktifleştir" Padding="8,3" Margin="0,0,6,0"
+                                                Visibility="{Binding CanActivateStudent, Converter={StaticResource BoolToVisibility}}"
+                                                ToolTip="Kart zaten aktif; yalnız pasif öğrenci kaydını yeniden aktif eder."
+                                                Command="{Binding DataContext.ActivateStudentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"/>
+                                        <TextBlock Text="Öğrenci silinmiş — Sicil Aktar ile geri alın" Foreground="{StaticResource DangerBrush}"
+                                                   VerticalAlignment="Center" Margin="0,0,8,0"
+                                                   Visibility="{Binding IsDeletedStudent, Converter={StaticResource BoolToVisibility}}"/>
                                         <Button Style="{StaticResource Action}" Content="Pasifleştir" Padding="8,3" Margin="0"
                                                 Visibility="{Binding IsDeactivateIdle, Converter={StaticResource BoolToVisibility}}"
                                                 ToolTip="Kartı pasife alır; turnike artık tanımaz. Neden sorulur."

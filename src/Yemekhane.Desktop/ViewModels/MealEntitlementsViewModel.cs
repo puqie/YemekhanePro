@@ -49,7 +49,9 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     private int page = 1, pageSize = 50, totalCount, totalQuantity, consumedQuantity, remainingQuantity;
     private string quantityText = "1";
     private DateTime? startsOn = DateTime.Today.AddDays(-7), endsOn = DateTime.Today.AddDays(7);
-    private DateTime grantStartsOn = DateTime.Today, grantEndsOn = DateTime.Today;
+    private DateTime grantStartsOn = DateTime.Today.AddDays(1), grantEndsOn = DateTime.Today.AddDays(1);
+    private readonly HashSet<Guid> presetStudentIds = [];
+    private int grantOpenVersion, studentSearchVersion;
     private MealTypeDetails? grantMeal;
     private EntitlementFilterOption? selectedMealFilter, selectedGroupFilter;
     private GroupRecord? grantGroup;
@@ -307,10 +309,13 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         {
             var mealTask = api.MealTypesAsync(); var classTask = api.ClassesAsync(); var groupTask = api.GroupsAsync();
             await Task.WhenAll(mealTask, classTask, groupTask);
-            foreach (var item in mealTask.Result) { MealTypes.Add(item); MealFilters.Add(new(item.Name, item.Id)); }
-            foreach (var item in classTask.Result) Classes.Add(item);
-            foreach (var item in groupTask.Result) { Groups.Add(item); GroupFilters.Add(new(item.Name, item.Id)); }
-            GrantMeal = MealTypes.FirstOrDefault();
+            var defaultMealId = mealTask.Result.Count > 0 ? mealTask.Result[0].Id : (Guid?)null;
+            foreach (var item in mealTask.Result.OrderBy(x => x.Name, TurkishNaturalStringComparer.Instance)) { MealTypes.Add(item); MealFilters.Add(new(item.Name, item.Id)); }
+            foreach (var item in classTask.Result.OrderBy(x => x.Name, TurkishNaturalStringComparer.Instance)) Classes.Add(item);
+            foreach (var item in groupTask.Result.OrderBy(x => x.Name, TurkishNaturalStringComparer.Instance)) { Groups.Add(item); GroupFilters.Add(new(item.Name, item.Id)); }
+            // Liste alfabetik/doğal görünür; varsayılan öğün ise API'nin tanımlı iş sırasını
+            // korur. Böylece sıralama değişikliği mevcut fiyat/öğün varsayımını değiştirmez.
+            GrantMeal = MealTypes.FirstOrDefault(x => x.Id == defaultMealId) ?? MealTypes.FirstOrDefault();
             if (canManage) await LoadAsync(1);
         }
         catch (Exception ex) { HandleError(ex, "Filtre seçenekleri alınamadı."); }
@@ -320,7 +325,36 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     {
         if (!route.StartsWith(ShellRoutes.Entitlements, StringComparison.Ordinal)) return;
         var suffix = route[(ShellRoutes.Entitlements.Length)..].Trim('/');
-        if (Guid.TryParse(suffix, out var studentId)) { ManualStudentIds = studentId.ToString("D"); OpenGrant(); }
+        if (Guid.TryParse(suffix, out var studentId)) _ = OpenGrantForStudentAsync(studentId);
+    }
+
+    private async Task OpenGrantForStudentAsync(Guid studentId)
+    {
+        ResetGrantDraft();
+        var version = grantOpenVersion;
+        presetStudentIds.Add(studentId);
+        IsGrantOpen = true;
+        IsPickerBusy = true;
+        _ = RefreshMealTypesAsync();
+        try
+        {
+            var student = await api.GetStudentAsync(studentId);
+            if (!IsGrantOpen || version != grantOpenVersion) return;
+            presetStudentIds.Remove(studentId);
+            var row = new StudentPickerRowViewModel(student, OnPickerChanged) { IsSelected = true };
+            StudentPicker.Add(row);
+            StudentPickerSearch = row.Name;
+            OnPickerChanged();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException or LoginRequiredException or ApiRequestException or NotSupportedException)
+        {
+            if (version == grantOpenVersion)
+                PreviewMessage = "Öğrenci bilgisi gösterilemedi; hakediş seçilen öğrenci kimliğiyle açıldı.";
+        }
+        finally
+        {
+            if (version == grantOpenVersion) IsPickerBusy = false;
+        }
     }
 
     /// <summary>Satir onay kutusu her degistiginde secili kume yeniden kurulur.</summary>
@@ -424,11 +458,48 @@ public sealed class MealEntitlementsViewModel : ObservableObject
 
     private void OpenGrant()
     {
-        if (SelectedItems.Count > 0) ManualStudentIds = string.Join(", ", SelectedItems.Select(x => x.StudentId).Distinct());
-        IsGrantOpen = true; Preview = null; PreviewMessage = null; StatusMessage = null;
+        var selectedStudents = SelectedItems
+            .GroupBy(x => x.StudentId)
+            .Select(group => group.First())
+            .ToArray();
+        ResetGrantDraft();
+        foreach (var item in selectedStudents)
+            StudentPicker.Add(new StudentPickerRowViewModel(item, OnPickerChanged) { IsSelected = true });
+        OnPickerChanged();
+        IsGrantOpen = true;
         // Ogun ucreti Tanimlar ekraninda degistirilmis olabilir; acilista yuklenen liste eski
         // bedeli gosterirdi. Cekmece hemen acilir, liste arkada tazelenir (beklemek gerekmez).
         _ = RefreshMealTypesAsync();
+    }
+
+    private void ResetGrantDraft()
+    {
+        grantOpenVersion++;
+        studentSearchVersion++;
+        presetStudentIds.Clear();
+        StudentPicker.Clear();
+        StudentPickerSearch = null;
+        IsPickerBusy = false;
+        ManualStudentIds = "";
+        KeepSelectionAcrossSearches = false;
+        TargetType = "Manual";
+        GrantClass = null;
+        GrantGroup = null;
+        Grade = "";
+        GrantStartsOn = DateTime.Today.AddDays(1);
+        GrantEndsOn = GrantStartsOn;
+        DayCountText = "10";
+        QuantityText = "1";
+        IncludeSaturday = false;
+        IncludeSunday = false;
+        ChargeToCash = false;
+        NotifyParents = false;
+        Preview = null;
+        previewRequest = null;
+        PreviewMessage = null;
+        StatusMessage = null;
+        grantOperationId = Guid.NewGuid();
+        OnPickerChanged();
     }
 
     /// <summary>
@@ -600,6 +671,7 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     private async Task SearchStudentsAsync()
     {
         var term = StudentPickerSearch?.Trim();
+        var version = ++studentSearchVersion;
         PreviewMessage = null;
         if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
         { PreviewMessage = "Aramak için en az 2 karakter yazın (ad, soyad, sınıf, öğrenci no ya da kart no)."; return; }
@@ -617,38 +689,53 @@ public sealed class MealEntitlementsViewModel : ObservableObject
             var chosen = KeepSelectionAcrossSearches
                 ? StudentPicker.Where(x => x.IsSelected).ToDictionary(x => x.Id, x => x)
                 : [];
+            if (!KeepSelectionAcrossSearches) presetStudentIds.Clear();
             var result = await api.SearchStudentsAsync(term);
+            // Yalnızca en son arama ekrana yazabilir. Eski ve yavaş bir yanıt yeni
+            // bulunan öğrenciyi değiştirirse yanlış kişiye hak tanımlanabilir.
+            if (version != studentSearchVersion) return;
             StudentPicker.Clear();
             // Tasinan secili satirlar "bu aramada yok" diye isaretlenir; ekran bunlari
             // sari uyari serifinde adiyla gosterir.
             foreach (var row in chosen.Values) { row.MatchesCurrentSearch = false; StudentPicker.Add(row); }
-            foreach (var item in result.Items.Where(x => !chosen.ContainsKey(x.Id)))
+            var matches = result.Items.Where(x => !chosen.ContainsKey(x.Id)).ToArray();
+            foreach (var item in matches)
                 StudentPicker.Add(new StudentPickerRowViewModel(item, OnPickerChanged));
-            if (StudentPicker.Count == chosen.Count) PreviewMessage = "Bu aramayla eşleşen aktif öğrenci bulunamadı.";
+            if (matches.Length == 0) PreviewMessage = "Bu aramayla eşleşen aktif öğrenci bulunamadı.";
+            else if (matches.Length == 1)
+            {
+                var only = StudentPicker.Single(x => x.Id == matches[0].Id);
+                only.IsSelected = true;
+                PreviewMessage = $"Tek sonuç bulundu ve seçildi: {only.Name}.";
+            }
             OnPickerChanged();
         }
-        catch (Exception ex) { PreviewMessage = Friendly(ex, "Öğrenci aranamadı."); }
-        finally { IsPickerBusy = false; }
+        catch (Exception ex)
+        {
+            if (version == studentSearchVersion) PreviewMessage = Friendly(ex, "Öğrenci aranamadı.");
+        }
+        finally
+        {
+            if (version == studentSearchVersion) IsPickerBusy = false;
+        }
     }
 
     private void ClearPicker()
     {
+        studentSearchVersion++;
+        IsPickerBusy = false;
+        presetStudentIds.Clear();
         StudentPicker.Clear();
         StudentPickerSearch = null;
         OnPickerChanged();
     }
 
-    /// <summary>Secim degisince manuel numara kutusu da guncellenir; ikisi tek kaynak olur.</summary>
+    /// <summary>Seçim değiştiğinde özet ve önizleme yenilenir.</summary>
     private void OnPickerChanged()
     {
         Raise(nameof(HasPickerRows)); Raise(nameof(PickerSummary));
         Raise(nameof(HiddenSelectedCount)); Raise(nameof(HasHiddenSelection));
         Raise(nameof(HiddenSelectionWarning));
-        // Yalnizca NUMARASI OLAN secimler kutuya yazilir; numarasiz ogrenci kimligiyle
-        // gonderilir (bkz. BuildGrant). Bos numara yazmak listeyi bozardi.
-        var selected = StudentPicker.Where(x => x.IsSelected && !string.IsNullOrWhiteSpace(x.StudentNo))
-            .Select(x => x.StudentNo).ToArray();
-        if (selected.Length > 0) ManualStudentIds = string.Join(", ", selected);
         Preview = null;
     }
 
@@ -666,13 +753,12 @@ public sealed class MealEntitlementsViewModel : ObservableObject
             || dayCount < 1)
             throw new InvalidOperationException("Gün sayısı 1 veya daha büyük bir tam sayı olmalıdır.");
         var (ids, nos) = ManualStudentInput.Parse(ManualStudentIds);
-        // Listeden secilen ogrencilerin KIMLIGI kullanilir: numarasi olmayan ogrenci
-        // (anasinifi, misafir) numara kutusuna hicbir sey yazamaz ve eskiden bu ekrandan
-        // hakedis alamiyordu.
+        // Listeden veya Öğrenciler ekranındaki derin bağlantıdan gelen kimlikler kullanılır.
+        // Kimlik görünür bir metin kutusuna yazılmaz; kullanıcı yalnızca ad/no satırını görür.
         var picked = StudentPicker.Where(x => x.IsSelected).Select(x => x.Id).ToArray();
-        if (picked.Length > 0) ids = [.. ids.Concat(picked).Distinct()];
+        ids = [.. ids.Concat(presetStudentIds).Concat(picked).Distinct()];
         if (IsManualTarget && ids.Length == 0 && nos.Length == 0)
-            throw new InvalidOperationException("Listeden öğrenci seçin ya da öğrenci numaralarını yazın (örn. 5012, 5013).");
+            throw new InvalidOperationException("Öğrenci arayıp listeden seçim yapın.");
         if (IsClassTarget && GrantClass is null) throw new InvalidOperationException("Sınıf seçilmelidir.");
         if (IsGroupTarget && GrantGroup is null) throw new InvalidOperationException("Grup seçilmelidir.");
         if (IsGradeTarget && string.IsNullOrWhiteSpace(Grade)) throw new InvalidOperationException("Kademe / sınıf seviyesi girilmelidir.");
@@ -739,15 +825,36 @@ public sealed class MealEntitlementRowViewModel(MealEntitlementListItem item, Ac
 /// Hizli Hakedis ogrenci secim satiri. Hakedis listesinden ayridir: orada ayni ogrenci her
 /// gun icin bir kez gorunur, burada her ogrenci TEK satirdir.
 /// </summary>
-public sealed class StudentPickerRowViewModel(StudentListItem item, Action? changed = null) : ObservableObject
+public sealed class StudentPickerRowViewModel : ObservableObject
 {
+    private readonly Action? changed;
     private bool isSelected;
 
-    public Guid Id => item.Id;
-    public string StudentNo => item.StudentNo;
-    public string Name => (item.FirstName + " " + item.LastName).Trim();
-    public string ClassName => string.IsNullOrWhiteSpace(item.ClassName) ? "" : item.ClassName!;
-    public string SectionName => item.SectionName ?? "";
+    public StudentPickerRowViewModel(StudentListItem item, Action? changed = null)
+        : this(item.Id, item.StudentNo, item.FirstName, item.LastName, item.ClassName, item.SectionName, changed) { }
+
+    public StudentPickerRowViewModel(StudentDetails item, Action? changed = null)
+        : this(item.Id, item.StudentNo, item.FirstName, item.LastName, null, null, changed) { }
+
+    public StudentPickerRowViewModel(MealEntitlementListItem item, Action? changed = null)
+        : this(item.StudentId, item.StudentNo, item.StudentName, "", item.ClassName, null, changed) { }
+
+    private StudentPickerRowViewModel(Guid id, string studentNo, string firstName, string lastName,
+        string? className, string? sectionName, Action? changed)
+    {
+        Id = id;
+        StudentNo = studentNo;
+        Name = (firstName + " " + lastName).Trim();
+        ClassName = className ?? "";
+        SectionName = sectionName ?? "";
+        this.changed = changed;
+    }
+
+    public Guid Id { get; }
+    public string StudentNo { get; }
+    public string Name { get; }
+    public string ClassName { get; }
+    public string SectionName { get; }
 
     /// <summary>
     /// Bu satir SON aramanin sonucunda mi geldi. Onceki aramadan tasinan secili satirlar

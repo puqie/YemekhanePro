@@ -38,7 +38,7 @@ public interface ICardRepository
 /// <param name="StudentActive">Pasif/silinmis ogrencinin karti aktif olsa da turnikeden gecemez; ekranda soylenir.</param>
 public sealed record CardListRow(Guid CardId, Guid StudentId, string StudentNo, string StudentName, string? ClassName,
     string CardNumber, string? PrintedNumber, bool IsActive, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo,
-    string? ReplacementReason, bool StudentActive);
+    string? ReplacementReason, bool StudentActive, bool StudentDeleted = false);
 
 /// <param name="IsActive">null = tumu, true = yalnizca aktif, false = yalnizca pasif.</param>
 public sealed record CardListQuery(string? Search = null, bool? IsActive = null, int Page = 1, int PageSize = 50)

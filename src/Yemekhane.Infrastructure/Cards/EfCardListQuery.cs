@@ -15,8 +15,8 @@ namespace Yemekhane.Infrastructure.Cards;
 /// sayaclari suzgecten BAGIMSIZDIR: baslikta "312 aktif, 14 pasif" hep gorunur.
 /// </para>
 /// <para>
-/// Siralama ogrenci numarasi + kart numarasidir: SQLite DateTimeOffset ile ORDER BY yapamaz,
-/// tarih sirasi istenseydi JulianDay gerekirdi; operator zaten ogrenciyi arar.
+/// Kartlar ekraninin varsayilan sirasi ogrenci ad-soyadidir; teknik kart islemleri
+/// icin numara ve durum sutunlari ayrica basliktan siralanabilir.
 /// </para>
 /// </summary>
 public sealed class EfCardListQuery(YemekhaneDbContext db) : ICardListQuery
@@ -31,6 +31,7 @@ public sealed class EfCardListQuery(YemekhaneDbContext db) : ICardListQuery
         var rows =
             from card in db.StudentCards.AsNoTracking()
             join student in db.Students.IgnoreQueryFilters().AsNoTracking() on card.StudentId equals student.Id
+            where !student.IsDeleted
             select new { card, student };
 
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -52,14 +53,14 @@ public sealed class EfCardListQuery(YemekhaneDbContext db) : ICardListQuery
         var passiveCount = await db.StudentCards.AsNoTracking().CountAsync(x => !x.IsActive, cancellationToken);
         var total = await rows.CountAsync(cancellationToken);
         var items = await rows
-            .OrderBy(x => x.student.StudentNo).ThenBy(x => x.card.CardNumber)
+            .OrderBy(x => x.student.SearchName).ThenBy(x => x.card.CardNumber).ThenBy(x => x.card.Id)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
             .Select(x => new CardListRow(x.card.Id, x.student.Id, x.student.StudentNo,
                 x.student.FirstName + " " + x.student.LastName,
                 db.Set<SchoolClass>().Where(c => c.Id == x.student.ClassId).Select(c => c.Name).FirstOrDefault(),
                 x.card.CardNumber, x.card.PrintedNumber, x.card.IsActive, x.card.ValidFrom, x.card.ValidTo,
-                x.card.ReplacementReason, x.student.IsActive && !x.student.IsDeleted))
+                x.card.ReplacementReason, x.student.IsActive && !x.student.IsDeleted, x.student.IsDeleted))
             .ToListAsync(cancellationToken);
         return new CardListResult(items, query.Page, query.PageSize, total, activeCount, passiveCount);
     }

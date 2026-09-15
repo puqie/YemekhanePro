@@ -411,15 +411,14 @@ public static class AiUserGuidePrompt
         gün" (bitiş tarihi değil GÜN SAYISI, iş günü esaslı), "Günlük adet
         (1-10)", "Cumartesi dahil"/"Pazar dahil" onay kutuları. "Etkileri
         Önizle" düğmesi uygulamadan önce "{n} öğrenci • {n} gün • {n} hak
-        ({n} yeni, {n} güncelleme)" gösterir; sonra "Uygula" düğmesi çıkar.
+        ({n} yeni, {n} güncelleme)" gösterir; sonra "Öğün İşle" düğmesi çıkar.
 
-        Öğünün bedeli varsa iki seçenek çıkar: "Ücreti kasaya gelir olarak
-        işle" (öğrenci başına ayrı bir kasa kaydı açılır, tutar = öğün bedeli
-        x gün x günlük adet; kasada öğrenci adıyla görünür ve öğrenci
-        ekstresine düşer) ve "Veliye bilgi SMS'i gönder" (tarih aralığı ve
-        tutar bildirilir). Ücretsiz öğünde bu kutular görünmez. Hakediş
-        "Seçileni İptal Et" ile iptal edilirse ilgili tahsilat da otomatik
-        iptal edilir (silinmez, gerekçesi yazılır).
+        Kasa seçeneği her zaman "Ücreti kasaya ekle" adıyla görünür. Öğün bedeli
+        0'dan büyükse etkinleşir; öğrenci başına ayrı bir kasa kaydı açılır ve tutar
+        öğün bedeli x gün x günlük adet olarak hesaplanır. Seçenek devre dışıysa
+        önce Tanımlar > Öğünler bölümünden ücret girilir. "Veliye bilgi SMS'i gönder"
+        seçeneği ayrıca kullanılabilir. Hakediş "Seçileni İptal Et" ile iptal edilirse
+        ilgili tahsilat da otomatik iptal edilir (silinmez, gerekçesi yazılır).
 
         TEKRAR HAK VERME: Aynı öğrenciye aynı gün ve aynı öğün için tekrar
         hak verilirse İKİNCİ BİR HAK AÇILMAZ; var olan kayıt güncellenir

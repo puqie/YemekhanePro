@@ -29,8 +29,8 @@ public sealed class YearEndResetServiceTests
         var preview = await fixture.Service.PreviewAsync(CancellationToken.None);
 
         var items = preview.Items.ToDictionary(item => item.Key, item => item);
-        Assert.Equal(1, items["students"].Count);
-        Assert.Equal(YearEndResetActions.Deactivate, items["students"].Action);
+        Assert.Equal(0, items["students"].Count);
+        Assert.Equal(YearEndResetActions.Keep, items["students"].Action);
         Assert.Equal(1, items["cards"].Count);
         Assert.Equal(1, items["entitlements"].Count);
         Assert.Equal(1, items["meal-usages"].Count);
@@ -43,9 +43,9 @@ public sealed class YearEndResetServiceTests
         Assert.DoesNotContain("income", items.Keys);
         Assert.DoesNotContain("balance-entries", items.Keys);
         Assert.All(items.Values.Where(x => x.Key != "students"), x => Assert.Equal(YearEndResetActions.Delete, x.Action));
-        Assert.Equal(8, preview.Total);
+        Assert.Equal(7, preview.Total);
         Assert.Equal(7, preview.DeletedTotal);
-        Assert.Equal(1, preview.DeactivatedTotal);
+        Assert.Equal(0, preview.DeactivatedTotal);
     }
 
     [Fact]
@@ -73,9 +73,9 @@ public sealed class YearEndResetServiceTests
 
         Assert.Equal(1, fixture.Backup.Calls);
         Assert.Equal("yedek-2026-09-08.zip", result.BackupFileName);
-        Assert.Equal(8, result.Total);
+        Assert.Equal(7, result.Total);
         Assert.Equal(7, result.DeletedTotal);
-        Assert.Equal(1, result.DeactivatedTotal);
+        Assert.Equal(0, result.DeactivatedTotal);
 
         // Silinen isletim verisi.
         Assert.Equal(0, await fixture.Db.StudentCards.CountAsync());
@@ -86,9 +86,9 @@ public sealed class YearEndResetServiceTests
         Assert.Equal(0, await fixture.Db.DeviceCardStates.CountAsync());
         Assert.Equal(0, await fixture.Db.Set<StudentLeave>().CountAsync());
 
-        // Korunan: sicil (pasif), veli, tahsilat, bakiye.
+        // Korunan: aktif öğrenci sicili, veli, tahsilat, bakiye.
         var student = await fixture.Db.Students.SingleAsync();
-        Assert.False(student.IsActive);
+        Assert.True(student.IsActive);
         Assert.False(student.IsDeleted);
         Assert.Equal("1001", student.StudentNo);
         Assert.Equal(1, await fixture.Db.Parents.CountAsync());
@@ -104,7 +104,7 @@ public sealed class YearEndResetServiceTests
 
         var audit = Assert.Single(await fixture.Db.AuditLogs.Where(x => x.Action == "YearEndReset").ToListAsync());
         Assert.Contains("7 kayıt silindi", audit.Description, StringComparison.Ordinal);
-        Assert.Contains("1 öğrenci pasife alındı", audit.Description, StringComparison.Ordinal);
+        Assert.Contains("0 öğrenci pasife alındı", audit.Description, StringComparison.Ordinal);
         Assert.Contains("yedek-2026-09-08.zip", audit.Description, StringComparison.Ordinal);
     }
 

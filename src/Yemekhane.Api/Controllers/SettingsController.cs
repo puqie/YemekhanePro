@@ -18,6 +18,11 @@ public sealed class SettingsController(ISettingsService settings, BackupService 
     [PermissionAuthorize(Permissions.SettingsRead)]
     public Task<SettingsDocument> Get(CancellationToken cancellationToken) => settings.GetAsync(cancellationToken);
 
+    [HttpGet("student-form")]
+    [PermissionAuthorize(Permissions.StudentsRead)]
+    public async Task<StudentFormSettings> GetStudentForm(CancellationToken cancellationToken) =>
+        (await settings.GetAsync(cancellationToken)).StudentForm;
+
     [HttpPut]
     [PermissionAuthorize(Permissions.SettingsManage)]
     public Task<SaveSettingsResult> Save(SaveSettingsRequest request, CancellationToken cancellationToken) =>

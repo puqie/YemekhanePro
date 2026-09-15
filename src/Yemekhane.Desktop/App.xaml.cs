@@ -189,7 +189,10 @@ public partial class App : System.Windows.Application, IDisposable
             : null;
         var tracking = new DailyTrackingViewModel(new DailyTrackingApiClient(httpClient, session), realtimeClient,
             new FileDailyTrackingPreferences(), new SystemTrackingSoundPlayer());
-        students = new StudentsViewModel(new StudentApiClient(httpClient, session), navigation, permissions);
+        var tuitionApi = new TuitionApiClient(httpClient, session);
+        var settingsApi = new SettingsApiClient(httpClient, session);
+        students = new StudentsViewModel(new StudentApiClient(httpClient, session), navigation, permissions,
+            statementApi: tuitionApi, statementDialogs: new StatementFileDialog(), settingsApi: settingsApi);
         var entitlementBulk = new BulkOperationWizardViewModel(new BulkOperationApiClient(httpClient, session), permissions);
         var calendarBulk = new BulkOperationWizardViewModel(new BulkOperationApiClient(httpClient, session), permissions);
         entitlements = new MealEntitlementsViewModel(new MealEntitlementApiClient(httpClient, session), permissions, entitlementBulk);
@@ -204,7 +207,6 @@ public partial class App : System.Windows.Application, IDisposable
             : null;
         sms = new SmsViewModel(new SmsApiClient(httpClient, session), permissions);
         // Ucret plani ve ekstre kasanin sekmeleridir; yetkisi olmayana hic olusturulmaz.
-        var tuitionApi = new TuitionApiClient(httpClient, session);
         var tuition = permissions.Contains("cash.read")
             ? new TuitionViewModel(tuitionApi, permissions, new DefinitionsApiClient(httpClient, session))
             : null;
@@ -214,7 +216,7 @@ public partial class App : System.Windows.Application, IDisposable
         cash = new CashViewModel(new CashApiClient(httpClient, session), permissions, navigation: navigation,
             tuition: tuition, statement: statement);
         reports = new ReportsViewModel(new ReportApiClient(httpClient, session), permissions);
-        settings = new SettingsViewModel(new SettingsApiClient(httpClient, session), navigation, permissions);
+        settings = new SettingsViewModel(settingsApi, navigation, permissions);
         studentImport = permissions.Contains("students.write")
             ? new StudentImportViewModel(new StudentImportApiClient(httpClient, session), new FileDialogService(), permissions)
             : null;

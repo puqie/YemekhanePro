@@ -25,6 +25,12 @@ public sealed class EfStudentRepositorySearchTests
     [InlineData("ÇET", "5011")]                      // ÇETİN
     [InlineData("5009", "5009")]                     // numara BASTAN: 8350090 kartini getirmez
     [InlineData("8350010", "5010")]                  // aktif kart
+    [InlineData("6-E", "5009")]                     // sınıf
+    [InlineData("B Şubesi", "5009")]                // şube
+    [InlineData("Bilişim", "5009")]                 // bölüm
+    [InlineData("Nöbetçi", "5009")]                 // görev
+    [InlineData("90555", "5009")]                   // veli telefonu
+    [InlineData("VELİ NUR", "5009")]                // veli adı
     public async Task GenelAramaTurkceHarfeDuyarsiz(string term, params string[] expectedNos)
     {
         await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
@@ -62,7 +68,17 @@ public sealed class EfStudentRepositorySearchTests
     {
         var db = new YemekhaneDbContext(new DbContextOptionsBuilder<YemekhaneDbContext>().UseSqlite(connection).Options);
         await db.Database.MigrateAsync();
-        var s5009 = new Student { StudentNo = "5009", FirstName = "ALİ", LastName = "ÖZTÜRK" };
+        var class6E = new SchoolClass { Name = "6-E", SearchName = "6-E" };
+        var sectionB = new Section { Name = "B Şubesi" };
+        var department = new Department { Name = "Bilişim" };
+        var job = new Job { Name = "Nöbetçi" };
+        db.AddRange(class6E, sectionB, department, job);
+
+        var s5009 = new Student
+        {
+            StudentNo = "5009", FirstName = "ALİ", LastName = "ÖZTÜRK",
+            ClassId = class6E.Id, SectionId = sectionB.Id, DepartmentId = department.Id, JobId = job.Id,
+        };
         var s5010 = new Student { StudentNo = "5010", FirstName = "ALİ", LastName = "ÖZTÜRK" };
         var s5011 = new Student { StudentNo = "5011", FirstName = "ALİ", LastName = "ÇETİN" };
         var s5028 = new Student { StudentNo = "5028", FirstName = "AYŞE", LastName = "ÖZDEMİR" };
@@ -71,6 +87,7 @@ public sealed class EfStudentRepositorySearchTests
         db.StudentCards.AddRange(
             new StudentCard { StudentId = s5010.Id, CardNumber = "8350010", ValidFrom = DateTimeOffset.UtcNow, IsActive = true },
             new StudentCard { StudentId = s5090.Id, CardNumber = "8350090", ValidFrom = DateTimeOffset.UtcNow, IsActive = true });
+        db.Parents.Add(new Parent { StudentId = s5009.Id, Name = "VELİ NUR", NormalizedPhone = "905551234567", IsActive = true });
         await db.SaveChangesAsync();
         return db;
     }

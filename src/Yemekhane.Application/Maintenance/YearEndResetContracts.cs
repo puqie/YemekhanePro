@@ -26,6 +26,7 @@ public static class YearEndResetActions
 {
     public const string Delete = "Delete";
     public const string Deactivate = "Deactivate";
+    public const string Keep = "Keep";
 }
 
 /// <param name="Action"><see cref="YearEndResetActions.Delete"/> ya da <see cref="YearEndResetActions.Deactivate"/>.</param>

@@ -90,6 +90,9 @@ public static class InfrastructureRegistration
         services.AddScoped<IMealEntitlementRepository, EfMealEntitlementRepository>();
         // Hakedis ucretini kasaya yazan ve iptalde geri alan servis.
         services.AddScoped<IEntitlementBillingService, Entitlements.EfEntitlementBillingService>();
+        // Atomik tahsilat duzeltmesinden once kasasiz kalmis WPF hizli haklarini
+        // yukselme anindaki kesim noktasina gore bir kez bugune telafi eder.
+        services.AddScoped<Entitlements.LegacyEntitlementCashBackfill>();
         services.AddScoped<IMealTransferRepository, EfMealTransferRepository>();
         services.AddScoped<IHolidayRepository, EfHolidayRepository>();
         services.AddScoped<ICalendarRepository, EfCalendarRepository>();

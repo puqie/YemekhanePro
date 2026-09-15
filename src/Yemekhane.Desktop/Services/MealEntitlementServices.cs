@@ -14,13 +14,18 @@ namespace Yemekhane.Desktop.Services;
 
 public interface IMealEntitlementApiClient
 {
-    Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default);
+    Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Hizli Hakedis ogrenci secimi: ad, soyad, numara, kart ya da SINIF adiyla arar.
     /// Her ogrenci tek satirdir (hakedis listesi ogrenci-gun satiridir, oradan secilemez).
     /// </summary>
     Task<PagedResult<StudentListItem>> SearchStudentsAsync(string term, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Bu istemci öğrenci aramayı desteklemiyor.");
+
+    /// <summary>Öğrenciler ekranından gelen derin bağlantıyı ad/no bilgisiyle seçime dönüştürür.</summary>
+    Task<StudentDetails> GetStudentAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci öğrenci detayı almayı desteklemiyor.");
     Task<IReadOnlyList<MealTypeDetails>> MealTypesAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ClassRecord>> ClassesAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<GroupRecord>> GroupsAsync(CancellationToken cancellationToken = default);
@@ -54,6 +59,9 @@ public sealed class MealEntitlementApiClient(HttpClient client, IJwtSession sess
             .Where(x => !string.IsNullOrWhiteSpace(x.Value))
             .Select(x => $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value!)}")), cancellationToken);
     }
+
+    public Task<StudentDetails> GetStudentAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        GetAsync<StudentDetails>($"api/students/{studentId:D}", cancellationToken);
 
     public Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default)
     {

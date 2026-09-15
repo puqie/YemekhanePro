@@ -63,7 +63,7 @@ public sealed class LookupPickerViewModel : ObservableObject
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException or LoginRequiredException or ApiRequestException)
         { Error = $"{Label} listesi alınamadı."; return; }
         Items.Clear(); Items.Add(Placeholder);
-        foreach (var item in loaded.OrderBy(x => x.Name, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("tr-TR"), true)))
+        foreach (var item in loaded.OrderBy(x => x.Name, TurkishNaturalStringComparer.Instance))
             Items.Add(item);
         isLoaded = true; Raise(nameof(IsLoaded));
         Select(keep);
@@ -100,7 +100,10 @@ public sealed class LookupPickerViewModel : ObservableObject
         try
         {
             var created = await api.CreateLookupAsync(Kind, name);
-            Items.Add(created);
+            var insertAt = 1;
+            while (insertAt < Items.Count && TurkishNaturalStringComparer.Instance.Compare(Items[insertAt].Name, created.Name) <= 0)
+                insertAt++;
+            Items.Insert(insertAt, created);
             Selected = created;
             IsAdding = false; NewName = null; Error = null;
         }

@@ -41,6 +41,20 @@ public sealed class StudentService(IStudentRepository repository)
         return await GetAsync(id, cancellationToken);
     }
 
+    public async Task<StudentDetails> ActivateAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!await repository.ActivateAsync(id, cancellationToken))
+            throw new EntityNotFoundException("Öğrenci bulunamadı.");
+        return await GetAsync(id, cancellationToken);
+    }
+
+    public async Task<StudentDetails> RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!await repository.RestoreAsync(id, cancellationToken))
+            throw new EntityNotFoundException("Öğrenci bulunamadı.");
+        return await GetAsync(id, cancellationToken);
+    }
+
     public async Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default)
     {
         if (!await repository.SoftDeleteAsync(id, cancellationToken))

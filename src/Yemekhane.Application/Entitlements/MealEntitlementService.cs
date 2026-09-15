@@ -52,12 +52,11 @@ public sealed class MealEntitlementService(
         var expected = Token(request.Grant, students, dates, state.StateHash);
         if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(request.PreviewToken)))
             throw new EntityConflictException("Önizlemeden sonra hedef veya hakediş verisi değişti. Yeniden önizleyin.");
-        var result = await repository.UpsertBulkAsync(students, request.Grant.MealTypeId, dates, request.Grant.Quantity,
-            RequiredSource(request.Grant.Source), state.StateHash, cancellationToken);
+        if (billing is null || (!request.Grant.ChargeToCash && !request.Grant.NotifyParents))
+            return await repository.UpsertBulkAsync(students, request.Grant.MealTypeId, dates,
+                request.Grant.Quantity, RequiredSource(request.Grant.Source), state.StateHash,
+                cancellationToken);
 
-        // Ucretlendirme ve SMS hakedis YAZILDIKTAN SONRA calisir: buradaki bir hata
-        // tanimlanmis hakki geri almamalidir (IncomeService'teki ayni kural).
-        if (billing is null || (!request.Grant.ChargeToCash && !request.Grant.NotifyParents)) return result;
         var price = await repository.MealPriceAsync(request.Grant.MealTypeId, cancellationToken);
         // Ucreti TANIMSIZ ogun kasaya islenemez: sessizce 0 TL yazmak 250.000 TL'lik bir
         // tahsilati hicbir uyari vermeden kaybediyordu. Ucretsiz dagitim icin ogune
@@ -67,34 +66,40 @@ public sealed class MealEntitlementService(
                 "Bu öğünün ücreti tanımlı değil; kasaya işlenemez. Tanımlar ekranından öğün ücretini girin (ücretsiz ise 0 yazın) ya da \"Kasaya işle\" seçeneğini kapatın.");
         var unit = price ?? 0m;
         var perStudent = unit * dates.Count * request.Grant.Quantity;
-        if (perStudent <= 0) return result;
-        // Ucret YENI yaratilan gunler uzerinden hesaplanir, aralik uzunlugu uzerinden
-        // DEGIL: ayni hakedis ikinci kez verildiginde hakedis satiri guncellenir ve
-        // ogrencinin yeni borcu yoktur. Once burada dates.Count kullaniliyordu ve tekrar
-        // uygulanan her hakedis kasaya ikinci kez tam tutar yaziyordu.
-        var amountOverrides = result.CreatedPerStudent?
-            .ToDictionary(pair => pair.Key, pair => unit * pair.Value * request.Grant.Quantity);
-        var chargedStudents = amountOverrides is null
-            ? students
-            : students.Where(x => amountOverrides.GetValueOrDefault(x) > 0).ToArray();
-        if (chargedStudents.Count == 0 && !request.Grant.NotifyParents) return result;
-        // Kasaya yazma kapaliysa tutar 0 gonderilir: servis para yazmaz, yalnizca SMS kuyruklar.
-        var charge = await billing.ChargeAsync(new EntitlementChargeRequest(
-            request.Grant.OperationId ?? Guid.NewGuid(),
-            request.Grant.ChargeToCash ? chargedStudents : students, request.Grant.MealTypeId,
-            request.Grant.ChargeToCash ? perStudent : 0m,
-            // Gercek aralik SUNUCUNUN hesapladigi gun listesinden alinir; istekteki
-            // EndsOn gun sayisi kullanildiginda yer tutucudur (baslangicla ayni) ve
-            // kismi iade tarih araligini bu alanlardan okudugu icin yanlis olurdu.
-            dates[0], dates[^1], dates.Count, request.Grant.NotifyParents,
-            request.Grant.ChargeToCash ? amountOverrides : null),
-            actorId, cancellationToken);
-        return result with
-        {
-            ChargedStudents = charge.ChargedStudents,
-            ChargedTotal = charge.Total,
-            NotifiedParents = charge.NotifiedParents
-        };
+
+        // Hakediş ve tahsilat TEK transaction içinde kesinleşir. Tahsilat yazılamazsa
+        // haklar da rollback olur; kullanıcı artık "hak oluştu ama kasa boş" yarım
+        // durumunda kalmaz ve aynı önizlemeyi güvenle yeniden deneyebilir.
+        return await repository.UpsertBulkAtomicAsync(students, request.Grant.MealTypeId, dates,
+            request.Grant.Quantity, RequiredSource(request.Grant.Source), state.StateHash,
+            async (result, token) =>
+            {
+                if (perStudent <= 0) return result;
+                // Ucret YENI yaratilan gunler uzerinden hesaplanir, aralik uzunlugu uzerinden
+                // DEGIL: ayni hakedis ikinci kez verildiginde hakedis satiri guncellenir ve
+                // ogrencinin yeni borcu yoktur.
+                var amountOverrides = result.CreatedPerStudent?
+                    .ToDictionary(pair => pair.Key, pair => unit * pair.Value * request.Grant.Quantity);
+                var chargedStudents = amountOverrides is null
+                    ? students
+                    : students.Where(x => amountOverrides.GetValueOrDefault(x) > 0).ToArray();
+                if (chargedStudents.Count == 0 && !request.Grant.NotifyParents) return result;
+
+                var charge = await billing.ChargeAsync(new EntitlementChargeRequest(
+                    request.Grant.OperationId ?? Guid.NewGuid(),
+                    request.Grant.ChargeToCash ? chargedStudents : students,
+                    request.Grant.MealTypeId,
+                    request.Grant.ChargeToCash ? perStudent : 0m,
+                    // Gercek aralik SUNUCUNUN hesapladigi gun listesinden alinir.
+                    dates[0], dates[^1], dates.Count, request.Grant.NotifyParents,
+                    request.Grant.ChargeToCash ? amountOverrides : null), actorId, token);
+                return result with
+                {
+                    ChargedStudents = charge.ChargedStudents,
+                    ChargedTotal = charge.Total,
+                    NotifiedParents = charge.NotifiedParents
+                };
+            }, cancellationToken);
     }
 
     public Task<MealEntitlementPage> SearchAsync(MealEntitlementQuery query, CancellationToken cancellationToken = default)

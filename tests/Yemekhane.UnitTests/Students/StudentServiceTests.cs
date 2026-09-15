@@ -26,7 +26,11 @@ public sealed class StudentServiceTests
         Assert.Equal("6811", created.StudentNo);
         Assert.Single(search.Items);
         Assert.Equal("Altay", updated.LastName);
-        await Assert.ThrowsAsync<EntityNotFoundException>(() => service.GetAsync(created.Id));
+        // Silinen kayit listelerde gorunmez ama GERI ALINABILMESI icin okunabilir kalir.
+        var deleted = await service.GetAsync(created.Id);
+        Assert.True(deleted.IsDeleted);
+        Assert.False(deleted.IsActive);
+        Assert.Empty((await service.SearchAsync(new StudentQuery(StudentNo: "6811"))).Items);
         var audits = await context.AuditLogs.Where(x => x.EntityId == created.Id.ToString()).ToListAsync();
         Assert.Equal(["StudentCreated", "StudentDeactivated", "StudentUpdated"], audits.Select(x => x.Action).Order());
         Assert.All(audits, x => Assert.DoesNotContain("12345678901", x.AfterJson ?? string.Empty));

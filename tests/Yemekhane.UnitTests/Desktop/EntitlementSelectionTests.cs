@@ -1,6 +1,6 @@
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Yemekhane.Application.BulkOperations;
 using Yemekhane.Application.Calendar;
 using Yemekhane.Application.Entitlements;
@@ -50,12 +50,12 @@ public sealed class EntitlementSelectionTests
         });
 
     /// <summary>
-    /// SEC sutunundaki onay kutusuna GERCEK arayuzde tiklamak secimi kurar VE TIK ACIK KALIR.
-    /// Onceden kutu DataGridRow.IsSelected'e bagliydi: ayni tiklama hem satir secimini
-    /// yeniden hesapliyor hem tiki degistiriyordu, tik aninda geri kapaniyordu.
+    /// Satirin herhangi bir yerine GERCEK arayuzde tiklamak secimi kurar; ikinci satir
+    /// tiklandiginda birinci secim dusmez. Gosterge WPF'nin kucuk varsayilan kutusu
+    /// degil, tasarim sistemindeki 22px SelectionIndicator'dur.
     /// </summary>
     [Fact]
-    public void OnayKutusuTikiAcikKalirVeSecimiKurar() =>
+    public void TumSatirTikiSecimiKurarVeCokluSecimiKorur() =>
         UiThread.Run(() =>
         {
             var vm = CreateViewModel();
@@ -68,26 +68,39 @@ public sealed class EntitlementSelectionTests
             host.Arrange(new Rect(0, 0, 1600, 900));
             host.UpdateLayout();
 
-            var boxes = Descendants(view).OfType<CheckBox>()
-                .Where(x => AutomationProperties.GetName(x) == "Satırı seç").ToList();
-            Assert.Equal(2, boxes.Count);
+            var grid = Assert.IsType<DataGrid>(view.FindName("EntitlementsGrid"));
+            Assert.True(SelectionRowToggle.GetIsEnabled(grid));
+            var indicators = Descendants(view).OfType<Border>()
+                .Where(x => x.Name == "SelectionBox").ToList();
+            Assert.Equal(2, indicators.Count);
+            Assert.All(indicators, x =>
+            {
+                Assert.Equal(22d, x.ActualWidth, precision: 1);
+                Assert.Equal(22d, x.ActualHeight, precision: 1);
+            });
 
-            // Kullanicinin tiklamasi: onay kutusu kendi komutunu calistirir.
-            boxes[0].IsChecked = true;
+            ClickRow(grid, 0);
             host.UpdateLayout();
-
             Assert.True(vm.Items[0].IsSelected);
-            Assert.True(boxes[0].IsChecked);
             Assert.Single(vm.SelectedItems);
 
-            boxes[1].IsChecked = true;
+            ClickRow(grid, 1);
             host.UpdateLayout();
-
-            // Ikinci tik BIRINCIYI DUSURMEZ; coklu secim korunur.
             Assert.Equal(2, vm.SelectedItems.Count);
-            Assert.True(boxes[0].IsChecked);
+            Assert.True(vm.Items[0].IsSelected);
+            Assert.True(vm.Items[1].IsSelected);
             Assert.True(vm.HasSelection);
         });
+
+    private static void ClickRow(DataGrid grid, int index)
+    {
+        var row = Assert.IsType<DataGridRow>(grid.ItemContainerGenerator.ContainerFromIndex(index));
+        row.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+        {
+            RoutedEvent = Mouse.PreviewMouseDownEvent,
+            Source = row
+        });
+    }
 
     /// <summary>Filtre/yeniden yukleme sonrasi ESKI secim kalmamali; toplu islem gorunmeyen satiri kapsardi.</summary>
     [Fact]
@@ -105,11 +118,9 @@ public sealed class EntitlementSelectionTests
     }
 
     /// <summary>
-    /// Secim YOKKEN elle kimlik metin kutusu GORUNURDUR -- manuel giris yolu
-    /// kapatilmaz.
-    /// </summary>
+    /// <summary>Elle numara/GUID kutusu arayüzden kaldırılmış olmalıdır.</summary>
     [Fact]
-    public void SecimYokkenElleGirisKutusuGorunur() =>
+    public void ElleGirisKutusuArayuzdeYoktur() =>
         UiThread.Run(() =>
         {
             var vm = CreateViewModel();
@@ -117,19 +128,14 @@ public sealed class EntitlementSelectionTests
             vm.OpenGrantCommand.Execute(null);
 
             var view = new MealEntitlementsView { DataContext = vm };
-            var host = Layout(view);
+            Layout(view);
 
-            var manualBox = FindByName(view, "ManualStudentIdsBox");
-            Assert.NotNull(manualBox);
-            Assert.Equal(Visibility.Visible, ((UIElement)manualBox!).Visibility);
+            Assert.Null(FindByName(view, "ManualStudentIdsBox"));
         });
 
-    /// <summary>
-    /// Secim VARKEN elle giris kutusu gizlenir ve yerine duz dilde bir ozet
-    /// gosterilir -- ham GUID listesi degil.
-    /// </summary>
+    /// <summary>Seçili hakediş satırları ad/no ile picker'a taşınır; ham GUID gösterilmez.</summary>
     [Fact]
-    public void SecimVarkenElleGirisKutusuGizlenirOzetGorunur() =>
+    public void SecimVarkenOgrencilerPickerdaSeciliGorunur() =>
         UiThread.Run(() =>
         {
             var vm = CreateViewModel();
@@ -142,17 +148,9 @@ public sealed class EntitlementSelectionTests
             var view = new MealEntitlementsView { DataContext = vm };
             Layout(view);
 
-            var manualBox = FindByName(view, "ManualStudentIdsBox");
-            Assert.NotNull(manualBox);
-            Assert.Equal(Visibility.Collapsed, ((UIElement)manualBox!).Visibility);
-
-            var summary = FindByName(view, "SelectionSummaryText");
-            Assert.NotNull(summary);
-            Assert.Equal(Visibility.Visible, ((UIElement)summary!).Visibility);
-
-            var text = ((TextBlock)summary!).Text;
-            Assert.Contains("2", text);
-            Assert.DoesNotContain(a.StudentId.ToString(), text);
+            Assert.Null(FindByName(view, "ManualStudentIdsBox"));
+            Assert.Equal(2, vm.StudentPicker.Count(x => x.IsSelected));
+            Assert.DoesNotContain(a.StudentId.ToString(), vm.PickerSummary);
         });
 
     /// <summary>Onizleme ve Uygula korunmali: 200 ogrenciye yanlis atamayi engelliyor.</summary>
@@ -169,7 +167,54 @@ public sealed class EntitlementSelectionTests
             Assert.NotNull(FindByType<Button>(view, b => Equals(b.Command, vm.ApplyCommand)));
         });
 
-    /// <summary>Cekmece Drawer kontrolune tasinmis olmali (DrawerWidth=400).</summary>
+    /// <summary>
+    /// Son adim genel "Uygula" degil, kullanicinin ne yapildigini anlayacagi acik
+    /// "Öğün İşle" adini tasir. Kullanici bu eylemin eksik oldugunu sahada bildirdi.
+    /// </summary>
+    [Fact]
+    public void SonIslemDugmesiOgunIsleAdiniTasiyor() =>
+        UiThread.Run(() =>
+        {
+            var vm = CreateViewModel();
+            vm.OpenGrantCommand.Execute(null);
+            var view = new MealEntitlementsView { DataContext = vm };
+            Layout(view);
+
+            var button = Assert.IsType<Button>(FindByName(view, "ProcessMealButton"));
+            Assert.Equal("Öğün İşle", button.Content);
+            Assert.Equal(vm.ApplyCommand, button.Command);
+            Assert.Equal(Visibility.Visible, button.Visibility);
+            Assert.True(button.ActualWidth > 0 && button.ActualHeight > 0,
+                $"Öğün İşle düğmesi ölçülmedi: {button.ActualWidth:F0}x{button.ActualHeight:F0}");
+            Assert.False(button.IsEnabled, "Önizleme alınmadan öğün işlenememeli.");
+        });
+
+    /// <summary>
+    /// "Ücreti kasaya ekle" secenegi fiyatsiz/0 TL ogunde tamamen KAYBOLMAZ.
+    /// Gorunur ama devre disidir; ucretli ogun secilince etkinlesir. Boylece kullanici
+    /// ozelligin bulunmadigini sanmaz, eksik olanin ogun ucreti oldugunu anlar.
+    /// </summary>
+    [Fact]
+    public void KasaSecenegiHerZamanGorunurUcretliOgundeEtkinlesir() =>
+        UiThread.Run(() =>
+        {
+            var vm = CreateViewModel();
+            vm.OpenGrantCommand.Execute(null);
+            var view = new MealEntitlementsView { DataContext = vm };
+            Layout(view);
+
+            var charge = Assert.IsType<CheckBox>(FindByName(view, "ChargeToCashCheckBox"));
+            Assert.Equal("Ücreti kasaya ekle", charge.Content);
+            Assert.Equal(Visibility.Visible, charge.Visibility);
+            Assert.False(charge.IsEnabled);
+
+            vm.GrantMeal = new MealTypeDetails(Guid.NewGuid(), "Öğle", null, null, true, 250m);
+            view.UpdateLayout();
+
+            Assert.True(charge.IsEnabled);
+        });
+
+    /// <summary>Hızlı Hakediş çekmecesi dar kalmamalı ve yerel genişlik taşımalıdır.</summary>
     [Fact]
     public void HakedisCekmecesiDrawerKontroluKullanir() =>
         UiThread.Run(() =>
@@ -180,14 +225,10 @@ public sealed class EntitlementSelectionTests
 
             var drawer = FindByType<Drawer>(view, _ => true);
             Assert.NotNull(drawer);
-            // Duzeltme turu 1, Minor 3: DrawerWidth DP'sinin varsayilani zaten
-            // 400d. XAML'de DrawerWidth="400" hic YAZILMASA bile bu deger
-            // gorulur -- bu yuzden deger karsilastirmasi TEK BASINA hicbir sey
-            // kanitlamaz. Gercek kosul, YEREL bir deger GERCEKTEN atanmis mi
-            // sorusudur.
+            // Genişlik XAML'de yerel olarak atanır; varsayılan dar 400px kullanılmaz.
             Assert.NotEqual(DependencyProperty.UnsetValue,
                 drawer!.ReadLocalValue(Drawer.DrawerWidthProperty));
-            Assert.Equal(400d, drawer.DrawerWidth);
+            Assert.Equal(560d, drawer.DrawerWidth);
         });
 
     /// <summary>

@@ -69,4 +69,25 @@ public sealed class StudentDetailTabStateTests
         Assert.Equal("Access History", tab.Key);
         Assert.Equal("Geçiş Geçmişi", tab.Title);
     }
+
+    [Fact]
+    public async Task KayitlarGercekTabloSutunlarinaAyrilir()
+    {
+        var tab = Tab("Payments",
+        [
+            new StudentDetailRow("Tarih: 14.09.2026 | Tutar: ₺750,00",
+            [
+                new StudentDetailCell("Tarih", "14.09.2026"),
+                new StudentDetailCell("Tutar", "₺750,00"),
+                new StudentDetailCell("Açıklama", "Eylül ödemesi"),
+            ]),
+        ]);
+
+        await tab.LoadAsync();
+
+        Assert.Contains("Tarih", tab.TableRows.Table!.Columns.Cast<System.Data.DataColumn>().Select(x => x.ColumnName));
+        Assert.Contains("Tutar", tab.TableRows.Table.Columns.Cast<System.Data.DataColumn>().Select(x => x.ColumnName));
+        Assert.Equal("₺750,00", tab.TableRows[0]["Tutar"]);
+        Assert.Equal("Eylül ödemesi", tab.TableRows[0]["Açıklama"]);
+    }
 }

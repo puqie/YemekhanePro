@@ -160,7 +160,10 @@ public sealed partial class SettingsService(YemekhaneDbContext db, ISecretProtec
         ["Sms.Provider"] = x.Sms.Provider, ["Sms.Endpoint"] = Clean(x.Sms.Endpoint), ["Sms.AuthType"] = x.Sms.AuthType, ["Sms.Username"] = Clean(x.Sms.Username), ["Sms.Sender"] = Clean(x.Sms.Sender), ["Sms.TimeoutSeconds"] = Number(x.Sms.TimeoutSeconds), ["Sms.Enabled"] = Bool(x.Sms.Enabled),
         ["Backup.Enabled"] = Bool(x.Backup.Enabled), ["Backup.Frequency"] = x.Backup.Frequency, ["Backup.WeeklyDay"] = x.Backup.WeeklyDay.ToString(), ["Backup.Time"] = x.Backup.Time.ToString("HH:mm", CultureInfo.InvariantCulture), ["Backup.RetentionCount"] = Number(x.Backup.RetentionCount), ["Backup.Path"] = Clean(x.Backup.Path),
         ["Sync.Endpoint"] = Clean(x.Sync.Endpoint), ["Sync.DeviceId"] = Clean(x.Sync.DeviceId), ["Sync.IntervalMinutes"] = Number(x.Sync.IntervalMinutes), ["Sync.Enabled"] = Bool(x.Sync.Enabled),
-        ["Logs.Level"] = x.Logs.Level, ["Logs.RetentionDays"] = Number(x.Logs.RetentionDays), ["Logs.Path"] = Clean(x.Logs.Path)
+        ["Logs.Level"] = x.Logs.Level, ["Logs.RetentionDays"] = Number(x.Logs.RetentionDays), ["Logs.Path"] = Clean(x.Logs.Path),
+        ["StudentForm.ShowDepartment"] = Bool(x.StudentForm.ShowDepartment), ["StudentForm.ShowJob"] = Bool(x.StudentForm.ShowJob),
+        ["StudentForm.ShowAddress"] = Bool(x.StudentForm.ShowAddress), ["StudentForm.ShowFingerprintId"] = Bool(x.StudentForm.ShowFingerprintId),
+        ["StudentForm.ShowPid"] = Bool(x.StudentForm.ShowPid)
     };
 
     private static SettingsDocument Map(IReadOnlyDictionary<string, SystemSetting> v, SyncStatus status, List<string> devices, List<string> meals) => new(
@@ -170,7 +173,13 @@ public sealed partial class SettingsService(YemekhaneDbContext db, ISecretProtec
             GetBool(v, "Sms.Enabled", true)),
         new(GetBool(v, "Backup.Enabled", false), Get(v, "Backup.Frequency", "Daily"), Enum.TryParse<DayOfWeek>(Get(v, "Backup.WeeklyDay", "Sunday"), out var day) ? day : DayOfWeek.Sunday, TimeOnly.TryParseExact(Get(v, "Backup.Time", "02:00"), "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var time) ? time : new TimeOnly(2, 0), GetInt(v, "Backup.RetentionCount", 14), Null(Get(v, "Backup.Path"))),
         new(Null(Get(v, "Sync.Endpoint")), Null(Get(v, "Sync.DeviceId")), GetInt(v, "Sync.IntervalMinutes", 5), GetBool(v, "Sync.Enabled", false), IsConfigured(v, SyncSecretKey), status),
-        new(Get(v, "Logs.Level", "Information"), GetInt(v, "Logs.RetentionDays", 30), Null(Get(v, "Logs.Path"))), new(devices.Count, devices, meals.Count, meals), false);
+        new(Get(v, "Logs.Level", "Information"), GetInt(v, "Logs.RetentionDays", 30), Null(Get(v, "Logs.Path"))), new(devices.Count, devices, meals.Count, meals), false)
+        {
+            StudentForm = new StudentFormSettings(
+                GetBool(v, "StudentForm.ShowDepartment", true), GetBool(v, "StudentForm.ShowJob", true),
+                GetBool(v, "StudentForm.ShowAddress", true), GetBool(v, "StudentForm.ShowFingerprintId", true),
+                GetBool(v, "StudentForm.ShowPid", true))
+        };
 
     private static string Get(IReadOnlyDictionary<string, SystemSetting> values, string key, string fallback = "") => values.TryGetValue(key, out var x) && !x.IsSecret ? x.Value : fallback;
     private static int GetInt(IReadOnlyDictionary<string, SystemSetting> values, string key, int fallback) => int.TryParse(Get(values, key), NumberFormatInfo.InvariantInfo, out var x) ? x : fallback;

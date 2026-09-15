@@ -22,10 +22,18 @@ public sealed record SyncStatus(string State, int Pending, int Failed, DateTimeO
 public sealed record SyncConflictItem(Guid OperationId, string EntityName, string? EntityId,
     string OperationType, DateTimeOffset Timestamp, int AttemptCount, string? LastError);
 public sealed record LogSettings(string Level, int RetentionDays, string? Path);
+/// <summary>Öğrenci kartında kullanılmayan alanları veri kaybetmeden yalnızca arayüzde gizler.</summary>
+public sealed record StudentFormSettings(bool ShowDepartment = true, bool ShowJob = true,
+    bool ShowAddress = true, bool ShowFingerprintId = true, bool ShowPid = true);
+public sealed record SaveStudentFormSettings(bool ShowDepartment = true, bool ShowJob = true,
+    bool ShowAddress = true, bool ShowFingerprintId = true, bool ShowPid = true);
 public sealed record SettingsLinks(int Devices, IReadOnlyList<string> DeviceSummaries, int ActiveMealTypes,
     IReadOnlyList<string> MealTypes);
 public sealed record SettingsDocument(SchoolSettings School, SmsProviderSettings Sms, BackupSettings Backup,
-    SyncSettings Sync, LogSettings Logs, SettingsLinks Links, bool RestartRequired);
+    SyncSettings Sync, LogSettings Logs, SettingsLinks Links, bool RestartRequired)
+{
+    public StudentFormSettings StudentForm { get; init; } = new();
+}
 
 public sealed record SaveSchoolSettings(string Name, string? Address, string? Contact, string? LogoPath);
 public sealed record SaveSmsProviderSettings(string? Endpoint, string AuthType, string? Username, string? Sender,
@@ -35,7 +43,10 @@ public sealed record SaveBackupSettings(bool Enabled, string Frequency, DayOfWee
 public sealed record SaveSyncSettings(string? Endpoint, string? DeviceId, int IntervalMinutes, bool Enabled, string? Secret);
 public sealed record SaveLogSettings(string Level, int RetentionDays, string? Path);
 public sealed record SaveSettingsRequest(SaveSchoolSettings School, SaveSmsProviderSettings Sms,
-    SaveBackupSettings Backup, SaveSyncSettings Sync, SaveLogSettings Logs);
+    SaveBackupSettings Backup, SaveSyncSettings Sync, SaveLogSettings Logs)
+{
+    public SaveStudentFormSettings StudentForm { get; init; } = new();
+}
 public sealed record SaveSettingsResult(SettingsDocument Settings, IReadOnlyList<string> ChangedCategories,
     bool RestartRequired);
 

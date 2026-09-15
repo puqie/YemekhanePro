@@ -62,7 +62,7 @@ public static class PageHelpTexts
             "Öğrencilere/sınıflara toplu veya tekil yemek hakkı tanımlama ekranıdır.",
             "Toplu İşlem Sihirbazı ile birden fazla öğrenciye/sınıfa aynı anda hak verebilir, geçmişini görebilirsiniz.",
             "Hızlı Hakediş'te öğrenciyi ad, sınıf ya da numarayla arayıp listeden seçersiniz; aradaki liste her öğrenciyi tek satır gösterir.",
-            "Öğünün bedeli varsa \"Ücreti kasaya gelir olarak işle\" ile tutar öğrenci başına kasaya yazılır; hak iptal edilirse tahsilat da iptal edilir.",
+            "Öğünün bedeli varsa \"Ücreti kasaya ekle\" ile tutar öğrenci başına kasaya yazılır; seçenek devre dışıysa önce Tanımlar > Öğünler bölümünden ücret girilir. Hak iptal edilirse tahsilat da iptal edilir.",
             "\"Veliye bilgi SMS'i gönder\" ile veliye tarih aralığı ve tutar bildirilir.",
             "Bir hakkı iptal etmeden önce onay istenir; iptal edilen kayıt geri alınamaz, yeniden hak tanımlamanız gerekir.",
             "Aynı öğrenciye aynı gün ve aynı öğün için tekrar hak verirseniz ikinci bir hak açılmaz; var olan kayıt güncellenir.",

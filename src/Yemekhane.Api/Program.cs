@@ -15,6 +15,7 @@ using Yemekhane.Application.Calendar;
 using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Access;
 using Yemekhane.Infrastructure;
+using Yemekhane.Infrastructure.Entitlements;
 using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.Devices.Turnstiles;
 using Yemekhane.Devices.Management;
@@ -93,7 +94,7 @@ builder.Services.AddScoped<BulkOperationService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddSingleton<BulkPreviewTokenProtector>();
 builder.Services.Configure<ReportPdfOptions>(builder.Configuration.GetSection("Reports:Pdf"));
-builder.Services.AddScoped<IPdfService, ReportPdfService>();
+builder.Services.AddScoped<IPdfService, ReportPdfService>();
 builder.Services.AddScoped<IStudentStatementPdfService, StudentStatementPdfService>();
 builder.Services.Configure<ReportExcelOptions>(builder.Configuration.GetSection("Reports:Excel"));
 builder.Services.AddScoped<IExcelService, ReportExcelService>();
@@ -336,6 +337,11 @@ await using (var scope = app.Services.CreateAsyncScope())
         await scope.ServiceProvider.GetRequiredService<LocalDatabaseInitializer>().InitializeAsync(app.Lifetime.ApplicationStopping);
         await scope.ServiceProvider.GetRequiredService<RbacSeeder>().SeedAsync(app.Lifetime.ApplicationStopping);
         await scope.ServiceProvider.GetRequiredService<SmsTemplateSeeder>().SeedAsync(app.Lifetime.ApplicationStopping);
+        // Eski WPF hizli hakedislerinden kasasi eksik olanlar, migration yedegi
+        // alindiktan sonra ve API trafik kabul etmeden once bugunun kasasina yazilir.
+        // Servis kalici kesim noktasi + kararli OperationId ile tekrar calismaya guvenlidir.
+        await scope.ServiceProvider.GetRequiredService<LegacyEntitlementCashBackfill>()
+            .RunAsync(app.Lifetime.ApplicationStopping);
         var startupDb = scope.ServiceProvider.GetRequiredService<YemekhaneDbContext>();
         var hasBackupSettings = await startupDb.Set<SystemSetting>().AnyAsync(x => x.Key.StartsWith("Backup."));
         var hasSmsSettings = await startupDb.Set<SystemSetting>().AnyAsync(x => x.Key.StartsWith("Sms."));

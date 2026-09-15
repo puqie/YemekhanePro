@@ -93,7 +93,13 @@
 </UserControl.Resources>
     <Border Background="{StaticResource CanvasBrush}">
     <Grid Margin="22,18">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*" MinHeight="220"/>
+            <RowDefinition Height="3*" MinHeight="230"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel><TextBlock Text="Öğrenciler" Style="{StaticResource PageTitle}"/><TextBlock Text="Öğrenci, kart ve günlük kullanım yönetimi" Style="{StaticResource PageSubtitle}"/></StackPanel>
@@ -105,30 +111,42 @@
             </StackPanel>
         </Grid>
 
-        <!-- Filtreler TEK satira sigacak genislikte (1440'ta ~1160px): eskiden iki sabit
-             satir ~170px yiyor, sagdaki panelde form + dugmeler + sekmelere yer kalmiyordu.
-             Dar pencerede WrapPanel kendiliginden ikinci satira sarar. -->
+        <!-- TEK ARAMA: ad, soyad, öğrenci no, kart/baskı no, sınıf, şube, bölüm,
+             görev ve veli aynı kutudan aranır. Durum bir arama alanı değil, sonuç daraltıcıdır. -->
         <Border Grid.Row="1" Style="{StaticResource Toolbar}" Margin="0,14,0,10">
-            <WrapPanel>
-                <!-- TEK ARAMA: once "Öğrenci no", "Kart no", "Ad" ve "Soyad" ayri kutulardaydi.
-                     Sunucu zaten hepsini tek "search" ile ariyor (numara ve kart bastan, ad ile
-                     soyad kelime basindan); ayri kutular hem daha DAR (tam esitlik) hem de kart
-                     numarasini yanlis kutuya yazan kullaniciya sessizce bos sonuc veriyordu.
-                     Sinif/Sube/Bolum/Durum daraltma filtresi olarak kalir. -->
-                <StackPanel Width="300" Margin="0,0,8,0"><TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/><TextBox x:Name="StudentSearchBox" Style="{StaticResource FieldCompact}" Margin="0" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Ad, soyad, öğrenci no veya kart no (en az 2 karakter)" AutomationProperties.Name="Genel öğrenci arama"/></StackPanel>
-                <StackPanel Width="88" Margin="0,0,8,0"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Margin="0" Text="{Binding ClassId, UpdateSourceTrigger=PropertyChanged}" ToolTip="Sınıf adı" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
-                <StackPanel Width="88" Margin="0,0,8,0"><TextBlock Style="{StaticResource Label}" Text="Şube" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Margin="0" Text="{Binding SectionId, UpdateSourceTrigger=PropertyChanged}" ToolTip="Şube adı" AutomationProperties.Name="Şube filtresi"/></StackPanel>
-                <StackPanel Width="100" Margin="0,0,8,0"><TextBlock Style="{StaticResource Label}" Text="Bölüm" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Margin="0" Text="{Binding DepartmentId, UpdateSourceTrigger=PropertyChanged}" ToolTip="Bölüm adı" AutomationProperties.Name="Bölüm filtresi"/></StackPanel>
-                <StackPanel Width="96" Margin="0,0,8,0"><TextBlock Style="{StaticResource Label}" Text="Durum" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" Margin="0" MinWidth="0" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding IsActive}" AutomationProperties.Name="Durum filtresi"/></StackPanel>
-                <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" IsDefault="True" VerticalAlignment="Bottom" Margin="0"/>
-            </WrapPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource Label}" Text="Tek arama" Margin="0,0,0,4"/>
+                    <TextBox x:Name="StudentSearchBox" Style="{StaticResource FieldCompact}" Margin="0"
+                             Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Ad, soyad, öğrenci no, kart, sınıf, şube, bölüm, görev veya veli yazın"
+                             AutomationProperties.Name="Tüm öğrenci bilgilerinde ara">
+                        <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchCommand}"/></TextBox.InputBindings>
+                    </TextBox>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource Label}" Text="Durum" Margin="0,0,0,4"/>
+                    <ComboBox Style="{StaticResource FieldCompactCombo}" Margin="0" MinWidth="0"
+                              ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value"
+                              SelectedValue="{Binding IsActive}" IsEnabled="{Binding ShowDeleted, Converter={x:Static local:InverseBooleanConverter.Instance}}"
+                              AutomationProperties.Name="Durum filtresi"/>
+                    <CheckBox Content="Silinenleri göster" IsChecked="{Binding ShowDeleted}" Margin="0,6,0,0"
+                              ToolTip="Silinen öğrencileri listeler; seçtikten sonra Geri Al ile kartsız olarak geri alabilirsiniz."
+                              AutomationProperties.Name="Silinen öğrencileri göster"/>
+                </StackPanel>
+                <Button Grid.Column="2" Style="{StaticResource Action}" Content="Ara" Command="{Binding SearchCommand}"
+                        IsDefault="True" VerticalAlignment="Bottom" Margin="0" MinWidth="86"/>
+            </Grid>
         </Border>
 
         <Grid Grid.Row="2">
-            <!-- Sag panel 460px: form alanlari iki sutuna sigsin (2 x ~205px) diye 420'den
-                 genisletildi. Liste 1440'ta yine ~705px alir; sabit sutunlar 300px, AD/SOYAD
-                 en az 110'ar px; kesilme yok (bkz. ListeSutunlariTasmadanSigar testi). -->
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="460"/></Grid.ColumnDefinitions>
+            <!-- Sağ panel geniş tutulur; kimlik, durum ve hızlı işlemler sıkışmadan görünür. -->
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="540"/></Grid.ColumnDefinitions>
 
             <Border Style="{StaticResource Card}" Padding="0">
                 <Grid>
@@ -169,7 +187,7 @@
                             <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" Width="Auto" MinWidth="52"/>
                             <DataGridTextColumn Header="ŞUBE" Binding="{Binding SectionName}" Width="Auto" MinWidth="52"/>
                             <DataGridTextColumn Header="KART NO" Binding="{Binding CardNumber}" Width="Auto" MinWidth="80"/>
-                            <DataGridTemplateColumn Header="DURUM" Width="Auto" MinWidth="66">
+                            <DataGridTemplateColumn Header="DURUM" SortMemberPath="IsActive" Width="Auto" MinWidth="66">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Background="{Binding IsActive, Converter={StaticResource StatusBrush}}"
@@ -199,16 +217,8 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <!-- Form ve sekme icerigi kalan alani ORANLA paylasir (1:2); ikisi de kendi
-                             icinde kayar. Onceki "Auto, MaxHeight 215" form satiri, sabit satirlarla
-                             birlikte 556px tutuyordu; 790px gorunumde panel 548px oldugu icin sekme
-                             icerigi pencerenin ALTINA dusuyor, Kartlar/Bakiye hic gorunmuyordu
-                             (saha: "altta kaldigi icin goremiyoruz"). Kucuk MinHeight yalnizca sifira
-                             cokmeyi onler; toplam paneli asarsa tasma yerine ikisi birden kisalir. -->
-                        <RowDefinition Height="*" MinHeight="40"/>
+                        <RowDefinition Height="*" MinHeight="80"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="2*" MinHeight="80"/>
                     </Grid.RowDefinitions>
 
                     <Grid>
@@ -306,15 +316,22 @@
                                                            Foreground="{StaticResource InfoBrush}"/>
                                             </Grid>
                                             <TextBlock Text="{Binding UsageText}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,2,0,0"/>
-                                            <TextBlock Text="{Binding PeriodText}" Margin="0,4,0,0"/>
-                                            <!-- Son gun ve "kac gun kaldi": yenileme karari bu iki satirdan verilir. -->
-                                            <TextBlock Margin="0,2,0,0">
-                                                <Run Text="Son gün:"/>
-                                                <Run Text="{Binding LastDateText, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                <Run Text=" · "/>
-                                                <Run Text="{Binding DaysLeftText, Mode=OneWay}"/>
-                                            </TextBlock>
-                                            <TextBlock Text="{Binding RenewFromText}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,2,0,0"/>
+                                            <Grid Margin="0,6,0,0">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="Başlangıç" Style="{StaticResource Label}" Margin="0,0,0,2"/>
+                                                    <TextBlock Text="{Binding FirstDateText}" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Bitiş" Style="{StaticResource Label}" Margin="0,0,0,2"/>
+                                                    <TextBlock>
+                                                        <Run Text="{Binding LastDateText, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                        <Run Text=" · "/>
+                                                        <Run Text="{Binding DaysLeftText, Mode=OneWay}"/>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Grid>
+                                            <TextBlock Text="{Binding RenewFromText}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,4,0,0"/>
                                             <!-- Yanan hak varsa gorunur: kullanilmadan gecen gunler "kalan"a sayilmaz. -->
                                             <TextBlock Text="{Binding ExpiredText}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,2,0,0"
                                                        Visibility="{Binding HasExpiredQuantity, Converter={StaticResource BoolToVisibility}}"/>
@@ -335,10 +352,14 @@
                             </Grid.Visibility>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                            <TextBlock Text="Bölüm" Style="{StaticResource Label}" Margin="0,4,0,3"/>
-                            <Border Grid.Row="1" Style="{StaticResource ReadOnlyValue}"><TextBlock Text="{Binding DetailDepartmentName}" AutomationProperties.Name="Bölüm"/></Border>
-                            <TextBlock Grid.Column="2" Text="Görev" Style="{StaticResource Label}" Margin="0,4,0,3"/>
-                            <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource ReadOnlyValue}"><TextBlock Text="{Binding DetailJobName}" AutomationProperties.Name="Görev"/></Border>
+                            <TextBlock Text="Bölüm" Style="{StaticResource Label}" Margin="0,4,0,3"
+                                       Visibility="{Binding ShowDepartmentField, Converter={StaticResource BoolToVisibility}}"/>
+                            <Border Grid.Row="1" Style="{StaticResource ReadOnlyValue}"
+                                    Visibility="{Binding ShowDepartmentField, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="{Binding DetailDepartmentName}" AutomationProperties.Name="Bölüm"/></Border>
+                            <TextBlock Grid.Column="2" Text="Görev" Style="{StaticResource Label}" Margin="0,4,0,3"
+                                       Visibility="{Binding ShowJobField, Converter={StaticResource BoolToVisibility}}"/>
+                            <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource ReadOnlyValue}"
+                                    Visibility="{Binding ShowJobField, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="{Binding DetailJobName}" AutomationProperties.Name="Görev"/></Border>
                         </Grid>
 
                         <TextBlock Text="Not" Style="{StaticResource Label}" Margin="0,4,0,3"/>
@@ -360,6 +381,9 @@
                             <!-- Silme iki adimli: "Sil" -> "Silmeyi Onayla" + "Vazgeç". Kayit tum listelerden kaybolur. -->
                             <Button Style="{StaticResource Destructive}" Content="{Binding DeleteButtonText}" Command="{Binding DeleteCommand}" Margin="0,0,6,4" Padding="8,5" ToolTip="Kayıt silinir ve listelerden kaybolur; Sicil Aktar ile yeniden içe aktarılırsa geri gelir" Visibility="{Binding CanDeactivate, Converter={StaticResource BoolToVisibility}}"/>
                             <Button Style="{StaticResource Action}" Content="Vazgeç" Command="{Binding CancelDeleteCommand}" Margin="0,0,6,4" Padding="8,5" Visibility="{Binding IsDeleteArmed, Converter={StaticResource BoolToVisibility}}"/>
+                            <Button Style="{StaticResource Primary}" Content="Geri Al" Command="{Binding RestoreCommand}" Margin="0,0,6,4" Padding="8,5"
+                                    ToolTip="Silinen öğrenciyi geri alır; öğrenci kartsız olarak aktif olur"
+                                    Visibility="{Binding ShowRestore, Converter={StaticResource BoolToVisibility}}"/>
                         </WrapPanel>
                         <!-- Kartin IKI numarasi var ve operator hangisini nereye yazacagini bilmiyordu
                              ("on yuz / arka yuz diye gostermeli"): ARKA yuzdeki cip numarasi turnikenin
@@ -385,98 +409,135 @@
                         </Grid>
                     </StackPanel>
 
-                    <!-- Detay sekmeleri (Kartlar, Veliler, Hakedisler, Gecis Gecmisi, Izinler vb.):
-                         formla ayni sutunda, secili ogrencinin gecmis/iliskili verisi.
-                         TabControl KULLANILMAZ: on sekme 380px'e uc satira sariyor ve WPF'in
-                         TabPanel'i secilen satiri en alta tasidigi icin her tiklamada
-                         basliklar yer degistiriyordu. Serit sabit sirali bir ListBox+WrapPanel;
-                         icerik ayri bir satirda, kendi icinde kayar. -->
-                    <Border Grid.Row="3" Margin="0,4,0,0" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,4,0,0">
-                        <!-- Serit + tarih satiri TEK Border icinde: yeni Grid SATIRI eklenmez,
-                             cunku alttaki icerik Grid.Row="4" diye SABIT indeksler. -->
-                        <StackPanel>
-                        <ListBox x:Name="DetailTabStrip" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
-                                 ItemContainerStyle="{StaticResource TabChip}" AutomationProperties.Name="Öğrenci detay sekmeleri"
-                                 ScrollViewer.VerticalScrollBarVisibility="Disabled" KeyboardNavigation.DirectionalNavigation="Cycle">
-                            <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                            <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}"/></DataTemplate></ListBox.ItemTemplate>
-                        </ListBox>
 
-                        <!-- TARIH ARALIGI: yalnizca gecmis sekmelerinde (Hakedisler, Gecis Gecmisi).
-                             Once hakedisler bugunun etrafinda dar bir pencereye, gecis gecmisi ise
-                             YALNIZCA BUGUNE sabitti; gecen yila bakmak mumkun degildi. -->
-                        <!-- TEK SATIR: iki tarih + uc hazir aralik. Once iki satirdi (85px) ve 790px
-                             gorunumde sekme icerigine yer birakmiyordu. Etiket yerine erisilebilirlik
-                             adi ve ToolTip; hazir aralik adlari kisa, tam adi ToolTip'te. -->
-                        <Border Background="{StaticResource SunkenBrush}" CornerRadius="6" Padding="6,4" Margin="0,6,0,0"
-                                Visibility="{Binding IsHistoryTabSelected, Converter={StaticResource BoolToVisibility}}">
-                            <WrapPanel>
-                                <!-- MinWidth="0": tema stili DatePicker'a 140px MinWidth verir ve Width'i ezer;
-                                     iki takvim 280px olunca satir sariyordu. 116px: metin kutusu ~82px kalir
-                                     (ViewLayoutTests 80px altini "kullanilamaz" sayar), "12.09.2026" rahat sigar. -->
-                                <DatePicker SelectedDate="{Binding HistoryFrom}" Width="116" MinWidth="0" ToolTip="Başlangıç tarihi"
-                                            AutomationProperties.Name="Geçmiş başlangıç tarihi"/>
-                                <DatePicker SelectedDate="{Binding HistoryTo}" Width="116" MinWidth="0" Margin="6,0,0,0" ToolTip="Bitiş tarihi"
-                                            AutomationProperties.Name="Geçmiş bitiş tarihi"/>
-                                <!-- Hazir araliklar: "gecen yil" demek icin iki tarih yazmaya gerek kalmasin.
-                                     Ogretim yili 1 Eylul - 31 Agustos olarak hesaplanir. -->
-                                <Button Content="Bu yıl" Command="{Binding HistoryThisYearCommand}" Padding="6,3" MinHeight="0" FontSize="{StaticResource FontSm}" Margin="6,0,0,0" ToolTip="Bu öğretim yılı (1 Eylül – 31 Ağustos)"/>
-                                <Button Content="Geçen yıl" Command="{Binding HistoryLastYearCommand}" Padding="6,3" MinHeight="0" FontSize="{StaticResource FontSm}" Margin="4,0,0,0" ToolTip="Geçen öğretim yılı"/>
-                                <Button Content="Tümü" Command="{Binding HistoryAllCommand}" Padding="6,3" MinHeight="0" FontSize="{StaticResource FontSm}" Margin="4,0,0,0" ToolTip="Tüm kayıtlar"/>
-                            </WrapPanel>
-                        </Border>
-                        </StackPanel>
-                    </Border>
-
-                    <ContentControl Grid.Row="4" x:Name="DetailTabContent" Content="{Binding SelectedTab}" Margin="0,4,0,0">
-                        <ContentControl.ContentTemplate>
-                            <DataTemplate>
-                                <Grid>
-                                    <ListBox ItemsSource="{Binding Items}" BorderThickness="0" ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                        <!-- Sablon tipe gore secilir: sekmelerin ortak satiri (StudentDetailRow) tek metin,
-                                             Bakiye sekmesinin ilk satiri (StudentBalanceHeadline) buyuk yazili bakiye. -->
-                                        <ListBox.Resources>
-                                            <DataTemplate DataType="{x:Type services:StudentDetailRow}">
-                                                <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="4"/>
-                                            </DataTemplate>
-                                            <DataTemplate DataType="{x:Type services:StudentBalanceHeadline}">
-                                                <StackPanel Margin="4,4,4,10" AutomationProperties.Name="Güncel bakiye">
-                                                    <TextBlock Text="GÜNCEL BAKİYE" FontSize="10" Foreground="{StaticResource MutedBrush}"/>
-                                                    <TextBlock Text="{Binding BalanceText}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
-                                                    <TextBlock Text="{Binding DetailText}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.Resources>
-                                    </ListBox>
-                                    <!-- FallbackValue: secili sekme yokken (ilk acilis, silme sonrasi) DataContext
-                                         null'dur; baglanti cozulemeyince Visibility varsayilan Visible kalir ve
-                                         ekranda sahte bir "Yükleniyor..." asili dururdu. -->
-                                    <TextBlock Text="Yükleniyor..." Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"/>
-                                    <!-- Bos sekmede daha once bomboş beyaz alan kaliyordu; kullanici
-                                         verinin henuz yuklenmedigini mi yoksa hic kayit olmadigini mi
-                                         anlayamiyordu. IsEmpty yalnizca yukleme bitip hata da yokken dogrudur. -->
-                                    <TextBlock Text="{Binding EmptyText}" Margin="4" Foreground="{StaticResource MutedBrush}"
-                                               Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
-                                    <TextBlock Text="{Binding Error}" Foreground="{StaticResource DangerBrush}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ContentControl.ContentTemplate>
-                    </ContentControl>
                 </Grid>
             </Border>
         </Grid>
 
+        <!-- Secili ogrencinin tum iliskili kayitlari formdan AYRI, tam genislikte bir
+             tablo bolumundedir. Form ve tablo artik birbirinin yuksekligini tuketmez. -->
+        <Border x:Name="StudentDetailPanel" Grid.Row="3" Style="{StaticResource Card}" Padding="0" Margin="0,12,0,0">
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Border Background="{StaticResource SunkenBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,0,0,1" Padding="14,9">
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DetailPanelTitle}" Style="{StaticResource SectionTitle}" Margin="0"/>
+                                <TextBlock Text=" · Sekme seçerek ayrıntıları görüntüleyin" Foreground="{StaticResource MutedBrush}" Margin="8,2,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource Action}" Content="Ekstre PDF Kaydet"
+                                    Command="{Binding ExportStatementPdfCommand}" Margin="0"
+                                    Visibility="{Binding CanExportStatement, Converter={StaticResource BoolToVisibility}}"
+                                    ToolTip="Tarih aralığındaki ödeme, bakiye, taksit ve yemek kullanım ekstresini PDF olarak kaydeder"
+                                    AutomationProperties.Name="Seçili öğrencinin ekstresini PDF kaydet"/>
+                        </Grid>
+                        <Grid Grid.Row="1" Margin="0,7,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <ListBox x:Name="DetailTabStrip" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
+                                     ItemContainerStyle="{StaticResource TabChip}" AutomationProperties.Name="Öğrenci detay sekmeleri"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     KeyboardNavigation.DirectionalNavigation="Cycle">
+                                <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                                <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Title}"/></DataTemplate></ListBox.ItemTemplate>
+                            </ListBox>
+                            <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" CornerRadius="6" Padding="6,3" Margin="12,0,0,0"
+                                    Visibility="{Binding IsHistoryTabSelected, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding HistoryFrom}" Width="122" MinWidth="0" Margin="0" ToolTip="Başlangıç tarihi"/>
+                                    <DatePicker Style="{StaticResource FieldCompactDate}" SelectedDate="{Binding HistoryTo}" Width="122" MinWidth="0" Margin="6,0,0,0" ToolTip="Bitiş tarihi"/>
+                                    <Button Content="Bu yıl" Command="{Binding HistoryThisYearCommand}" Padding="7,3" Margin="6,0,0,0" ToolTip="Bu öğretim yılı"/>
+                                    <Button Content="Geçen yıl" Command="{Binding HistoryLastYearCommand}" Padding="7,3" Margin="4,0,0,0" ToolTip="Geçen öğretim yılı"/>
+                                    <Button Content="Tümü" Command="{Binding HistoryAllCommand}" Padding="7,3" Margin="4,0,0,0" ToolTip="Tüm kayıtlar"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1" Margin="12,8,12,12">
+                    <TextBlock Text="Tabloyu görmek için listeden bir öğrenci seçin."
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"
+                               Visibility="{Binding IsDetailOpen, Converter={x:Static local:InverseBooleanToVisibilityConverter.Instance}}"/>
+                    <Grid x:Name="DetailTabContent" Visibility="{Binding IsDetailOpen, Converter={StaticResource BoolToVisibility}}"
+                          DataContext="{Binding SelectedTab}">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <Border Background="{StaticResource SelectionBrush}" CornerRadius="6" Padding="12,7" Margin="0,0,0,7"
+                                Visibility="{Binding HasBalanceHeadline, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Güncel bakiye: " FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding BalanceHeadline.BalanceText}" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                                <TextBlock Text="{Binding BalanceHeadline.DetailText, StringFormat={} · {0}}" Foreground="{StaticResource MutedBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <!-- Genel sekmesi öğrenci kaydının karar satırıdır: Durum'un hemen
+                             yanında doğrudan Hakediş Ver bulunur. Diğer sekmeler değişken
+                             sütunlarını otomatik üretmeye devam eder. -->
+                        <DataGrid x:Name="DetailTableGrid" Grid.Row="1" ItemsSource="{Binding TableRows}"
+                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  HeadersVisibility="Column" RowHeaderWidth="0" GridLinesVisibility="Horizontal"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding IsGeneral, Converter={StaticResource BoolToVisibility}}"
+                                  AutomationProperties.Name="Öğrenci genel kayıt tablosu">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="NO" Binding="{Binding [No]}" Width="Auto" MinWidth="90"/>
+                                <DataGridTextColumn Header="AD SOYAD" Binding="{Binding [Ad Soyad]}" Width="*" MinWidth="180"/>
+                                <DataGridTextColumn Header="DURUM" Binding="{Binding [Durum]}" Width="Auto" MinWidth="100"/>
+                                <DataGridTemplateColumn Header="İŞLEM" Width="Auto" MinWidth="140">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource Primary}" Content="Hakediş Ver" Padding="10,4" Margin="4,2"
+                                                    Command="{Binding DataContext.GrantEntitlementCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    Visibility="{Binding DataContext.CanGrantEntitlement, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"
+                                                    ToolTip="Bu öğrenci için Hızlı Hakediş ekranını aç"
+                                                    AutomationProperties.Name="Genel kayıttaki öğrenciye hakediş ver"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="ÖĞÜN" Binding="{Binding [Öğün]}" Width="Auto" MinWidth="115"/>
+                                <DataGridTextColumn Header="BAŞLANGIÇ" Binding="{Binding [Başlangıç]}" Width="Auto" MinWidth="105"/>
+                                <DataGridTextColumn Header="BİTİŞ" Binding="{Binding [Bitiş]}" Width="Auto" MinWidth="105"/>
+                                <DataGridTextColumn Header="TOPLAM" Binding="{Binding [Toplam]}" Width="Auto" MinWidth="75"/>
+                                <DataGridTextColumn Header="KULLANILAN" Binding="{Binding [Kullanılan]}" Width="Auto" MinWidth="95"/>
+                                <DataGridTextColumn Header="KALAN" Binding="{Binding [Kalan]}" Width="Auto" MinWidth="75"/>
+                                <DataGridTextColumn Header="YENİLEME" Binding="{Binding [Yenileme]}" Width="Auto" MinWidth="105"/>
+                                <DataGridTextColumn Header="HAK DURUMU" Binding="{Binding [Hak Durumu]}" Width="Auto" MinWidth="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DataGrid x:Name="DetailRecordsGrid" Grid.Row="1" ItemsSource="{Binding TableRows}"
+                                  AutoGenerateColumns="True" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  CanUserReorderColumns="True" CanUserResizeColumns="True" ColumnWidth="SizeToCells"
+                                  MinColumnWidth="90" MaxColumnWidth="360" HeadersVisibility="Column" RowHeaderWidth="0"
+                                  GridLinesVisibility="Horizontal" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Auto" EnableRowVirtualization="True"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  Visibility="{Binding IsGeneral, Converter={x:Static local:InverseBooleanToVisibilityConverter.Instance}}"
+                                  AutomationProperties.Name="Seçili öğrenci kayıt tablosu"/>
+                        <TextBlock Grid.Row="1" Text="Yükleniyor..." HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"/>
+                        <TextBlock Grid.Row="1" Text="{Binding EmptyText}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{StaticResource MutedBrush}" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                        <TextBlock Grid.Row="1" Text="{Binding Error}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+
         <!-- Hata metni artik formun icinde (dugmelerin hemen ustunde) gosterilir; burada
              yalnizca sayfalama var. Uzun bir hata sayfalama dugmelerinin ustune binmesin diye
              genislik sinirlanir ve kesilir. -->
-        <Grid Grid.Row="3" Margin="0,9,0,0"><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,320,0"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PageText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel></Grid>
+        <Grid Grid.Row="4" Margin="0,9,0,0"><TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,320,0"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding PageText}" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/><Button Style="{StaticResource Action}" Content="Önceki" Command="{Binding PreviousPageCommand}"/><Button Style="{StaticResource Action}" Content="Sonraki" Command="{Binding NextPageCommand}"/></StackPanel></Grid>
 
         <!-- IZIN FORMU. Once boyle bir ekran YOKTU: "İzin Ver" dugmesi hicbir sey
              sormadan hep BUGUN icin, turu "Mazeret", davranisi "Keep" kayit aciyordu.
              Bir haftalik rapor izni girmek isteyen memur tek gunluk izin yaziyor ve
              hicbir hak iptal/aktarim olmuyordu; sunucunun destekledigi "Cancel" ve
              "NextBusinessDay" davranislari erisilemezdi. -->
-        <controls:Modal x:Name="LeaveHost" Grid.RowSpan="4" Panel.ZIndex="45" Style="{StaticResource ModalMedium}" Title="İzin Ver"
+        <controls:Modal x:Name="LeaveHost" Grid.RowSpan="5" Panel.ZIndex="45" Style="{StaticResource ModalMedium}" Title="İzin Ver"
                         Subtitle="Tarih aralığını ve yemek hakkına ne olacağını seçin."
                         IsOpen="{Binding IsLeaveOpen, Mode=OneWay}" CloseCommand="{Binding CloseLeaveCommand}">
             <StackPanel>
@@ -508,7 +569,7 @@
         </controls:Modal>
 
         <!-- Kart okuma: ortak Modal (once elle yazilmis Border + karartma). -->
-        <controls:Modal x:Name="CardWorkflowHost" Grid.RowSpan="4" Panel.ZIndex="40" Style="{StaticResource ModalMedium}" Title="Kartla Öğrenci Bul"
+        <controls:Modal x:Name="CardWorkflowHost" Grid.RowSpan="5" Panel.ZIndex="40" Style="{StaticResource ModalMedium}" Title="Kartla Öğrenci Bul"
                         Subtitle="Kart numarasını yazın ve Ara'ya basın. Masa tipi okuyucu bağlıysa Okuyucuyu Bekle ile okutabilirsiniz."
                         IsOpen="{Binding IsCardWorkflowOpen, Mode=OneWay}" CloseCommand="{Binding CloseCardWorkflowCommand}">
             <StackPanel>
@@ -526,7 +587,7 @@
         <!-- OGRENCI KARTI: eski programdaki "Sicil Karti" formunun tamami. "Yeni Ogrenci" ve
              "Duzenle" bu genis cekmeceyi acar; sag panel ozet/eylem/sekme olarak kalir.
              IsOpen tek yonlu: Drawer kendini kapatirken CancelEditCommand ViewModel'i kapatir. -->
-        <controls:Drawer x:Name="StudentCardDrawer" Grid.RowSpan="4" Style="{StaticResource DrawerWide}" Title="Öğrenci Kartı"
+        <controls:Drawer x:Name="StudentCardDrawer" Grid.RowSpan="5" Style="{StaticResource DrawerWide}" Title="Öğrenci Kartı"
                          IsOpen="{Binding IsFormOpen, Mode=OneWay}" CloseCommand="{Binding CancelEditCommand}" Panel.ZIndex="50">
             <StackPanel>
                 <TextBlock Text="{Binding FormSubtitle}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
@@ -602,8 +663,10 @@
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <ContentControl Content="{Binding FormClass}" ContentTemplate="{StaticResource LookupPicker}"/>
                     <ContentControl Grid.Column="2" Content="{Binding FormSection}" ContentTemplate="{StaticResource LookupPicker}"/>
-                    <ContentControl Grid.Row="1" Content="{Binding FormDepartment}" ContentTemplate="{StaticResource LookupPicker}"/>
-                    <ContentControl Grid.Row="1" Grid.Column="2" Content="{Binding FormJob}" ContentTemplate="{StaticResource LookupPicker}"/>
+                    <ContentControl Grid.Row="1" Content="{Binding FormDepartment}" ContentTemplate="{StaticResource LookupPicker}"
+                                    Visibility="{Binding ShowDepartmentField, Converter={StaticResource BoolToVisibility}}"/>
+                    <ContentControl Grid.Row="1" Grid.Column="2" Content="{Binding FormJob}" ContentTemplate="{StaticResource LookupPicker}"
+                                    Visibility="{Binding ShowJobField, Converter={StaticResource BoolToVisibility}}"/>
                 </Grid>
 
                 <!-- Veli: otomatik SMS bu telefona gider; onceden yalnizca CSV ice aktarimindan girilebiliyordu. -->
@@ -616,15 +679,21 @@
                     <TextBox Grid.Row="1" Grid.Column="2" Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormParentPhone, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Veli telefonu" ToolTip="Örn. 5321234567 — otomatik SMS bu numaraya gider"/>
                 </Grid>
 
-                <TextBlock Text="Adres" Style="{StaticResource Label}" Margin="0,8,0,3"/>
-                <TextBox Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="56" TextWrapping="Wrap" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Adres"/>
+                <TextBlock Text="Adres" Style="{StaticResource Label}" Margin="0,8,0,3"
+                           Visibility="{Binding ShowAddressField, Converter={StaticResource BoolToVisibility}}"/>
+                <TextBox Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="56" TextWrapping="Wrap" VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Adres"
+                         Visibility="{Binding ShowAddressField, Converter={StaticResource BoolToVisibility}}"/>
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <TextBlock Text="Parmak izi ID" Style="{StaticResource Label}" Margin="0,6,0,3"/>
-                    <TextBox Grid.Row="1" Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormFingerprintId, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Parmak izi ID"/>
-                    <TextBlock Grid.Column="2" Text="PI ID" Style="{StaticResource Label}" Margin="0,6,0,3"/>
-                    <TextBox Grid.Row="1" Grid.Column="2" Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormPid, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="PI ID"/>
+                    <TextBlock Text="Parmak izi ID" Style="{StaticResource Label}" Margin="0,6,0,3"
+                               Visibility="{Binding ShowFingerprintIdField, Converter={StaticResource BoolToVisibility}}"/>
+                    <TextBox Grid.Row="1" Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormFingerprintId, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Parmak izi ID"
+                             Visibility="{Binding ShowFingerprintIdField, Converter={StaticResource BoolToVisibility}}"/>
+                    <TextBlock Grid.Column="2" Text="PI ID" Style="{StaticResource Label}" Margin="0,6,0,3"
+                               Visibility="{Binding ShowPidField, Converter={StaticResource BoolToVisibility}}"/>
+                    <TextBox Grid.Row="1" Grid.Column="2" Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormPid, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="PI ID"
+                             Visibility="{Binding ShowPidField, Converter={StaticResource BoolToVisibility}}"/>
                 </Grid>
                 <TextBlock Text="Not" Style="{StaticResource Label}" Margin="0,6,0,3"/>
                 <TextBox Style="{StaticResource Field}" MinWidth="0" Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" Height="48" TextWrapping="Wrap" VerticalContentAlignment="Top" AutomationProperties.Name="Not"/>

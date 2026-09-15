@@ -22,6 +22,9 @@ public interface IStudentApiClient
     Task<StudentDetails> GetAsync(Guid id, CancellationToken cancellationToken = default);
     Task<StudentDetails> SaveAsync(Guid? id, SaveStudentRequest request, CancellationToken cancellationToken = default);
     Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default);
+    /// <summary>Silinen öğrenciyi kartsız olarak geri getirir (POST /students/{id}/restore).</summary>
+    Task<StudentDetails> RestoreAsync(Guid id, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Bu istemci öğrenci geri almayı desteklemiyor.");
     /// <param name="fromDate">
     /// Gecmis sekmelerinin (Hakedisler, Gecis Gecmisi) baslangic tarihi. Verilmezse
     /// eski davranis: hakedislerde bugunun etrafinda dar bir pencere, geciste bugun.
@@ -114,6 +117,12 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         await EnsureAsync(response, cancellationToken);
     }
 
+    public async Task<StudentDetails> RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Post, $"api/students/{id:D}/restore");
+        return await SendAsync<StudentDetails>(message, cancellationToken);
+    }
+
     public Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
         GetAsync<IReadOnlyList<EntitlementPeriodSummary>>($"api/meal-entitlements/student/{studentId}/periods", cancellationToken);
 
@@ -149,7 +158,7 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
             // Bicimlendirme sekmeye ozeldir: her sekmenin hangi alanlari hangi
             // Turkce etiketle gosterecegi StudentTabFormatter'da tanimlidir.
             var rows = root.EnumerateArray()
-                .Select(x => (object)new StudentDetailRow(StudentTabFormatter.Summarize(tab, x))).ToList();
+                .Select(x => (object)StudentTabFormatter.ToRow(tab, x)).ToList();
 
             // KESILME UYARISI: sunucu sayfa basina en fazla 200 kayit doner ve devami
             // oldugunu "hasMore" ile soyler. Bu bayrak okunmadiginda kullanici 200 satiri
@@ -189,7 +198,7 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
                 root.GetProperty("available").GetDecimal(), root.GetProperty("expired").GetDecimal())
         };
         var items = root.GetProperty("entries").GetProperty("items").EnumerateArray()
-            .Select(x => (object)new StudentDetailRow(StudentTabFormatter.Summarize("Balance", x))).ToList();
+            .Select(x => (object)StudentTabFormatter.ToRow("Balance", x)).ToList();
         rows.AddRange(items.Count > 0 ? items : [new StudentDetailRow("Henüz bakiye hareketi yok. Kasa > Bakiye Yükle ile yükleme yapılabilir.")]);
         return rows;
     }
@@ -349,7 +358,9 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
             ["search"] = q.Search, ["studentNo"] = q.StudentNo, ["cardNumber"] = q.CardNumber,
             ["firstName"] = q.FirstName, ["lastName"] = q.LastName, ["classId"] = q.ClassId?.ToString(),
             ["sectionId"] = q.SectionId?.ToString(), ["departmentId"] = q.DepartmentId?.ToString(),
-            ["isActive"] = q.IsActive?.ToString(CultureInfo.InvariantCulture), ["page"] = q.Page.ToString(CultureInfo.InvariantCulture),
+            ["isActive"] = q.IsActive?.ToString(CultureInfo.InvariantCulture),
+            ["deletedOnly"] = q.DeletedOnly ? "true" : null,
+            ["page"] = q.Page.ToString(CultureInfo.InvariantCulture),
             ["pageSize"] = q.PageSize.ToString(CultureInfo.InvariantCulture), ["className"] = q.ClassName,
             ["sectionName"] = q.SectionName, ["departmentName"] = q.DepartmentName, ["groupId"] = q.GroupId?.ToString()
         };
@@ -359,7 +370,13 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
 
 }
 
-public sealed record StudentDetailRow(string Summary);
+public sealed record StudentDetailCell(string Label, string Value);
+
+/// <summary>
+/// Ogrenci detay tablosunun bir satiri. Summary mevcut testler/canli yolculuklar icin
+/// korunur; Cells ayni bilgiyi gercek DataGrid sutunlarinda gostermek icindir.
+/// </summary>
+public sealed record StudentDetailRow(string Summary, IReadOnlyList<StudentDetailCell>? Cells = null);
 
 /// <summary>
 /// Bakiye sekmesinin ilk satiri: guncel bakiye buyuk, altinda kullanilabilir/yanmis ayrimi.

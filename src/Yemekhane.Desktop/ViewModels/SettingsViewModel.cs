@@ -57,6 +57,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string autoEntitlementSendAt = "13:10", autoEntitlementDaysText = "2", autoEntitlementTemplate = "";
     private string smsProvider = "Http", testSmsPhone = "";
     private bool smsEnabled = true;
+    private bool showDepartment = true, showJob = true, showAddress = true, showFingerprintId = true, showPid = true;
     private string? testSmsResultText, smsCreditText;
     private string autoIncomePhone = "", autoIncomeTemplate = "", autoCardTemplate = "", autoCardPhone = "";
     private string? entitlementRunText;
@@ -186,6 +187,11 @@ public sealed class SettingsViewModel : ObservableObject
     public bool HasInvalidInput => Validate().Count > 0;
     public string SchoolName { get => schoolName; set => Change(ref schoolName, value); } public string SchoolAddress { get => schoolAddress; set => Change(ref schoolAddress, value); }
     public string SchoolContact { get => schoolContact; set => Change(ref schoolContact, value); } public string LogoPath { get => logoPath; set => Change(ref logoPath, value); }
+    public bool ShowDepartment { get => showDepartment; set => Change(ref showDepartment, value); }
+    public bool ShowJob { get => showJob; set => Change(ref showJob, value); }
+    public bool ShowAddress { get => showAddress; set => Change(ref showAddress, value); }
+    public bool ShowFingerprintId { get => showFingerprintId; set => Change(ref showFingerprintId, value); }
+    public bool ShowPid { get => showPid; set => Change(ref showPid, value); }
     public string SmsEndpoint { get => smsEndpoint; set => Change(ref smsEndpoint, value); } public string SmsAuthType { get => smsAuthType; set => Change(ref smsAuthType, value); }
     public string SmsProvider
     {
@@ -464,6 +470,8 @@ public sealed class SettingsViewModel : ObservableObject
         backupEnabled = x.Backup.Enabled; backupFrequency = x.Backup.Frequency; backupWeeklyDay = x.Backup.WeeklyDay; backupTime = x.Backup.Time.ToString("HH:mm", CultureInfo.InvariantCulture); backupRetentionText = x.Backup.RetentionCount.ToString(CultureInfo.InvariantCulture); backupPath = x.Backup.Path ?? "";
         syncEnabled = x.Sync.Enabled; syncEndpoint = x.Sync.Endpoint ?? ""; syncDeviceId = x.Sync.DeviceId ?? ""; syncIntervalText = x.Sync.IntervalMinutes.ToString(CultureInfo.InvariantCulture); syncSecret = null;
         logLevel = x.Logs.Level; logRetentionText = x.Logs.RetentionDays.ToString(CultureInfo.InvariantCulture); logPath = x.Logs.Path ?? "";
+        showDepartment = x.StudentForm.ShowDepartment; showJob = x.StudentForm.ShowJob; showAddress = x.StudentForm.ShowAddress;
+        showFingerprintId = x.StudentForm.ShowFingerprintId; showPid = x.StudentForm.ShowPid;
         foreach (var name in GetType().GetProperties().Where(p => p.CanRead).Select(p => p.Name)) Raise(name); RefreshCommands();
     }
     private void ApplyAutomation(SmsAutomationStatus status)
@@ -480,8 +488,15 @@ public sealed class SettingsViewModel : ObservableObject
             ParseOr(AutoEntitlementDaysText, automationOriginal?.Settings.EntitlementWarning.DaysThreshold ?? 2), AutoEntitlementTemplate?.Trim() ?? ""),
         new IncomeNoticeRule(AutoIncomeEnabled, EmptyToNull(AutoIncomePhone), AutoIncomeTemplate?.Trim() ?? ""),
         new CardReplacementRule(AutoCardEnabled, AutoCardTemplate?.Trim() ?? "", EmptyToNull(AutoCardPhone)));
-    private SaveSettingsRequest BuildRequest() => new(new(SchoolName, EmptyToNull(SchoolAddress), EmptyToNull(SchoolContact), EmptyToNull(LogoPath)), new(EmptyToNull(SmsEndpoint), SmsAuthType, EmptyToNull(SmsUsername), EmptyToNull(SmsSender), SmsTimeoutSeconds, EmptyToNull(SmsSecret), SmsProvider, SmsEnabled), new(BackupEnabled, BackupFrequency, BackupWeeklyDay, TryParseTime(BackupTime, out var time) ? time : original?.Backup.Time ?? TimeOnly.MinValue, BackupRetentionCount, EmptyToNull(BackupPath)), new(EmptyToNull(SyncEndpoint), EmptyToNull(SyncDeviceId), SyncIntervalMinutes, SyncEnabled, EmptyToNull(SyncSecret)), new(LogLevel, LogRetentionDays, EmptyToNull(LogPath)));
-    private static SaveSettingsRequest ToRequest(SettingsDocument x) => new(new(x.School.Name, x.School.Address, x.School.Contact, x.School.LogoPath), new(x.Sms.Endpoint, x.Sms.AuthType, x.Sms.Username, x.Sms.Sender, x.Sms.TimeoutSeconds, null, string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider, x.Sms.Enabled), new(x.Backup.Enabled, x.Backup.Frequency, x.Backup.WeeklyDay, x.Backup.Time, x.Backup.RetentionCount, x.Backup.Path), new(x.Sync.Endpoint, x.Sync.DeviceId, x.Sync.IntervalMinutes, x.Sync.Enabled, null), new(x.Logs.Level, x.Logs.RetentionDays, x.Logs.Path));
+    private SaveSettingsRequest BuildRequest() => new SaveSettingsRequest(new(SchoolName, EmptyToNull(SchoolAddress), EmptyToNull(SchoolContact), EmptyToNull(LogoPath)), new(EmptyToNull(SmsEndpoint), SmsAuthType, EmptyToNull(SmsUsername), EmptyToNull(SmsSender), SmsTimeoutSeconds, EmptyToNull(SmsSecret), SmsProvider, SmsEnabled), new(BackupEnabled, BackupFrequency, BackupWeeklyDay, TryParseTime(BackupTime, out var time) ? time : original?.Backup.Time ?? TimeOnly.MinValue, BackupRetentionCount, EmptyToNull(BackupPath)), new(EmptyToNull(SyncEndpoint), EmptyToNull(SyncDeviceId), SyncIntervalMinutes, SyncEnabled, EmptyToNull(SyncSecret)), new(LogLevel, LogRetentionDays, EmptyToNull(LogPath)))
+    {
+        StudentForm = new(ShowDepartment, ShowJob, ShowAddress, ShowFingerprintId, ShowPid)
+    };
+    private static SaveSettingsRequest ToRequest(SettingsDocument x) => new SaveSettingsRequest(new(x.School.Name, x.School.Address, x.School.Contact, x.School.LogoPath), new(x.Sms.Endpoint, x.Sms.AuthType, x.Sms.Username, x.Sms.Sender, x.Sms.TimeoutSeconds, null, string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider, x.Sms.Enabled), new(x.Backup.Enabled, x.Backup.Frequency, x.Backup.WeeklyDay, x.Backup.Time, x.Backup.RetentionCount, x.Backup.Path), new(x.Sync.Endpoint, x.Sync.DeviceId, x.Sync.IntervalMinutes, x.Sync.Enabled, null), new(x.Logs.Level, x.Logs.RetentionDays, x.Logs.Path))
+    {
+        StudentForm = new(x.StudentForm.ShowDepartment, x.StudentForm.ShowJob, x.StudentForm.ShowAddress,
+            x.StudentForm.ShowFingerprintId, x.StudentForm.ShowPid)
+    };
     // Yerel dogrulama hatasi gosterildikten sonra kullanici alani duzeltirse mesaj kalkar;
     // aksi halde "abc" uyarisi, kutu "2" yazarken bile ekranda asili kaliyordu.
     private bool validationErrorShown;

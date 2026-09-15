@@ -23,6 +23,12 @@ public sealed class EntitlementPeriodViewModel(EntitlementPeriodSummary period)
     public string MealName => period.MealName;
 
     public int RemainingQuantity => period.RemainingQuantity;
+    public int TotalQuantity => period.TotalQuantity;
+    public int ConsumedQuantity => period.ConsumedQuantity;
+    public int ExpiredQuantity => period.ExpiredQuantity;
+    public DateOnly FirstDate => period.FirstDate;
+    public DateOnly LastDate => period.LastDate;
+    public DateOnly RenewFrom => period.RenewFrom;
     public int DaysLeft => period.DaysLeft;
     public bool IsExpired => period.IsExpired;
 
@@ -37,8 +43,10 @@ public sealed class EntitlementPeriodViewModel(EntitlementPeriodSummary period)
     public string ExpiredText => $"{period.ExpiredQuantity:N0} öğün kullanılmadan geçti";
 
     public string PeriodText => $"{Format(period.FirstDate)} – {Format(period.LastDate)}";
+    public string FirstDateText => Format(period.FirstDate);
     public string LastDateText => Format(period.LastDate);
-    public string RenewFromText => $"Yenileme: {Format(period.RenewFrom)} tarihinden itibaren";
+    public string RenewFromDateText => Format(period.RenewFrom);
+    public string RenewFromText => $"Yenileme: {RenewFromDateText} tarihinden itibaren";
 
     /// <summary>
     /// "5 gün kaldı" / "bugün son gün" / "12 gün önce bitti". Gecmis donemde kullanici

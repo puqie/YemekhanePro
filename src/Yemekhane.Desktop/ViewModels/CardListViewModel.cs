@@ -15,7 +15,7 @@ public sealed record CardStatusOption(string Name, bool? Value);
 /// Kartlar ekraninin tek satiri. Pasiflestirme IKI ADIMDIR (neden + onay) ve o durum satirda
 /// tutulur: sunucu nedeni zorunlu tutar, bos nedenle "Onayla" pasif kalir.
 /// </summary>
-public sealed class CardListRowViewModel(CardListRow value) : ObservableObject
+public sealed class CardListRowViewModel(CardListRow value, bool canWriteStudents = false) : ObservableObject
 {
     private static readonly TimeZoneInfo Istanbul = FindIstanbulZone();
     private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
@@ -31,9 +31,14 @@ public sealed class CardListRowViewModel(CardListRow value) : ObservableObject
     public string PrintedNumber => value.PrintedNumber ?? "";
     public bool IsActive => value.IsActive;
     public bool IsPassive => !value.IsActive;
+    public bool StudentActive => value.StudentActive;
+    public bool StudentDeleted => value.StudentDeleted;
+    public bool CanActivateStudent => canWriteStudents && IsActive && !StudentActive && !StudentDeleted;
+    public bool IsDeletedStudent => value.StudentDeleted;
     /// <summary>Ogrenci pasif/silinmisse kart aktif olsa da turnikeden gecemez; durumda soylenir.</summary>
     public string StatusText => value.IsActive
-        ? value.StudentActive ? "Aktif" : "Aktif · öğrenci pasif"
+        ? value.StudentDeleted ? "Aktif · öğrenci silinmiş"
+            : value.StudentActive ? "Aktif" : "Aktif · öğrenci pasif"
         : "Pasif";
     public string PeriodText => Format(value.ValidFrom) + " – " + (value.ValidTo is { } to ? Format(to) : "devam ediyor");
     public string ReasonText => value.ReplacementReason ?? "";
@@ -93,12 +98,15 @@ public sealed class CardListViewModel : ObservableObject, IDisposable
         CancelDeactivateCommand = new RelayCommand<CardListRowViewModel>(row => { row.IsDeactivateArmed = false; row.DeactivateReason = null; });
         ConfirmDeactivateCommand = new AsyncCommand<CardListRowViewModel>(DeactivateAsync, _ => CanManage);
         ReactivateCommand = new AsyncCommand<CardListRowViewModel>(ReactivateAsync, _ => CanManage);
+        ActivateStudentCommand = new AsyncCommand<CardListRowViewModel>(ActivateStudentAsync,
+            row => CanWriteStudents && row.CanActivateStudent);
     }
 
     public IReadOnlyList<CardStatusOption> StatusOptions { get; } = [new("Tümü", null), new("Aktif", true), new("Pasif", false)];
     public ObservableCollection<CardListRowViewModel> Rows { get; } = [];
 
     public bool CanManage => permissions.Contains("cards.manage");
+    public bool CanWriteStudents => permissions.Contains("students.write");
     public string? Search { get => search; set => Set(ref search, value); }
     public CardStatusOption SelectedStatus { get => selectedStatus; set => Set(ref selectedStatus, value); }
     public bool IsLoading { get => isLoading; private set { if (Set(ref isLoading, value)) { Raise(nameof(IsEmpty)); RefreshCommands(); } } }
@@ -127,6 +135,7 @@ public sealed class CardListViewModel : ObservableObject, IDisposable
     public ICommand CancelDeactivateCommand { get; }
     public ICommand ConfirmDeactivateCommand { get; }
     public ICommand ReactivateCommand { get; }
+    public ICommand ActivateStudentCommand { get; }
 
     /// <summary>Acilis ve Yenile: bulunulan sayfa korunur, suzgec korunur.</summary>
     public Task InitializeAsync() => LoadAsync(Page);
@@ -139,7 +148,7 @@ public sealed class CardListViewModel : ObservableObject, IDisposable
         {
             var result = await api.ListAsync(Search, SelectedStatus.Value, Math.Max(1, requestedPage), PageSize);
             Rows.Clear();
-            foreach (var row in result.Items) Rows.Add(new CardListRowViewModel(row));
+            foreach (var row in result.Items) Rows.Add(new CardListRowViewModel(row, CanWriteStudents));
             Page = result.Page;
             TotalCount = result.TotalCount;
             ActiveCount = result.ActiveCount;
@@ -213,6 +222,31 @@ public sealed class CardListViewModel : ObservableObject, IDisposable
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or InvalidDataException)
         {
             Error = "Kart aktifleştirilemedi. API bağlantısını kontrol edin.";
+        }
+    }
+
+    private async Task ActivateStudentAsync(CardListRowViewModel row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        Error = null;
+        StatusMessage = null;
+        try
+        {
+            await api.ActivateStudentAsync(row.StudentId);
+            StatusMessage = $"{row.StudentName} yeniden aktif edildi; mevcut kartı kullanılabilir.";
+            await LoadAsync(Page);
+        }
+        catch (LoginRequiredException)
+        {
+            Error = "Öğrenciyi aktifleştirmek için students.write izni gerekiyor.";
+        }
+        catch (ApiRequestException exception)
+        {
+            Error = exception.Message;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or InvalidDataException)
+        {
+            Error = "Öğrenci aktifleştirilemedi. API bağlantısını kontrol edin.";
         }
     }
 

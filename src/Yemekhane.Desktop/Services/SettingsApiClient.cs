@@ -15,6 +15,8 @@ namespace Yemekhane.Desktop.Services;
 public interface ISettingsApiClient
 {
     Task<SettingsDocument> GetAsync(CancellationToken cancellationToken = default);
+    Task<StudentFormSettings> GetStudentFormAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(new StudentFormSettings());
     Task<SaveSettingsResult> SaveAsync(SaveSettingsRequest request, CancellationToken cancellationToken = default);
     Task<BackupCommandResult> BackupNowAsync(CancellationToken cancellationToken = default);
     Task<BackupValidationResult> ValidateBackupAsync(string path, CancellationToken cancellationToken = default);
@@ -40,6 +42,8 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
 {
     public Task<SettingsDocument> GetAsync(CancellationToken cancellationToken = default) =>
         SendAsync<SettingsDocument>(HttpMethod.Get, "api/settings", null, cancellationToken);
+    public Task<StudentFormSettings> GetStudentFormAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<StudentFormSettings>(HttpMethod.Get, "api/settings/student-form", null, cancellationToken);
     public Task<SaveSettingsResult> SaveAsync(SaveSettingsRequest request, CancellationToken cancellationToken = default) =>
         SendAsync<SaveSettingsResult>(HttpMethod.Put, "api/settings", JsonContent.Create(request), cancellationToken);
     public Task<BackupCommandResult> BackupNowAsync(CancellationToken cancellationToken = default) =>
