@@ -22,7 +22,8 @@ public static class PageHelpTexts
         [
             "Seçilen tarihte hangi öğrencinin yemek yiyip yemediğini, hangi öğünde okutma yaptığını listeler.",
             "Reddedilen geçişin gerekçesi Neden sütunundadır (örn. öğün saati dışı okutma).",
-            "Ara kutusu ve Karar/Öğün/Cihaz/Sınıf filtreleriyle daraltabilirsiniz; en eski kayıtlar için alttaki \"Daha eski kayıtları yükle\" düğmesini kullanın.",
+            "Ara kutusu ve Karar/Öğün/Cihaz/Sınıf filtreleriyle daraltabilirsiniz; en eski kayıtlar için alttaki \"Daha eski kayıtları yükle\" düğmesini kullanın. Ara Türkçe harfe duyarsızdır: \"ipek\" yazınca İPEK de bulunur.",
+            "Öğrenci sütununda \"Tanımsız kart\" yazan satır, okutulan kartın hiçbir öğrenciye tanımlı olmadığını söyler; satırdaki \"Öğrenciye Ata\" düğmesi Öğrenciler ekranını o numara hazır olarak açar. Bir çocuk hiç geçemiyorsa ve adıyla aranınca kayıt çıkmıyorsa önce buna bakın.",
         ]),
         [ShellRoutes.Students] = new("Öğrenciler",
         [
@@ -100,6 +101,9 @@ public static class PageHelpTexts
             "Turnike ve kart okuyucu cihazlarının bağlantı durumunu, günlüklerini ve ayarlarını yönetir.",
             "Bir cihaz turnike komutunu hiç alamazsa (bağlantı koptu, kapasite yok) yemek hakkı otomatik iade edilir; belirsiz durumlarda (yazarken bağlantı koptu gibi) inceleme için kayıt bırakılır ve iade edilmez — bu kayıtları takip edin.",
             "Cihaz satırındaki Loglar düğmesi o cihazın günlüğünü açar; uygulama geneli kayıtlar Ayarlar > Loglar'dadır.",
+            "Kol bazen dönmüyorsa (\"İzin Verildi\" yazıyor ama turnike açılmıyor) Röle darbe süresini artırın; 1000-2000 ms genelde yeter. Çok uzun tutmak tek okutmayla iki kişinin geçmesine yol açabilir.",
+            "Turnike açma komutu doğrulanamadıysa (zaman aşımı) aynı kartın 90 saniye içindeki ikinci okutması hakkı yeniden düşürmez; kapıyı yeniden açmayı dener.",
+            "Turnike bir geçişten sonra yaklaşık 5 saniye yeni komut kabul etmez; o sırada okutan öğrencinin kartı bekletilir ve hak ancak turnike hazır olunca düşer. Süre Devices:TurnstileCycleSeconds ayarıdır.",
         ]),
         [ShellRoutes.DeviceCards] = new("Kart Yükleme Durumu",
         [

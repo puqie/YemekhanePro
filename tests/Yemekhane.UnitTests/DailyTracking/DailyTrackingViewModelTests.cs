@@ -105,6 +105,29 @@ public sealed class DailyTrackingViewModelTests
         Assert.Null(vm.SelectedMealTypeId);
     }
 
+    /// <summary>
+    /// "Tanımsız kart" satiri Ogrenciler ekranini kart numarasi hazir acar; kayitli ogrencinin satirinda
+    /// bu dugme yoktur. Saha: karti yanlis girilen cocuk hic gecemiyordu ve operator sebebi bulamiyordu.
+    /// </summary>
+    [Fact]
+    public async Task UnknownCardRowOffersAssignmentAndNavigatesWithTheNumber()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var unknown = new DailyTrackingRow(Guid.NewGuid(), now, " 8350099 ", null, null, "Tanımsız kart", null, null,
+            Guid.NewGuid(), "Öğle", Guid.NewGuid(), "Turnike", "DENY", "Kart tanımsız");
+        var known = Row(Guid.NewGuid(), now.AddSeconds(-1));
+        var api = new FakeApi(Page([unknown, known]));
+        var vm = Create(api, new FakeRealtime());
+        await vm.InitializeAsync();
+        string? route = null;
+        vm.StudentDetailNavigationRequested += (_, value) => route = value;
+
+        Assert.True(vm.AssignCardCommand.CanExecute(unknown));
+        Assert.False(vm.AssignCardCommand.CanExecute(known));
+        vm.AssignCardCommand.Execute(unknown);
+
+        Assert.Equal("students/card/8350099", route);
+    }
     private static DailyTrackingViewModel Create(FakeApi api, FakeRealtime realtime,
         FakePreferences? preferences = null, FakeSound? sound = null) =>
         new(api, realtime, preferences ?? new FakePreferences(), sound ?? new FakeSound());

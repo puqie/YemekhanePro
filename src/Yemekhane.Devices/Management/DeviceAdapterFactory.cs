@@ -22,6 +22,7 @@ public sealed class DeviceAdapterFactory : IDeviceAdapterFactory
     private readonly bool isDevelopment;
     private readonly Func<DeviceAdapterConfiguration, ISf300Protocol?> sf300ProtocolFactory;
     private readonly Func<DeviceAdapterConfiguration, IZkTecoSdk?> zkTecoSdkFactory;
+    private readonly TimeSpan? turnstilePassageCycle;
 
     /// <param name="sf300Protocol">
     /// Tek bir paylasilan protokol ornegi (testler icin). Uretimde her cihaz kendi TCP baglantisini
@@ -35,22 +36,28 @@ public sealed class DeviceAdapterFactory : IDeviceAdapterFactory
     /// Her SF300 cihazi icin ayri bir protokol ornegi uretir. Tek bir ornegi paylasmak,
     /// iki turnikenin ayni TCP soketi uzerinden konusmasina ve yanitlarin karismasina yol acardi.
     /// </summary>
+    /// <param name="turnstilePassageCycle">
+    /// Turnikenin bir gecisten sonra yeni darbe kabul etmedigi sure (Devices:TurnstileCycleSeconds).
+    /// Bos birakilirsa OzakTurnstileProfile.DefaultPassageCycle.
+    /// </param>
     public DeviceAdapterFactory(bool isDevelopment,
         Func<DeviceAdapterConfiguration, ISf300Protocol?> sf300ProtocolFactory,
-        Func<DeviceAdapterConfiguration, IZkTecoSdk?>? zkTecoSdkFactory = null)
+        Func<DeviceAdapterConfiguration, IZkTecoSdk?>? zkTecoSdkFactory = null,
+        TimeSpan? turnstilePassageCycle = null)
     {
         this.isDevelopment = isDevelopment;
         this.sf300ProtocolFactory = sf300ProtocolFactory;
         this.zkTecoSdkFactory = zkTecoSdkFactory ?? (_ => null);
+        this.turnstilePassageCycle = turnstilePassageCycle;
     }
 
     /// <summary>
     /// Kurulumda girilen turnike ayarlarindan fiziksel profili kurar. Role darbe suresi uretici
     /// dokumaninda belgelenmedigi icin sahada dogrulanir; bu yuzden sabit degil yapilandirilabilir.
     /// </summary>
-    private static OzakTurnstileProfile TurnstileProfile(DeviceAdapterConfiguration configuration) =>
+    private OzakTurnstileProfile TurnstileProfile(DeviceAdapterConfiguration configuration) =>
         new(configuration.TurnstileRelayPulseMs is { } pulse ? TimeSpan.FromMilliseconds(pulse) : null,
-            configuration.TurnstileBidirectional);
+            configuration.TurnstileBidirectional, turnstilePassageCycle);
 
     public IDevice Create(DeviceAdapterConfiguration configuration)
     {

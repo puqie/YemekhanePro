@@ -23,5 +23,14 @@ public enum HardwareCommandOutcome
     CompensatedRetryRequired
 }
 
+/// <summary>
+/// Turnikenin zamanlama kisiti. Ayri arayuz: ITurnstile sahteleri testlerde yasiyor, oraya uye
+/// eklemek onlari kirardi. Uygulamayan turnike icin bekleme yapilmaz.
+/// </summary>
+public interface ITurnstileTiming
+{
+    /// <summary>Iki acma komutu arasinda birakilmasi gereken en az sure (turnikenin fiziksel dongusu).</summary>
+    TimeSpan MinimumCommandInterval { get; }
+}
 public sealed record TurnstileResult(AccessDecision? AccessDecision, HardwareCommandOutcome HardwareOutcome,
     string Message, DeviceCommandResult? CommandResult = null);

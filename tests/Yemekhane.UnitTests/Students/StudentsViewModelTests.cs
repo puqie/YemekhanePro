@@ -312,6 +312,17 @@ public sealed class StudentsViewModelTests
         Assert.Equal("Öğrencinin geri açılacak pasif kartı yok.", vm.ErrorMessage);
         Assert.Equal(1, api.ReactivateCount);
     }
+    /// <summary>Gunluk Takip'teki "Tanımsız kart" satirindan gelen rota numarayi kart kutusuna hazir koyar.</summary>
+    [Fact]
+    public async Task TanimsizKartRotasiNumarayiKartKutusunaKoyar()
+    {
+        var api = new FakeApi(); using var vm = Create(api, "cards.manage");
+
+        vm.HandleRoute("students/card/8350099");
+        await vm.LoadAsync(1);
+
+        Assert.Equal("8350099", vm.NewCardNumber);
+    }
     /// <summary>
     /// Kartsiz ogrenciye "Kart Ata" ATAMA ucunu cagirir; kartli ogrencide DEGISTIRME.
     /// Onceden her zaman degistirme cagriliyordu ve kartsiz ogrenciye ilk kart verilemiyordu.

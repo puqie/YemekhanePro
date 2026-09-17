@@ -64,6 +64,13 @@ public sealed class DailyTrackingViewModel : ObservableObject
             if (row.StudentId.HasValue) StudentDetailNavigationRequested?.Invoke(this,
                 $"{ShellRoutes.StudentDetail}/{row.StudentId.Value:D}");
         }, row => row?.StudentId.HasValue == true);
+        // "Tanımsız kart" satiri: kart hicbir ogrenciye tanimli degil. Operator numarayi elle kopyalayip
+        // Ogrenciler'e gitmek zorunda kalmasin; tek tikla Ogrenciler ekrani numara hazir acilir.
+        // Saha: "Ipek hic gecemiyor, adini arasam da goremiyorum, sebebini anlayamiyorum".
+        AssignCardCommand = new ParameterCommand<DailyTrackingRow>(row =>
+            StudentDetailNavigationRequested?.Invoke(this,
+                $"{ShellRoutes.Students}/card/{Uri.EscapeDataString(row.CardNumber.Trim())}"),
+            row => row is { StudentId: null } && !string.IsNullOrWhiteSpace(row.CardNumber));
         realtimeClient.AccessReceived += OnAccessReceived;
         realtimeClient.StateChanged += OnRealtimeStateChanged;
     }
@@ -120,6 +127,7 @@ public sealed class DailyTrackingViewModel : ObservableObject
     public ICommand LoadMoreCommand { get; }
     public ICommand ToggleLiveCommand { get; }
     public ICommand OpenStudentCommand { get; }
+    public ICommand AssignCardCommand { get; }
 
     public async Task InitializeAsync()
     {

@@ -127,6 +127,40 @@ public sealed class DailyTrackingRepositoryTests
         Assert.NotEqual(first.Items[0].OperationId, second.Items[0].OperationId);
     }
 
+    /// <summary>
+    /// Arama Turkce harfe duyarsiz olmali: SQLite LIKE yalnizca ASCII'de buyuk/kucuk harfi gormezden
+    /// gelir, "ipek" aramasi "İPEK YURDAKUL"u bulmuyordu (saha: "adini arasam da goremiyorum"). Ad,
+    /// Ogrenciler ekraniyla ayni normallestirilmis sutundan aranir; tanimsiz kart satiri numarayla bulunur.
+    /// </summary>
+    [Theory]
+    [InlineData("ipek", 1)]
+    [InlineData("IPEK", 1)]
+    [InlineData("ıpek", 1)]
+    [InlineData("yurdakul", 1)]
+    [InlineData("8350099", 1)]
+    [InlineData("yok", 0)]
+    public async Task SearchIgnoresTurkishCaseAndFindsUnknownCardsByNumber(string term, int expected)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<YemekhaneDbContext>().UseSqlite(connection).Options;
+        await using var db = new YemekhaneDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        var start = new DateTimeOffset(2026, 9, 16, 21, 0, 0, TimeSpan.Zero);
+        var meal = new MealType { Name = "Öğle" };
+        var device = Device("Turnike");
+        var ipek = new Student { StudentNo = "3003", FirstName = "İPEK", LastName = "YURDAKUL" };
+        db.AddRange(meal, device, ipek);
+        db.AccessLogs.AddRange(
+            Access(ipek.Id, device.Id, meal.Id, start.AddHours(2), "ALLOW", "8350010"),
+            Access(null, device.Id, meal.Id, start.AddHours(3), "DENY", "8350099"));
+        await db.SaveChangesAsync();
+        var repository = new EfDailyTrackingRepository(db);
+
+        var page = await repository.GetAsync(new DailyTrackingQuery(10, Search: term), start, start.AddDays(1), start.AddHours(4), default);
+
+        Assert.Equal(expected, page.Summary.Total);
+    }
     private static Device Device(string name) => new() { Name = name, DeviceType = "SF300", ConnectionType = "TCP", Direction = "Entry", ConnectionStatus = "Online" };
     private static AccessLog Access(Guid? studentId, Guid deviceId, Guid mealId, DateTimeOffset timestamp, string decision, string card) => new()
     {

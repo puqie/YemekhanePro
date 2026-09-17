@@ -670,6 +670,15 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         _ = RefreshStudentFormSettingsAsync();
         if (route == ShellRoutes.StudentsCreate) OpenCreate();
         else if (route is ShellRoutes.Cards or ShellRoutes.CardReader) _ = OpenCardWorkflowAsync();
+        else if (route.StartsWith(ShellRoutes.Students + "/card/", StringComparison.Ordinal))
+        {
+            // Gunluk Takip'teki "Tanımsız kart" satirindan gelindi: numara "Arka yuz (kart no)" kutusuna
+            // hazir konur, operator ogrenciyi secip "Kart Ata"ya basar. Numara sistemde olmadigi icin
+            // aramaya konmaz (bos liste getirirdi).
+            NewCardNumber = Uri.UnescapeDataString(route[(ShellRoutes.Students.Length + "/card/".Length)..]);
+            Raise(nameof(NewCardNumber));
+            InfoMessage = $"{NewCardNumber} numaralı kart hiçbir öğrenciye tanımlı değil. Listeden öğrenciyi seçin; numara \"Arka yüz (kart no)\" kutusunda hazır, \"Kart Ata\" ile tanımlayın.";
+        }
         else if (route.StartsWith(ShellRoutes.StudentDetail + "/", StringComparison.Ordinal)
             && Guid.TryParse(route[(route.LastIndexOf('/') + 1)..], out var id)) _ = OpenDetailByIdAsync(id);
         else if (route.StartsWith(ShellRoutes.Students + "/class/", StringComparison.Ordinal)

@@ -37,9 +37,12 @@ public sealed record OzakTurnstileProfile
     /// <summary>
     /// Role darbe suresi. Uretici dokumaninda BELGELENMEMISTIR; bu deger kurulumda saha
     /// dogrulamasi gerektirir (§08: belgede olmayan detay UNKNOWN kabul edilir).
-    /// Varsayilan, kuru kontakli turnikelerde yaygin olan degerdir ve gerektiginde daraltilmalidir.
+    /// Saha (Eylul 2026): 500 ms ile kol "bazen" donmuyordu -- cocuk kolu darbeden once ya da sonra
+    /// itiyor, yarim saniyelik pencereyi kaciriyordu. Erisim kontrol cihazlarinin kendi varsayilani
+    /// 3-5 sn'dir; 1 sn kol icin yeterli ve turnikenin kendi dongusunden (5 sn) kisa kalir. Sahada "Role darbe
+    /// suresi" ile ayarlanir.
     /// </summary>
-    public static readonly TimeSpan DefaultRelayPulse = TimeSpan.FromMilliseconds(500);
+    public static readonly TimeSpan DefaultRelayPulse = TimeSpan.FromMilliseconds(1000);
 
     /// <summary>Role darbe suresi icin kabul edilen alt sinir.</summary>
     public static readonly TimeSpan MinRelayPulse = TimeSpan.FromMilliseconds(50);
@@ -51,12 +54,21 @@ public sealed record OzakTurnstileProfile
     /// </summary>
     public static readonly TimeSpan MaxRelayPulse = TimeSpan.FromSeconds(5);
 
+    /// <summary>
+    /// Turnikenin bir gecisten sonra yeni darbe kabul etmedigi sure (fiziksel dongu). Saha olcumu:
+    /// "5 saniye falan"; o surede gelen okutma bekletilir, hak dusurulmez. Uretici dokumaninda yok;
+    /// Devices:TurnstileCycleSeconds ile ayarlanir.
+    /// </summary>
+    public static readonly TimeSpan DefaultPassageCycle = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan MaxPassageCycle = TimeSpan.FromSeconds(60);
+
     /// <param name="RelayPulse">Kontagin kapali tutulacagi sure.</param>
     /// <param name="SupportsBidirectional">
     /// 720 E uc kolludur ve iki yonde de donebilir; ancak sahadaki mekanik yonlendirme tek yone
     /// kilitlenmis olabilir. Bu yuzden cift yon varsayilmaz, yapilandirmayla bildirilir.
     /// </param>
-    public OzakTurnstileProfile(TimeSpan? RelayPulse = null, bool SupportsBidirectional = false)
+    /// <param name="PassageCycle">Bir gecisten sonra turnikenin yeni darbe kabul etmedigi sure; sifir = bekleme yok.</param>
+    public OzakTurnstileProfile(TimeSpan? RelayPulse = null, bool SupportsBidirectional = false, TimeSpan? PassageCycle = null)
     {
         var pulse = RelayPulse ?? DefaultRelayPulse;
         if (pulse < MinRelayPulse || pulse > MaxRelayPulse)
@@ -65,12 +77,28 @@ public sealed record OzakTurnstileProfile
                 $"Röle darbe süresi {MinRelayPulse.TotalMilliseconds:0}-{MaxRelayPulse.TotalMilliseconds:0} ms arasında olmalıdır.");
         }
 
+        var cycle = PassageCycle ?? DefaultPassageCycle;
+        if (cycle < TimeSpan.Zero || cycle > MaxPassageCycle)
+        {
+            throw new ArgumentOutOfRangeException(nameof(PassageCycle),
+                $"Turnike döngü süresi 0-{MaxPassageCycle.TotalSeconds:0} sn arasında olmalıdır.");
+        }
+
         this.RelayPulse = pulse;
         this.SupportsBidirectional = SupportsBidirectional;
+        this.PassageCycle = cycle;
     }
 
     public TimeSpan RelayPulse { get; init; }
     public bool SupportsBidirectional { get; init; }
+    public TimeSpan PassageCycle { get; init; }
+
+    /// <summary>
+    /// Iki acma komutu arasinda birakilacak en az sure: turnike dongusu, ama role darbesinden en az
+    /// bir saniye uzun -- kontak hala kapaliyken ikinci komut yeni kenar uretmez, kol donmez.
+    /// </summary>
+    public TimeSpan MinimumCommandInterval =>
+        PassageCycle > RelayPulse + TimeSpan.FromSeconds(1) ? PassageCycle : RelayPulse + TimeSpan.FromSeconds(1);
 
     /// <summary>
     /// Istenen yonun bu kurulumda fiziksel olarak surulebilir olup olmadigi. Cift yon desteklenmiyorsa

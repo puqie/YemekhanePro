@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Yemekhane.Application.Common;
 using Yemekhane.Application.DailyTracking;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
@@ -29,10 +30,15 @@ public sealed class EfDailyTrackingRepository(YemekhaneDbContext dbContext) : ID
         if (request.StudentId.HasValue) query = query.Where(x => x.Access.StudentId == request.StudentId);
         if (request.Search is not null)
         {
-            var pattern = $"%{EscapeLike(request.Search)}%";
+            // Turkce harfe duyarsizlik: SQLite LIKE yalnizca ASCII'de buyuk/kucuk harfi gormezden
+            // gelir; "ipek" aramasi "İPEK YURDAKUL"u bulmuyordu (saha: "adini arasam da goremiyorum").
+            // Ad, Ogrenciler ekraniyla AYNI normallestirilmis SearchName sutunundan aranir.
+            var term = request.Search.Trim();
+            var pattern = $"%{EscapeLike(term)}%";
+            var namePattern = $"%{EscapeLike(TurkishSearchText.Normalize(term))}%";
             query = query.Where(x => EF.Functions.Like(x.Access.CardNumber, pattern, "\\")
                 || (x.Student != null && (EF.Functions.Like(x.Student.StudentNo, pattern, "\\")
-                    || EF.Functions.Like(x.Student.FirstName + " " + x.Student.LastName, pattern, "\\"))));
+                    || EF.Functions.Like(x.Student.SearchName, namePattern, "\\"))));
         }
 
         var summary = await query.GroupBy(_ => 1).Select(x => new DailyTrackingSummary(

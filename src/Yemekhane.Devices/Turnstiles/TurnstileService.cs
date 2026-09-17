@@ -11,7 +11,9 @@ public sealed class TurnstileService(
     ITurnstileEventStore eventStore,
     TimeProvider timeProvider,
     IRealtimeEventPublisher realtimePublisher,
-    NotificationService? notifications = null)
+    NotificationService? notifications = null,
+    UnconfirmedGrantRegistry? unconfirmedGrants = null,
+    TurnstileCycleGate? cycleGate = null)
 {
     private static readonly TimeSpan DefaultCommandTimeout = TimeSpan.FromSeconds(10);
 
@@ -38,6 +40,34 @@ public sealed class TurnstileService(
                 "Turnike GrantAccess komutunu desteklemiyor.").ConfigureAwait(false);
             return new(null, HardwareCommandOutcome.CapabilityNotSupported,
                 "Turnike açma komutunu desteklemiyor; erişim kararı alınmadı ve geçiş verilmedi.");
+        }
+
+        var timeoutValue = commandTimeout ?? DefaultCommandTimeout;
+        if (timeoutValue <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(commandTimeout), "Zaman aşımı sıfırdan büyük olmalıdır.");
+        }
+
+        if (cycleGate is not null && turnstile is ITurnstileTiming timing)
+        {
+            // TURNIKE DONGUSU: son acma komutundan sonra turnike hazir olana kadar KARAR ALINMAZ.
+            // Saha: bir gecisten sonraki ~5 sn icinde gelen okutmaya "Izin verildi" denip hak
+            // dusuyor, cihaz komutu onayliyor ama kol donmuyordu -- hak yaniyordu. Okutmalar
+            // okuyucu basina sirayla islendigi icin bekleyenler kendiliginden kuyruk olur.
+            await cycleGate.WaitUntilReadyAsync(request.DeviceId, timing.MinimumCommandInterval, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var cardNumber = request.CardNumber?.Trim() ?? string.Empty;
+        // YENIDEN OKUTMA: az once bu kart icin hak dusuruldu ama acma komutu DOGRULANAMADI (zaman
+        // asimi / belirsiz hata, iade yok). Cocuk kapida bekliyor; hakki yeniden dusurmek yerine ayni
+        // islem adina kapi yeniden acilir. Komut dogrulandiysa (SUCCEEDED) bu yola girilmez: kartin
+        // turnike ustunden geri verilip ikinci kisinin gecirilmesi kapali kalir.
+        // Saha: "izin verildi diyor, turnikeyi acmiyor, ayni saniye reddediyor".
+        if (unconfirmedGrants is not null && unconfirmedGrants.TryTake(request.DeviceId, cardNumber, out var pending))
+        {
+            return await RetryGrantAsync(request, turnstile, cardNumber, pending, timeoutValue, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         var direction = string.Equals(request.Direction, "Exit", StringComparison.OrdinalIgnoreCase)
@@ -67,22 +97,18 @@ public sealed class TurnstileService(
                     : $"Erişim reddedildi: {decision.Reason}. Turnike red komutunu desteklemiyor.");
         }
 
-        var timeoutValue = commandTimeout ?? DefaultCommandTimeout;
-        if (timeoutValue <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(commandTimeout), "Zaman aşımı sıfırdan büyük olmalıdır.");
-        }
-
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(timeoutValue);
         try
         {
+            if (isAllowed) cycleGate?.MarkCommand(request.DeviceId);
             var commandTask = isAllowed
                 ? turnstile.GrantAccessAsync(direction, timeout.Token)
                 : turnstile.DenyAccessAsync(direction, timeout.Token);
             var commandResult = await commandTask.WaitAsync(timeout.Token).ConfigureAwait(false);
             if (commandResult.Succeeded)
             {
+                unconfirmedGrants?.Clear(request.DeviceId, cardNumber);
                 await RecordAsync(request.DeviceId, decision.OperationId, command, "SUCCEEDED", null)
                     .ConfigureAwait(false);
                 return new(decision, HardwareCommandOutcome.Succeeded,
@@ -95,6 +121,10 @@ public sealed class TurnstileService(
                 commandResult.ErrorCode is null ? commandResult.Message : $"{commandResult.ErrorCode}: {commandResult.Message}");
             var write = await eventStore.RecordAsync(turnstileEvent, compensateConsumption: isAllowed,
                 CancellationToken.None).ConfigureAwait(false);
+            // Iade edilemediyse hak dusmus ama kol donmemis olabilir: bir sonraki okutma ayni islem
+            // adina kapiyi yeniden dener.
+            if (isAllowed && !write.ConsumptionCompensated)
+                unconfirmedGrants?.Record(request.DeviceId, cardNumber, decision.OperationId, direction);
             await PublishAsync(turnstileEvent).ConfigureAwait(false);
             await NotifyReviewAsync(turnstileEvent).ConfigureAwait(false);
             return new(decision,
@@ -108,6 +138,7 @@ public sealed class TurnstileService(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            if (isAllowed) unconfirmedGrants?.Record(request.DeviceId, cardNumber, decision.OperationId, direction);
             await RecordAsync(request.DeviceId, decision.OperationId, command, "REVIEW_REQUIRED",
                 "Komut kullanıcı tarafından iptal edildi; fiziksel sonuç belirsiz.").ConfigureAwait(false);
             return new(decision, HardwareCommandOutcome.Cancelled,
@@ -115,6 +146,7 @@ public sealed class TurnstileService(
         }
         catch (OperationCanceledException)
         {
+            if (isAllowed) unconfirmedGrants?.Record(request.DeviceId, cardNumber, decision.OperationId, direction);
             await RecordAsync(request.DeviceId, decision.OperationId, command, "REVIEW_REQUIRED",
                 "Komut zaman aşımına uğradı; fiziksel sonuç belirsiz.").ConfigureAwait(false);
             return new(decision, HardwareCommandOutcome.TimedOut,
@@ -122,6 +154,7 @@ public sealed class TurnstileService(
         }
         catch (Exception exception)
         {
+            if (isAllowed) unconfirmedGrants?.Record(request.DeviceId, cardNumber, decision.OperationId, direction);
             await RecordAsync(request.DeviceId, decision.OperationId, command, "REVIEW_REQUIRED",
                 exception.Message).ConfigureAwait(false);
             return new(decision, HardwareCommandOutcome.ReviewRequired,
@@ -129,6 +162,58 @@ public sealed class TurnstileService(
         }
     }
 
+    /// <summary>
+    /// Yeniden okutma: dogrulanamayan acma komutu AYNI islem adina tekrarlanir. Basarirsa inceleme
+    /// kaydi SUCCEEDED ile kapanir; yine dogrulanamazsa kayit bir sonraki okutma icin yeniden tutulur.
+    /// Karar ALINMAZ: hak zaten dusmustur, ikinci kez dusurulmez.
+    /// </summary>
+    private async Task<TurnstileResult> RetryGrantAsync(AccessCheckRequest request, ITurnstile turnstile,
+        string cardNumber, UnconfirmedGrant pending, TimeSpan timeoutValue, CancellationToken cancellationToken)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(timeoutValue);
+        try
+        {
+            cycleGate?.MarkCommand(request.DeviceId);
+            var commandResult = await turnstile.GrantAccessAsync(pending.Direction, timeout.Token)
+                .WaitAsync(timeout.Token).ConfigureAwait(false);
+            if (commandResult.Succeeded)
+            {
+                await RecordAsync(request.DeviceId, pending.OperationId, "GRANT", "SUCCEEDED",
+                    "Yeniden okutma: doğrulanamayan açma komutu tekrarlandı ve turnike açıldı.").ConfigureAwait(false);
+                return new(null, HardwareCommandOutcome.Succeeded,
+                    "Turnike yeniden açıldı; yemek hakkı ikinci kez düşülmedi.", commandResult);
+            }
+
+            unconfirmedGrants!.Record(request.DeviceId, cardNumber, pending.OperationId, pending.Direction);
+            await RecordAsync(request.DeviceId, pending.OperationId, "GRANT", "REVIEW_REQUIRED",
+                "Yeniden okutma: " + (commandResult.ErrorCode is null ? commandResult.Message : $"{commandResult.ErrorCode}: {commandResult.Message}"))
+                .ConfigureAwait(false);
+            return new(null, HardwareCommandOutcome.ReviewRequired,
+                "Turnike yeniden açılamadı; kayıt inceleme gerektiriyor.", commandResult);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            unconfirmedGrants!.Record(request.DeviceId, cardNumber, pending.OperationId, pending.Direction);
+            return new(null, HardwareCommandOutcome.Cancelled, "Turnike yeniden açma komutu iptal edildi.");
+        }
+        catch (OperationCanceledException)
+        {
+            unconfirmedGrants!.Record(request.DeviceId, cardNumber, pending.OperationId, pending.Direction);
+            await RecordAsync(request.DeviceId, pending.OperationId, "GRANT", "REVIEW_REQUIRED",
+                "Yeniden okutma: komut zaman aşımına uğradı; fiziksel sonuç belirsiz.").ConfigureAwait(false);
+            return new(null, HardwareCommandOutcome.TimedOut,
+                "Turnike yeniden açma komutu zaman aşımına uğradı; kayıt inceleme gerektiriyor.");
+        }
+        catch (Exception exception)
+        {
+            unconfirmedGrants!.Record(request.DeviceId, cardNumber, pending.OperationId, pending.Direction);
+            await RecordAsync(request.DeviceId, pending.OperationId, "GRANT", "REVIEW_REQUIRED",
+                "Yeniden okutma: " + exception.Message).ConfigureAwait(false);
+            return new(null, HardwareCommandOutcome.ReviewRequired,
+                "Turnike yeniden açma komutu tamamlanamadı; kayıt inceleme gerektiriyor.");
+        }
+    }
     private async Task RecordAsync(Guid deviceId, Guid? operationId, string command, string result, string? error)
     {
         var turnstileEvent = new TurnstileEventData(deviceId, operationId,

@@ -143,6 +143,12 @@ public static class AiUserGuidePrompt
           düğmesi, "Yenile".
         - Filtreler: "Ara" (kart, öğrenci no veya ad ile arar), "Karar", "Öğün",
           "Cihaz", "Sınıf", "Filtrele".
+        - "Ara" Türkçe harfe duyarsızdır ("ipek" İPEK'i bulur). Öğrenci sütununda
+          "Tanımsız kart" yazan satır, okutulan kartın hiçbir öğrenciye tanımlı
+          olmadığını söyler; satırdaki "Öğrenciye Ata" düğmesi Öğrenciler
+          ekranını o kart numarası hazır olarak açar. Bir çocuk hiç geçemiyorsa
+          ve adıyla aranınca kayıt çıkmıyorsa sebep budur: kart numarası yanlış
+          girilmiştir.
         - Özet kartları: "TOPLAM", "İZİN VERİLEN" (yeşil), "REDDEDİLEN" (kırmızı).
         - Geçiş listesi sütunları: Saat, Kart No, Öğrenci No, Öğrenci, Sınıf,
           Öğün, Durum ("✓ İzin Verildi" / "✕ Reddedildi"), Neden, Cihaz. Bir
@@ -628,6 +634,15 @@ public static class AiUserGuidePrompt
         (ms, 50-5000)" ve "Turnike çift yönlü sürülebiliyor" alanları (not:
         "Bu değerler üretici dokümanında belgelenmemiştir; kurulumda cihaz
         başında doğrulayın.").
+
+        RÖLE DARBE SÜRESİ: varsayılan 1000 ms. Kol "bazen" dönmüyorsa ("İzin
+        Verildi" yazıyor ama turnike açılmıyor) süreyi 1000-2000 ms yapın; çok
+        uzun süre tek okutmayla iki kişinin geçmesine yol açabilir. Açma komutu
+        doğrulanamadıysa (zaman aşımı) aynı kartın 90 saniye içindeki ikinci
+        okutması hakkı yeniden düşürmez, kapıyı yeniden açmayı dener.
+        TURNİKE DÖNGÜSÜ: turnike bir geçişten sonra ~5 saniye yeni darbe kabul
+        etmez; o sırada okutan öğrencinin kartı program tarafından bekletilir,
+        hak ancak turnike hazır olunca düşer (Devices:TurnstileCycleSeconds).
 
         TURNİKE HAK İADESİ KURALI: Bir cihaz turnike komutunu hiç ALAMAZSA
         (bağlantı kesin olarak kopuk, yön desteklenmiyor gibi NET durumlarda)

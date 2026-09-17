@@ -98,6 +98,14 @@
                             <!-- Neden yildiz: "Bu öğün daha önce kullanılmış" 180px'te kesiliyordu. -->
                             <DataGridTextColumn Header="Neden" Binding="{Binding Reason, Converter={StaticResource EnumText}, ConverterParameter=Reason}" Width="*" MinWidth="150" MaxWidth="320"/>
                             <DataGridTextColumn Header="Cihaz" Binding="{Binding DeviceName}" Width="Auto" MinWidth="130"/>
+                            <!-- Tanimsiz kart: kart hicbir ogrenciye kayitli degil. Tek tikla Ogrenciler ekrani
+                                 numara hazir acilir; operator numarayi elle kopyalamak zorunda kalmaz. -->
+                            <DataGridTemplateColumn Header="" Width="Auto" MinWidth="112"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <Button Content="Öğrenciye Ata" Padding="8,3" Margin="0" ToolTip="Bu kart hiçbir öğrenciye tanımlı değil; Öğrenciler ekranını kart numarası hazır olarak açar"
+                                        Command="{Binding DataContext.AssignCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
+                                    <Button.Style><Style TargetType="Button" BasedOn="{StaticResource Action}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding StudentId}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                                </Button>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"><ProgressBar IsIndeterminate="True" Width="220" Height="3"/><TextBlock Text="Kayıtlar yükleniyor..." Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/></StackPanel>

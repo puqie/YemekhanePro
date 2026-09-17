@@ -101,6 +101,8 @@ builder.Services.AddScoped<IExcelService, ReportExcelService>();
 builder.Services.AddScoped<ICsvService, ReportCsvService>();
 builder.Services.AddScoped<IAccessDecisionGateway>(provider => provider.GetRequiredService<AccessDecisionService>());
 builder.Services.AddScoped<TurnstileService>();
+// Dogrulanamayan acma komutlarinin kisa sureli kaydi: surec geneli, cihaz + kart basina tek giris.
+builder.Services.AddSingleton<UnconfirmedGrantRegistry>();
 builder.Services.AddSingleton<TurnstileRegistry>();
 builder.Services.AddSingleton<ITurnstileResolver>(provider => provider.GetRequiredService<TurnstileRegistry>());
 builder.Services.AddSingleton<DeviceRegistry>();
@@ -126,7 +128,8 @@ builder.Services.AddSingleton<IDeviceAdapterFactory>(_ => new DeviceAdapterFacto
         ? new ZkProtocolSdk(new ZkUdpTransport(), production.Devices.ZkCommKey,
             TimeSpan.FromSeconds(production.Devices.ZkReplyTimeoutSeconds),
             userRecordSize: production.Devices.ZkUserRecordSize)
-        : null));
+        : null,
+    turnstilePassageCycle: TimeSpan.FromSeconds(production.Devices.TurnstileCycleSeconds)));
 builder.Services.AddScoped<DeviceAdministrationService>();
 builder.Services.AddHostedService<DeviceRuntimePersistenceService>();
 builder.Services.AddSingleton(builder.Configuration.GetSection("Devices:CardPush").Get<DeviceCardPushOptions>() ?? new DeviceCardPushOptions());

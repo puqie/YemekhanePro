@@ -17,7 +17,7 @@ namespace Yemekhane.Devices.ZkTeco;
 /// sessizce atlaniyordu -- SDK calissa bile cihaza tek kart gitmeyecekti.
 /// </para>
 /// </summary>
-public sealed class Sc403AccessController : Sc403Adapter, IAccessController
+public sealed class Sc403AccessController : Sc403Adapter, IAccessController, ITurnstileTiming
 {
     private readonly OzakTurnstileProfile _turnstile;
 
@@ -29,6 +29,9 @@ public sealed class Sc403AccessController : Sc403Adapter, IAccessController
 
     /// <summary>Bu denetleyicinin surdugu turnikenin fiziksel profili.</summary>
     public OzakTurnstileProfile TurnstileProfile => _turnstile;
+
+    /// <summary>Turnike dongusu: TurnstileService bir sonraki okutmayi bu sure dolmadan islemez.</summary>
+    public TimeSpan MinimumCommandInterval => _turnstile.MinimumCommandInterval;
 
     /// <summary>
     /// Rolesi kapatarak turnikeyi acar.

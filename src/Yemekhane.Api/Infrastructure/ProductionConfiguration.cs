@@ -43,6 +43,12 @@ public sealed class DeviceRuntimeOptions
     /// olculur; yalnizca olcum yanlis cikarsa sahada zorlamak icin.
     /// </summary>
     public int? ZkUserRecordSize { get; init; }
+
+    /// <summary>
+    /// Turnikenin bir gecisten sonra yeni acma darbesi kabul etmedigi sure (fiziksel dongu). O sure
+    /// dolmadan gelen okutma karar alinmadan bekletilir; hak dusurulmez. Saha olcumu ~5 sn.
+    /// </summary>
+    public int TurnstileCycleSeconds { get; init; } = 5;
 }
 
 public sealed class SchedulerOptions
@@ -82,6 +88,7 @@ public static class ProductionConfiguration
         if (devices.ZkReplyTimeoutSeconds >= devices.OperationTimeoutSeconds)
             errors.Add("Devices:ZkReplyTimeoutSeconds, OperationTimeoutSeconds'tan küçük olmalıdır; aksi halde UDP kaybında yeniden deneme hiç olmaz.");
         if (devices.ZkUserRecordSize is not (null or 28 or 72)) errors.Add("Devices:ZkUserRecordSize 28, 72 ya da boş olmalıdır.");
+        if (devices.TurnstileCycleSeconds is < 0 or > 60) errors.Add("Devices:TurnstileCycleSeconds 0-60 olmalıdır.");
         if (schedulers.NotificationRetentionHours is < 1 or > 168) errors.Add("Schedulers:NotificationRetentionHours 1-168 olmalıdır.");
         if (logging.RetentionDays is < 1 or > 3650) errors.Add("Logging:File:RetentionDays 1-3650 olmalıdır.");
         if (logging.FileSizeLimitBytes is < 1_048_576 or > 1_073_741_824) errors.Add("Logging:File:FileSizeLimitBytes 1 MiB-1 GiB olmalıdır.");

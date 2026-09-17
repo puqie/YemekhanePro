@@ -89,7 +89,7 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
     private bool isActive = true;
     private bool autoConnect;
     private bool hasTurnstile;
-    private int relayPulseMs = 500;
+    private int relayPulseMs = 1000;
     private bool turnstileBidirectional;
     private bool simulatorAllowed;
 
@@ -192,8 +192,8 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
         }
         finally { card.IsBusy = false; }
     }
-    private void OpenCreate() { editing = null; Name = ""; SelectedType = "EthernetReader"; IpAddress = ""; Port = 4370; ComPort = "COM1"; BaudRate = 9600; Location = ""; Direction = "Entry"; IsActive = true; AutoConnect = false; HasTurnstile = false; RelayPulseMs = 500; TurnstileBidirectional = false; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
-    private void OpenEdit(DeviceCardViewModel card) { editing = card; var x = card.Item; Name = x.Name; SelectedType = x.DeviceType; IpAddress = x.IpAddress ?? ""; Port = x.Port ?? 4370; ComPort = x.ComPort ?? "COM1"; BaudRate = x.BaudRate ?? 9600; Location = x.Location ?? ""; Direction = x.Direction; IsActive = x.IsActive; AutoConnect = x.AutoConnect; HasTurnstile = x.HasTurnstile; RelayPulseMs = x.TurnstileRelayPulseMs ?? 500; TurnstileBidirectional = x.TurnstileBidirectional; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
+    private void OpenCreate() { editing = null; Name = ""; SelectedType = "EthernetReader"; IpAddress = ""; Port = 4370; ComPort = "COM1"; BaudRate = 9600; Location = ""; Direction = "Entry"; IsActive = true; AutoConnect = false; HasTurnstile = false; RelayPulseMs = 1000; TurnstileBidirectional = false; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
+    private void OpenEdit(DeviceCardViewModel card) { editing = card; var x = card.Item; Name = x.Name; SelectedType = x.DeviceType; IpAddress = x.IpAddress ?? ""; Port = x.Port ?? 4370; ComPort = x.ComPort ?? "COM1"; BaudRate = x.BaudRate ?? 9600; Location = x.Location ?? ""; Direction = x.Direction; IsActive = x.IsActive; AutoConnect = x.AutoConnect; HasTurnstile = x.HasTurnstile; RelayPulseMs = x.TurnstileRelayPulseMs ?? 1000; TurnstileBidirectional = x.TurnstileBidirectional; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
     private async Task SaveAsync()
     {
         IsLoading = true; ErrorMessage = null;
