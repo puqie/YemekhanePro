@@ -97,6 +97,66 @@ public sealed class LeaveServiceTests
             .SingleAsync(x => x.EntitlementDate == new DateOnly(2026, 9, 14) && x.Source == null)).Quantity);
     }
 
+    /// <summary>
+    /// TAKVIMDEN OGRENCIYE OZEL TATIL: secili ogrencilerin her birine ayni aralikta izin acilir; ayni
+    /// ogrenci iki kez secildiyse tek izin; bilinmeyen ogrenci digerlerini durdurmaz, nedeniyle doner.
+    /// Aralik listesi ogrenci adiyla gelir; yalnizca "Keep" davranisli izin silinebilir.
+    /// </summary>
+    [Fact]
+    public async Task BulkLeaveOpensOneLeavePerSelectedStudentAndReportsFailures()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
+        await using var context = CreateContext(connection); await context.Database.MigrateAsync();
+        var cls = new SchoolClass { Name = "3/B" };
+        var ayse = new Student { StudentNo = "11", FirstName = "AYŞE", LastName = "ÇELİK", ClassId = cls.Id };
+        var can = new Student { StudentNo = "12", FirstName = "CAN", LastName = "YILMAZ" };
+        var meal = new MealType { Name = "Öğle" };
+        context.AddRange(cls, ayse, can, meal); await context.SaveChangesAsync();
+        context.Add(new MealEntitlement { StudentId = ayse.Id, MealTypeId = meal.Id, EntitlementDate = new(2026, 9, 16), Quantity = 1, Status = "Active" });
+        await context.SaveChangesAsync();
+        var service = new LeaveService(new EfLeaveRepository(context, new BusinessDayService(new OpenCalendar(), new WeekendPolicy())));
+        var missing = Guid.NewGuid();
+
+        var result = await service.CreateManyAsync(new CreateBulkLeaveRequest([ayse.Id, can.Id, ayse.Id, missing],
+            new(2026, 9, 15), new(2026, 9, 17), "Tatil", "Gezi haftası", "Cancel"), Guid.NewGuid());
+
+        Assert.Equal(2, result.Created);
+        var failure = Assert.Single(result.Failures);
+        Assert.Equal(missing, failure.StudentId);
+        Assert.Contains("bulunamadı", failure.Reason);
+        Assert.Equal(2, await context.Set<StudentLeave>().CountAsync());
+        // Iptal davranisi her ogrenciye uygulandi: Ayse'nin 16 Eylul hakki iptal.
+        Assert.Equal("Cancelled", (await context.MealEntitlements.AsNoTracking().SingleAsync(x => x.StudentId == ayse.Id)).Status);
+
+        var rows = await service.ListInRangeAsync(new(2026, 9, 16), new(2026, 9, 16));
+        Assert.Equal(["AYŞE ÇELİK", "CAN YILMAZ"], rows.Select(x => x.StudentName));
+        Assert.Equal("3/B", rows[0].ClassName);
+        Assert.Null(rows[1].ClassName);
+        Assert.Equal("Gezi haftası", rows[0].Description);
+        Assert.Empty(await service.ListInRangeAsync(new(2026, 9, 18), new(2026, 9, 30)));
+
+        // Haklari iptal edilmis izin silinemez (etki geri alinamaz); Keep olan silinir.
+        await Assert.ThrowsAsync<Yemekhane.Application.Common.EntityNotFoundException>(() => service.DeleteAsync(rows[0].Id, Guid.NewGuid()));
+        var kept = await service.CreateAsync(new CreateLeaveRequest(can.Id, new(2026, 10, 1), new(2026, 10, 1), "Tatil", null, "Keep", Guid.NewGuid()));
+        await service.DeleteAsync(kept.Id, Guid.NewGuid());
+        Assert.False(await service.IsOnLeaveAsync(can.Id, new DateOnly(2026, 10, 1)));
+    }
+
+    [Fact]
+    public async Task BulkLeaveRejectsEmptySelectionAndBadRange()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
+        await using var context = CreateContext(connection); await context.Database.MigrateAsync();
+        var service = new LeaveService(new EfLeaveRepository(context, new BusinessDayService(new OpenCalendar(), new WeekendPolicy())));
+
+        await Assert.ThrowsAsync<Yemekhane.Application.Common.RequestValidationException>(() =>
+            service.CreateManyAsync(new CreateBulkLeaveRequest([], new(2026, 9, 15), new(2026, 9, 17), "Tatil", null, "Keep"), Guid.NewGuid()));
+        await Assert.ThrowsAsync<Yemekhane.Application.Common.RequestValidationException>(() =>
+            service.CreateManyAsync(new CreateBulkLeaveRequest([Guid.NewGuid()], new(2026, 9, 18), new(2026, 9, 17), "Tatil", null, "Keep"), Guid.NewGuid()));
+        await Assert.ThrowsAsync<Yemekhane.Application.Common.RequestValidationException>(() =>
+            service.CreateManyAsync(new CreateBulkLeaveRequest([Guid.NewGuid()], new(2026, 9, 15), new(2026, 9, 17), "Tatil", null, "Forfeit"), Guid.NewGuid()));
+    }
+
     private sealed class OpenCalendar : ICalendarClosureProvider
     {
         public Task<bool> IsClosedAsync(DateOnly calendarDate, CalendarScope scope, CancellationToken cancellationToken) => Task.FromResult(false);

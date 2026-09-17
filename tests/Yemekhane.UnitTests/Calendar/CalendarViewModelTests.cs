@@ -1,4 +1,7 @@
 using Yemekhane.Application.Calendar;
+using Yemekhane.Application.Common;
+using Yemekhane.Application.Leaves;
+using Yemekhane.Application.Students;
 using Yemekhane.Desktop.Services;
 using Yemekhane.Desktop.ViewModels;
 
@@ -114,6 +117,85 @@ public sealed class CalendarViewModelTests
         await Until(() => vm.IsLoading); api.MonthGate.SetResult(); await initialization; Assert.False(vm.IsLoading);
     }
 
+    /// <summary>
+    /// OGRENCIYE OZEL TATIL: kapsam "Seçili öğrenciler" olunca arama + coklu secim acilir; iki ayri
+    /// aramanin secimleri KORUNUR; "Oluştur" secili ogrencilere toplu izin acar, tatil ucunu CAGIRMAZ;
+    /// basarisiz ogrenci adiyla bilgi satirinda yazilir; secim temizlenir.
+    /// </summary>
+    [Fact]
+    public async Task StudentScopedHolidayCreatesLeavesForSelectedStudentsAcrossSearches()
+    {
+        var api = new FakeApi(); var vm = new CalendarViewModel(api, ["calendar.manage"], new DateOnly(2026, 9, 8)); await vm.InitializeAsync();
+        Assert.Contains(vm.HolidayScopes, x => x.ScopeType == "Students");
+        Assert.DoesNotContain(vm.Scopes, x => x.ScopeType == "Students");
+        await vm.SelectDayAsync(new DateOnly(2026, 9, 14)); vm.OpenHolidayFormCommand.Execute(null);
+        Assert.False(vm.IsStudentHolidayScope);
+        vm.HolidayScope = CalendarViewModel.StudentsScope;
+        Assert.True(vm.IsStudentHolidayScope); Assert.False(vm.IsGeneralHolidayScope);
+
+        vm.HolidayStudentSearch = "a"; vm.SearchHolidayStudentsCommand.Execute(null);
+        await Until(() => vm.HolidayPickerMessage is not null);
+        Assert.Contains("en az 2 karakter", vm.HolidayPickerMessage);
+        vm.HolidayStudentSearch = "ayşe"; vm.SearchHolidayStudentsCommand.Execute(null);
+        await Until(() => vm.HolidayStudentPicker.Count == 1);
+        Assert.True(vm.HolidayStudentPicker[0].IsSelected); // tek sonuc kendiliginden secilir
+        vm.HolidayStudentSearch = "5/A"; vm.SearchHolidayStudentsCommand.Execute(null);
+        await Until(() => vm.HolidayStudentPicker.Count == 3);
+        Assert.Equal(1, vm.SelectedHolidayStudentCount); // onceki secim korundu, yeni satirlar secili degil
+        vm.HolidayStudentPicker.Single(x => x.Name == "CAN YILMAZ").IsSelected = true;
+        Assert.Equal("2 öğrenci seçili", vm.SelectedHolidayStudentsText);
+
+        vm.HolidayName = "Gezi"; vm.HolidayEnd = new DateTime(2026, 9, 16); vm.LeaveBehavior = "Cancel";
+        api.LeaveFailures = [new BulkLeaveFailure(api.Can.Id, "Aktarım günü bulunamadı.")];
+        vm.CreateHolidayCommand.Execute(null);
+        await Until(() => api.LastLeaves is not null && !vm.IsHolidayFormOpen);
+
+        Assert.Equal(0, api.HolidayCalls);
+        Assert.Equal([api.Ayse.Id, api.Can.Id], api.LastLeaves!.StudentIds);
+        Assert.Equal(new DateOnly(2026, 9, 14), api.LastLeaves.StartsOn); Assert.Equal(new DateOnly(2026, 9, 16), api.LastLeaves.EndsOn);
+        Assert.Equal("Cancel", api.LastLeaves.EntitlementBehavior); Assert.Equal("Gezi", api.LastLeaves.Description); Assert.Equal("Tatil", api.LastLeaves.LeaveType);
+        Assert.Contains("1 öğrenciye 14 Eyl – 16 Eyl için öğrenciye özel tatil", vm.InfoMessage);
+        Assert.Contains("CAN YILMAZ: Aktarım günü bulunamadı.", vm.InfoMessage);
+        Assert.Empty(vm.HolidayStudentPicker); Assert.Equal(0, vm.SelectedHolidayStudentCount);
+    }
+
+    [Fact]
+    public async Task StudentScopedHolidayWithoutSelectionIsRefusedBeforeCallingTheServer()
+    {
+        var api = new FakeApi(); var vm = new CalendarViewModel(api, ["calendar.manage"], new DateOnly(2026, 9, 8)); await vm.InitializeAsync();
+        await vm.SelectDayAsync(new DateOnly(2026, 9, 14)); vm.OpenHolidayFormCommand.Execute(null);
+        vm.HolidayScope = CalendarViewModel.StudentsScope; vm.HolidayName = "Gezi";
+        vm.CreateHolidayCommand.Execute(null);
+        await Until(() => vm.FormMessage is not null);
+        Assert.Contains("en az bir öğrenci", vm.FormMessage);
+        Assert.Null(api.LastLeaves); Assert.True(vm.IsHolidayFormOpen);
+    }
+
+    /// <summary>Gun cekmecesi izinli ogrencileri adiyla listeler; yalnizca "Keep" izin silinebilir.</summary>
+    [Fact]
+    public async Task DayDrawerListsLeavesByNameAndDeletesOnlyKeepLeaves()
+    {
+        var api = new FakeApi(); var vm = new CalendarViewModel(api, ["calendar.manage"], new DateOnly(2026, 9, 8)); await vm.InitializeAsync();
+        var keep = new LeaveListRow(Guid.NewGuid(), api.Ayse.Id, "11", "AYŞE ÇELİK", "5/A", new(2026, 9, 14), new(2026, 9, 14), "Tatil", "Doktor", "Keep");
+        var cancel = new LeaveListRow(Guid.NewGuid(), api.Can.Id, "12", "CAN YILMAZ", null, new(2026, 9, 14), new(2026, 9, 16), "Tatil", null, "Cancel");
+        api.Leaves = [keep, cancel];
+
+        await vm.SelectDayAsync(new DateOnly(2026, 9, 14));
+
+        Assert.True(vm.HasLeaveRows);
+        Assert.Equal(["AYŞE ÇELİK · 5/A · No 11", "CAN YILMAZ · No 12"], vm.LeaveRows.Select(x => x.Title));
+        Assert.Contains("Doktor", vm.LeaveRows[0].Detail); Assert.Contains("haklar korundu", vm.LeaveRows[0].Detail);
+        Assert.Contains("14 Eyl – 16 Eyl", vm.LeaveRows[1].Detail); Assert.Contains("iptal edildi", vm.LeaveRows[1].Detail);
+        Assert.True(vm.LeaveRows[0].CanDelete); Assert.False(vm.LeaveRows[1].CanDelete);
+        Assert.True(vm.DeleteLeaveCommand.CanExecute(vm.LeaveRows[0])); Assert.False(vm.DeleteLeaveCommand.CanExecute(vm.LeaveRows[1]));
+
+        api.Leaves = [cancel];
+        vm.DeleteLeaveCommand.Execute(vm.LeaveRows[0]);
+        await Until(() => api.DeletedLeaves.Count == 1 && vm.LeaveRows.Count == 1);
+        Assert.Equal(keep.Id, api.DeletedLeaves[0]);
+        Assert.Contains("AYŞE ÇELİK için izin kaydı silindi", vm.InfoMessage);
+    }
+
     private static async Task Until(Func<bool> condition)
     {
         var timeout = DateTime.UtcNow.AddSeconds(3); while (!condition() && DateTime.UtcNow < timeout) await Task.Delay(10); Assert.True(condition());
@@ -141,6 +223,26 @@ public sealed class CalendarViewModelTests
             if (HolidayError is not null) throw HolidayError;
             HolidayCalls++; LastHoliday = request; return Task.FromResult(new HolidayDetails(Guid.NewGuid(), request.Date, request.Name, request.HolidayType, request.Description, request.TransferBehavior, request.Scopes));
         }
+        public StudentListItem Ayse { get; } = Row("11", "AYŞE", "ÇELİK", "5/A");
+        public StudentListItem Can { get; } = Row("12", "CAN", "YILMAZ", "5/A");
+        public StudentListItem Ela { get; } = Row("13", "ELA", "DEMİR", "5/A");
+        public CreateBulkLeaveRequest? LastLeaves; public List<BulkLeaveFailure> LeaveFailures = []; public List<LeaveListRow> Leaves = []; public List<Guid> DeletedLeaves = [];
+        private static StudentListItem Row(string no, string first, string last, string cls) =>
+            new(Guid.NewGuid(), no, null, first, last, cls, null, null, null, true, 0, false, null);
+        public Task<PagedResult<StudentListItem>> SearchStudentsAsync(string term, CancellationToken cancellationToken = default)
+        {
+            var normalized = TurkishSearchText.Normalize(term);
+            var items = new[] { Ayse, Can, Ela }.Where(x => TurkishSearchText.Normalize(x.FirstName + " " + x.LastName + " " + x.ClassName).Contains(normalized, StringComparison.Ordinal)).ToList();
+            return Task.FromResult(new PagedResult<StudentListItem>(items, 1, 100, items.Count));
+        }
+        public Task<BulkLeaveResult> CreateLeavesAsync(CreateBulkLeaveRequest request, CancellationToken cancellationToken = default)
+        {
+            LastLeaves = request;
+            return Task.FromResult(new BulkLeaveResult(request.StudentIds.Count - LeaveFailures.Count, LeaveFailures));
+        }
+        public Task<IReadOnlyList<LeaveListRow>> LeavesInRangeAsync(DateOnly rangeStart, DateOnly rangeEnd, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<LeaveListRow>>(Leaves.Where(x => x.StartsOn <= rangeEnd && x.EndsOn >= rangeStart).ToList());
+        public Task DeleteLeaveAsync(Guid id, CancellationToken cancellationToken = default) { DeletedLeaves.Add(id); return Task.CompletedTask; }
         public List<(Guid Id, bool WholeRange)> Deleted = [];
         public Task DeleteHolidayAsync(Guid id, bool wholeRange, CancellationToken cancellationToken = default) { Deleted.Add((id, wholeRange)); return Task.CompletedTask; }
         public Task<CalendarExceptionItem> CreateExceptionAsync(CreateScheduleExceptionRequest request, CancellationToken cancellationToken = default) =>

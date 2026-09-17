@@ -55,6 +55,7 @@
 
         <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,14,0,10">
             <WrapPanel>
+                <WrapPanel.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchCommand}"/></WrapPanel.InputBindings>
                 <!-- Filtre alanlarina GORUNUR etiket eklendi. Once yalnizca ToolTip
                      vardi: dokuz bos kutu yan yana duruyor, kullanici fareyi uzerine
                      getirip beklemeden hangisinin ne oldugunu bilemiyordu. Ogrenciler
@@ -70,18 +71,22 @@
                      kalir; Width sabit degil ki dar pencerede kutu kaybolmasin. -->
                 <StackPanel MinWidth="240" Width="300" Margin="0,0,10,8">
                     <TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/>
+                    <!-- Enter arar; IsDefault'a guvenilmez (ayni pencerede birden cok varsayilan dugme). -->
                     <TextBox Style="{StaticResource FieldCompact}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="Ad, öğrenci no, kart no veya sınıf yazın"
+                             ToolTip="Ad, öğrenci no, kart no veya sınıf yazın (Enter ile arar)"
                              AutomationProperties.Name="Ara"
-                             AutomationProperties.HelpText="Ad, öğrenci numarası, kart numarası veya sınıf adında birden arar"/>
+                             AutomationProperties.HelpText="Ad, öğrenci numarası, kart numarası veya sınıf adında birden arar">
+                        <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchCommand}"/></TextBox.InputBindings>
+                    </TextBox>
                 </StackPanel>
+                <Button Style="{StaticResource Action}" Content="Ara" Command="{Binding SearchCommand}" VerticalAlignment="Bottom" Margin="0,0,10,8" AutomationProperties.Name="Hakedişlerde ara"/>
                 <!-- Grup ve Ogun kutulari "Tümü" ogesiyle baslar: bos bir acilir kutu kullaniciya
                      "secilmemis" gibi gorunuyordu ve bir kez secim yapinca filtreyi geri
                      kaldirmanin yolu yoktu (WPF ComboBox'ta secim UI'dan sifirlanamaz). -->
                 <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Grup" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding GroupFilters}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedGroupFilter}" ToolTip="Grup"/></StackPanel>
                 <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding MealFilters}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMealFilter}" ToolTip="Öğün"/></StackPanel>
                 <StackPanel Width="95" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Durum" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding Statuses}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding Status}" ToolTip="Durum"/></StackPanel>
-                <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" IsDefault="True" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
+                <Button Style="{StaticResource Action}" Content="Filtrele" Command="{Binding SearchCommand}" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
             </WrapPanel>
         </Border>
 

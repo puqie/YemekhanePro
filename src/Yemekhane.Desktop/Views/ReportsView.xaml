@@ -49,6 +49,8 @@
 
             <controls:PageShell.Filters>
                 <StackPanel>
+                    <!-- Enter suzgec panelinin her yerinden uygular; IsDefault'a guvenilmez. -->
+                    <StackPanel.InputBindings><KeyBinding Key="Enter" Command="{Binding ApplyCommand}"/></StackPanel.InputBindings>
                     <WrapPanel>
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDateFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Başlangıç"/><DatePicker Style="{StaticResource FieldCompactDate}" Width="135" SelectedDate="{Binding StartDate}"/></StackPanel>
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDateFilters, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Bitiş"/><DatePicker Style="{StaticResource FieldCompactDate}" Width="135" SelectedDate="{Binding EndDate}"/></StackPanel>
@@ -68,7 +70,7 @@
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowDecisionFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Karar"/><ComboBox Style="{StaticResource FieldCompactCombo}" Width="120" ItemsSource="{Binding Decisions}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedDecision}" AutomationProperties.Name="Geçiş kararı"/></StackPanel>
                         <StackPanel Style="{StaticResource FilterGroup}" Visibility="{Binding ShowStatusFilter, Converter={StaticResource BoolToVisibility}}"><TextBlock Style="{StaticResource FilterLabel}" Text="Durum"/><TextBox Style="{StaticResource FieldCompact}" Width="105" Text="{Binding Status, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
                     </WrapPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Style="{StaticResource Action}" Content="Sıfırla" Command="{Binding ResetCommand}"/><Button Style="{StaticResource Primary}" Padding="16,6" Content="Uygula" Command="{Binding ApplyCommand}" IsDefault="True"/></StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Style="{StaticResource Action}" Content="Sıfırla" Command="{Binding ResetCommand}"/><Button Style="{StaticResource Primary}" Padding="16,6" Content="Uygula" Command="{Binding ApplyCommand}"/></StackPanel>
                 </StackPanel>
             </controls:PageShell.Filters>
 

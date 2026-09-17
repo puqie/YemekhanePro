@@ -7,6 +7,7 @@ using Yemekhane.Application.Calendar;
 using Yemekhane.Desktop.Converters;
 using Yemekhane.Desktop.Services;
 
+using Yemekhane.Application.Leaves;
 namespace Yemekhane.Desktop.ViewModels;
 
 public sealed class CalendarDayViewModel(CalendarDaySummary value, bool currentMonth, DateOnly today) : ObservableObject
@@ -100,6 +101,10 @@ public sealed class CalendarViewModel : ObservableObject
     private string exceptionType = "Special", exceptionBehavior = "Keep", exceptionDescription = "";
     private DateTime? holidayStart, holidayEnd;
     private DateOnly? pendingRangeEnd;
+    private string? holidayStudentSearch, holidayPickerMessage;
+    private string leaveBehavior = "Keep";
+    private bool isPickerBusy;
+    private int studentSearchVersion;
 
     public CalendarViewModel(ICalendarApiClient api, IEnumerable<string> permissions, DateOnly? today = null,
         BulkOperationWizardViewModel? bulkWizard = null)
@@ -122,6 +127,10 @@ public sealed class CalendarViewModel : ObservableObject
         }, () => CanManage);
         CloseHolidayFormCommand = new RelayCommand(() => IsHolidayFormOpen = false);
         CreateHolidayCommand = new AsyncCommand(CreateHolidayAsync, () => CanManage);
+        SearchHolidayStudentsCommand = new AsyncCommand(SearchHolidayStudentsAsync, () => CanManage && !IsPickerBusy);
+        ClearHolidayStudentsCommand = new RelayCommand(ClearHolidayStudents, () => HolidayStudentPicker.Count > 0);
+        RemoveHolidayStudentCommand = new RelayCommand<StudentPickerRowViewModel>(row => { row.IsSelected = false; OnHolidayPickerChanged(); });
+        DeleteLeaveCommand = new AsyncCommand<LeaveRowViewModel>(DeleteLeaveAsync, row => CanManage && row.CanDelete);
         OpenExceptionFormCommand = new RelayCommand(() => { ExceptionScope = ScopeForForm(); IsExceptionFormOpen = true; FormMessage = null; InfoMessage = null; }, () => CanManage);
         CloseExceptionFormCommand = new RelayCommand(() => IsExceptionFormOpen = false);
         CreateExceptionCommand = new AsyncCommand(CreateExceptionAsync, () => CanManage);
@@ -133,6 +142,37 @@ public sealed class CalendarViewModel : ObservableObject
     public DateOnly Today { get; }
     public ObservableCollection<CalendarDayViewModel> Days { get; } = [];
     public ObservableCollection<CalendarScopeOption> Scopes { get; } = [];
+    /// <summary>
+    /// Tatil formunun kapsam listesi: okul/sinif/grup kapsamlarina ek olarak "Seçili öğrenciler".
+    /// Saha: "tatil eklerken ogrenciye ozel, birden fazla ogrenciye ozel ekleyebilmeliyim, arama da olmali".
+    /// Ogrenciye ozel tatil sunucuda IZIN (StudentLeave) olarak acilir: turnike o gun gecirmez, hak
+    /// davranisi (koru / iptal+iade / sonraki is gunune aktar) kayit aninda uygulanir.
+    /// </summary>
+    public ObservableCollection<CalendarScopeOption> HolidayScopes { get; } = [];
+    public static CalendarScopeOption StudentsScope { get; } = new("Students", null, "Seçili öğrenciler (öğrenciye özel)");
+    /// <summary>Ogrenciye ozel tatilde hak davranisi: LeaveService.Behaviors (Keep, Cancel, NextBusinessDay).</summary>
+    public IReadOnlyList<LeaveBehaviorOption> LeaveBehaviors { get; } =
+    [
+        new("Hakları koru (yemek hakkı değişmez)", "Keep"),
+        new("Hakları iptal et (tahsilat kasaya iade)", "Cancel"),
+        new("Sonraki iş gününe aktar", "NextBusinessDay"),
+    ];
+    public string LeaveBehavior { get => leaveBehavior; set => Set(ref leaveBehavior, value); }
+    public ObservableCollection<StudentPickerRowViewModel> HolidayStudentPicker { get; } = [];
+    public string? HolidayStudentSearch { get => holidayStudentSearch; set => Set(ref holidayStudentSearch, value); }
+    public string? HolidayPickerMessage { get => holidayPickerMessage; private set { if (Set(ref holidayPickerMessage, value)) Raise(nameof(HasHolidayPickerMessage)); } }
+    public bool HasHolidayPickerMessage => !string.IsNullOrWhiteSpace(HolidayPickerMessage);
+    public bool IsPickerBusy { get => isPickerBusy; private set { if (Set(ref isPickerBusy, value)) (SearchHolidayStudentsCommand as AsyncCommand)?.Refresh(); } }
+    public bool IsStudentHolidayScope => HolidayScope?.ScopeType == StudentsScope.ScopeType;
+    public bool IsGeneralHolidayScope => !IsStudentHolidayScope;
+    public int SelectedHolidayStudentCount => HolidayStudentPicker.Count(x => x.IsSelected);
+    public IReadOnlyList<StudentPickerRowViewModel> SelectedHolidayStudents => HolidayStudentPicker.Where(x => x.IsSelected).ToArray();
+    public string SelectedHolidayStudentsText => SelectedHolidayStudentCount == 0
+        ? "Henüz öğrenci seçilmedi. Arayıp listeden işaretleyin; birden çok arama yapabilirsiniz, seçimler korunur."
+        : $"{SelectedHolidayStudentCount} öğrenci seçili";
+    /// <summary>Secili gunun izinli ogrencileri (ogrenciye ozel tatiller), adiyla.</summary>
+    public ObservableCollection<LeaveRowViewModel> LeaveRows { get; } = [];
+    public bool HasLeaveRows => LeaveRows.Count > 0;
     public IReadOnlyList<string> DayNames { get; } = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
     // Kodlar API sozlesmesidir (HolidayService/CalendarService dogrular); ekranda EnumTextConverter ile Turkcelesir.
     public IReadOnlyList<string> HolidayTypes { get; } = ["Official", "Administrative", "Trip", "Other"];
@@ -170,7 +210,11 @@ public sealed class CalendarViewModel : ObservableObject
         null => "Sayılar ilkokul ve anasınıfını birlikte kapsıyor.",
         _ => "Sayılar anasınıfı hariç; sınıfı girilmemiş öğrenciler dahil."
     };
-    public CalendarScopeOption? HolidayScope { get => holidayScope; set => Set(ref holidayScope, value); }
+    public CalendarScopeOption? HolidayScope
+    {
+        get => holidayScope;
+        set { if (Set(ref holidayScope, value)) { Raise(nameof(IsStudentHolidayScope)); Raise(nameof(IsGeneralHolidayScope)); } }
+    }
     public CalendarScopeOption? ExceptionScope { get => exceptionScope; set => Set(ref exceptionScope, value); }
     public DateOnly SelectedDate { get => selectedDate; private set { if (Set(ref selectedDate, value)) Raise(nameof(SelectedDateTitle)); } }
     public string SelectedDateTitle => SelectedDate.ToDateTime(TimeOnly.MinValue).ToString("d MMMM yyyy, dddd", Turkish);
@@ -235,6 +279,10 @@ public sealed class CalendarViewModel : ObservableObject
     public ICommand OpenHolidayFormCommand { get; }
     public ICommand CloseHolidayFormCommand { get; }
     public ICommand CreateHolidayCommand { get; }
+    public ICommand SearchHolidayStudentsCommand { get; }
+    public ICommand ClearHolidayStudentsCommand { get; }
+    public ICommand RemoveHolidayStudentCommand { get; }
+    public ICommand DeleteLeaveCommand { get; }
     public ICommand OpenExceptionFormCommand { get; }
     public ICommand CloseExceptionFormCommand { get; }
     public ICommand CreateExceptionCommand { get; }
@@ -246,6 +294,9 @@ public sealed class CalendarViewModel : ObservableObject
         try
         {
             foreach (var item in await api.GetScopesAsync()) Scopes.Add(item);
+            HolidayScopes.Clear();
+            foreach (var item in Scopes) HolidayScopes.Add(item);
+            HolidayScopes.Add(StudentsScope);
             SelectedScope = Scopes.FirstOrDefault(); HolidayScope = SelectedScope; ExceptionScope = SelectedScope;
             await LoadAsync();
         }
@@ -278,6 +329,23 @@ public sealed class CalendarViewModel : ObservableObject
         IsDrawerOpen = true; FormMessage = null; InfoMessage = null; pendingBehavior = null;
         try { SelectedDetails = await api.GetDayAsync(date, FilterScope(), SelectedClassKind.Value); }
         catch (Exception ex) { SelectedDetails = null; HandleError(ex); }
+        await LoadLeaveRowsAsync(date);
+    }
+
+    /// <summary>Gunun izinli ogrencileri: "İzinli · 3" sayisi kimlerin izinli oldugunu soylemiyordu.</summary>
+    private async Task LoadLeaveRowsAsync(DateOnly date)
+    {
+        LeaveRows.Clear();
+        try
+        {
+            foreach (var row in await api.LeavesInRangeAsync(date, date))
+                LeaveRows.Add(new LeaveRowViewModel(row, this));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException or ApiRequestException or LoginRequiredException or NotSupportedException)
+        {
+            // Izin listesi cekmecenin yan bilgisidir; alinamazsa gun ayrintisi yine gosterilir.
+        }
+        Raise(nameof(HasLeaveRows));
     }
 
     public async Task MoveSelectionAsync(int days)
@@ -307,6 +375,7 @@ public sealed class CalendarViewModel : ObservableObject
             var start = DateOnly.FromDateTime(HolidayStart ?? SelectedDate.ToDateTime(TimeOnly.MinValue));
             var end = DateOnly.FromDateTime(HolidayEnd ?? start.ToDateTime(TimeOnly.MinValue));
             if (end < start) throw new InvalidOperationException("Tatil bitiş tarihi başlangıçtan önce olamaz.");
+            if (IsStudentHolidayScope) { await CreateStudentHolidayAsync(start, end); return; }
             var scope = HolidayScope ?? Scopes.FirstOrDefault() ?? new("AllSchool", null, "Tüm okul");
             var created = await api.CreateHolidayAsync(new CreateHolidayRequest(start, HolidayName, HolidayType, null, TransferBehavior,
                 [new HolidayScopeRequest(scope.ScopeType, scope.ScopeId)], end > start ? end : null));
@@ -327,6 +396,82 @@ public sealed class CalendarViewModel : ObservableObject
         }
         catch (Exception ex) { FormMessage = Friendly(ex, "Tatil oluşturulamadı."); }
     }
+    /// <summary>
+    /// Ogrenciye ozel tatil: secili her ogrenciye ayni aralikta izin acilir. Bir ogrencide hata
+    /// (orn. aktarim gunu yok) digerlerini durdurmaz; sonuc bilgi satirinda ad ad yazilir.
+    /// </summary>
+    private async Task CreateStudentHolidayAsync(DateOnly start, DateOnly end)
+    {
+        var chosen = SelectedHolidayStudents;
+        if (chosen.Count == 0) throw new InvalidOperationException("Öğrenciye özel tatil için en az bir öğrenci seçin (arayıp listeden işaretleyin).");
+        var result = await api.CreateLeavesAsync(new CreateBulkLeaveRequest(chosen.Select(x => x.Id).ToArray(), start, end,
+            "Tatil", HolidayName.Trim(), LeaveBehavior));
+        IsHolidayFormOpen = false; HolidayName = "";
+        var failed = result.Failures.Select(f => (chosen.FirstOrDefault(x => x.Id == f.StudentId)?.Name ?? f.StudentId.ToString("D")) + ": " + f.Reason).ToList();
+        ClearHolidayStudents();
+        if (start != SelectedDate)
+        {
+            SelectedDate = start;
+            if (new DateOnly(start.Year, start.Month, 1) != month) { month = new DateOnly(start.Year, start.Month, 1); Raise(nameof(MonthTitle)); }
+        }
+        await RefreshAfterCreateAsync();
+        var range = end > start
+            ? $"{start.ToDateTime(TimeOnly.MinValue).ToString("d MMM", Turkish)} – {end.ToDateTime(TimeOnly.MinValue).ToString("d MMM", Turkish)}"
+            : start.ToDateTime(TimeOnly.MinValue).ToString("d MMMM", Turkish);
+        var behaviorText = LeaveBehaviors.FirstOrDefault(x => x.Value == LeaveBehavior)?.Name ?? LeaveBehavior;
+        InfoMessage = $"{result.Created} öğrenciye {range} için öğrenciye özel tatil (izin) verildi · {behaviorText}."
+            + (failed.Count > 0 ? $" {failed.Count} öğrenciye verilemedi: {string.Join("; ", failed)}" : "");
+    }
+
+    /// <summary>Ad, soyad, numara, kart ya da sinif adiyla arar; onceki secimler KORUNUR (birden fazla ogrenci).</summary>
+    private async Task SearchHolidayStudentsAsync()
+    {
+        var term = HolidayStudentSearch?.Trim();
+        var version = ++studentSearchVersion;
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 2)
+        { HolidayPickerMessage = "Aramak için en az 2 karakter yazın (ad, soyad, sınıf, öğrenci no ya da kart no)."; return; }
+        IsPickerBusy = true;
+        try
+        {
+            var chosen = HolidayStudentPicker.Where(x => x.IsSelected).ToDictionary(x => x.Id, x => x);
+            var result = await api.SearchStudentsAsync(term);
+            if (version != studentSearchVersion) return; // eski ve yavas yanit yeni listeyi ezmesin
+            HolidayStudentPicker.Clear();
+            foreach (var row in chosen.Values) { row.MatchesCurrentSearch = false; HolidayStudentPicker.Add(row); }
+            var matches = result.Items.Where(x => !chosen.ContainsKey(x.Id)).ToArray();
+            foreach (var item in matches) HolidayStudentPicker.Add(new StudentPickerRowViewModel(item, OnHolidayPickerChanged));
+            HolidayPickerMessage = matches.Length == 0 ? "Bu aramayla eşleşen aktif öğrenci bulunamadı."
+                : matches.Length == 1 ? null : $"{matches.Length} öğrenci bulundu; listeden işaretleyin.";
+            if (matches.Length == 1) HolidayStudentPicker.Single(x => x.Id == matches[0].Id).IsSelected = true;
+            OnHolidayPickerChanged();
+        }
+        catch (Exception ex) { HolidayPickerMessage = Friendly(ex, "Öğrenci araması yapılamadı."); }
+        finally { IsPickerBusy = false; }
+    }
+
+    private void OnHolidayPickerChanged()
+    {
+        Raise(nameof(SelectedHolidayStudentCount)); Raise(nameof(SelectedHolidayStudents)); Raise(nameof(SelectedHolidayStudentsText));
+        (ClearHolidayStudentsCommand as RelayCommand)?.Refresh();
+    }
+
+    private void ClearHolidayStudents()
+    {
+        HolidayStudentPicker.Clear(); HolidayStudentSearch = null; HolidayPickerMessage = null; OnHolidayPickerChanged();
+    }
+
+    private async Task DeleteLeaveAsync(LeaveRowViewModel row)
+    {
+        FormMessage = null;
+        try
+        {
+            await api.DeleteLeaveAsync(row.Item.Id);
+            InfoMessage = $"{row.Item.StudentName} için izin kaydı silindi.";
+            await RefreshAfterCreateAsync();
+        }
+        catch (Exception ex) { FormMessage = Friendly(ex, "İzin silinemedi."); }
+    }
+
     private async Task CreateExceptionAsync()
     {
         FormMessage = null; InfoMessage = null;
@@ -408,3 +553,20 @@ public sealed record ClassKindFilterOption(string Label, string? Value)
 {
     public override string ToString() => Label;
 }
+
+/// <summary>Gun cekmecesindeki izinli ogrenci satiri; yalnizca hak davranisi "Keep" olan izin silinebilir.</summary>
+public sealed class LeaveRowViewModel(LeaveListRow item, CalendarViewModel owner)
+{
+    private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
+    public LeaveListRow Item { get; } = item;
+    public CalendarViewModel Owner { get; } = owner;
+    public string Title => Item.StudentName + (string.IsNullOrEmpty(Item.ClassName) ? "" : " · " + Item.ClassName) + " · No " + Item.StudentNo;
+    public string Detail => string.Join(" · ", Item.LeaveType,
+        string.IsNullOrWhiteSpace(Item.Description) ? null : Item.Description,
+        Item.StartsOn == Item.EndsOn ? Item.StartsOn.ToDateTime(TimeOnly.MinValue).ToString("d MMM", Turkish)
+            : $"{Item.StartsOn.ToDateTime(TimeOnly.MinValue).ToString("d MMM", Turkish)} – {Item.EndsOn.ToDateTime(TimeOnly.MinValue).ToString("d MMM", Turkish)}",
+        Item.EntitlementBehavior switch { "Cancel" => "haklar iptal edildi (iade)", "NextBusinessDay" => "haklar sonraki iş gününe aktarıldı", _ => "haklar korundu" });
+    public bool CanDelete => Item.EntitlementBehavior == "Keep";
+    public string DeleteHint => CanDelete ? "İzni siler; hak değişmediği için geri alınacak bir şey yoktur." : "Hakları iptal/aktarılmış izin silinemez; etkisi geri alınamaz.";
+}
+

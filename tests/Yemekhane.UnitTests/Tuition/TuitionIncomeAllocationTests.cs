@@ -61,7 +61,7 @@ public sealed class TuitionIncomeAllocationTests : IAsyncLifetime
         var summary = await Tuition().ForStudentAsync(studentId, Today, default);
         Assert.Equal(12_000m, summary!.Plan!.TotalPaid);
         Assert.Equal([3, 2, 1], summary.Payments!.Select(x => x.Sequence));
-        Assert.Equal("Anasınıfı Ücreti", summary.Payments[0].IncomeTypeName);
+        Assert.Equal("Anasınıfı Ücreti", summary.Payments![0].IncomeTypeName);
     }
 
     [Fact]

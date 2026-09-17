@@ -29,8 +29,13 @@
         </controls:PageShell.Actions>
 
         <controls:PageShell.Filters>
+            <!-- Enter her yerde arar: kutuda ve suzgec panelinin tamaminda (acilir kutudan da). IsDefault'a
+                 guvenilmez: ayni pencerede birden cok varsayilan dugme olunca WPF Enter'i hicbirine vermez.
+                 Saha: "arama butonu yok, Yenile'ye basinca ariyor, Enter'la bile arayamiyorum". -->
             <WrapPanel>
-                <StackPanel Width="230" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/><TextBox x:Name="SearchBox" Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara"/></StackPanel>
+                <WrapPanel.InputBindings><KeyBinding Key="Enter" Command="{Binding ApplyFiltersCommand}"/></WrapPanel.InputBindings>
+                <StackPanel Width="230" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Ara" Margin="0,0,0,4"/><TextBox x:Name="SearchBox" Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Kart, öğrenci no veya ad ara" ToolTip="Kart, öğrenci no veya ad ara (Enter ile arar)"><TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding ApplyFiltersCommand}"/></TextBox.InputBindings></TextBox></StackPanel>
+                <Button Style="{StaticResource Action}" Command="{Binding ApplyFiltersCommand}" Content="Ara" VerticalAlignment="Bottom" Margin="0,0,10,4" AutomationProperties.Name="Günlük takipte ara"/>
                 <!-- MinHeight 39: FieldCompact metin kutusu 39px olculuyor, kutular 30px kaliyordu ve tek satirda dengesiz
                      duruyordu. ElementName baglamasi PageShell sablonunun icinde cozulmedigi icin sabit verildi.
                      SelectedItem (SelectedValue degil): WPF, SelectedValue=null'i "secim yok" sayip kutuyu
@@ -40,7 +45,7 @@
                 <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Öğün" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" MinHeight="39" ItemsSource="{Binding MealTypes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedMealTypeOption}" AutomationProperties.Name="Öğün filtresi"/></StackPanel>
                 <StackPanel Width="145" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Cihaz" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" MinHeight="39" ItemsSource="{Binding Devices}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedDeviceOption}" AutomationProperties.Name="Cihaz filtresi"/></StackPanel>
                 <StackPanel Width="130" Margin="0,0,10,0"><TextBlock Style="{StaticResource Label}" Text="Sınıf" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" MinHeight="39" ItemsSource="{Binding Classes}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedClassOption}" AutomationProperties.Name="Sınıf filtresi"/></StackPanel>
-                <Button Style="{StaticResource Action}" Command="{Binding ApplyFiltersCommand}" Content="Filtrele" IsDefault="True" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                <Button Style="{StaticResource Action}" Command="{Binding ApplyFiltersCommand}" Content="Filtrele" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
             </WrapPanel>
         </controls:PageShell.Filters>
 

@@ -141,8 +141,9 @@ public static class AiUserGuidePrompt
         - Üst araç çubuğunda: canlı bağlantı durumu rozeti, "Ses" onay kutusu
           (geçiş sesleri, varsayılan kapalı), canlı akışı duraklat/sürdür
           düğmesi, "Yenile".
-        - Filtreler: "Ara" (kart, öğrenci no veya ad ile arar), "Karar", "Öğün",
-          "Cihaz", "Sınıf", "Filtrele".
+        - Filtreler: "Ara" kutusu + yanındaki "Ara" düğmesi (kart, öğrenci no
+          veya ad ile arar; kutuda Enter da arar), "Karar", "Öğün", "Cihaz",
+          "Sınıf", "Filtrele" (Enter süzgeç satırının her yerinde uygular).
         - "Ara" Türkçe harfe duyarsızdır ("ipek" İPEK'i bulur). Öğrenci sütununda
           "Tanımsız kart" yazan satır, okutulan kartın hiçbir öğrenciye tanımlı
           olmadığını söyler; satırdaki "Öğrenciye Ata" düğmesi Öğrenciler
@@ -440,9 +441,11 @@ public static class AiUserGuidePrompt
         Hakediş" (entitlements.bulk), "Toplu İşlem" (Toplu İşlem Sihirbazını
         açar), "Yenile".
 
-        Filtreler: "Başlangıç"/"Bitiş", "Ara" (ad/öğrenci no/kart no/sınıf
-        birden arar), "Grup", "Öğün", "Durum" (Tümü/Aktif/İptal/Aktarıldı),
-        "Filtrele". Özet kartları: "TOPLAM HAK", "KULLANILAN", "KALAN".
+        Filtreler: "Başlangıç"/"Bitiş", "Ara" kutusu + yanındaki "Ara" düğmesi
+        (ad/öğrenci no/kart no/sınıf birden arar; kutuda Enter da arar), "Grup",
+        "Öğün", "Durum" (Tümü/Aktif/İptal/Aktarıldı), "Filtrele" (Enter süzgeç
+        satırının her yerinde uygular). Özet kartları: "TOPLAM HAK",
+        "KULLANILAN", "KALAN".
 
         Liste sütunları: SEÇ (çoklu seçim), TARİH, NO, KART NO, ÖĞÜN, AD
         SOYAD, SINIF, ADET, KULL., KALAN, DURUM, KAYNAK.
@@ -555,11 +558,32 @@ public static class AiUserGuidePrompt
         "Yeni Tatil" formu: "Ad", "Başlangıç"/"Bitiş (dahil)" (altında canlı
         metin: "Tek gün." ya da "{n} gün: her gün ayrı kayıt olur, gerekirse
         tek hamlede silinir."), "Tür" ("Resmî tatil" / "İdari tatil" / "Gezi"
-        / "Diğer"), "Kapsam", "Hak davranışı" ("Hakları iptal et" / "Sonraki
+        / "Diğer"), "Kapsam" (Tüm okul / sınıf / grup / "Seçili öğrenciler
+        (öğrenciye özel)"), "Hak davranışı" ("Hakları iptal et" / "Sonraki
         iş gününe aktar" / "Belirli bir tarihe aktar" / "Hakları yak (iade
         yok)"), "Oluştur" / "Vazgeç". ÖNEMLİ: "Tatil kaydı hakları kendisi
         değiştirmez; seçilen davranış kayıt sonrası 'Hakediş etkilerini
         toplu uygula' ile uygulanır ve geri alınabilir."
+
+        ÖĞRENCİYE ÖZEL TATİL: Kapsam "Seçili öğrenciler (öğrenciye özel)"
+        seçilince formda "Öğrenci ara (ad, soyad, no, kart ya da sınıf)"
+        kutusu + "Ara" düğmesi (Enter de arar; en az 2 karakter) ve sonuç
+        listesi (onay kutulu satırlar: ad soyad · No · sınıf) açılır. Birden
+        çok arama yapılabilir; önceki seçimler KORUNUR ("{n} öğrenci seçili",
+        "Seçimi temizle"). Tek sonuç kendiliğinden seçilir. Hak davranışı bu
+        kapsamda üç seçenektir: "Hakları koru (yemek hakkı değişmez)" /
+        "Hakları iptal et (tahsilat kasaya iade)" / "Sonraki iş gününe aktar"
+        ve KAYIT ANINDA uygulanır (toplu uygula gerekmez). "Oluştur" seçili
+        her öğrenciye izin (öğrenciye özel tatil) açar: o günlerde turnike
+        geçirmez. Sonuç bilgi satırında yazar ("{n} öğrenciye {tarih} için
+        öğrenciye özel tatil (izin) verildi"; verilemeyenler adıyla ve
+        nedeniyle). Bu izinler öğrencinin "İzinler" sekmesinde de görünür.
+
+        Gün çekmecesinde "İzinli öğrenciler (öğrenciye özel tatil)" bloğu o
+        gün izinli öğrencileri adıyla listeler (ad · sınıf · No; tür, açıklama,
+        aralık, hak davranışı). Yanındaki "Sil" yalnızca hakları korunmuş
+        (Keep) izinde etkindir; hakları iptal/aktarılmış izin silinemez
+        (etkisi geri alınamaz).
 
         ÇOK GÜNLÜ TATİLDE DEVİR KURALI: Her günün hakkı kendi sırasına göre
         AYRI bir sonraki BOŞ iş gününe devredilir; hepsi tek güne yığılmaz

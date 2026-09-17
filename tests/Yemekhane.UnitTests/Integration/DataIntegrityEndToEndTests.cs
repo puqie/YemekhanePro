@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Yemekhane.Application.Cards;
 using Yemekhane.Application.DailyTracking;
 using Yemekhane.Application.Income;
+using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Tuition;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
@@ -314,6 +315,36 @@ public sealed class DataIntegrityEndToEndTests : IAsyncLifetime, IDisposable
         var reverted = await client.GetFromJsonAsync<KindergartenOverview>("api/tuition/kindergarten");
         Assert.Equal("0/10", Assert.Single(reverted!.Students, x => x.StudentId == studentId).Progress);
         Assert.Equal(0, reverted.UnappliedIncomeCount);
+    }
+    /// <summary>
+    /// Takvimden ogrenciye ozel tatil UCTAN UCA: toplu izin ucu secili ogrencilere izin acar, aralik
+    /// listesi adiyla doner, "Keep" izin silinir, hak etkisi uygulanmis izin silinemez (404).
+    /// </summary>
+    [Fact]
+    public async Task StudentSpecificHolidayIsCreatedListedAndDeletedOverHttp()
+    {
+        var first = await client.PostAsJsonAsync("api/students", new { StudentNo = "2026-0801", FirstName = "ELİF", LastName = "AK" });
+        var second = await client.PostAsJsonAsync("api/students", new { StudentNo = "2026-0802", FirstName = "MERT", LastName = "AK" });
+        first.EnsureSuccessStatusCode(); second.EnsureSuccessStatusCode();
+        var elif = (await first.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+        var mert = (await second.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+
+        var bulk = await client.PostAsJsonAsync("api/leaves/bulk", new CreateBulkLeaveRequest([elif, mert, Guid.NewGuid()],
+            new DateOnly(2026, 11, 2), new DateOnly(2026, 11, 3), "Tatil", "Aile gezisi", "Keep"));
+        bulk.EnsureSuccessStatusCode();
+        var result = (await bulk.Content.ReadFromJsonAsync<BulkLeaveResult>())!;
+        Assert.Equal(2, result.Created);
+        Assert.Single(result.Failures);
+
+        var listed = await client.GetFromJsonAsync<List<LeaveListRow>>("api/leaves?from=2026-11-03&to=2026-11-03");
+        Assert.Equal(["ELİF AK", "MERT AK"], listed!.Where(x => x.StudentId == elif || x.StudentId == mert).Select(x => x.StudentName).OrderBy(x => x));
+        Assert.Equal("Aile gezisi", listed!.First(x => x.StudentId == elif).Description);
+
+        var deleted = await client.DeleteAsync($"api/leaves/{listed!.First(x => x.StudentId == elif).Id:D}");
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, deleted.StatusCode);
+        var after = await client.GetFromJsonAsync<List<LeaveListRow>>("api/leaves?from=2026-11-02&to=2026-11-03");
+        Assert.DoesNotContain(after!, x => x.StudentId == elif);
+        Assert.Contains(after!, x => x.StudentId == mert);
     }
     [Fact]
     public async Task SameCardNumberCannotBeGivenToTwoStudents()

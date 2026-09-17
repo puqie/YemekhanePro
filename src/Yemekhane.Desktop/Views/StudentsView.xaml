@@ -140,7 +140,7 @@
                               AutomationProperties.Name="Silinen öğrencileri göster"/>
                 </StackPanel>
                 <Button Grid.Column="2" Style="{StaticResource Action}" Content="Ara" Command="{Binding SearchCommand}"
-                        IsDefault="True" VerticalAlignment="Bottom" Margin="0" MinWidth="86"/>
+                        VerticalAlignment="Bottom" Margin="0" MinWidth="86"/>
             </Grid>
         </Border>
 

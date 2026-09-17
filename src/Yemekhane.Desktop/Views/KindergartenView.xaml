@@ -64,7 +64,9 @@
                 <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <TextBox Style="{StaticResource FieldCompact}" Width="280" Margin="0,0,8,0" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
-                     ToolTip="Ad soyad, öğrenci no veya sınıf (Türkçe harfe duyarsız)" AutomationProperties.Name="Anasınıfı öğrencisi ara"/>
+                     ToolTip="Ad soyad, öğrenci no veya sınıf (Türkçe harfe duyarsız); yazarken süzer, Enter listeyi yeniler" AutomationProperties.Name="Anasınıfı öğrencisi ara">
+                <TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding RefreshCommand}"/></TextBox.InputBindings>
+            </TextBox>
             <Button Grid.Column="1" Style="{StaticResource Action}" Content="Temizle" Command="{Binding ClearSearchCommand}"/>
             <TextBlock Grid.Column="2" Text="Tahsilatı Kasa → Gelir Ekle'den girin; 'taksite sayılır' türle girilen tutar sıradaki taksitlere sayılır. Satıra tıklayınca taksitler açılır."
                        Foreground="{StaticResource FaintBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="8,0,0,0"/>

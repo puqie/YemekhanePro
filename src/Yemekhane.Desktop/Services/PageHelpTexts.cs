@@ -22,7 +22,7 @@ public static class PageHelpTexts
         [
             "Seçilen tarihte hangi öğrencinin yemek yiyip yemediğini, hangi öğünde okutma yaptığını listeler.",
             "Reddedilen geçişin gerekçesi Neden sütunundadır (örn. öğün saati dışı okutma).",
-            "Ara kutusu ve Karar/Öğün/Cihaz/Sınıf filtreleriyle daraltabilirsiniz; en eski kayıtlar için alttaki \"Daha eski kayıtları yükle\" düğmesini kullanın. Ara Türkçe harfe duyarsızdır: \"ipek\" yazınca İPEK de bulunur.",
+            "Ara kutusuna yazıp Enter'a ya da yanındaki Ara düğmesine basın; Karar/Öğün/Cihaz/Sınıf filtreleri Filtrele ile (ya da Enter) uygulanır; en eski kayıtlar için alttaki \"Daha eski kayıtları yükle\" düğmesini kullanın. Ara Türkçe harfe duyarsızdır: \"ipek\" yazınca İPEK de bulunur.",
             "Öğrenci sütununda \"Tanımsız kart\" yazan satır, okutulan kartın hiçbir öğrenciye tanımlı olmadığını söyler; satırdaki \"Öğrenciye Ata\" düğmesi Öğrenciler ekranını o numara hazır olarak açar. Bir çocuk hiç geçemiyorsa ve adıyla aranınca kayıt çıkmıyorsa önce buna bakın.",
         ]),
         [ShellRoutes.Students] = new("Öğrenciler",
@@ -90,6 +90,8 @@ public static class PageHelpTexts
             "Çok günlü bir tatilde her günün hakkı kendi sırasına göre ayrı bir sonraki boş iş gününe devredilir; hepsi tek güne yığılmaz.",
             "Belirli bir güne devir istiyorsanız Hak davranışı olarak \"Belirli bir tarihe aktar\" seçip Hedef tarih girin; bu durumda yığılma sizin isteğinizdir.",
             "Tatil, kaydedildiğinde hakları kendisi değiştirmez; seçtiğiniz davranış \"Hakediş etkilerini toplu uygula\" ile uygulanır.",
+            "Öğrenciye özel tatil: Yeni Tatil formunda Kapsam olarak \"Seçili öğrenciler\" seçin, öğrencileri arayıp işaretleyin (birden çok arama yapılabilir, seçimler korunur). Seçilenlere o günler için izin açılır; hak davranışı (koru / iptal+iade / sonraki iş gününe aktar) kayıt anında uygulanır.",
+            "Gün çekmecesindeki \"İzinli öğrenciler\" bloğu o gün kimlerin izinli olduğunu gösterir; hakları korunmuş izin \"Sil\" ile kaldırılır.",
             "Çok günlü tatil her gün için ayrı satır oluşturur; Tatiller bloğundan tek günü ya da tüm aralığı silebilirsiniz.",
         ]),
         [ShellRoutes.StudentImport] = new("Sicil Aktar",

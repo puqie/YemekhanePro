@@ -35,7 +35,7 @@
                              Once ComboBox ham "Manual/Class/Group" gosteriyordu. -->
                         <WrapPanel>
                             <StackPanel Width="150" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Hedef türü" Margin="0,0,0,4"/><ComboBox Style="{StaticResource FieldCompactCombo}" ItemsSource="{Binding TargetTypes}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding TargetType}" AutomationProperties.Name="SMS hedef türü"/></StackPanel>
-                            <StackPanel Width="220" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğrenci ara (no, ad, soyad)" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Öğrenci arama veya filtre"/></StackPanel>
+                            <StackPanel Width="220" Margin="0,0,10,8"><TextBlock Style="{StaticResource Label}" Text="Öğrenci ara (no, ad, soyad)" Margin="0,0,0,4"/><TextBox Style="{StaticResource FieldCompact}" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" ToolTip="Öğrenci arama veya filtre (Enter ile arar)" AutomationProperties.Name="SMS alıcısı ara"><TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchStudentsCommand}"/></TextBox.InputBindings></TextBox></StackPanel>
                             <Button Content="Ara" Command="{Binding SearchStudentsCommand}" VerticalAlignment="Bottom" Margin="0,0,0,8"/>
                         </WrapPanel>
                         <!-- Sinif/Grup secicileri yalnizca ilgili hedef turunde gorunur: Manuel secimde

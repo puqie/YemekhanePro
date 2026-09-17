@@ -126,5 +126,34 @@ public sealed class EfLeaveRepository(YemekhaneDbContext dbContext, BusinessDayS
         await dbContext.Set<StudentLeave>().AsNoTracking().Where(x => x.StudentId == studentId).OrderByDescending(x => x.StartsOn)
             .Select(x => new LeaveDetails(x.Id, x.StudentId, x.StartsOn, x.EndsOn, x.LeaveType, x.Description, x.EntitlementBehavior)).ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<LeaveListRow>> ListInRangeAsync(DateOnly rangeStart, DateOnly rangeEnd, CancellationToken cancellationToken)
+    {
+        var rows = await (
+            from leave in dbContext.Set<StudentLeave>().AsNoTracking()
+            join student in dbContext.Students.AsNoTracking() on leave.StudentId equals student.Id
+            join cls in dbContext.Set<SchoolClass>().AsNoTracking() on student.ClassId equals cls.Id into classes
+            from schoolClass in classes.DefaultIfEmpty()
+            where leave.StartsOn <= rangeEnd && leave.EndsOn >= rangeStart
+            select new LeaveListRow(leave.Id, leave.StudentId, student.StudentNo, student.FirstName + " " + student.LastName,
+                schoolClass == null ? null : schoolClass.Name, leave.StartsOn, leave.EndsOn, leave.LeaveType, leave.Description, leave.EntitlementBehavior))
+            .ToListAsync(cancellationToken);
+        return rows.OrderBy(x => x.StartsOn).ThenBy(x => x.StudentName, StringComparer.Create(new CultureInfo("tr-TR"), true)).ToList();
+    }
+
+    /// <summary>
+    /// Yalnizca "Keep" davranisli izin silinir: iptal/aktarim uygulanmis izinde haklar degismis ve
+    /// iade yapilmis olabilir; kaydi silmek o etkiyi geri almaz, gecmisi yalnizca gizlerdi.
+    /// </summary>
+    public async Task<bool> DeleteAsync(Guid id, Guid actorId, CancellationToken cancellationToken)
+    {
+        var leave = await dbContext.Set<StudentLeave>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (leave is null || leave.EntitlementBehavior != "Keep") return false;
+        dbContext.Remove(leave);
+        auditService.Record(new AuditEntry("LeaveDeleted", nameof(StudentLeave), leave.Id.ToString(), "Öğrenci izin kaydı silindi.",
+            Before: Map(leave), UserId: actorId));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private static LeaveDetails Map(StudentLeave x) => new(x.Id, x.StudentId, x.StartsOn, x.EndsOn, x.LeaveType, x.Description, x.EntitlementBehavior);
 }
