@@ -53,6 +53,14 @@ public sealed class TuitionService(ITuitionRepository repository, TimeProvider t
         return repository.ApplyPaymentAsync(request, Today(), actorId, cancellationToken);
     }
 
+    /// <summary>Anasinifi ekrani: aktif anasinifi ogrencileri ve taksit ilerlemeleri.</summary>
+    public Task<KindergartenOverview> KindergartenAsync(CancellationToken cancellationToken = default) =>
+        repository.KindergartenAsync(Today(), cancellationToken);
+
+    /// <summary>Kasadaki islenmemis "taksite sayilir" tahsilatlari taksitlere sayar; yeniden calistirmak guvenlidir.</summary>
+    public Task<TuitionReconcileResult> ReconcileAsync(Guid actorId, CancellationToken cancellationToken = default) =>
+        repository.ReconcileAsync(Today(), actorId, cancellationToken);
+
     /// <summary>
     /// Istegi dogrular ve kaydedilecek plan nesnesini uretir. Dogrulama servis katmaninda
     /// durur ki hem API hem testler ayni kurali gorsun.

@@ -30,6 +30,7 @@ public sealed class DashboardViewModel : ObservableObject
     private RealtimeConnectionState realtimeState;
     private bool localApiAvailable;
     private bool cloudUnavailable;
+    private bool canNavigateKindergarten;
 
     public DashboardViewModel(IDashboardApiClient apiClient, IDashboardRealtimeClient realtimeClient,
         IShellNavigationService navigation, IJwtSession session)
@@ -54,6 +55,8 @@ public sealed class DashboardViewModel : ObservableObject
             () => navigation.IsAvailable(ShellRoutes.DeviceCards));
         NavigateCardListCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.CardList),
             () => navigation.IsAvailable(ShellRoutes.CardList));
+        NavigateKindergartenCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Kindergarten),
+            () => navigation.IsAvailable(ShellRoutes.Kindergarten));
         NavigateSmsCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Sms),
             () => navigation.IsAvailable(ShellRoutes.Sms));
         NavigateCashCommand = new RelayCommand(() => navigation.Navigate(ShellRoutes.Cash),
@@ -111,6 +114,7 @@ public sealed class DashboardViewModel : ObservableObject
     public ICommand NavigateDevicesCommand { get; }
     public ICommand NavigateDeviceCardsCommand { get; }
     public ICommand NavigateCardListCommand { get; }
+    public ICommand NavigateKindergartenCommand { get; }
     public ICommand NavigateSmsCommand { get; }
     public ICommand NavigateCashCommand { get; }
     public ICommand NavigateReportsCommand { get; }
@@ -124,6 +128,12 @@ public sealed class DashboardViewModel : ObservableObject
     public bool CanNavigateSettings { get; }
     public bool CanNavigateStudentImport { get; }
     public bool CanNavigateCardList { get; }
+    /// <summary>
+    /// "Anasınıfı" menu ogesi: rota yetkiyle acik OLSA DA yalnizca anasinifi ogrencisi varsa
+    /// gorunur (okul istegi). Kabuk, Anasinifi ekrani yuklendikce bunu gunceller; bu yuzden
+    /// diger CanNavigate* alanlarindan farkli olarak bildirimli ve yazilabilir.
+    /// </summary>
+    public bool CanNavigateKindergarten { get => canNavigateKindergarten; set => Set(ref canNavigateKindergarten, value); }
     public ICommand NavigateDefinitionsCommand { get; }
     public bool CanNavigateDefinitions { get; }
 

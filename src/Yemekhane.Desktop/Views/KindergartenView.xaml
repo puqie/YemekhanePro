@@ -1,0 +1,201 @@
+<UserControl x:Class="Yemekhane.Desktop.Views.KindergartenView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Background="{DynamicResource CanvasBrush}" FontFamily="Segoe UI" FontSize="12">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/Yemekhane.Desktop;component/Themes/DesignSystem.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <!-- ANASINIFI: anasinifi ogrencileri tek listede, her satirda kacinci taksitte oldugu (3/10),
+         odenen/kalan/gecikmis; satira tiklayinca taksit tablosu ve taksite sayilan tahsilatlar.
+         Tahsilat KASADAN girilmeye devam eder; "taksite sayilir" isaretli gelir turuyle girilen
+         tutar sunucuda siradaki taksitlere sayilir. Menu ogesi yalnizca anasinifi ogrencisi varsa gorunur. -->
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <StackPanel>
+                <TextBlock Text="Anasınıfı" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}"/>
+                <TextBlock Text="{Binding SummaryText}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" AutomationProperties.Name="Anasınıfı özeti"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <!-- Bu surumden onceki tahsilatlar (ya da tur sonradan isaretlendiyse) tek dugmeyle taksitlere sayilir. -->
+                <Button Style="{StaticResource Primary}" Content="{Binding ReconcileText}" Command="{Binding ReconcileCommand}" Margin="0,0,8,0"
+                        Visibility="{Binding ShowReconcile, Converter={StaticResource BoolToVisibility}}"
+                        ToolTip="Kasaya girilmiş ama taksite işlenmemiş tahsilatları tarih sırasıyla sıradaki taksitlere sayar. Yeniden çalıştırmak güvenlidir."
+                        AutomationProperties.Name="Kasadaki tahsilatları taksitlere işle"/>
+                <Button Style="{StaticResource Action}" Content="Yenile" Command="{Binding RefreshCommand}"/>
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1">
+            <Border Background="{StaticResource DangerSoftBrush}" BorderBrush="{StaticResource DangerBrush}" BorderThickness="1" CornerRadius="5"
+                    Padding="11,7" Margin="0,14,0,0"
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding Error}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap"/>
+            </Border>
+            <Border Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource WarningBrush}" BorderThickness="1" CornerRadius="5"
+                    Padding="11,7" Margin="0,14,0,0"
+                    Visibility="{Binding HasStatusMessage, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"/>
+            </Border>
+            <!-- Isaretli gelir turu yoksa hicbir tahsilat taksite sayilmaz; kullanici nereden acacagini bilsin. -->
+            <Border Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource WarningBrush}" BorderThickness="1" CornerRadius="5"
+                    Padding="11,7" Margin="0,14,0,0"
+                    Visibility="{Binding ShowTypeHint, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Foreground="{StaticResource InkBrush}" TextWrapping="Wrap"
+                           Text="Tahsilatların taksitlere sayılması için Kasa → Gelir Türleri'nde anasınıfı ücreti türünü 'Anasınıfı taksitine sayılır' olarak işaretleyin. Şu an işaretli tür yok."/>
+            </Border>
+        </StackPanel>
+
+        <Grid Grid.Row="2" Margin="0,12,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBox Style="{StaticResource FieldCompact}" Width="280" Margin="0,0,8,0" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Ad soyad, öğrenci no veya sınıf (Türkçe harfe duyarsız)" AutomationProperties.Name="Anasınıfı öğrencisi ara"/>
+            <Button Grid.Column="1" Style="{StaticResource Action}" Content="Temizle" Command="{Binding ClearSearchCommand}"/>
+            <TextBlock Grid.Column="2" Text="Tahsilatı Kasa → Gelir Ekle'den girin; 'taksite sayılır' türle girilen tutar sıradaki taksitlere sayılır. Satıra tıklayınca taksitler açılır."
+                       Foreground="{StaticResource FaintBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="8,0,0,0"/>
+        </Grid>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" MinWidth="520"/>
+                <ColumnDefinition Width="2*" MinWidth="360"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid>
+                <DataGrid x:Name="StudentsGrid" ItemsSource="{Binding Students}" SelectedItem="{Binding SelectedStudent}" AutoGenerateColumns="False" IsReadOnly="True"
+                          CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="True" HeadersVisibility="Column" RowHeaderWidth="0"
+                          GridLinesVisibility="Horizontal" HorizontalScrollBarVisibility="Disabled" SelectionMode="Single" AutomationProperties.Name="Anasınıfı öğrenci listesi">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOverdue}" Value="True"><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="NO" Binding="{Binding StudentNo}" SortMemberPath="StudentNo" Width="Auto" MinWidth="60"/>
+                        <DataGridTextColumn Header="AD SOYAD" Binding="{Binding StudentName}" SortMemberPath="StudentName" Width="*" MinWidth="140"/>
+                        <DataGridTextColumn Header="SINIF" Binding="{Binding ClassName}" SortMemberPath="ClassName" Width="Auto" MinWidth="60"/>
+                        <DataGridTextColumn Header="TAKSİT" Binding="{Binding Progress}" SortMemberPath="Progress" Width="Auto" MinWidth="60">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsComplete}" Value="True"><Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="ÖDEME" Binding="{Binding PaymentCountText}" SortMemberPath="PaymentCountText" Width="Auto" MinWidth="50" ToolTipService.ToolTip="Kaç kez tahsilat girildi"/>
+                        <DataGridTextColumn Header="ÖDENEN" Binding="{Binding TotalPaid}" SortMemberPath="TotalPaid" Width="Auto" MinWidth="90"/>
+                        <DataGridTextColumn Header="KALAN" Binding="{Binding Outstanding}" SortMemberPath="Outstanding" Width="Auto" MinWidth="90"/>
+                        <!-- 1280 genislikte 10 sutun sigmiyordu: "Son odeme" sag paneldeki tahsilat listesinde zaten var,
+                             gecikmis sutunu yalnizca tutari gosterir (taksit sayisi satir kirmizisiyla anlasilir). -->
+                        <DataGridTextColumn Header="GECİKMİŞ" Binding="{Binding OverdueText}" SortMemberPath="OverdueText" Width="Auto" MinWidth="80"/>
+                        <DataGridTextColumn Header="SONRAKİ VADE" Binding="{Binding NextDueText}" SortMemberPath="NextDueText" Width="Auto" MinWidth="90"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock Text="Kayıtlı anasınıfı öğrencisi yok. Tanımlar'da sınıf türünü 'Anasınıfı' yapın ya da Kasa → Anasınıfı Ücretleri'nden plan tanımlayın."
+                           Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420"
+                           Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                <TextBlock Text="Aramaya uyan öğrenci yok." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="{Binding HasFilterNoMatch, Converter={StaticResource BoolToVisibility}}"/>
+                <ProgressBar IsIndeterminate="True" Width="220" Height="3" VerticalAlignment="Top"
+                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
+            </Grid>
+
+            <!-- Sag panel: secili ogrencinin plani, taksitleri ve taksite sayilan tahsilatlari. -->
+            <Border Grid.Column="1" Style="{StaticResource Panel}" Margin="14,0,0,0" Padding="14">
+                <Grid>
+                    <TextBlock Text="Taksitlerini görmek için listeden bir öğrenci seçin." Foreground="{StaticResource MutedBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasDetail}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Grid Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="3*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="2*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="{Binding DetailTitle}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" TextTrimming="CharacterEllipsis" AutomationProperties.Name="Seçili öğrenci"/>
+                        <TextBlock Grid.Row="1" Text="{Binding DetailProgressText}" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,4,0,0"
+                                   Visibility="{Binding DetailHasPlan, Converter={StaticResource BoolToVisibility}}"/>
+                        <TextBlock Grid.Row="2" Text="{Binding DetailPlanText}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,2,0,8"/>
+                        <DataGrid Grid.Row="3" x:Name="InstallmentsGrid" ItemsSource="{Binding Installments}" AutoGenerateColumns="False" IsReadOnly="True"
+                                  CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" RowHeaderWidth="0"
+                                  GridLinesVisibility="Horizontal" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Öğrencinin taksitleri"
+                                  Visibility="{Binding DetailHasPlan, Converter={StaticResource BoolToVisibility}}">
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsOverdue}" Value="True"><Setter Property="Foreground" Value="{StaticResource DangerBrush}"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="TAKSİT" Binding="{Binding Sequence}" Width="Auto" MinWidth="70"/>
+                                <DataGridTextColumn Header="VADE" Binding="{Binding DueOn}" Width="Auto" MinWidth="80"/>
+                                <DataGridTextColumn Header="TUTAR" Binding="{Binding Amount}" Width="*" MinWidth="80"/>
+                                <DataGridTextColumn Header="ÖDENEN" Binding="{Binding Paid}" Width="*" MinWidth="80"/>
+                                <DataGridTextColumn Header="KALAN" Binding="{Binding Remaining}" Width="*" MinWidth="80"/>
+                                <DataGridTextColumn Header="DURUM" Binding="{Binding Status}" Width="Auto" MinWidth="70"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Grid.Row="4" Text="Taksite sayılan tahsilatlar" FontWeight="SemiBold" Foreground="{StaticResource InkBrush}" Margin="0,10,0,4"
+                                   Visibility="{Binding DetailHasPlan, Converter={StaticResource BoolToVisibility}}"/>
+                        <Grid Grid.Row="5" Visibility="{Binding DetailHasPlan, Converter={StaticResource BoolToVisibility}}">
+                            <DataGrid x:Name="PaymentsGrid" ItemsSource="{Binding Payments}" AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" RowHeaderWidth="0"
+                                      GridLinesVisibility="Horizontal" HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Öğrencinin tahsilatları">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="TARİH" Binding="{Binding Date}" Width="Auto" MinWidth="80"/>
+                                    <DataGridTextColumn Header="TUTAR" Binding="{Binding Amount}" Width="Auto" MinWidth="80"/>
+                                    <DataGridTextColumn Header="TAKSİT" Binding="{Binding Installment}" Width="Auto" MinWidth="70"/>
+                                    <DataGridTextColumn Header="TÜR" Binding="{Binding IncomeType}" Width="*" MinWidth="80"/>
+                                    <DataGridTextColumn Header="AÇIKLAMA" Binding="{Binding Description}" Width="*" MinWidth="60"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <TextBlock Text="Henüz taksite sayılan tahsilat yok." Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Payments.Count}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                        <ProgressBar Grid.Row="3" IsIndeterminate="True" Width="180" Height="3" VerticalAlignment="Top"
+                                     Visibility="{Binding IsDetailLoading, Converter={StaticResource BoolToVisibility}}"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

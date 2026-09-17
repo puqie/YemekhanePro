@@ -113,6 +113,12 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         set => CardListHost.DataContext = value;
     }
 
+    public object? KindergartenDataContext
+    {
+        get => KindergartenHost.DataContext;
+        set => KindergartenHost.DataContext = value;
+    }
+
     public object? SmsDataContext
     {
         get => SmsHost.DataContext;
@@ -166,6 +172,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         var devices = route == Services.ShellRoutes.Devices || route.StartsWith(Services.ShellRoutes.Devices + "/", StringComparison.Ordinal);
         var deviceCards = route == Services.ShellRoutes.DeviceCards;
         var cardList = route == Services.ShellRoutes.CardList;
+        var kindergarten = route == Services.ShellRoutes.Kindergarten;
         var sms = route == Services.ShellRoutes.Sms || route.StartsWith(Services.ShellRoutes.Sms + "/", StringComparison.Ordinal);
         var cash = route == Services.ShellRoutes.Cash;
         // "reports/StudentList": Ogrenciler ekranindaki "Dışa Aktar" Sicil Listesi secili acar.
@@ -173,7 +180,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         var settings = route == Services.ShellRoutes.Settings;
         var studentImport = route == Services.ShellRoutes.StudentImport;
         var definitions = route == Services.ShellRoutes.Definitions;
-        DashboardHost.Visibility = tracking || students || cardList || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings || studentImport || definitions ? Visibility.Collapsed : Visibility.Visible;
+        DashboardHost.Visibility = tracking || students || cardList || kindergarten || entitlements || calendar || devices || deviceCards || sms || cash || reports || settings || studentImport || definitions ? Visibility.Collapsed : Visibility.Visible;
         DailyTrackingHost.Visibility = tracking ? Visibility.Visible : Visibility.Collapsed;
         StudentsHost.Visibility = students ? Visibility.Visible : Visibility.Collapsed;
         MealEntitlementsHost.Visibility = entitlements ? Visibility.Visible : Visibility.Collapsed;
@@ -181,6 +188,12 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         DevicesHost.Visibility = devices ? Visibility.Visible : Visibility.Collapsed;
         DeviceCardsHost.Visibility = deviceCards ? Visibility.Visible : Visibility.Collapsed;
         CardListHost.Visibility = cardList ? Visibility.Visible : Visibility.Collapsed;
+        KindergartenHost.Visibility = kindergarten ? Visibility.Visible : Visibility.Collapsed;
+        // Anasinifi menu ogesi ogrenci var/yok durumuna baglidir: ogrenci ya da sinif turu degisince
+        // (Ogrenciler, Tanimlar) ve ana ekrana donuste yeniden bakilir; ucuz tek istek.
+        if (KindergartenDataContext is KindergartenViewModel kindergartenViewModel
+            && (kindergarten || students || definitions || route == Services.ShellRoutes.Dashboard))
+            _ = kindergartenViewModel.ProbeAsync();
         SmsHost.Visibility = sms ? Visibility.Visible : Visibility.Collapsed;
         CashHost.Visibility = cash ? Visibility.Visible : Visibility.Collapsed;
         ReportsHost.Visibility = reports ? Visibility.Visible : Visibility.Collapsed;
@@ -341,6 +354,7 @@ public partial class MainWindow : Window, IShortcutCommandTarget
         ShellRoutes.Devices => (DevicesDataContext as DevicesViewModel)?.RefreshCommand,
         ShellRoutes.DeviceCards => (DeviceCardsDataContext as DeviceCardsViewModel)?.RefreshCommand,
         ShellRoutes.CardList => (CardListDataContext as CardListViewModel)?.RefreshCommand,
+        ShellRoutes.Kindergarten => (KindergartenDataContext as KindergartenViewModel)?.RefreshCommand,
         ShellRoutes.Cash => (CashDataContext as CashViewModel)?.RefreshCommand,
         ShellRoutes.Reports => (ReportsDataContext as ReportsViewModel)?.ApplyCommand,
         ShellRoutes.Settings => (SettingsDataContext as SettingsViewModel)?.RefreshCommand,

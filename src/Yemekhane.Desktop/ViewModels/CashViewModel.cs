@@ -35,7 +35,7 @@ public sealed class CashViewModel : ObservableObject
     private bool? filterIsVoided;
     private DateTime filterFrom, filterTo, dailyDate, customFrom, customTo, addDate;
     private DateTime? topUpExpiresOn;
-    private bool isLoading, isOffline, isAddOpen, isVoidOpen, isTopUpOpen, addConfirmed, voidConfirmed, topUpConfirmed, typeIsActive = true;
+    private bool isLoading, isOffline, isAddOpen, isVoidOpen, isTopUpOpen, addConfirmed, voidConfirmed, topUpConfirmed, typeIsActive = true, typeCountsTowardTuition;
     private int page = 1, pageSize = 50, totalCount;
     private Guid operationId = Guid.NewGuid();
     // Bakiye yuklemesinin kendi islem kimligi: cekmece her acilista yenilenir, basarisiz denemede korunur.
@@ -196,6 +196,8 @@ public sealed class CashViewModel : ObservableObject
     public string? VoidReason { get => voidReason; set { if (Set(ref voidReason, value)) RefreshCommands(); } }
     public string TypeName { get => typeName ?? ""; set => Set(ref typeName, value); }
     public bool TypeIsActive { get => typeIsActive; set => Set(ref typeIsActive, value); }
+    /// <summary>Bu turden ogrenci tahsilati anasinifi taksitlerine sirayla sayilir (Anasinifi ekrani).</summary>
+    public bool TypeCountsTowardTuition { get => typeCountsTowardTuition; set => Set(ref typeCountsTowardTuition, value); }
     public string TypeFormTitle => editingTypeId is null ? "Yeni gelir türü" : "Gelir türünü düzenle";
     public bool AddConfirmed { get => addConfirmed; set { if (Set(ref addConfirmed, value)) RefreshCommands(); } }
     public bool VoidConfirmed { get => voidConfirmed; set { if (Set(ref voidConfirmed, value)) RefreshCommands(); } }
@@ -466,9 +468,12 @@ public sealed class CashViewModel : ObservableObject
         try
         {
             var student = IsGeneralIncome ? null : LookupStudent;
-            await api.AddAsync(new CreateIncomeTransactionRequest(operationId, student?.Id,
+            var created = await api.AddAsync(new CreateIncomeTransactionRequest(operationId, student?.Id,
                 student?.CardNumber, ToIstanbulOffset(local), SelectedAddType!.Id, amount, Empty(Description)));
             IsAddOpen = false; ResetAddForm(); await RefreshAsync();
+            // Anasinifi taksiti: kasiyer "kacinci taksite sayildi"yi ve sayilamadiysa nedenini hemen gorur.
+            var tuitionText = string.Join(" ", new[] { created.TuitionNote, created.Warning }.Where(x => !string.IsNullOrWhiteSpace(x)));
+            if (tuitionText.Length > 0) StatusMessage = tuitionText;
         }
         catch (ApiRequestException ex) { AddError = ex.Message; }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException or LoginRequiredException)
@@ -557,11 +562,12 @@ public sealed class CashViewModel : ObservableObject
         catch (Exception ex) when (IsApiFailure(ex)) { ErrorMessage = Describe(ex, "İşlem iptal edilemedi."); }
     }
 
-    private void NewType() { SelectedManagedType = null; editingTypeId = null; TypeName = ""; TypeIsActive = true; Raise(nameof(TypeFormTitle)); }
+    private void NewType() { SelectedManagedType = null; editingTypeId = null; TypeName = ""; TypeIsActive = true; TypeCountsTowardTuition = false; Raise(nameof(TypeFormTitle)); }
     private void EditType()
     {
         if (SelectedManagedType is null) return;
-        editingTypeId = SelectedManagedType.Id; TypeName = SelectedManagedType.Name; TypeIsActive = SelectedManagedType.IsActive; Raise(nameof(TypeFormTitle));
+        editingTypeId = SelectedManagedType.Id; TypeName = SelectedManagedType.Name; TypeIsActive = SelectedManagedType.IsActive;
+        TypeCountsTowardTuition = SelectedManagedType.CountsTowardTuition; Raise(nameof(TypeFormTitle));
     }
     private async Task SaveTypeAsync()
     {
@@ -569,7 +575,7 @@ public sealed class CashViewModel : ObservableObject
         ErrorMessage = null;
         try
         {
-            await api.SaveTypeAsync(editingTypeId, new SaveIncomeTypeRequest(TypeName.Trim(), TypeIsActive));
+            await api.SaveTypeAsync(editingTypeId, new SaveIncomeTypeRequest(TypeName.Trim(), TypeIsActive, TypeCountsTowardTuition));
             await ReloadTypesAsync(); NewType();
         }
         catch (Exception ex) when (IsApiFailure(ex)) { ErrorMessage = Describe(ex, "Gelir türü kaydedilemedi."); }

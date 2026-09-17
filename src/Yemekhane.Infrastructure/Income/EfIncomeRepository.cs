@@ -6,6 +6,7 @@ using Yemekhane.Application.Income;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Balances;
 using Yemekhane.Infrastructure.Persistence;
+using Yemekhane.Infrastructure.Tuition;
 using Yemekhane.Infrastructure.Sync;
 
 namespace Yemekhane.Infrastructure.Income;
@@ -16,11 +17,11 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
         : this(dbContext, timeProvider, new AuditService(new Audit.EfAuditRepository(dbContext, timeProvider), new Audit.SystemAuditContext())) { }
     public async Task<IReadOnlyList<IncomeTypeDetails>> ListTypesAsync(bool includeInactive, CancellationToken cancellationToken) =>
         await dbContext.Set<IncomeType>().AsNoTracking().Where(x => includeInactive || x.IsActive).OrderBy(x => x.Name)
-            .Select(x => new IncomeTypeDetails(x.Id, x.Name, x.IsActive)).ToListAsync(cancellationToken);
+            .Select(x => new IncomeTypeDetails(x.Id, x.Name, x.IsActive, x.CountsTowardTuition)).ToListAsync(cancellationToken);
 
     public Task<IncomeTypeDetails?> GetTypeAsync(Guid id, CancellationToken cancellationToken) =>
         dbContext.Set<IncomeType>().AsNoTracking().Where(x => x.Id == id)
-            .Select(x => new IncomeTypeDetails(x.Id, x.Name, x.IsActive)).SingleOrDefaultAsync(cancellationToken);
+            .Select(x => new IncomeTypeDetails(x.Id, x.Name, x.IsActive, x.CountsTowardTuition)).SingleOrDefaultAsync(cancellationToken);
 
     public Task<bool> TypeNameExistsAsync(string name, Guid? excludingId, CancellationToken cancellationToken) =>
         dbContext.Set<IncomeType>().AnyAsync(x => x.Name == name &&
@@ -29,7 +30,7 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
     public async Task<IncomeTypeDetails> AddTypeAsync(SaveIncomeTypeRequest request, Guid actorId, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        var type = new IncomeType { Name = request.Name, IsActive = request.IsActive };
+        var type = new IncomeType { Name = request.Name, IsActive = request.IsActive, CountsTowardTuition = request.CountsTowardTuition };
         dbContext.Add(type);
         Record(actorId, "IncomeTypeCreated", nameof(IncomeType), type.Id, "Gelir türü oluşturuldu.", null, type);
         await SaveWithConflictAsync("Gelir türü adı zaten kayıtlı.", cancellationToken);
@@ -43,7 +44,8 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
         var type = await dbContext.Set<IncomeType>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (type is null) return null;
         var before = Map(type);
-        type.Name = request.Name; type.IsActive = request.IsActive; type.UpdatedAt = timeProvider.GetUtcNow();
+        type.Name = request.Name; type.IsActive = request.IsActive; type.CountsTowardTuition = request.CountsTowardTuition;
+        type.UpdatedAt = timeProvider.GetUtcNow();
         Record(actorId, "IncomeTypeUpdated", nameof(IncomeType), type.Id, "Gelir türü güncellendi.", before, Map(type));
         await SaveWithConflictAsync("Gelir türü adı zaten kayıtlı.", cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -71,8 +73,9 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
         // basari bildirmek olur. BulkOperations'taki RequestHash kalibiyla ayni sekilde catisma bildiriyoruz.
         if (existing is not null) return EnsureSameRequest(existing, request);
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        if (!await dbContext.Set<IncomeType>().AnyAsync(x => x.Id == request.IncomeTypeId && x.IsActive, cancellationToken))
-            throw new EntityNotFoundException("Aktif gelir türü bulunamadı.");
+        var incomeType = await dbContext.Set<IncomeType>().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == request.IncomeTypeId && x.IsActive, cancellationToken)
+            ?? throw new EntityNotFoundException("Aktif gelir türü bulunamadı.");
         if (request.StudentId is { } studentId &&
             !await dbContext.Students.AnyAsync(x => x.Id == studentId, cancellationToken))
             throw new EntityNotFoundException("Öğrenci bulunamadı.");
@@ -87,11 +90,16 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
         LocalOutbox.Enqueue(dbContext, item, LocalOutbox.CreateIncomeTransaction, item,
             request.OperationId, request.TransactionAt);
         Record(actorId, "IncomeCreated", nameof(IncomeTransaction), item.Id, "Gelir işlemi oluşturuldu.", null, item);
+        // Taksite sayilir turden ogrenci tahsilati ayni transaction'da taksitlere islenir: gelir
+        // kaydi yazilip taksit islenmezse okul "kacinci taksit" sorusuna yine cevap alamazdi.
+        var (tuitionNote, tuitionWarning) = incomeType.CountsTowardTuition && item.StudentId is not null
+            ? await ApplyTuitionAsync(item, actorId, cancellationToken)
+            : (null, null);
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return (await GetTransactionAsync(item.Id, cancellationToken))!;
+            return (await GetTransactionAsync(item.Id, cancellationToken))! with { TuitionNote = tuitionNote, Warning = tuitionWarning };
         }
         catch (DbUpdateException)
         {
@@ -129,10 +137,45 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
         Record(actorId, "IncomeVoided", nameof(IncomeTransaction), item.Id, "Gelir işlemi iptal edildi.", before,
             new { item.IsVoided, item.VoidedAt, item.VoidedBy, item.VoidReason });
         var warning = await RefundBalanceTopUpAsync(item, actorId, reason, cancellationToken);
+        var tuitionWarning = await ReverseTuitionAsync(item, actorId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         var voided = await GetTransactionAsync(id, cancellationToken);
-        return warning is null ? voided : voided! with { Warning = warning };
+        var combined = string.Join(" ", new[] { warning, tuitionWarning }.Where(x => x is not null));
+        return combined.Length == 0 ? voided : voided! with { Warning = combined };
+    }
+
+    /// <summary>
+    /// Tahsilati ogrencinin acik taksitlerine vade sirasiyla sayar (bkz. <see cref="TuitionIncomeAllocator"/>).
+    /// Plan ya da acik taksit yoksa gelir yine kaydedilir; kasiyer uyariyla bilgilendirilir ki para
+    /// "kayboldu" sanilmasin.
+    /// </summary>
+    private async Task<(string? Note, string? Warning)> ApplyTuitionAsync(IncomeTransaction item, Guid actorId,
+        CancellationToken cancellationToken)
+    {
+        var now = timeProvider.GetUtcNow();
+        var result = await TuitionIncomeAllocator.AllocateAsync(dbContext, item, now, actorId, cancellationToken);
+        if (result is null) return (null, null);
+        if (!result.Applied)
+            return (null, "Tahsilat kaydedildi ama taksite sayılmadı: öğrencinin ücret planı ya da açık taksiti yok.");
+        var plan = await TuitionIncomeAllocator.EffectivePlanAsync(dbContext, result.StudentId,
+            await dbContext.Students.AsNoTracking().Where(x => x.Id == result.StudentId).Select(x => x.ClassId).SingleAsync(cancellationToken),
+            cancellationToken);
+        var (paid, count) = plan is null ? (0, 0)
+            : await TuitionIncomeAllocator.ProgressAsync(dbContext, plan.Id, result.StudentId, cancellationToken);
+        var note = result.Describe(paid, count);
+        Record(actorId, "TuitionPaymentApplied", nameof(IncomeTransaction), item.Id, "Tahsilat taksitlere sayıldı: " + note, null,
+            new { result.Lines, result.Unallocated });
+        return (note, result.Unallocated > 0 ? $"{result.Unallocated:N2} ₺ fazla ödeme taksitlere sığmadı; kasada kaldı." : null);
+    }
+
+    private async Task<string?> ReverseTuitionAsync(IncomeTransaction item, Guid actorId, CancellationToken cancellationToken)
+    {
+        var reversed = await TuitionIncomeAllocator.ReverseAsync(dbContext, item.Id, timeProvider.GetUtcNow(), cancellationToken);
+        if (reversed == 0) return null;
+        Record(actorId, "TuitionPaymentReversed", nameof(IncomeTransaction), item.Id,
+            $"İptal nedeniyle {reversed} taksitin ödemesi geri alındı.", null, new { Installments = reversed });
+        return $"Taksit ödemesi geri alındı: {reversed} taksit yeniden borçlu.";
     }
 
     /// <summary>
@@ -226,5 +269,5 @@ public sealed class EfIncomeRepository(YemekhaneDbContext dbContext, TimeProvide
         catch (DbUpdateException) { throw new EntityConflictException(message); }
     }
 
-    private static IncomeTypeDetails Map(IncomeType type) => new(type.Id, type.Name, type.IsActive);
+    private static IncomeTypeDetails Map(IncomeType type) => new(type.Id, type.Name, type.IsActive, type.CountsTowardTuition);
 }

@@ -48,6 +48,14 @@ public static class PageHelpTexts
             "Pasifleştirmek için satırdaki \"Pasifleştir\" düğmesine basın, nedeni yazın ve \"Onayla\" deyin; turnike o kartı artık tanımaz.",
             "Pasif kartı \"Aktifleştir\" ile geri açın. Öğrencinin başka aktif kartı varsa reddedilir: bir öğrencide tek aktif kart olur.",
         ]),
+        [ShellRoutes.Kindergarten] = new("Anasınıfı",
+        [
+            "Anasınıfı öğrencileri tek listede: TAKSİT sütunu kaçıncı taksitte olduğunu (örn. 3/10), ÖDEME sütunu kaç kez tahsilat girildiğini, KALAN ve GECİKMİŞ borcu gösterir. Gecikmiş satır kırmızıdır.",
+            "Satıra tıklayınca sağda taksit tablosu (vade, tutar, ödenen, kalan, durum) ve taksite sayılan tahsilatlar açılır.",
+            "Tahsilat burada değil Kasa → Gelir Ekle'den girilir. Gelir türü Kasa → Gelir Türleri'nde \"Anasınıfı taksitine sayılır\" işaretliyse tutar sıradaki taksitlere kendiliğinden sayılır; işlem iptal edilirse taksit yeniden borçlu olur.",
+            "\"Kasadaki N tahsilatı taksitlere işle\" düğmesi daha önce girilmiş ama taksite işlenmemiş tahsilatları tarih sırasıyla sayar; yeniden çalıştırmak güvenlidir.",
+            "Menüde \"Anasınıfı\" yalnızca anasınıfı öğrencisi (sınıf türü Anasınıfı ya da ücret planı olan) varsa görünür.",
+        ]),
         [ShellRoutes.Cash] = new("Kasa",
         [
             "Nakit/bakiye tahsilatı, bakiye yükleme ve iptal (void) işlemleri burada yapılır.",

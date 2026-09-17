@@ -47,6 +47,7 @@ public sealed class LiveUiHarness
     public DevicesViewModel Devices { get; }
     public DeviceCardsViewModel DeviceCards { get; }
     public CardListViewModel CardList { get; }
+    public KindergartenViewModel Kindergarten { get; }
     public SmsViewModel Sms { get; }
     public CashViewModel Cash { get; }
     public ReportsViewModel Reports { get; }
@@ -77,7 +78,7 @@ public sealed class LiveUiHarness
         if (Permissions.Contains("calendar.manage")) routes.Add(ShellRoutes.HolidayTransfer);
         if (Permissions.Contains("devices.read") || Permissions.Contains("devices.manage")) { routes.Add(ShellRoutes.Devices); routes.Add(ShellRoutes.DeviceCards); }
         if (Permissions.Contains("sms.read") || Permissions.Contains("sms.send") || Permissions.Contains("sms.manage")) routes.Add(ShellRoutes.Sms);
-        if (Permissions.Contains("cash.read")) routes.Add(ShellRoutes.Cash);
+        if (Permissions.Contains("cash.read")) { routes.Add(ShellRoutes.Cash); routes.Add(ShellRoutes.Kindergarten); }
         if (Permissions.Contains("reports.read")) routes.Add(ShellRoutes.Reports);
         if (Permissions.Contains("settings.read") || Permissions.Contains("settings.manage")) routes.Add(ShellRoutes.Settings);
         if (Permissions.Contains("students.write") || Permissions.Contains("entitlements.manage")) routes.Add(ShellRoutes.Definitions);
@@ -106,6 +107,12 @@ public sealed class LiveUiHarness
         Devices = new DevicesViewModel(new DeviceApiClient(Http, Session), realtime, Permissions);
         DeviceCards = new DeviceCardsViewModel(new DeviceCardsApiClient(Http, Session));
         CardList = new CardListViewModel(new CardListApiClient(Http, Session), Permissions);
+        Kindergarten = new KindergartenViewModel(new TuitionApiClient(Http, Session), Permissions);
+        Kindergarten.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(KindergartenViewModel.HasStudents))
+                Dashboard.CanNavigateKindergarten = Navigation.IsAvailable(ShellRoutes.Kindergarten) && Kindergarten.HasStudents;
+        };
         Sms = new SmsViewModel(new SmsApiClient(Http, Session), Permissions);
         Cash = new CashViewModel(new CashApiClient(Http, Session), Permissions, navigation: Navigation);
         Reports = new ReportsViewModel(new ReportApiClient(Http, Session), Permissions);
@@ -117,7 +124,7 @@ public sealed class LiveUiHarness
         {
             DataContext = Dashboard, DailyTrackingDataContext = Tracking, StudentsDataContext = Students,
             MealEntitlementsDataContext = Entitlements, CalendarDataContext = Calendar, DevicesDataContext = Devices,
-            DeviceCardsDataContext = DeviceCards, CardListDataContext = CardList, SmsDataContext = Sms, CashDataContext = Cash, ReportsDataContext = Reports,
+            DeviceCardsDataContext = DeviceCards, CardListDataContext = CardList, KindergartenDataContext = Kindergarten, SmsDataContext = Sms, CashDataContext = Cash, ReportsDataContext = Reports,
             SettingsDataContext = Settings, StudentImportDataContext = StudentImport, DefinitionsDataContext = Definitions,
             Width = 1440, Height = 900, WindowStartupLocation = WindowStartupLocation.Manual,
             Left = -4000, Top = -4000, ShowInTaskbar = false,
@@ -143,6 +150,7 @@ public sealed class LiveUiHarness
             ("SMS", Sms.InitializeAsync()), ("Kasa", Cash.InitializeAsync()),
             ("Raporlar", Reports.InitializeAsync()), ("Ayarlar", Settings.InitializeAsync()),
             ("Toplu işlem", EntitlementBulk.InitializeAsync()), ("Kart durumları", DeviceCards.InitializeAsync()), ("Kartlar", CardList.InitializeAsync()),
+            ("Anasınıfı", Kindergarten.ProbeAsync()),
             ("Tanımlar", Definitions.InitializeAsync()),
         };
         foreach (var (name, task) in loads)

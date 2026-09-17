@@ -2,8 +2,9 @@ using Yemekhane.Application.Common;
 
 namespace Yemekhane.Application.Income;
 
-public sealed record IncomeTypeDetails(Guid Id, string Name, bool IsActive);
-public sealed record SaveIncomeTypeRequest(string Name, bool IsActive = true);
+/// <param name="CountsTowardTuition">Ogrenciye bagli gelir kaydi anasinifi ucret taksitlerine sayilir.</param>
+public sealed record IncomeTypeDetails(Guid Id, string Name, bool IsActive, bool CountsTowardTuition = false);
+public sealed record SaveIncomeTypeRequest(string Name, bool IsActive = true, bool CountsTowardTuition = false);
 
 public sealed record CreateIncomeTransactionRequest(
     Guid OperationId,
@@ -37,7 +38,10 @@ public sealed record IncomeTransactionDetails(
     string? VoidReason,
     // Yalnizca iptal yanitinda dolar: bir bakiye yuklemesi iptal edilip ogrencinin bakiyesi
     // eksiye dustuyse kasiyer bunu hemen gormeli (para zaten harcanmis olabilir).
-    string? Warning = null);
+    string? Warning = null,
+    // Tahsilat anasinifi taksitine sayildiysa hangi taksitlere sayildigi (kasiyer ekranda gorur);
+    // sayilamadiysa (plan yok, taksitler dolu) nedeni Warning'de doner.
+    string? TuitionNote = null);
 
 public sealed record IncomeTransactionFilter(
     DateTimeOffset? From = null,

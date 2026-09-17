@@ -43,7 +43,7 @@ public static class AiUserGuidePrompt
         GENEL YAPI
         Program sol tarafta sabit bir menü (kenar çubuğu) ve sağ tarafta seçili
         ekranın içeriğinden oluşur. Kenar çubuğu üç grupta toplanır: "GÜNLÜK
-        İŞ" (Genel Bakış, Günlük Takip, Öğrenciler, Kartlar, Kasa), "TANIMLAR" (Yemek
+        İŞ" (Genel Bakış, Günlük Takip, Öğrenciler, Anasınıfı, Kartlar, Kasa), "TANIMLAR" (Yemek
         Hakedişleri, Takvim / Tatil, Sicil Aktar, Tanımlar), "SİSTEM" (Cihazlar
         / Turnikeler, Kart Yükleme Durumu, SMS Merkezi, Raporlar, Ayarlar). Her
         ekranın üstünde başlık/alt başlık satırı, sağ üstte gerekiyorsa işlem
@@ -296,6 +296,46 @@ public static class AiUserGuidePrompt
 
         Turnike "Kart pasif" diyorsa gidilecek yer burası ya da Öğrenciler
         ekranındaki "Eski Kartı Geri Aç" düğmesidir.
+
+        ================================================================
+        3B. ANASINIFI — kenar çubuğunda "Anasınıfı" (cash.read yetkisi; menüde
+            YALNIZCA anasınıfı öğrencisi varsa görünür)
+        ================================================================
+        Anasınıfı öğrencileri (sınıf türü "Anasınıfı" olan ya da ücret planı
+        bulunan aktif öğrenciler) tek listede. Başlık: "Anasınıfı"; alt başlık:
+        "{n} öğrenci · {n} tamamladı · {n} gecikmiş · ödenen ₺… · kalan ₺…"
+        ya da "Kayıtlı anasınıfı öğrencisi yok."
+
+        Üstte "Yenile" ve — kasaya girilmiş ama taksite işlenmemiş tahsilat
+        varsa — "Kasadaki {n} tahsilatı taksitlere işle" (cash.write). Bu
+        düğme eski tahsilatları tarih sırasıyla sıradaki taksitlere sayar;
+        yeniden çalıştırmak güvenlidir, işlenmiş tahsilat atlanır. İşaretli
+        gelir türü yoksa sarı uyarı çıkar: "Kasa → Gelir Türleri'nde ...
+        'Anasınıfı taksitine sayılır' olarak işaretleyin."
+
+        Arama kutusu ("Anasınıfı öğrencisi ara": ad soyad, no, sınıf; Türkçe
+        harfe duyarsız) + "Temizle". Tablo sütunları: NO, AD SOYAD, SINIF,
+        TAKSİT ("3/10" = 10 taksitin 3'ü ödendi; "Plan yok"; tamamı ödenmişse
+        yeşil), ÖDEME (kaç kez tahsilat girildi), ÖDENEN, KALAN, GECİKMİŞ
+        (gecikmiş tutar; satır kırmızı), SONRAKİ VADE ("Tamamlandı" ise borç
+        bitti).
+
+        Satıra tıklayınca sağ panel: "{Ad Soyad} · No {no} · {Sınıf}",
+        "{n}/{n} taksit ödendi · {n} tahsilat", plan özeti (tür, dönem, toplam,
+        ödenen, kalan, gecikmiş, sınıf planı / öğrenciye özel plan, son ödeme
+        tarihi), taksit tablosu (TAKSİT / VADE / TUTAR / ÖDENEN / KALAN / DURUM)
+        ve "Taksite sayılan tahsilatlar" (TARİH / TUTAR / TAKSİT / TÜR /
+        AÇIKLAMA). Planı olmayan öğrencide "Bu öğrenci için ücret planı
+        tanımlı değil..." yazar.
+
+        Ödeme BURADAN girilmez: Kasa → "Gelir Ekle" ile öğrenci seçilip
+        "taksite sayılır" işaretli türle tutar girilir; kayıt sonrası Kasa'da
+        "1. taksite sayıldı (1/10 ödendi)." bildirimi çıkar. Tutar birden çok
+        taksiti kapatabilir ("2. ve 3. taksite sayıldı"); taksitlere sığmayan
+        fazla ödeme uyarıyla bildirilir ve kasada kalır. Öğrencinin planı ya da
+        açık taksiti yoksa gelir yine kaydedilir ama "taksite sayılmadı"
+        uyarısı gelir. Gelir işlemi iptal edilirse (Void) taksit yeniden
+        borçlu olur ("Taksit ödemesi geri alındı: {n} taksit yeniden borçlu.").
         ================================================================
         4. KASA — kenar çubuğunda "Kasa" (yalnızca yetkiliyse görünür)
         ================================================================
@@ -315,8 +355,12 @@ public static class AiUserGuidePrompt
           edilebilir.
         - "Günlük Kasa": günün net toplamı, iptal toplamı, gelir türü kırılımı
           ve özel tarih aralığı hesaplaması.
-        - "Gelir Türleri" (cash.manage): tür listesi + "Yeni"/"Seçileni
-          Düzenle"/"Kaydet"/"Pasifleştir".
+        - "Gelir Türleri" (cash.manage): tür listesi (AD / AKTİF / TAKSİTE
+          SAYILIR) + "Yeni"/"Seçileni Düzenle"/"Kaydet"/"Pasifleştir". Formdaki
+          "Anasınıfı taksitine sayılır" kutusu işaretliyse bu türle öğrenciye
+          girilen tahsilat, öğrencinin ücret planındaki sıradaki taksitlere
+          kendiliğinden sayılır (Anasınıfı ekranı). Bakiye yükleme ve yemek
+          hakedişi türleri İŞARETLENMEZ; yalnızca anasınıfı ücreti için.
 
         "Gelir Ekle" çekmecesi: öğrenci İKİ yoldan seçilebilir.
         1) "Öğrenci ara (ad, soyad, no ya da kart)" kutusuna en az 2 karakter

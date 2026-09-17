@@ -19,7 +19,7 @@ public sealed class ViewLayoutTests
     public static TheoryData<string> Views() =>
     [
         "students", "daily", "entitlements", "calendar", "devices",
-        "devicecards", "sms", "cash", "reports", "settings", "bulk", "definitions", "cardlist"
+        "devicecards", "sms", "cash", "reports", "settings", "bulk", "definitions", "cardlist", "kindergarten"
     ];
 
     /// <summary>
@@ -40,7 +40,7 @@ public sealed class ViewLayoutTests
     public static TheoryData<string> ViewsWithInputFields() =>
     [
         "students", "daily", "entitlements", "calendar", "devices",
-        "sms", "cash", "reports", "settings", "bulk", "cardlist"
+        "sms", "cash", "reports", "settings", "bulk", "cardlist", "kindergarten"
     ];
 
     private static FrameworkElement Create(string name) => name switch
@@ -52,6 +52,7 @@ public sealed class ViewLayoutTests
         "devices" => new DevicesView(),
         "devicecards" => new DeviceCardsView(),
         "cardlist" => new CardListView(),
+        "kindergarten" => new KindergartenView(),
         "sms" => new SmsView(),
         "cash" => new CashView(),
         "reports" => new ReportsView(),

@@ -265,7 +265,17 @@ public sealed class StudentLeave : Entity
     public required string EntitlementBehavior { get; set; }
 }
 
-public sealed class IncomeType : Entity { public required string Name { get; set; } public bool IsActive { get; set; } = true; }
+public sealed class IncomeType : Entity
+{
+    public required string Name { get; set; }
+    public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// Bu turden ogrenciye bagli gelir kaydi, ogrencinin anasinifi ucret taksitlerine sirayla sayilir.
+    /// Bakiye yukleme ve hakedis tahsilati da ogrenciye bagli gelir yazar; "her ogrenci geliri taksittir"
+    /// denemez, ayrim gelir turunde tutulur.
+    /// </summary>
+    public bool CountsTowardTuition { get; set; }
+}
 
 public sealed class IncomeTransaction : Entity
 {

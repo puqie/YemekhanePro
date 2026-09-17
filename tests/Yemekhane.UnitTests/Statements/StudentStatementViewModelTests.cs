@@ -195,6 +195,10 @@ public sealed class StudentStatementViewModelTests
             return Task.FromResult(Result!);
         }
 
+        public Task<KindergartenOverview> KindergartenAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new KindergartenOverview([], 0, false));
+        public Task<TuitionReconcileResult> ReconcileAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new TuitionReconcileResult(0, 0, 0));
         public Task DownloadStatementPdfAsync(Guid studentId, DateOnly startDate, DateOnly endDate, string path, CancellationToken cancellationToken = default)
         {
             LastPdfPath = path; LastPdfFrom = startDate; LastPdfTo = endDate;

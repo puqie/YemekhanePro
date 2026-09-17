@@ -61,13 +61,133 @@ public sealed class EfTuitionRepository(YemekhaneDbContext dbContext, TimeProvid
             .OrderByDescending(x => x.CreatedAt).FirstOrDefault();
         if (own is not null)
             return new StudentTuitionSummary(studentId, student.StudentNo, student.Name, className, false,
-                await DetailsAsync(own, today, cancellationToken));
+                await DetailsAsync(own, today, cancellationToken), await PaymentsAsync(own.Id, studentId, cancellationToken));
 
         var classPlan = student.ClassId is null ? null : (await dbContext.TuitionPlans.AsNoTracking()
             .Where(x => x.ClassId == student.ClassId && x.IsActive).ToListAsync(cancellationToken))
             .OrderByDescending(x => x.CreatedAt).FirstOrDefault();
         return new StudentTuitionSummary(studentId, student.StudentNo, student.Name, className, classPlan is not null,
-            classPlan is null ? null : await DetailsAsync(classPlan, today, cancellationToken, studentId));
+            classPlan is null ? null : await DetailsAsync(classPlan, today, cancellationToken, studentId),
+            classPlan is null ? [] : await PaymentsAsync(classPlan.Id, studentId, cancellationToken));
+    }
+
+    /// <summary>Ogrencinin bu plandaki taksitlerine sayilmis tahsilatlar, en yeni ustte.</summary>
+    private async Task<IReadOnlyList<TuitionPaymentDetails>> PaymentsAsync(Guid planId, Guid studentId, CancellationToken cancellationToken)
+    {
+        var rows = await (
+            from payment in dbContext.TuitionPayments.AsNoTracking()
+            join installment in dbContext.TuitionInstallments.AsNoTracking() on payment.InstallmentId equals installment.Id
+            join income in dbContext.Set<IncomeTransaction>().AsNoTracking() on payment.IncomeTransactionId equals income.Id
+            join type in dbContext.Set<IncomeType>().AsNoTracking() on income.IncomeTypeId equals type.Id
+            where installment.PlanId == planId && installment.StudentId == studentId
+            select new { payment.Id, payment.IncomeTransactionId, installment.Sequence, income.TransactionAt, payment.AmountCents, TypeName = type.Name, income.Description })
+            .ToListAsync(cancellationToken);
+        // SQLite DateTimeOffset'te ORDER BY ceviremez; siralama bellekte.
+        return rows.OrderByDescending(x => x.TransactionAt).ThenByDescending(x => x.Sequence)
+            .Select(x => new TuitionPaymentDetails(x.Id, x.IncomeTransactionId, x.Sequence, x.TransactionAt,
+                StudentBalanceService.ToLira(x.AmountCents), x.TypeName, x.Description))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Anasinifi listesi: sinif turu Anasinifi olan AKTIF ogrenciler ve ayrica gecerli ucret plani
+    /// olan aktif ogrenciler (sinif turu isaretlenmemis olsa da plan varsa anasinifi tahsilati izlenir).
+    /// Plan/taksit/odeme verisi toplu okunur; ogrenci basina sorgu atilmaz.
+    /// </summary>
+    public async Task<KindergartenOverview> KindergartenAsync(DateOnly today, CancellationToken cancellationToken)
+    {
+        var classes = await dbContext.Set<SchoolClass>().AsNoTracking()
+            .Select(x => new { x.Id, x.Name, x.Kind }).ToListAsync(cancellationToken);
+        var classById = classes.ToDictionary(x => x.Id);
+        var preschoolClassIds = classes.Where(x => x.Kind == ClassKinds.Preschool).Select(x => x.Id).ToHashSet();
+
+        var activePlans = await dbContext.TuitionPlans.AsNoTracking().Where(x => x.IsActive).ToListAsync(cancellationToken);
+        var studentPlanIds = activePlans.Where(x => x.StudentId is not null).Select(x => x.StudentId!.Value).ToHashSet();
+        var classPlanIds = activePlans.Where(x => x.ClassId is not null).Select(x => x.ClassId!.Value).ToHashSet();
+
+        var students = (await dbContext.Students.AsNoTracking()
+                .Where(x => x.IsActive && !x.IsDeleted)
+                .Select(x => new { x.Id, x.StudentNo, x.FirstName, x.LastName, x.ClassId }).ToListAsync(cancellationToken))
+            .Where(x => (x.ClassId is { } classId && (preschoolClassIds.Contains(classId) || classPlanIds.Contains(classId)))
+                        || studentPlanIds.Contains(x.Id))
+            .OrderBy(x => x.LastName, StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), true))
+            .ThenBy(x => x.FirstName, StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), true))
+            .ToList();
+
+        var planIds = activePlans.Select(x => x.Id).ToList();
+        var installments = await dbContext.TuitionInstallments.AsNoTracking()
+            .Where(x => planIds.Contains(x.PlanId)).ToListAsync(cancellationToken);
+        var installmentIds = installments.Select(x => x.Id).ToList();
+        var payments = await (
+            from payment in dbContext.TuitionPayments.AsNoTracking()
+            join income in dbContext.Set<IncomeTransaction>().AsNoTracking() on payment.IncomeTransactionId equals income.Id
+            where installmentIds.Contains(payment.InstallmentId)
+            select new { payment.InstallmentId, payment.IncomeTransactionId, income.TransactionAt })
+            .ToListAsync(cancellationToken);
+        var paymentsByInstallment = payments.ToLookup(x => x.InstallmentId);
+
+        var rows = new List<KindergartenStudentRow>(students.Count);
+        foreach (var student in students)
+        {
+            var className = student.ClassId is { } cid && classById.TryGetValue(cid, out var cls) ? cls.Name : null;
+            var plan = activePlans.Where(x => x.StudentId == student.Id).OrderByDescending(x => x.CreatedAt).FirstOrDefault()
+                ?? (student.ClassId is null ? null
+                    : activePlans.Where(x => x.ClassId == student.ClassId).OrderByDescending(x => x.CreatedAt).FirstOrDefault());
+            if (plan is null)
+            {
+                rows.Add(new KindergartenStudentRow(student.Id, student.StudentNo, student.FirstName + " " + student.LastName, className,
+                    false, 0, 0, 0, 0, 0, 0, 0, 0, null, null));
+                continue;
+            }
+
+            var live = installments.Where(x => x.PlanId == plan.Id && x.StudentId == student.Id && !x.IsCancelled)
+                .OrderBy(x => x.DueOn).ThenBy(x => x.Sequence).ToList();
+            var studentPayments = live.SelectMany(x => paymentsByInstallment[x.Id]).ToList();
+            var overdue = live.Where(x => TuitionSchedule.StatusOf(x.AmountCents, x.PaidCents, false, x.DueOn, today) == TuitionInstallmentStatuses.Overdue).ToList();
+            rows.Add(new KindergartenStudentRow(
+                student.Id, student.StudentNo, student.FirstName + " " + student.LastName, className,
+                true,
+                live.Count,
+                live.Count(x => x.PaidCents >= x.AmountCents),
+                studentPayments.Select(x => x.IncomeTransactionId).Distinct().Count(),
+                StudentBalanceService.ToLira(live.Sum(x => x.AmountCents)),
+                StudentBalanceService.ToLira(live.Sum(x => Math.Min(x.PaidCents, x.AmountCents))),
+                StudentBalanceService.ToLira(live.Sum(x => Math.Max(x.AmountCents - x.PaidCents, 0))),
+                StudentBalanceService.ToLira(overdue.Sum(x => Math.Max(x.AmountCents - x.PaidCents, 0))),
+                overdue.Count,
+                live.FirstOrDefault(x => x.PaidCents < x.AmountCents)?.DueOn,
+                studentPayments.Count == 0 ? null : studentPayments.Max(x => x.TransactionAt)));
+        }
+
+        var unapplied = await TuitionIncomeAllocator.Unapplied(dbContext).CountAsync(cancellationToken);
+        var hasTuitionType = await dbContext.Set<IncomeType>().AnyAsync(x => x.IsActive && x.CountsTowardTuition, cancellationToken);
+        return new KindergartenOverview(rows, unapplied, hasTuitionType);
+    }
+
+    /// <summary>
+    /// Bu surumden once kasaya girilmis (ya da tur sonradan isaretlenmis) tahsilatlari taksitlere
+    /// sayar. Tarih sirasiyla islenir ki ilk odeme ilk taksite gitsin. Tek transaction: yarim kalirsa
+    /// hicbiri yazilmaz, yeniden calistirilir.
+    /// </summary>
+    public async Task<TuitionReconcileResult> ReconcileAsync(DateOnly today, Guid actorId, CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        var pending = (await TuitionIncomeAllocator.Unapplied(dbContext).AsNoTracking().ToListAsync(cancellationToken))
+            .OrderBy(x => x.TransactionAt).ThenBy(x => x.CreatedAt).ToList();
+        int applied = 0, skipped = 0;
+        foreach (var income in pending)
+        {
+            var result = await TuitionIncomeAllocator.AllocateAsync(dbContext, income, now, actorId, cancellationToken);
+            if (result is { Applied: true }) applied++; else skipped++;
+        }
+        if (applied > 0)
+            auditService.Record(new AuditEntry("TuitionPaymentsReconciled", nameof(TuitionPayment), Guid.Empty.ToString(),
+                $"Kasadaki {applied} tahsilat taksitlere sayıldı ({skipped} tahsilatın açık taksiti yok).",
+                After: new { Examined = pending.Count, Applied = applied, Skipped = skipped }));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new TuitionReconcileResult(pending.Count, applied, skipped);
     }
 
     public async Task<TuitionPlanDetails> SaveAsync(SaveTuitionPlanRequest request, IReadOnlyList<PlannedInstallment> installments,

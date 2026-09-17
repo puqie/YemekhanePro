@@ -671,6 +671,10 @@ public sealed class StudentsViewModelTests
         public DateOnly To { get; private set; }
         public string? Path { get; private set; }
 
+        public Task<KindergartenOverview> KindergartenAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new KindergartenOverview([], 0, false));
+        public Task<TuitionReconcileResult> ReconcileAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new TuitionReconcileResult(0, 0, 0));
         public Task DownloadStatementPdfAsync(Guid studentId, DateOnly startDate, DateOnly endDate, string path,
             CancellationToken cancellationToken = default)
         {

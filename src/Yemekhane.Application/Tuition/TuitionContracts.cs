@@ -66,13 +66,82 @@ public sealed record TuitionPlanDetails(
 
 /// <summary>Ogrencinin gecerli plani: kendi plani varsa o, yoksa sinifinin plani.</summary>
 /// <param name="Inherited">Plan sinifindan mi geliyor (ogrenciye ozel degil).</param>
+/// <param name="Payments">Bu ogrencinin taksitlerine sayilmis tahsilatlar, en yeni ustte.</param>
 public sealed record StudentTuitionSummary(
     Guid StudentId,
     string StudentNo,
     string StudentName,
     string? ClassName,
     bool Inherited,
-    TuitionPlanDetails? Plan);
+    TuitionPlanDetails? Plan,
+    IReadOnlyList<TuitionPaymentDetails>? Payments = null);
+
+/// <summary>Bir kasa tahsilatinin taksite sayilan parcasi; ayni tahsilat birden cok taksite bolunebilir.</summary>
+public sealed record TuitionPaymentDetails(
+    Guid Id,
+    Guid IncomeTransactionId,
+    int Sequence,
+    DateTimeOffset TransactionAt,
+    decimal Amount,
+    string IncomeTypeName,
+    string? Description);
+
+/// <summary>
+/// Anasinifi ekraninin satiri: ogrencinin gecerli planindaki taksit ilerlemesi. Plan yoksa
+/// sayimlar sifirdir ve <see cref="HasPlan"/> false doner; ekran "Plan yok" yazar.
+/// </summary>
+public sealed record KindergartenStudentRow(
+    Guid StudentId,
+    string StudentNo,
+    string StudentName,
+    string? ClassName,
+    bool HasPlan,
+    int InstallmentCount,
+    int PaidInstallments,
+    int PaymentCount,
+    decimal TotalDue,
+    decimal TotalPaid,
+    decimal Outstanding,
+    decimal OverdueAmount,
+    int OverdueCount,
+    DateOnly? NextDueOn,
+    DateTimeOffset? LastPaidAt)
+{
+    /// <summary>"3/10" gibi; plan yoksa "Plan yok".</summary>
+    public string Progress => HasPlan ? $"{PaidInstallments}/{InstallmentCount}" : "Plan yok";
+}
+
+/// <param name="UnappliedIncomeCount">
+/// Taksite sayilir isaretli turden girilmis ama hicbir taksite islenmemis tahsilat sayisi
+/// (bu surumden onceki kayitlar); "taksitlere isle" dugmesi bunu gosterir.
+/// </param>
+/// <param name="HasTuitionIncomeType">Kasa > Gelir Turleri'nde en az bir aktif tur isaretli mi.</param>
+public sealed record KindergartenOverview(
+    IReadOnlyList<KindergartenStudentRow> Students,
+    int UnappliedIncomeCount,
+    bool HasTuitionIncomeType);
+
+/// <summary>Bir tahsilatin taksitlere dagilimi: sira numarasi ve o taksite sayilan tutar.</summary>
+public sealed record TuitionAllocationLine(int Sequence, decimal Amount, bool CompletesInstallment);
+
+/// <param name="Unallocated">Taksitlere sigmayan kisim (fazla odeme); 0 ise tamami sayildi.</param>
+public sealed record TuitionAllocationResult(Guid StudentId, IReadOnlyList<TuitionAllocationLine> Lines, decimal Unallocated)
+{
+    public bool Applied => Lines.Count > 0;
+
+    /// <summary>Kasiyerin gordugu tek satirlik ozet: "1. ve 2. taksite sayıldı (2/10 ödendi)".</summary>
+    public string Describe(int paidInstallments, int installmentCount)
+    {
+        if (!Applied) return "Tahsilat taksite sayılmadı.";
+        var parts = Lines.Select(x => $"{x.Sequence}.").ToList();
+        var which = parts.Count == 1 ? parts[0] : string.Join(", ", parts.Take(parts.Count - 1)) + " ve " + parts[^1];
+        var text = $"{which} taksite sayıldı ({paidInstallments}/{installmentCount} ödendi).";
+        return Unallocated > 0 ? text + $" {Unallocated:N2} ₺ fazla ödeme taksitlere sığmadı." : text;
+    }
+}
+
+/// <summary>"Kasadaki tahsilatlari taksitlere isle" kosusunun ozeti.</summary>
+public sealed record TuitionReconcileResult(int Examined, int Applied, int SkippedNoInstallment);
 
 public sealed record TuitionPlanFilter(
     string? Period = null,
@@ -95,4 +164,11 @@ public interface ITuitionRepository
     Task<bool> DeleteAsync(Guid id, Guid actorId, CancellationToken cancellationToken);
     Task<TuitionInstallmentDetails> ApplyPaymentAsync(ApplyTuitionPaymentRequest request, DateOnly today, Guid actorId,
         CancellationToken cancellationToken);
+    /// <summary>Aktif anasinifi ogrencileri ve taksit ilerlemeleri; sinif turu <c>Anasinifi</c> olanlar.</summary>
+    Task<KindergartenOverview> KindergartenAsync(DateOnly today, CancellationToken cancellationToken);
+    /// <summary>
+    /// Taksite sayilir turden girilmis ama hic taksite islenmemis tahsilatlari tarih sirasiyla
+    /// taksitlere sayar. Yeniden calistirmak guvenlidir: islenmis tahsilat atlanir.
+    /// </summary>
+    Task<TuitionReconcileResult> ReconcileAsync(DateOnly today, Guid actorId, CancellationToken cancellationToken);
 }

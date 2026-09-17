@@ -84,6 +84,11 @@
                     <Button Tag="students" Style="{StaticResource NavItem}" Content="Öğrenciler"
                             Command="{Binding NavigateStudentsCommand}"
                             AutomationProperties.Name="Öğrenciler sayfasını aç" />
+                    <!-- Anasinifi: anasinifi ogrencileri ve taksit ilerlemesi; yalnizca anasinifi ogrencisi varsa gorunur. -->
+                    <Button Tag="kindergarten" Style="{StaticResource NavItem}" Content="Anasınıfı"
+                            Command="{Binding NavigateKindergartenCommand}"
+                            AutomationProperties.Name="Anasınıfı sayfasını aç"
+                            Visibility="{Binding CanNavigateKindergarten, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     <!-- Kartlar: tum kartlarin aktif/pasif durumu tek listede; oradan pasiflestir/aktiflestir.
                          Saha: turnike "Kart pasif" deyince operator karti nereden acacagini bilmiyordu. -->
                     <Button Tag="card-list" Style="{StaticResource NavItem}" Content="Kartlar"
@@ -296,6 +301,7 @@
         <views:DailyTrackingView x:Name="DailyTrackingHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:StudentsView x:Name="StudentsHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:CardListView x:Name="CardListHost" Grid.Column="1" Visibility="Collapsed"/>
+        <views:KindergartenView x:Name="KindergartenHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:MealEntitlementsView x:Name="MealEntitlementsHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:CalendarView x:Name="CalendarHost" Grid.Column="1" Visibility="Collapsed"/>
         <views:DevicesView x:Name="DevicesHost" Grid.Column="1" Visibility="Collapsed"/>

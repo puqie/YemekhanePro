@@ -56,6 +56,21 @@ public sealed class TuitionController(TuitionService service) : ControllerBase
     public Task<TuitionInstallmentDetails> ApplyPayment(ApplyTuitionPaymentRequest request, CancellationToken cancellationToken) =>
         service.ApplyPaymentAsync(request, ActorId(), cancellationToken);
 
+    /// <summary>Anasinifi ekrani: aktif anasinifi ogrencileri, kacinci taksitte olduklari, gecikmis borc.</summary>
+    [HttpGet("kindergarten")]
+    [PermissionAuthorize(Permissions.CashRead)]
+    public Task<KindergartenOverview> Kindergarten(CancellationToken cancellationToken) =>
+        service.KindergartenAsync(cancellationToken);
+
+    /// <summary>
+    /// Kasaya girilmis ama taksite islenmemis "taksite sayilir" tahsilatlari tarih sirasiyla taksitlere
+    /// sayar (eski kayitlar ya da tur sonradan isaretlendiyse). Yeniden calistirmak guvenlidir.
+    /// </summary>
+    [HttpPost("kindergarten/reconcile")]
+    [PermissionAuthorize(Permissions.CashWrite)]
+    public Task<TuitionReconcileResult> Reconcile(CancellationToken cancellationToken) =>
+        service.ReconcileAsync(ActorId(), cancellationToken);
+
     private Guid ActorId()
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier);

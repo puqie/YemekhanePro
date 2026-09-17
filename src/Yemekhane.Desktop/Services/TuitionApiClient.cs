@@ -20,6 +20,10 @@ public interface ITuitionApiClient
     Task<StudentStatement> StatementAsync(Guid studentId, DateOnly startDate, DateOnly endDate, CancellationToken cancellationToken = default);
     /// <summary>Ekstreyi PDF olarak indirir; dosya hedef yola yazilir.</summary>
     Task DownloadStatementPdfAsync(Guid studentId, DateOnly startDate, DateOnly endDate, string path, CancellationToken cancellationToken = default);
+    /// <summary>Anasinifi ekrani: ogrenciler ve taksit ilerlemeleri.</summary>
+    Task<KindergartenOverview> KindergartenAsync(CancellationToken cancellationToken = default);
+    /// <summary>Kasadaki islenmemis "taksite sayilir" tahsilatlari taksitlere sayar.</summary>
+    Task<TuitionReconcileResult> ReconcileAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class TuitionApiClient(HttpClient client, IJwtSession session) : ITuitionApiClient
@@ -54,6 +58,12 @@ public sealed class TuitionApiClient(HttpClient client, IJwtSession session) : I
 
     public Task<TuitionInstallmentDetails> ApplyPaymentAsync(ApplyTuitionPaymentRequest request, CancellationToken cancellationToken = default) =>
         SendAsync<TuitionInstallmentDetails>(HttpMethod.Post, "api/tuition/payments", request, cancellationToken);
+
+    public Task<KindergartenOverview> KindergartenAsync(CancellationToken cancellationToken = default) =>
+        GetAsync<KindergartenOverview>("api/tuition/kindergarten", cancellationToken);
+
+    public Task<TuitionReconcileResult> ReconcileAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<TuitionReconcileResult>(HttpMethod.Post, "api/tuition/kindergarten/reconcile", new { }, cancellationToken);
 
     public Task<StudentStatement> StatementAsync(Guid studentId, DateOnly startDate, DateOnly endDate, CancellationToken cancellationToken = default) =>
         GetAsync<StudentStatement>($"api/students/{studentId:D}/statement?{Range(startDate, endDate)}", cancellationToken);

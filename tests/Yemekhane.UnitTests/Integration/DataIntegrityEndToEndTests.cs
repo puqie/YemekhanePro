@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Yemekhane.Application.Cards;
 using Yemekhane.Application.DailyTracking;
+using Yemekhane.Application.Income;
+using Yemekhane.Application.Tuition;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.UnitTests.Api;
@@ -255,6 +257,63 @@ public sealed class DataIntegrityEndToEndTests : IAsyncLifetime, IDisposable
         var unknown = Assert.Single(byUnknownCard!.Items);
         Assert.Equal("Tanımsız kart", unknown.StudentName);
         Assert.Null(unknown.StudentId);
+    }
+    /// <summary>
+    /// Anasinifi UCTAN UCA: gelir turu "taksite sayilir" isaretlenir, sinif planina taksit uretilir, Kasa
+    /// tahsilati HTTP ile girilir ve Anasinifi listesi 1/10 gosterir; iptal edilince 0/10'a doner ve
+    /// tahsilat mutabakat sayimina girmez. Saha: "kacinci taksiti odedi, kac kere odedi gormem gerekiyor".
+    /// </summary>
+    [Fact]
+    public async Task KindergartenListReflectsCashIncomeAndVoidOverHttp()
+    {
+        var classId = await InScope(async db =>
+        {
+            var row = new SchoolClass { Name = "E2E Anasınıfı", Kind = ClassKinds.Preschool };
+            db.Add(row); await db.SaveChangesAsync(); return row.Id;
+        });
+        var created = await client.PostAsJsonAsync("api/students",
+            new { StudentNo = "2026-0777", FirstName = "ELİF", LastName = "KAYA", ClassId = classId });
+        created.EnsureSuccessStatusCode();
+        var studentId = (await created.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+
+        var typeResponse = await client.PostAsJsonAsync("api/income/types", new SaveIncomeTypeRequest("E2E Anasınıfı Ücreti", true, true));
+        typeResponse.EnsureSuccessStatusCode();
+        var type = (await typeResponse.Content.ReadFromJsonAsync<IncomeTypeDetails>())!;
+        Assert.True(type.CountsTowardTuition);
+        var planResponse = await client.PostAsJsonAsync("api/tuition/plans",
+            new SaveTuitionPlanRequest(TuitionPlanKinds.Installment, "2026-2027", 48_000m, classId, null, 0m, 10, 5, new DateOnly(2026, 10, 1)));
+        planResponse.EnsureSuccessStatusCode();
+
+        var before = await client.GetFromJsonAsync<KindergartenOverview>("api/tuition/kindergarten");
+        var pending = Assert.Single(before!.Students, x => x.StudentId == studentId);
+        Assert.Equal("0/10", pending.Progress);
+        Assert.True(before.HasTuitionIncomeType);
+
+        var incomeResponse = await client.PostAsJsonAsync("api/income/transactions", new CreateIncomeTransactionRequest(
+            Guid.NewGuid(), studentId, null, new DateTimeOffset(2026, 10, 3, 9, 0, 0, TimeSpan.FromHours(3)), type.Id, 4_800m, "Ekim taksiti"));
+        incomeResponse.EnsureSuccessStatusCode();
+        var income = (await incomeResponse.Content.ReadFromJsonAsync<IncomeTransactionDetails>())!;
+        Assert.Equal("1. taksite sayıldı (1/10 ödendi).", income.TuitionNote);
+
+        var after = await client.GetFromJsonAsync<KindergartenOverview>("api/tuition/kindergarten");
+        var paid = Assert.Single(after!.Students, x => x.StudentId == studentId);
+        Assert.Equal("1/10", paid.Progress);
+        Assert.Equal(1, paid.PaymentCount);
+        Assert.Equal(4_800m, paid.TotalPaid);
+        Assert.Equal(43_200m, paid.Outstanding);
+        Assert.Equal(0, after.UnappliedIncomeCount);
+        var summary = await client.GetFromJsonAsync<StudentTuitionSummary>($"api/tuition/students/{studentId:D}");
+        var payment = Assert.Single(summary!.Payments!);
+        Assert.Equal(1, payment.Sequence);
+        Assert.Equal("Ekim taksiti", payment.Description);
+
+        var voidResponse = await client.PostAsJsonAsync($"api/income/transactions/{income.Id:D}/void", new VoidIncomeTransactionRequest("Yanlış öğrenci"));
+        voidResponse.EnsureSuccessStatusCode();
+        var voided = (await voidResponse.Content.ReadFromJsonAsync<IncomeTransactionDetails>())!;
+        Assert.Contains("yeniden borçlu", voided.Warning);
+        var reverted = await client.GetFromJsonAsync<KindergartenOverview>("api/tuition/kindergarten");
+        Assert.Equal("0/10", Assert.Single(reverted!.Students, x => x.StudentId == studentId).Progress);
+        Assert.Equal(0, reverted.UnappliedIncomeCount);
     }
     [Fact]
     public async Task SameCardNumberCannotBeGivenToTwoStudents()

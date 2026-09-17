@@ -11,6 +11,11 @@ public static class ShellRoutes
     /// "cards" rotasi Ogrenciler ekranindaki kart okuma akisina ayrilmistir; bu yuzden ayri ad.
     /// </summary>
     public const string CardList = "card-list";
+    /// <summary>
+    /// Anasinifi ekrani: anasinifi ogrencileri ve taksit ilerlemesi (3/10). Rota kasa okuma
+    /// yetkisiyle kayitlidir; menu ogesi ayrica yalnizca anasinifi ogrencisi varsa gorunur.
+    /// </summary>
+    public const string Kindergarten = "kindergarten";
     public const string Entitlements = "entitlements";
     public const string HolidayTransfer = "holiday-transfer";
     public const string CardReader = "card-reader";

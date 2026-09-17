@@ -48,7 +48,7 @@ public sealed class LiveBindingTests
         var session = new OfflineSession();
         var routes = new ShellNavigationService([
             ShellRoutes.Students, ShellRoutes.Entitlements, ShellRoutes.Cash, ShellRoutes.Sms,
-            ShellRoutes.Reports, ShellRoutes.Devices, ShellRoutes.DeviceCards, ShellRoutes.CardList,
+            ShellRoutes.Reports, ShellRoutes.Devices, ShellRoutes.DeviceCards, ShellRoutes.CardList, ShellRoutes.Kindergarten,
             ShellRoutes.Settings, ShellRoutes.HolidayTransfer, ShellRoutes.DailyTracking,
         ]);
 
@@ -76,6 +76,9 @@ public sealed class LiveBindingTests
 
             "cardlist" => (new CardListView(), new CardListViewModel(
                 new CardListApiClient(http, session), ["cards.manage"])),
+
+            "kindergarten" => (new KindergartenView(), new KindergartenViewModel(
+                new TuitionApiClient(http, session), ["cash.read", "cash.write"])),
 
             "sms" => (new SmsView(), new SmsViewModel(
                 new SmsApiClient(http, session), ["sms.read", "sms.send", "sms.manage"])),

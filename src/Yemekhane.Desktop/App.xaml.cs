@@ -176,7 +176,7 @@ public partial class App : System.Windows.Application, IDisposable
         if (permissions.Contains("devices.read") || permissions.Contains("devices.manage"))
         { routes.Add(ShellRoutes.Devices); routes.Add(ShellRoutes.DeviceCards); }
         if (permissions.Contains("sms.read") || permissions.Contains("sms.send") || permissions.Contains("sms.manage")) routes.Add(ShellRoutes.Sms);
-        if (permissions.Contains("cash.read")) routes.Add(ShellRoutes.Cash);
+        if (permissions.Contains("cash.read")) { routes.Add(ShellRoutes.Cash); routes.Add(ShellRoutes.Kindergarten); }
         if (permissions.Contains("reports.read")) routes.Add(ShellRoutes.Reports);
         if (permissions.Contains("settings.read") || permissions.Contains("settings.manage")) routes.Add(ShellRoutes.Settings);
         // Tanimlar: ogun uclari entitlements.manage, sinif/sube/bolum/gorev uclari students.write ister.
@@ -215,6 +215,16 @@ public partial class App : System.Windows.Application, IDisposable
             : null;
         cash = new CashViewModel(new CashApiClient(httpClient, session), permissions, navigation: navigation,
             tuition: tuition, statement: statement);
+        // Anasinifi ekrani kasa okuma yetkisiyle; menu ogesi ekran yuklenip ogrenci bulunca acilir.
+        var kindergarten = permissions.Contains("cash.read") ? new KindergartenViewModel(tuitionApi, permissions) : null;
+        if (kindergarten is not null)
+        {
+            kindergarten.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(KindergartenViewModel.HasStudents))
+                    viewModel.CanNavigateKindergarten = navigation.IsAvailable(ShellRoutes.Kindergarten) && kindergarten.HasStudents;
+            };
+        }
         reports = new ReportsViewModel(new ReportApiClient(httpClient, session), permissions);
         settings = new SettingsViewModel(settingsApi, navigation, permissions);
         studentImport = permissions.Contains("students.write")
@@ -223,7 +233,7 @@ public partial class App : System.Windows.Application, IDisposable
         var definitions = new DefinitionsViewModel(new DefinitionsApiClient(httpClient, session), permissions);
         var window = new MainWindow { DataContext = viewModel, DailyTrackingDataContext = tracking,
             StudentsDataContext = students, MealEntitlementsDataContext = entitlements, CalendarDataContext = calendar,
-            DevicesDataContext = devices, DeviceCardsDataContext = deviceCards, CardListDataContext = cardList, SmsDataContext = sms, CashDataContext = cash, ReportsDataContext = reports,
+            DevicesDataContext = devices, DeviceCardsDataContext = deviceCards, CardListDataContext = cardList, KindergartenDataContext = kindergarten, SmsDataContext = sms, CashDataContext = cash, ReportsDataContext = reports,
              SettingsDataContext = settings, StudentImportDataContext = studentImport, DefinitionsDataContext = definitions,
              GlobalSearchDataContext = globalSearch, NotificationDataContext = notifications };
         window.ConfigureShortcuts(permissions);
@@ -276,6 +286,7 @@ public partial class App : System.Windows.Application, IDisposable
             ("Bildirimler", notifications?.InitializeAsync() ?? Task.CompletedTask),
             ("Kart durumları", deviceCards?.InitializeAsync() ?? Task.CompletedTask),
             ("Kartlar", cardList?.InitializeAsync() ?? Task.CompletedTask),
+            ("Anasınıfı", kindergarten?.ProbeAsync() ?? Task.CompletedTask),
             ("Tanımlar", definitions.InitializeAsync()),
         ]);
         if (failures.Count > 0)

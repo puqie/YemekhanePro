@@ -26,6 +26,7 @@ public sealed class BindingIntegrityTests
         { "DevicesView.xaml", nameof(DevicesViewModel) },
         { "DeviceCardsView.xaml", nameof(DeviceCardsViewModel) },
         { "CardListView.xaml", nameof(CardListViewModel) },
+        { "KindergartenView.xaml", nameof(KindergartenViewModel) },
         { "SmsView.xaml", nameof(SmsViewModel) },
         { "ReportsView.xaml", nameof(ReportsViewModel) },
         { "SettingsView.xaml", nameof(SettingsViewModel) },
