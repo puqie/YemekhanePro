@@ -15,13 +15,14 @@ namespace Yemekhane.Api.Devices;
 public sealed record DeviceWriteRequest(string Name, string DeviceType, string ConnectionType,
     string? IpAddress, int? Port, string? ComPort, int? BaudRate, bool IsActive, bool AutoConnect,
     bool HasTurnstile, string? Location, string Direction,
-    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false);
+    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false, int? TurnstileCycleSeconds = null);
 
 public sealed record DeviceDto(Guid Id, string Name, string DeviceType, string ConnectionType,
     string Endpoint, string? IpAddress, int? Port, string? ComPort, int? BaudRate, bool IsActive,
     bool AutoConnect, bool HasTurnstile, string? Location, string Direction, string Status,
     DateTimeOffset? LastConnectedAt, DateTimeOffset? LastStatusAt, string? Model, string? SerialNumber,
-    string? Firmware, bool IsSimulator, int? TurnstileRelayPulseMs, bool TurnstileBidirectional);
+    string? Firmware, bool IsSimulator, int? TurnstileRelayPulseMs, bool TurnstileBidirectional,
+    int? TurnstileCycleSeconds = null);
 
 public sealed record DeviceActionResult(bool Succeeded, string Status, string Message,
     string? ErrorCode = null, DeviceDto? Device = null);
@@ -39,6 +40,7 @@ public sealed partial class DeviceAdministrationService(
     /// <summary>Role darbesi sinirlari; OzakTurnstileProfile ile ayni araligi zorunlu kilar.</summary>
     private const int MinRelayPulseMs = 50;
     private const int MaxRelayPulseMs = 5000;
+    private const int MaxCycleSeconds = 60;
     public bool IsSimulatorAllowed => environment.IsDevelopment();
 
     public async Task<IReadOnlyList<DeviceDto>> ListAsync(CancellationToken cancellationToken) =>
@@ -252,6 +254,12 @@ public sealed partial class DeviceAdministrationService(
             throw new RequestValidationException(
                 $"Röle darbe süresi {MinRelayPulseMs}-{MaxRelayPulseMs} ms arasında olmalıdır.");
         }
+        // Turnike dongusu: bir gecisten sonra yeni darbe kabul edilmeyen sure. Cok uzun deger her
+        // okutmayi gereksiz bekletir; ust sinir bu yuzden var. 0 = bekleme yok.
+        if (request.HasTurnstile && request.TurnstileCycleSeconds is { } cycle && (cycle < 0 || cycle > MaxCycleSeconds))
+        {
+            throw new RequestValidationException($"Turnike döngü süresi 0-{MaxCycleSeconds} sn arasında olmalıdır.");
+        }
 
         if (await db.Devices.AnyAsync(x => x.Id != id && x.Name == name, cancellationToken))
             throw new RequestValidationException("Bu cihaz adı kullanılıyor.");
@@ -307,7 +315,7 @@ public sealed partial class DeviceAdministrationService(
 
     internal static DeviceAdapterConfiguration Configuration(Device x) => new(x.Id, x.Name, x.DeviceType,
         x.ConnectionType, x.ComPort, x.BaudRate, x.IpAddress, x.IpPort, x.HasTurnstile,
-        x.TurnstileRelayPulseMs, x.TurnstileBidirectional);
+        x.TurnstileRelayPulseMs, x.TurnstileBidirectional, x.TurnstileCycleSeconds);
 
     private static void Apply(Device x, DeviceWriteRequest r, DateTimeOffset now)
     {
@@ -319,6 +327,7 @@ public sealed partial class DeviceAdministrationService(
         // sonradan turnike isaretlendiginde eski bir degerin sessizce geri gelmesi onlensin.
         x.TurnstileRelayPulseMs = r.HasTurnstile ? r.TurnstileRelayPulseMs : null;
         x.TurnstileBidirectional = r.HasTurnstile && r.TurnstileBidirectional;
+        x.TurnstileCycleSeconds = r.HasTurnstile ? r.TurnstileCycleSeconds : null;
     }
 
     private static DeviceDto ToDto(Device x) => new(x.Id, x.Name, x.DeviceType, x.ConnectionType,
@@ -326,7 +335,7 @@ public sealed partial class DeviceAdministrationService(
         x.IpAddress, x.IpPort, x.ComPort, x.BaudRate, x.IsActive, x.AutoConnect, x.HasTurnstile,
         x.Location, x.Direction, x.ConnectionStatus, x.LastConnectedAt, x.LastStatusAt, x.Model,
         x.SerialNumber, x.Firmware, x.DeviceType == "Simulator", x.TurnstileRelayPulseMs,
-        x.TurnstileBidirectional);
+        x.TurnstileBidirectional, x.TurnstileCycleSeconds);
 
     internal static string StatusName(DeviceConnectionState state) => state == DeviceConnectionState.Faulted ? "Error" : state.ToString();
 

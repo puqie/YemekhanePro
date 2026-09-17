@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Yemekhane.Application.Cards;
+using Yemekhane.Application.DailyTracking;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
 using Yemekhane.UnitTests.Api;
@@ -218,6 +219,42 @@ public sealed class DataIntegrityEndToEndTests : IAsyncLifetime, IDisposable
         (await client.PostAsync($"api/cards/{cardId}/reactivate", content: null)).EnsureSuccessStatusCode();
         var back = await client.GetFromJsonAsync<CardListResult>("api/cards?search=2026-0434");
         Assert.True(Assert.Single(back!.Items).IsActive);
+    }
+    /// <summary>
+    /// Gunluk Takip aramasi UCTAN UCA: masaustunun gonderdigi "search" sorgu parametresi sunucuda
+    /// baglanir, Turkce harfe duyarsiz ad aramasi ve tanimsiz kartin numarayla bulunmasi gercek HTTP
+    /// hattinda dogrulanir. Saha: "Gunluk takipte adini arasam da goremiyorum, arama calismiyor".
+    /// </summary>
+    [Fact]
+    public async Task DailyTrackingSearchFindsTurkishNamesAndUnknownCardsOverHttp()
+    {
+        var created = await client.PostAsJsonAsync("api/students",
+            new { StudentNo = "2026-0435", FirstName = "İPEK", LastName = "YURDAKUL" });
+        created.EnsureSuccessStatusCode();
+        var id = (await created.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+        var now = DateTimeOffset.UtcNow;
+        await InScope(async db =>
+        {
+            var device = new Device { Name = "E2E Turnike", DeviceType = "SC403", ConnectionType = "Ethernet", Direction = "Entry", ConnectionStatus = "Connected" };
+            var meal = new MealType { Name = "E2E Öğle" };
+            db.AddRange(device, meal,
+                new AccessLog { StudentId = id, DeviceId = device.Id, MealTypeId = meal.Id, Timestamp = now, CardNumber = "8350010", Decision = "ALLOW", Reason = "Geçiş onaylandı", Direction = "Entry", ReaderSource = "SC403", OperationId = Guid.NewGuid() },
+                new AccessLog { StudentId = null, DeviceId = device.Id, MealTypeId = meal.Id, Timestamp = now.AddSeconds(-5), CardNumber = "8350099", Decision = "DENY", Reason = "Kart tanımsız", Direction = "Entry", ReaderSource = "SC403", OperationId = Guid.NewGuid() });
+            await db.SaveChangesAsync();
+            return true;
+        });
+
+        var byLowerName = await client.GetFromJsonAsync<DailyTrackingPage>("api/daily-tracking?search=ipek");
+        var byUpperAscii = await client.GetFromJsonAsync<DailyTrackingPage>("api/daily-tracking?search=IPEK");
+        var bySurname = await client.GetFromJsonAsync<DailyTrackingPage>("api/daily-tracking?search=yurdakul");
+        var byUnknownCard = await client.GetFromJsonAsync<DailyTrackingPage>("api/daily-tracking?search=8350099");
+
+        Assert.Equal("İPEK YURDAKUL", Assert.Single(byLowerName!.Items).StudentName);
+        Assert.Single(byUpperAscii!.Items);
+        Assert.Single(bySurname!.Items);
+        var unknown = Assert.Single(byUnknownCard!.Items);
+        Assert.Equal("Tanımsız kart", unknown.StudentName);
+        Assert.Null(unknown.StudentId);
     }
     [Fact]
     public async Task SameCardNumberCannotBeGivenToTwoStudents()

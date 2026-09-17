@@ -11,11 +11,11 @@ public sealed record DeviceItem(Guid Id, string Name, string DeviceType, string 
     bool AutoConnect, bool HasTurnstile, string? Location, string Direction, string Status,
     DateTimeOffset? LastConnectedAt, DateTimeOffset? LastStatusAt, string? Model, string? SerialNumber,
     string? Firmware, bool IsSimulator,
-    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false);
+    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false, int? TurnstileCycleSeconds = null);
 public sealed record DeviceWriteModel(string Name, string DeviceType, string ConnectionType,
     string? IpAddress, int? Port, string? ComPort, int? BaudRate, bool IsActive, bool AutoConnect,
     bool HasTurnstile, string? Location, string Direction,
-    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false);
+    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false, int? TurnstileCycleSeconds = null);
 public sealed record DeviceActionResponse(bool Succeeded, string Status, string Message,
     string? ErrorCode, DeviceItem? Device);
 public sealed record DeviceLogItem(Guid Id, DateTimeOffset Timestamp, string EventType, string Severity,

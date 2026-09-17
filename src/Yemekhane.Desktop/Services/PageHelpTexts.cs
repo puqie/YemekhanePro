@@ -103,7 +103,7 @@ public static class PageHelpTexts
             "Cihaz satırındaki Loglar düğmesi o cihazın günlüğünü açar; uygulama geneli kayıtlar Ayarlar > Loglar'dadır.",
             "Kol bazen dönmüyorsa (\"İzin Verildi\" yazıyor ama turnike açılmıyor) Röle darbe süresini artırın; 1000-2000 ms genelde yeter. Çok uzun tutmak tek okutmayla iki kişinin geçmesine yol açabilir.",
             "Turnike açma komutu doğrulanamadıysa (zaman aşımı) aynı kartın 90 saniye içindeki ikinci okutması hakkı yeniden düşürmez; kapıyı yeniden açmayı dener.",
-            "Turnike bir geçişten sonra yaklaşık 5 saniye yeni komut kabul etmez; o sırada okutan öğrencinin kartı bekletilir ve hak ancak turnike hazır olunca düşer. Süre Devices:TurnstileCycleSeconds ayarıdır.",
+            "Turnike bir geçişten sonra yaklaşık 5 saniye yeni komut kabul etmez; o sırada okutan öğrencinin kartı bekletilir ve hak ancak turnike hazır olunca düşer. Süre cihaz kartındaki \"Turnike döngü süresi (sn)\" alanıdır; 0 beklemeyi kapatır.",
         ]),
         [ShellRoutes.DeviceCards] = new("Kart Yükleme Durumu",
         [

@@ -94,7 +94,10 @@
                 <Border Background="{StaticResource InfoSoftBrush}" Padding="11" Margin="0,0,0,10" CornerRadius="5" Visibility="{Binding HasTurnstile, Converter={StaticResource BoolToVisibility}}"><StackPanel>
                     <TextBlock Text="Turnike sürüş ayarları" FontWeight="SemiBold"/>
                     <TextBlock Text="Bu değerler üretici dokümanında belgelenmemiştir; kurulumda cihaz başında doğrulayın." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,8"/>
-                    <TextBlock Style="{StaticResource Label}" Text="Röle darbe süresi (ms, 50-5000)"/><TextBox Style="{StaticResource Field}" Text="{Binding RelayPulseMs}" AutomationProperties.Name="Röle darbe süresi"/>
+                    <TextBlock Style="{StaticResource Label}" Text="Röle darbe süresi (ms, 50-5000)"/><TextBox Style="{StaticResource Field}" Text="{Binding RelayPulseMs}" AutomationProperties.Name="Röle darbe süresi" ToolTip="Kapı rölesinin kapalı tutulacağı süre; kol bazen dönmüyorsa 1000-2000 ms deneyin"/>
+                    <!-- Turnike dongusu: bir gecisten sonra turnikenin yeni darbe kabul etmedigi sure. Saha: "5 saniye
+                         falan"; o sirada okutan cocugun hakki yaniyordu. Program bu sure dolmadan okutmayi bekletir. -->
+                    <TextBlock Style="{StaticResource Label}" Text="Turnike döngü süresi (sn, 0-60)"/><TextBox Style="{StaticResource Field}" Text="{Binding CycleSeconds}" AutomationProperties.Name="Turnike döngü süresi" ToolTip="Bir geçişten sonra turnikenin yeni darbe kabul etmediği süre; o sırada okutan öğrenci bekletilir, hakkı düşmez. 0 = bekleme yok"/>
                     <CheckBox Content="Turnike çift yönlü sürülebiliyor" IsChecked="{Binding TurnstileBidirectional}" Margin="0,2,0,0"/>
                 </StackPanel></Border>
                 <Border Background="{StaticResource WarningSoftBrush}" Padding="9" Margin="0,0,0,10" Visibility="{Binding IsSimulator, Converter={StaticResource BoolToVisibility}}"><TextBlock Text="Development simulator: üretimde oluşturulamaz." Foreground="{StaticResource WarningBrush}"/></Border>

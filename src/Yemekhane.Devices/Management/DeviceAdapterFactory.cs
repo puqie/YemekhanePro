@@ -10,7 +10,7 @@ namespace Yemekhane.Devices.Management;
 public sealed record DeviceAdapterConfiguration(
     Guid Id, string Name, string DeviceType, string ConnectionType,
     string? ComPort, int? BaudRate, string? IpAddress, int? IpPort, bool HasTurnstile,
-    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false);
+    int? TurnstileRelayPulseMs = null, bool TurnstileBidirectional = false, int? TurnstileCycleSeconds = null);
 
 public interface IDeviceAdapterFactory
 {
@@ -57,7 +57,9 @@ public sealed class DeviceAdapterFactory : IDeviceAdapterFactory
     /// </summary>
     private OzakTurnstileProfile TurnstileProfile(DeviceAdapterConfiguration configuration) =>
         new(configuration.TurnstileRelayPulseMs is { } pulse ? TimeSpan.FromMilliseconds(pulse) : null,
-            configuration.TurnstileBidirectional, turnstilePassageCycle);
+            configuration.TurnstileBidirectional,
+            // Cihaz karti oncelikli; bos ise Devices:TurnstileCycleSeconds, o da yoksa profil varsayilani.
+            configuration.TurnstileCycleSeconds is { } cycle ? TimeSpan.FromSeconds(cycle) : turnstilePassageCycle);
 
     public IDevice Create(DeviceAdapterConfiguration configuration)
     {

@@ -90,6 +90,7 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
     private bool autoConnect;
     private bool hasTurnstile;
     private int relayPulseMs = 1000;
+    private int cycleSeconds = 5;
     private bool turnstileBidirectional;
     private bool simulatorAllowed;
 
@@ -148,6 +149,12 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
     /// <summary>Role darbe suresi (ms). Uretici dokumaninda yok; kurulumda sahada dogrulanir.</summary>
     public int RelayPulseMs { get => relayPulseMs; set => Set(ref relayPulseMs, value); }
 
+    /// <summary>
+    /// Turnike dongusu (sn): bir gecisten sonra turnikenin yeni darbe kabul etmedigi sure. O sure
+    /// dolmadan gelen okutma karar alinmadan bekletilir, hak dusmez. Saha olcumu ~5 sn; 0 = bekleme yok.
+    /// </summary>
+    public int CycleSeconds { get => cycleSeconds; set => Set(ref cycleSeconds, value); }
+
     /// <summary>Turnike her iki yonde de surulebiliyor mu. Mekanik yonlendirme tek yone kilitli olabilir.</summary>
     public bool TurnstileBidirectional { get => turnstileBidirectional; set => Set(ref turnstileBidirectional, value); }
     public ICommand RefreshCommand { get; } public ICommand AddCommand { get; } public ICommand SaveCommand { get; }
@@ -192,12 +199,12 @@ public sealed class DevicesViewModel : ObservableObject, IDisposable
         }
         finally { card.IsBusy = false; }
     }
-    private void OpenCreate() { editing = null; Name = ""; SelectedType = "EthernetReader"; IpAddress = ""; Port = 4370; ComPort = "COM1"; BaudRate = 9600; Location = ""; Direction = "Entry"; IsActive = true; AutoConnect = false; HasTurnstile = false; RelayPulseMs = 1000; TurnstileBidirectional = false; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
-    private void OpenEdit(DeviceCardViewModel card) { editing = card; var x = card.Item; Name = x.Name; SelectedType = x.DeviceType; IpAddress = x.IpAddress ?? ""; Port = x.Port ?? 4370; ComPort = x.ComPort ?? "COM1"; BaudRate = x.BaudRate ?? 9600; Location = x.Location ?? ""; Direction = x.Direction; IsActive = x.IsActive; AutoConnect = x.AutoConnect; HasTurnstile = x.HasTurnstile; RelayPulseMs = x.TurnstileRelayPulseMs ?? 1000; TurnstileBidirectional = x.TurnstileBidirectional; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
+    private void OpenCreate() { editing = null; Name = ""; SelectedType = "EthernetReader"; IpAddress = ""; Port = 4370; ComPort = "COM1"; BaudRate = 9600; Location = ""; Direction = "Entry"; IsActive = true; AutoConnect = false; HasTurnstile = false; RelayPulseMs = 1000; CycleSeconds = 5; TurnstileBidirectional = false; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
+    private void OpenEdit(DeviceCardViewModel card) { editing = card; var x = card.Item; Name = x.Name; SelectedType = x.DeviceType; IpAddress = x.IpAddress ?? ""; Port = x.Port ?? 4370; ComPort = x.ComPort ?? "COM1"; BaudRate = x.BaudRate ?? 9600; Location = x.Location ?? ""; Direction = x.Direction; IsActive = x.IsActive; AutoConnect = x.AutoConnect; HasTurnstile = x.HasTurnstile; RelayPulseMs = x.TurnstileRelayPulseMs ?? 1000; CycleSeconds = x.TurnstileCycleSeconds ?? 5; TurnstileBidirectional = x.TurnstileBidirectional; ErrorMessage = null; Raise(nameof(EditorTitle)); IsEditorOpen = true; }
     private async Task SaveAsync()
     {
         IsLoading = true; ErrorMessage = null;
-        try { var model = new DeviceWriteModel(Name, SelectedType, IsCom ? "COM" : IsSimulator ? "Simulator" : "Ethernet", IsEthernet ? IpAddress : null, IsEthernet ? Port : null, IsCom ? ComPort : null, IsCom ? BaudRate : null, IsActive, AutoConnect, HasTurnstile, Location, Direction, HasTurnstile ? RelayPulseMs : null, HasTurnstile && TurnstileBidirectional); var value = editing is null ? await api.CreateAsync(model) : await api.UpdateAsync(editing.Id, model); if (editing is null) Devices.Add(new DeviceCardViewModel(value)); else editing.Update(value); IsEditorOpen = false; Raise(nameof(ShowEmpty)); }
+        try { var model = new DeviceWriteModel(Name, SelectedType, IsCom ? "COM" : IsSimulator ? "Simulator" : "Ethernet", IsEthernet ? IpAddress : null, IsEthernet ? Port : null, IsCom ? ComPort : null, IsCom ? BaudRate : null, IsActive, AutoConnect, HasTurnstile, Location, Direction, HasTurnstile ? RelayPulseMs : null, HasTurnstile && TurnstileBidirectional, HasTurnstile ? CycleSeconds : null); var value = editing is null ? await api.CreateAsync(model) : await api.UpdateAsync(editing.Id, model); if (editing is null) Devices.Add(new DeviceCardViewModel(value)); else editing.Update(value); IsEditorOpen = false; Raise(nameof(ShowEmpty)); }
         catch (HttpRequestException ex) { ErrorMessage = ex.Message; }
         finally { IsLoading = false; }
     }

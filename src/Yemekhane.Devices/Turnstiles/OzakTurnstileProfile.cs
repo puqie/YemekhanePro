@@ -57,7 +57,7 @@ public sealed record OzakTurnstileProfile
     /// <summary>
     /// Turnikenin bir gecisten sonra yeni darbe kabul etmedigi sure (fiziksel dongu). Saha olcumu:
     /// "5 saniye falan"; o surede gelen okutma bekletilir, hak dusurulmez. Uretici dokumaninda yok;
-    /// Devices:TurnstileCycleSeconds ile ayarlanir.
+    /// Cihaz kartindaki "Turnike dongu suresi" ile ayarlanir; bos ise Devices:TurnstileCycleSeconds.
     /// </summary>
     public static readonly TimeSpan DefaultPassageCycle = TimeSpan.FromSeconds(5);
     public static readonly TimeSpan MaxPassageCycle = TimeSpan.FromSeconds(60);

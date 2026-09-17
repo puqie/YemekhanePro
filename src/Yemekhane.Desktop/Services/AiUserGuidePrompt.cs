@@ -631,7 +631,8 @@ public static class AiUserGuidePrompt
         ekranda İngilizce yazılır: Entry = giriş, Exit = çıkış, Bidirectional
         = çift yönlü), "Aktif", "Otomatik bağlan",
         "Turnike bağlı" onay kutuları; turnike bağlıysa "Röle darbe süresi
-        (ms, 50-5000)" ve "Turnike çift yönlü sürülebiliyor" alanları (not:
+        (ms, 50-5000)", "Turnike döngü süresi (sn, 0-60)" ve "Turnike çift
+        yönlü sürülebiliyor" alanları (not:
         "Bu değerler üretici dokümanında belgelenmemiştir; kurulumda cihaz
         başında doğrulayın.").
 
@@ -642,7 +643,8 @@ public static class AiUserGuidePrompt
         okutması hakkı yeniden düşürmez, kapıyı yeniden açmayı dener.
         TURNİKE DÖNGÜSÜ: turnike bir geçişten sonra ~5 saniye yeni darbe kabul
         etmez; o sırada okutan öğrencinin kartı program tarafından bekletilir,
-        hak ancak turnike hazır olunca düşer (Devices:TurnstileCycleSeconds).
+        hak ancak turnike hazır olunca düşer. Süre cihaz kartındaki "Turnike
+        döngü süresi (sn, 0-60)" alanıdır; 0 beklemeyi kapatır.
 
         TURNİKE HAK İADESİ KURALI: Bir cihaz turnike komutunu hiç ALAMAZSA
         (bağlantı kesin olarak kopuk, yön desteklenmiyor gibi NET durumlarda)

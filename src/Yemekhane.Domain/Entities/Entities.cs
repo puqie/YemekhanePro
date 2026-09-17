@@ -167,6 +167,13 @@ public sealed class Device : Entity
     public int? TurnstileRelayPulseMs { get; set; }
 
     /// <summary>
+    /// Turnikenin bir gecisten sonra yeni acma darbesi kabul etmedigi sure (sn). O sure dolmadan
+    /// gelen okutma karar alinmadan bekletilir; hak dusurulmez. Saha olcumu ~5 sn. Null ise
+    /// Devices:TurnstileCycleSeconds (varsayilan 5) kullanilir; 0 = bekleme yok.
+    /// </summary>
+    public int? TurnstileCycleSeconds { get; set; }
+
+    /// <summary>
     /// Turnike her iki yonde de surulebiliyor mu. Sahadaki mekanik yonlendirme tek yone
     /// kilitlenmis olabilir; cift yon varsayilmaz, kurulumda bildirilir.
     /// </summary>

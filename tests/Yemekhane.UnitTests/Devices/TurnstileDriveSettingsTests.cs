@@ -21,12 +21,34 @@ namespace Yemekhane.UnitTests.Devices;
 public sealed class TurnstileDriveSettingsTests
 {
     private static DeviceWriteRequest Request(bool hasTurnstile = true, int? pulse = 250,
-        bool bidirectional = true, string ip = "10.0.0.50") =>
+        bool bidirectional = true, string ip = "10.0.0.50", int? cycle = 5) =>
         new("SC403 Giris", "SC403", "Ethernet", ip, 4370, null, null,
             IsActive: true, AutoConnect: false, HasTurnstile: hasTurnstile,
             Location: "Yemekhane", Direction: "Entry",
-            TurnstileRelayPulseMs: pulse, TurnstileBidirectional: bidirectional);
+            TurnstileRelayPulseMs: pulse, TurnstileBidirectional: bidirectional, TurnstileCycleSeconds: cycle);
 
+    /// <summary>Dongu suresi 0-60 sn disina cikamaz: cok uzun deger her okutmayi bekletir.</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(61)]
+    public async Task CycleOutsideTheAllowedRangeIsRejected(int cycle)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+
+        await Assert.ThrowsAsync<RequestValidationException>(() => fixture.Service.CreateAsync(Request(cycle: cycle), default));
+    }
+
+    /// <summary>Turnike isareti kaldirilinca dongu suresi de temizlenir; sonradan geri gelmez.</summary>
+    [Fact]
+    public async Task CycleIsClearedWhenTheTurnstileIsUnchecked()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var created = await fixture.Service.CreateAsync(Request(cycle: 9), default);
+
+        var updated = await fixture.Service.UpdateAsync(created.Id, Request(hasTurnstile: false, pulse: null, cycle: 9), default);
+
+        Assert.Null(updated.TurnstileCycleSeconds);
+    }
     /// <summary>Sube girdigi degerler kaydedilmeli ve geri okunabilmelidir.</summary>
     [Fact]
     public async Task BranchCanEnterAndReadBackTurnstileSettings()
@@ -36,6 +58,7 @@ public sealed class TurnstileDriveSettingsTests
         var created = await fixture.Service.CreateAsync(Request(), default);
 
         Assert.Equal(250, created.TurnstileRelayPulseMs);
+        Assert.Equal(5, created.TurnstileCycleSeconds);
         Assert.True(created.TurnstileBidirectional);
         Assert.Equal("10.0.0.50", created.IpAddress);
         Assert.Equal(4370, created.Port);
@@ -49,9 +72,11 @@ public sealed class TurnstileDriveSettingsTests
         var created = await fixture.Service.CreateAsync(Request(pulse: 250, bidirectional: true), default);
 
         var updated = await fixture.Service.UpdateAsync(created.Id,
-            Request(pulse: 900, bidirectional: false, ip: "10.0.0.77"), default);
+            Request(pulse: 900, bidirectional: false, ip: "10.0.0.77", cycle: 7), default);
 
         Assert.Equal(900, updated.TurnstileRelayPulseMs);
+        // Turnike dongusu de duzenlenebilir: saha olcumu 5 sn degil 7 sn cikarsa ekrandan degistirilir.
+        Assert.Equal(7, updated.TurnstileCycleSeconds);
         Assert.False(updated.TurnstileBidirectional);
         Assert.Equal("10.0.0.77", updated.IpAddress);
     }
