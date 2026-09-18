@@ -425,9 +425,26 @@
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <!-- ODEME OZETI. Saha: "ogrencinin uzerine tikladigim zaman simdiye kadar kac kez
+                                 odeme yapmis gormem gerekiyor, PATRONUN gormesi gerekiyor." Sekmeye girmeden,
+                                 basligin YANINDA durur: panele yeni bir satir eklemez, yoksa dar ekranda
+                                 sekme icerigi altta kalirdi (bkz. DetaySekmeIcerigiKucukEkrandaDaGorunur).
+                                 Kasa yetkisi yoksa ozet gelmez ve eski ipucu gorunur. -->
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding DetailPanelTitle}" Style="{StaticResource SectionTitle}" Margin="0"/>
-                                <TextBlock Text=" · Sekme seçerek ayrıntıları görüntüleyin" Foreground="{StaticResource MutedBrush}" Margin="8,2,0,0"/>
+                                <TextBlock Text=" · Sekme seçerek ayrıntıları görüntüleyin" Foreground="{StaticResource MutedBrush}" Margin="8,2,0,0"
+                                           Visibility="{Binding HasPaymentHeadline, Converter={x:Static local:InverseBooleanToVisibilityConverter.Instance}}"/>
+                                <StackPanel x:Name="PaymentHeadlineStrip" Orientation="Horizontal" Margin="10,2,0,0"
+                                            Visibility="{Binding HasPaymentHeadline, Converter={StaticResource BoolToVisibility}}"
+                                            AutomationProperties.Name="Seçili öğrencinin ödeme özeti">
+                                    <StackPanel.DataContext><Binding Path="PaymentHeadline"/></StackPanel.DataContext>
+                                    <TextBlock Text="·" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding CountText}" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding DetailText, StringFormat={} · {0}}" Foreground="{StaticResource MutedBrush}"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding PlanText, StringFormat={} · {0}}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                               Visibility="{Binding HasPlanText, Converter={StaticResource BoolToVisibility}}"/>
+                                </StackPanel>
                             </StackPanel>
                             <Button Grid.Column="1" Style="{StaticResource Action}" Content="Ekstre PDF Kaydet"
                                     Command="{Binding ExportStatementPdfCommand}" Margin="0"

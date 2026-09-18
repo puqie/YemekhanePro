@@ -12,6 +12,7 @@ using Yemekhane.Application.Organization;
 using Yemekhane.Application.Parents;
 using Yemekhane.Application.Entitlements;
 using Yemekhane.Application.Students;
+using Yemekhane.Application.Tuition;
 using Yemekhane.Devices.Abstractions;
 
 namespace Yemekhane.Desktop.Services;
@@ -40,6 +41,13 @@ public interface IStudentApiClient
     /// </summary>
     Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<EntitlementPeriodSummary>>([]);
+    /// <summary>
+    /// "Kac kez odeme yapmis" ozeti (Odemeler sekmesine girmeden gorunur). Yetki yoksa ya da
+    /// sunucu desteklemiyorsa null doner ve serit hic cizilmez -- ozet bir kolayliktir,
+    /// ogrenci detayinin acilmasini engellememeli.
+    /// </summary>
+    Task<StudentPaymentSummary?> PaymentSummaryAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<StudentPaymentSummary?>(null);
     Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default);
     Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default);
     /// <summary>
@@ -125,6 +133,17 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
 
     public Task<IReadOnlyList<EntitlementPeriodSummary>> PeriodsAsync(Guid studentId, CancellationToken cancellationToken = default) =>
         GetAsync<IReadOnlyList<EntitlementPeriodSummary>>($"api/meal-entitlements/student/{studentId}/periods", cancellationToken);
+
+    /// <summary>
+    /// Odeme ozeti. Uc kasa yetkisi ister; yetkisi olmayan kullanicida (ya da eski sunucuda)
+    /// istisna FIRLATMAZ, null doner: ozet gorunmez ama ogrenci detayi normal acilir.
+    /// </summary>
+    public async Task<StudentPaymentSummary?> PaymentSummaryAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        try { return await GetAsync<StudentPaymentSummary>($"api/tuition/students/{studentId:D}/payment-summary", cancellationToken); }
+        catch (ApiRequestException) { return null; }
+        catch (LoginRequiredException) { return null; }
+    }
 
     public async Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null,
         DateOnly? toDate = null, CancellationToken cancellationToken = default)
@@ -389,6 +408,60 @@ public sealed record StudentBalanceHeadline(decimal Balance, decimal Available, 
     public string DetailText => Expired > 0
         ? $"Kullanılabilir: {Available.ToString("C2", Turkish)} · Süresi dolan: {Expired.ToString("C2", Turkish)}"
         : Balance < 0 ? "Bakiye ekside: iptal edilen bir yükleme daha önce harcanmış." : $"Kullanılabilir: {Available.ToString("C2", Turkish)}";
+}
+
+/// <summary>
+/// Ogrenci detayindaki odeme seridinin METNI. Saha: "ogrencinin uzerine tikladigim zaman
+/// simdiye kadar kac kez odeme yapmis gormem gerekiyor -- patronun gormesi gerekiyor."
+/// Sayiyi sekmeye girmeden, tek bakista okunur yapar.
+/// </summary>
+public sealed record StudentPaymentHeadline(StudentPaymentSummary Summary)
+{
+    private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
+    private static readonly TimeZoneInfo Istanbul = StudentTabFormatter.IstanbulTimeZone;
+
+    /// <summary>Basligin solundaki kalin sayi: "3 kez ödeme" / "Henüz ödeme yok".</summary>
+    public string CountText => Summary.PaymentCount == 0 ? "Henüz ödeme yok" : $"{Summary.PaymentCount} kez ödeme";
+
+    public bool HasPayments => Summary.PaymentCount > 0;
+
+    /// <summary>
+    /// Sayimin ayrintisi. Kullanici IKI sayiyi birden istedi: kac tahsilat girilmis ve
+    /// bunun kaci taksite sayilmis. Taksit plani olmayan ogrencide ikinci sayi yazilmaz --
+    /// ilkokulda her satirda "0'ı taksit" gormek bilgi degil gurultu olurdu.
+    /// </summary>
+    public string DetailText
+    {
+        get
+        {
+            if (Summary.PaymentCount == 0)
+                return Summary.VoidedCount > 0
+                    ? $"{Summary.VoidedCount} tahsilat iptal edilmiş. Tahsilat Kasa > Gelir Ekle ile girilir."
+                    : "Tahsilat Kasa > Gelir Ekle ile girilir; girilen her ödeme burada görünür.";
+
+            var parts = new List<string> { $"Toplam {Summary.TotalPaid.ToString("C2", Turkish)}" };
+            if (Summary.HasPlan) parts.Add($"{Summary.TuitionPaymentCount}'i taksite sayıldı");
+            if (Summary.LastPaidAt is { } last)
+                parts.Add($"son ödeme {TimeZoneInfo.ConvertTime(last, Istanbul):dd MMM yyyy}");
+            if (Summary.VoidedCount > 0) parts.Add($"{Summary.VoidedCount} iptal");
+            return string.Join(" · ", parts);
+        }
+    }
+
+    /// <summary>Taksit ilerlemesi; plan yoksa bos kalir ve ekranda o parca gizlenir.</summary>
+    public string PlanText
+    {
+        get
+        {
+            if (!Summary.HasPlan || Summary.InstallmentCount == 0) return string.Empty;
+            var text = $"{Summary.PaidInstallments}/{Summary.InstallmentCount} taksit";
+            if (Summary.Outstanding > 0) text += $" · kalan {Summary.Outstanding.ToString("C2", Turkish)}";
+            if (Summary.NextDueOn is { } due) text += $" · sonraki vade {due:dd MMM yyyy}";
+            return text;
+        }
+    }
+
+    public bool HasPlanText => PlanText.Length > 0;
 }
 
 public interface ICardReadEventSource

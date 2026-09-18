@@ -296,6 +296,10 @@ public sealed class StudentsLayoutTests
             using var vm = MakeViewModel(api, ["students.read", "students.write", "students.deactivate", "cards.manage"]);
             vm.OpenFullDetailCommand.Execute(SampleItem("Ada", "Katırcı", "1001", "CARD-1"));
             vm.SelectedTab = vm.Tabs.First(x => x.Key == "Access History");
+            // Odeme seridi de yer kaplar; en dar ekranda sekme icerigini ezmemeli.
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                () => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+            Assert.True(vm.HasPaymentHeadline, "Odeme seridi yuklenmedi; olcum eksik kalirdi.");
 
             var view = new StudentsView { DataContext = vm };
             UiThread.ApplyResources(view);
@@ -305,6 +309,8 @@ public sealed class StudentsLayoutTests
             host.UpdateLayout();
 
             var panel = (FrameworkElement)view.FindName("StudentDetailPanel")!;
+            var headline = (FrameworkElement)view.FindName("PaymentHeadlineStrip")!;
+            Assert.Equal(Visibility.Visible, headline.Visibility);
             var strip = (FrameworkElement)view.FindName("DetailTabStrip")!;
             var content = (FrameworkElement)view.FindName("DetailTabContent")!;
             var table = (FrameworkElement)view.FindName("DetailRecordsGrid")!;
@@ -573,6 +579,51 @@ public sealed class StudentsLayoutTests
             .WidthIncludingTrailingWhitespace;
     }
 
+    /// <summary>
+    /// SAHA: "Ogrencinin uzerine tikladigim zaman simdiye kadar kac kez odeme yapmis gormem
+    /// gerekiyor, patronun gormesi gerekiyor." Ozet detay basliginin YANINDA, sekmeye girmeden
+    /// okunur. 1280 genislikte (en dar desteklenen pencere) ekstre dugmesiyle CAKISMAMALI ve
+    /// "kac kez odeme" kismi kirpilmamali: patron oraya bakacak.
+    /// </summary>
+    [Theory]
+    [InlineData(1280, 800)]
+    [InlineData(1440, 900)]
+    public void OdemeOzetiBaslikSatirindaKirpilmadanGorunur(double width, double height) =>
+        UiThread.Run(() =>
+        {
+            var api = new FakeStudentApi();
+            using var vm = MakeViewModel(api, ["students.read", "students.write", "reports.export"]);
+            vm.OpenFullDetailCommand.Execute(SampleItem("Ada", "Katırcı", "1001", "CARD-1"));
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.Invoke(
+                () => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+            Assert.True(vm.HasPaymentHeadline);
+
+            var view = new StudentsView { DataContext = vm };
+            UiThread.ApplyResources(view);
+            var host = new Border { Width = width, Height = height, Child = view };
+            host.Measure(new Size(width, height));
+            host.Arrange(new Rect(0, 0, width, height));
+            host.UpdateLayout();
+
+            var strip = (FrameworkElement)view.FindName("PaymentHeadlineStrip")!;
+            Assert.Equal(Visibility.Visible, strip.Visibility);
+            Assert.True(strip.ActualWidth > 0 && strip.ActualHeight > 0,
+                $"Odeme ozeti olculemedi: {strip.ActualWidth:F0}x{strip.ActualHeight:F0}");
+
+            // Serit panelin sag kenarindan tasmamali (ekstre dugmesinin altina girmemeli).
+            var panel = (FrameworkElement)view.FindName("StudentDetailPanel")!;
+            var stripLeft = strip.TransformToAncestor(host).Transform(new Point(0, 0)).X;
+            var panelLeft = panel.TransformToAncestor(host).Transform(new Point(0, 0)).X;
+            Assert.True(stripLeft + strip.ActualWidth <= panelLeft + panel.ActualWidth + 0.5,
+                $"{width}px: ödeme özeti panelden taşıyor ({stripLeft + strip.ActualWidth:F0} > {panelLeft + panel.ActualWidth:F0}).");
+
+            // "3 kez ödeme" kismi TAM gorunmeli; kirpilirsa sayi okunmaz.
+            var count = Descendants(strip).OfType<TextBlock>().First(x => x.Text.Contains("kez ödeme", StringComparison.Ordinal));
+            count.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Assert.True(count.ActualWidth + 0.5 >= count.DesiredSize.Width,
+                $"\"{count.Text}\" kırpılıyor: {count.ActualWidth:F0}px < {count.DesiredSize.Width:F0}px");
+        });
+
     private static StudentsViewModel MakeViewModel(FakeStudentApi api, IEnumerable<string> permissions) =>
         new(api, new ShellNavigationService([ShellRoutes.Students]), permissions);
 
@@ -669,6 +720,12 @@ public sealed class StudentsLayoutTests
             });
 
         public Task DeactivateAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        /// <summary>Odeme seridi GORUNUR olsun: yer kaplayan hali olculmeli, gizli hali degil.</summary>
+        public Task<StudentPaymentSummary?> PaymentSummaryAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<StudentPaymentSummary?>(new StudentPaymentSummary(studentId, "1001", "ADA KATIRCI",
+                3, 2, 1, 2_250m, new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.FromHours(3)),
+                true, 10, 2, 8_000m, new DateOnly(2026, 12, 5)));
 
         public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<object>>(tab == "Payments"

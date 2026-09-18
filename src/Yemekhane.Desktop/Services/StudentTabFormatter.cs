@@ -287,7 +287,12 @@ public static class StudentTabFormatter
             ? TimeZoneInfo.ConvertTime(value, SchoolTimeZone).ToString("dd.MM.yyyy HH:mm", Turkish)
             : text;
 
-    /// <summary>Okulun saat dilimi; kayitlar UTC saklanir, ekranda okul saati gosterilir.</summary>
+    /// <summary>
+    /// Okulun saat dilimi; kayitlar UTC saklanir, ekranda okul saati gosterilir. Odeme seridi
+    /// de ayni dilimi kullanir ki "son odeme" tarihi sekmedeki satirla AYNI gunu gostersin.
+    /// </summary>
+    public static TimeZoneInfo IstanbulTimeZone => SchoolTimeZone;
+
     private static readonly TimeZoneInfo SchoolTimeZone = FindSchoolTimeZone();
 
     private static TimeZoneInfo FindSchoolTimeZone()

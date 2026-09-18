@@ -49,7 +49,10 @@ public sealed class MealEntitlementsViewModel : ObservableObject
     private int page = 1, pageSize = 50, totalCount, totalQuantity, consumedQuantity, remainingQuantity;
     private string quantityText = "1";
     private DateTime? startsOn = DateTime.Today.AddDays(-7), endsOn = DateTime.Today.AddDays(7);
-    private DateTime grantStartsOn = DateTime.Today.AddDays(1), grantEndsOn = DateTime.Today.AddDays(1);
+    // SAHA: "Hakedis verirken YARIN gozukuyor, bugunu gostersin ilk tarih olarak."
+    // Hakedis cogunlukla AYNI GUN verilir (ogrenci kasada, yemek bugun yenecek); varsayilan
+    // yarin olunca kullanici her seferinde tarihi geri almak zorunda kaliyordu.
+    private DateTime grantStartsOn = DateTime.Today, grantEndsOn = DateTime.Today;
     private readonly HashSet<Guid> presetStudentIds = [];
     private int grantOpenVersion, studentSearchVersion;
     private MealTypeDetails? grantMeal;
@@ -486,7 +489,7 @@ public sealed class MealEntitlementsViewModel : ObservableObject
         GrantClass = null;
         GrantGroup = null;
         Grade = "";
-        GrantStartsOn = DateTime.Today.AddDays(1);
+        GrantStartsOn = DateTime.Today;
         GrantEndsOn = GrantStartsOn;
         DayCountText = "10";
         QuantityText = "1";

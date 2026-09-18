@@ -57,6 +57,10 @@ public sealed class TuitionService(ITuitionRepository repository, TimeProvider t
     public Task<KindergartenOverview> KindergartenAsync(CancellationToken cancellationToken = default) =>
         repository.KindergartenAsync(Today(), cancellationToken);
 
+    /// <summary>Ogrenci detayindaki odeme ozeti: kac tahsilat, kaci taksit, toplam, son odeme.</summary>
+    public Task<StudentPaymentSummary?> PaymentSummaryAsync(Guid studentId, CancellationToken cancellationToken = default) =>
+        repository.PaymentSummaryAsync(studentId, Today(), cancellationToken);
+
     /// <summary>Kasadaki islenmemis "taksite sayilir" tahsilatlari taksitlere sayar; yeniden calistirmak guvenlidir.</summary>
     public Task<TuitionReconcileResult> ReconcileAsync(Guid actorId, CancellationToken cancellationToken = default) =>
         repository.ReconcileAsync(Today(), actorId, cancellationToken);

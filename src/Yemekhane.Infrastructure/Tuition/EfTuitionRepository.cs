@@ -165,6 +165,61 @@ public sealed class EfTuitionRepository(YemekhaneDbContext dbContext, TimeProvid
     }
 
     /// <summary>
+    /// Ogrenci detayindaki tek satirlik odeme ozeti. SAYIM kasadaki TUM ogrenciye bagli
+    /// tahsilatlardan gelir (taksit, yemek ucreti, bakiye yuklemesi); bunlarin kaci taksite
+    /// sayilmis ayrica bildirilir. Iptal edilen tahsilat sayima ve toplama GIRMEZ, ayri
+    /// sayilir -- "3 kez odedi" derken iptal edilmis bir kayit sayilirsa rakam yalan olur.
+    /// Taksit kismi plan varsa dolar; plan yoksa HasPlan false doner ve ekran o kismi yazmaz.
+    /// </summary>
+    public async Task<StudentPaymentSummary?> PaymentSummaryAsync(Guid studentId, DateOnly today, CancellationToken cancellationToken)
+    {
+        // IgnoreQueryFilters: silinen ogrencinin de gecmisi sorulabilmeli (detay paneli acik kalabilir).
+        var student = await dbContext.Students.IgnoreQueryFilters().AsNoTracking().Where(x => x.Id == studentId)
+            .Select(x => new { x.Id, x.StudentNo, Name = x.FirstName + " " + x.LastName, x.ClassId })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (student is null) return null;
+
+        var incomes = await dbContext.Set<IncomeTransaction>().AsNoTracking()
+            .Where(x => x.StudentId == studentId)
+            .Select(x => new { x.Id, x.Amount, x.TransactionAt, x.IsVoided })
+            .ToListAsync(cancellationToken);
+        var live = incomes.Where(x => !x.IsVoided).ToList();
+        var liveIds = live.Select(x => x.Id).ToList();
+        // Taksite sayilan tahsilat sayisi: ayni tahsilat birden cok taksite bolunmus olabilir,
+        // bu yuzden TAHSILAT kimligine gore tekillestirilir.
+        var tuitionPaid = liveIds.Count == 0 ? 0 : await dbContext.TuitionPayments.AsNoTracking()
+            .Where(x => liveIds.Contains(x.IncomeTransactionId))
+            .Select(x => x.IncomeTransactionId).Distinct().CountAsync(cancellationToken);
+
+        var plan = (await dbContext.TuitionPlans.AsNoTracking()
+                .Where(x => x.StudentId == studentId && x.IsActive).ToListAsync(cancellationToken))
+            .OrderByDescending(x => x.CreatedAt).FirstOrDefault()
+            ?? (student.ClassId is null ? null : (await dbContext.TuitionPlans.AsNoTracking()
+                    .Where(x => x.ClassId == student.ClassId && x.IsActive).ToListAsync(cancellationToken))
+                .OrderByDescending(x => x.CreatedAt).FirstOrDefault());
+
+        var installments = plan is null ? [] : await dbContext.TuitionInstallments.AsNoTracking()
+            .Where(x => x.PlanId == plan.Id && x.StudentId == studentId && !x.IsCancelled)
+            .OrderBy(x => x.DueOn).ThenBy(x => x.Sequence).ToListAsync(cancellationToken);
+
+        return new StudentPaymentSummary(
+            student.Id, student.StudentNo, student.Name,
+            live.Count,
+            tuitionPaid,
+            incomes.Count - live.Count,
+            live.Sum(x => x.Amount),
+            live.Count == 0 ? null : live.Max(x => x.TransactionAt),
+            plan is not null,
+            installments.Count,
+            installments.Count(x => x.PaidCents >= x.AmountCents),
+            StudentBalanceService.ToLira(installments.Sum(x => Math.Max(x.AmountCents - x.PaidCents, 0))),
+            // Sonraki vade: odenmemis EN ERKEN taksit. Gecikmis olani da buraya duser --
+            // patronun gormesi gereken tarih "bir sonraki" degil "bekleyen" tarihtir.
+            installments.FirstOrDefault(x => x.PaidCents < x.AmountCents
+                && TuitionSchedule.StatusOf(x.AmountCents, x.PaidCents, false, x.DueOn, today) != TuitionInstallmentStatuses.Cancelled)?.DueOn);
+    }
+
+    /// <summary>
     /// Bu surumden once kasaya girilmis (ya da tur sonradan isaretlenmis) tahsilatlari taksitlere
     /// sayar. Tarih sirasiyla islenir ki ilk odeme ilk taksite gitsin. Tek transaction: yarim kalirsa
     /// hicbiri yazilmaz, yeniden calistirilir.

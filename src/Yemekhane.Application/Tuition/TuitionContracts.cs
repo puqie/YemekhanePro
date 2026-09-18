@@ -87,6 +87,35 @@ public sealed record TuitionPaymentDetails(
     string? Description);
 
 /// <summary>
+/// SAHA: "Ogrencinin uzerine tikladigim zaman simdiye kadar KAC KEZ odeme yapmis gormem
+/// gerekiyor -- benden ziyade PATRONUN gormesi gerekiyor." Ogrenci detayinda, sekmeye
+/// girmeden gorunen tek satirlik odeme ozeti. HER ogrenci icin calisir: anasinifinda plan
+/// varsa taksit ilerlemesi de dolar, ilkokulda plan yoksa yalnizca sayim/tutar gorunur.
+/// </summary>
+/// <param name="PaymentCount">Iptal EDILMEMIS, ogrenciye bagli kasa tahsilati sayisi.</param>
+/// <param name="TuitionPaymentCount">
+/// Bunlardan kacinin taksite sayildigi (ayri yazilir: "5 tahsilat · 3'u taksit").
+/// </param>
+/// <param name="VoidedCount">Iptal edilen tahsilat sayisi; 0 degilse ekranda ayrica belirtilir.</param>
+/// <param name="TotalPaid">Iptal edilmemis tahsilatlarin toplami.</param>
+/// <param name="LastPaidAt">En son tahsilatin zamani; hic yoksa null.</param>
+/// <param name="HasPlan">Gecerli bir ucret plani var mi (kendi plani ya da sinifinin plani).</param>
+public sealed record StudentPaymentSummary(
+    Guid StudentId,
+    string StudentNo,
+    string StudentName,
+    int PaymentCount,
+    int TuitionPaymentCount,
+    int VoidedCount,
+    decimal TotalPaid,
+    DateTimeOffset? LastPaidAt,
+    bool HasPlan,
+    int InstallmentCount,
+    int PaidInstallments,
+    decimal Outstanding,
+    DateOnly? NextDueOn);
+
+/// <summary>
 /// Anasinifi ekraninin satiri: ogrencinin gecerli planindaki taksit ilerlemesi. Plan yoksa
 /// sayimlar sifirdir ve <see cref="HasPlan"/> false doner; ekran "Plan yok" yazar.
 /// </summary>
@@ -166,6 +195,9 @@ public interface ITuitionRepository
         CancellationToken cancellationToken);
     /// <summary>Aktif anasinifi ogrencileri ve taksit ilerlemeleri; sinif turu <c>Anasinifi</c> olanlar.</summary>
     Task<KindergartenOverview> KindergartenAsync(DateOnly today, CancellationToken cancellationToken);
+
+    /// <summary>Ogrenci detayindaki odeme ozeti satiri; ogrenci yoksa null.</summary>
+    Task<StudentPaymentSummary?> PaymentSummaryAsync(Guid studentId, DateOnly today, CancellationToken cancellationToken);
     /// <summary>
     /// Taksite sayilir turden girilmis ama hic taksite islenmemis tahsilatlari tarih sirasiyla
     /// taksitlere sayar. Yeniden calistirmak guvenlidir: islenmis tahsilat atlanir.

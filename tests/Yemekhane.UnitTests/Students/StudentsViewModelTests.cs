@@ -606,6 +606,119 @@ public sealed class StudentsViewModelTests
         Assert.Contains("PDF olarak kaydedildi", vm.InfoMessage);
     }
 
+    /// <summary>
+    /// SAHA: "Ogrencinin uzerine tikladigim zaman simdiye kadar kac kez odeme yapmis gormem
+    /// gerekiyor, patronun gormesi gerekiyor." Serit detay acilinca kendiliginden yuklenir;
+    /// IKI sayi birden yazilir (tahsilat sayisi ve bunun kaci taksite sayildi) ve plani olan
+    /// ogrencide taksit ilerlemesi de gorunur.
+    /// </summary>
+    [Fact]
+    public async Task OdemeSeridiDetayAcilincaKacKezOdendiginiYazar()
+    {
+        var api = new FakeApi
+        {
+            PaymentSummary = new StudentPaymentSummary(Guid.NewGuid(), "42", "ADA YILMAZ", 3, 2, 0, 2_250m,
+                new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.FromHours(3)), true, 10, 2, 8_000m, new DateOnly(2026, 12, 5))
+        };
+        using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.HasPaymentHeadline);
+
+        var headline = vm.PaymentHeadline!;
+        Assert.Equal("3 kez ödeme", headline.CountText);
+        Assert.Contains("2'i taksite sayıldı", headline.DetailText, StringComparison.Ordinal);
+        Assert.Contains("07 Eki 2026", headline.DetailText, StringComparison.Ordinal);
+        Assert.True(headline.HasPlanText);
+        Assert.Contains("2/10 taksit", headline.PlanText, StringComparison.Ordinal);
+        Assert.Contains("05 Ara 2026", headline.PlanText, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Plani OLMAYAN ogrencide (ilkokul) serit yine gorunur: sayim ve toplam yazilir, taksit
+    /// parcasi gizlenir. Iptal edilen tahsilat sayima girmez ama ayrica belirtilir.
+    /// </summary>
+    [Fact]
+    public async Task PlansizOgrencideSeritSayimiGosterirTaksitParcasiGizlenir()
+    {
+        var api = new FakeApi
+        {
+            PaymentSummary = new StudentPaymentSummary(Guid.NewGuid(), "42", "ADA YILMAZ", 1, 0, 2, 750m,
+                new DateTimeOffset(2026, 10, 5, 9, 0, 0, TimeSpan.FromHours(3)), false, 0, 0, 0m, null)
+        };
+        using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.HasPaymentHeadline);
+
+        Assert.Equal("1 kez ödeme", vm.PaymentHeadline!.CountText);
+        Assert.False(vm.PaymentHeadline.HasPlanText);
+        Assert.DoesNotContain("taksit", vm.PaymentHeadline.DetailText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("2 iptal", vm.PaymentHeadline.DetailText, StringComparison.Ordinal);
+    }
+
+    /// <summary>Hic odemesi olmayan ogrencide serit "Henüz ödeme yok" der ve nereden girilecegini soyler.</summary>
+    [Fact]
+    public async Task OdemesiOlmayanOgrencideSeritNereyeGirileceginiSoyler()
+    {
+        var api = new FakeApi
+        {
+            PaymentSummary = new StudentPaymentSummary(Guid.NewGuid(), "42", "ADA YILMAZ", 0, 0, 0, 0m, null, false, 0, 0, 0m, null)
+        };
+        using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.HasPaymentHeadline);
+
+        Assert.Equal("Henüz ödeme yok", vm.PaymentHeadline!.CountText);
+        Assert.False(vm.PaymentHeadline.HasPayments);
+        Assert.Contains("Kasa > Gelir Ekle", vm.PaymentHeadline.DetailText, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Yetkisi olmayan kullanicida (ya da eski sunucuda) ozet null doner: SERIT CIZILMEZ ama
+    /// ogrenci detayi normal acilir. Ozet bir kolayliktir, ekrani kilitlememeli.
+    /// </summary>
+    [Fact]
+    public async Task OzetAlinamazsaSeritCizilmezAmaDetayNormalAcilir()
+    {
+        var api = new FakeApi { PaymentSummary = null };
+        using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => vm.IsDetailOpen && api.PaymentSummaryCount == 1);
+
+        Assert.False(vm.HasPaymentHeadline);
+        Assert.Null(vm.PaymentHeadline);
+        Assert.Equal(11, vm.Tabs.Count);
+    }
+
+    /// <summary>
+    /// GEC DONEN OZET BASKA OGRENCIYE YAZILMAZ. Kullanici listede hizla gezerken ilk
+    /// ogrencinin ozeti sonra donerse ikincinin serigine dusmemeli.
+    /// </summary>
+    [Fact]
+    public async Task GecDonenOzetSonrakiOgrencininSeridineYazilmaz()
+    {
+        var gate = new TaskCompletionSource();
+        var api = new FakeApi
+        {
+            PaymentSummaryGate = gate,
+            PaymentSummary = new StudentPaymentSummary(Guid.NewGuid(), "1", "ILK", 9, 0, 0, 900m, null, false, 0, 0, 0m, null)
+        };
+        using var vm = Create(api);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => api.PaymentSummaryCount == 1);
+
+        // Ikinci ogrenci secilir; ozeti hemen doner.
+        api.PaymentSummaryGate = null;
+        api.PaymentSummary = new StudentPaymentSummary(Guid.NewGuid(), "2", "IKINCI", 4, 0, 0, 400m, null, false, 0, 0, 0m, null);
+        vm.OpenFullDetailCommand.Execute(Row());
+        await Until(() => api.PaymentSummaryCount == 2 && vm.HasPaymentHeadline);
+
+        // Birincinin GEC donen cevabi simdi serbest birakilir: seride YAZILMAMALI.
+        gate.SetResult();
+        await Task.Delay(60);
+
+        Assert.Equal("4 kez ödeme", vm.PaymentHeadline!.CountText);
+    }
+
     private static StudentsViewModel Create(FakeApi api, params string[] permissions) =>
         new(api, new ShellNavigationService([ShellRoutes.Students, ShellRoutes.StudentDetail]), permissions);
     private static StudentListItem Row() => new(Guid.NewGuid(), "42", "CARD42", "Ada", "Yılmaz", "5", "A", "Ortaokul", "+905551234567", true, 1, true, DateTimeOffset.UtcNow);
@@ -641,6 +754,16 @@ public sealed class StudentsViewModelTests
         public DateOnly? LastTabFrom, LastTabTo;
         public string? LastTabKey;
         public Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null, DateOnly? toDate = null, CancellationToken cancellationToken = default) { TabCount++; LastTabKey = tab; LastTabFrom = fromDate; LastTabTo = toDate; if (TabFailure is not null) throw TabFailure; return Task.FromResult<IReadOnlyList<object>>([new StudentDetailRow(tab)]); }
+        public int PaymentSummaryCount;
+        public Guid? LastPaymentSummaryId;
+        public StudentPaymentSummary? PaymentSummary { get; set; }
+        public TaskCompletionSource? PaymentSummaryGate;
+        public async Task<StudentPaymentSummary?> PaymentSummaryAsync(Guid studentId, CancellationToken cancellationToken = default)
+        {
+            PaymentSummaryCount++; LastPaymentSummaryId = studentId;
+            if (PaymentSummaryGate is not null) await PaymentSummaryGate.Task;
+            return PaymentSummary;
+        }
         public int LeaveCount, ReplaceCount, AssignCount;
         public SaveStudentRequest? LastSaveRequest;
         public Exception? ReplaceFailure;

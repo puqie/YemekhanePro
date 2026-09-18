@@ -317,6 +317,77 @@ public sealed class DataIntegrityEndToEndTests : IAsyncLifetime, IDisposable
         Assert.Equal(0, reverted.UnappliedIncomeCount);
     }
     /// <summary>
+    /// ODEME OZETI UCTAN UCA. Saha: "Ogrencinin uzerine tikladigim zaman simdiye kadar kac kez
+    /// odeme yapmis gormem gerekiyor -- patronun gormesi gerekiyor." Ozet HEM anasinifi (plani
+    /// olan) HEM ilkokul (plani olmayan) ogrencisinde calisir; sayim ile taksite sayilan ayri
+    /// bildirilir; IPTAL edilen tahsilat sayima ve toplama girmez, ayrica sayilir.
+    /// </summary>
+    [Fact]
+    public async Task PaymentSummaryCountsCashIncomeForPlannedAndUnplannedStudentsOverHttp()
+    {
+        var classId = await InScope(async db =>
+        {
+            var row = new SchoolClass { Name = "Özet Anasınıfı", Kind = ClassKinds.Preschool };
+            db.Add(row); await db.SaveChangesAsync(); return row.Id;
+        });
+
+        var kinderResponse = await client.PostAsJsonAsync("api/students", new { StudentNo = "2026-0901", FirstName = "ZEYNEP", LastName = "KAYA", ClassId = classId });
+        kinderResponse.EnsureSuccessStatusCode();
+        var kinder = (await kinderResponse.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+        var primaryResponse = await client.PostAsJsonAsync("api/students", new { StudentNo = "2026-0902", FirstName = "ONUR", LastName = "KAYA" });
+        primaryResponse.EnsureSuccessStatusCode();
+        var primary = (await primaryResponse.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+
+        var tuitionType = (await (await client.PostAsJsonAsync("api/income/types",
+            new SaveIncomeTypeRequest("Özet Anasınıfı Taksiti", true, true))).Content.ReadFromJsonAsync<IncomeTypeDetails>())!;
+        var mealType = (await (await client.PostAsJsonAsync("api/income/types",
+            new SaveIncomeTypeRequest("Özet Yemek Ücreti", true, false))).Content.ReadFromJsonAsync<IncomeTypeDetails>())!;
+        (await client.PostAsJsonAsync("api/tuition/plans", new SaveTuitionPlanRequest(
+            TuitionPlanKinds.Installment, "2026-2027", 10_000m, classId, null, 0m, 10, 5, new DateOnly(2026, 10, 1)))).EnsureSuccessStatusCode();
+
+        // Anasinifi ogrencisi: iki taksit odemesi + bir de taksite SAYILMAYAN yemek ucreti.
+        foreach (var (amount, type, day) in new[] { (1_000m, tuitionType.Id, 3), (1_000m, tuitionType.Id, 6) })
+            (await client.PostAsJsonAsync("api/income/transactions", new CreateIncomeTransactionRequest(
+                Guid.NewGuid(), kinder, null, new DateTimeOffset(2026, 10, day, 9, 0, 0, TimeSpan.FromHours(3)), type, amount, "Taksit"))).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync("api/income/transactions", new CreateIncomeTransactionRequest(
+            Guid.NewGuid(), kinder, null, new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.FromHours(3)), mealType.Id, 250m, "Yemek"))).EnsureSuccessStatusCode();
+
+        var kinderSummary = await client.GetFromJsonAsync<StudentPaymentSummary>($"api/tuition/students/{kinder:D}/payment-summary");
+        Assert.Equal(3, kinderSummary!.PaymentCount);        // UC tahsilat girildi
+        Assert.Equal(2, kinderSummary.TuitionPaymentCount);  // bunun IKISI taksite sayildi
+        Assert.Equal(0, kinderSummary.VoidedCount);
+        Assert.Equal(2_250m, kinderSummary.TotalPaid);
+        Assert.True(kinderSummary.HasPlan);
+        Assert.Equal(10, kinderSummary.InstallmentCount);
+        Assert.Equal(2, kinderSummary.PaidInstallments);
+        Assert.Equal(8_000m, kinderSummary.Outstanding);
+        Assert.Equal(new DateTimeOffset(2026, 10, 7, 9, 0, 0, TimeSpan.FromHours(3)), kinderSummary.LastPaidAt);
+
+        // Ilkokul ogrencisi: plan YOK ama odeme sayisi yine gorunur.
+        var voided = (await (await client.PostAsJsonAsync("api/income/transactions", new CreateIncomeTransactionRequest(
+            Guid.NewGuid(), primary, null, new DateTimeOffset(2026, 10, 4, 9, 0, 0, TimeSpan.FromHours(3)), mealType.Id, 500m, "Yanlış")))
+            .Content.ReadFromJsonAsync<IncomeTransactionDetails>())!;
+        (await client.PostAsJsonAsync("api/income/transactions", new CreateIncomeTransactionRequest(
+            Guid.NewGuid(), primary, null, new DateTimeOffset(2026, 10, 5, 9, 0, 0, TimeSpan.FromHours(3)), mealType.Id, 750m, "Eylül"))).EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync($"api/income/transactions/{voided.Id:D}/void", new VoidIncomeTransactionRequest("Yanlış öğrenci"))).EnsureSuccessStatusCode();
+
+        var primarySummary = await client.GetFromJsonAsync<StudentPaymentSummary>($"api/tuition/students/{primary:D}/payment-summary");
+        Assert.Equal(1, primarySummary!.PaymentCount);       // iptal edilen SAYILMAZ
+        Assert.Equal(1, primarySummary.VoidedCount);
+        Assert.Equal(750m, primarySummary.TotalPaid);        // iptal edilen tutara da girmez
+        Assert.Equal(0, primarySummary.TuitionPaymentCount);
+        Assert.False(primarySummary.HasPlan);
+        Assert.Equal(0, primarySummary.InstallmentCount);
+
+        // Hic odemesi olmayan ogrenci: ozet yine doner, sayilar sifirdir (ekran "Henüz ödeme yok" yazar).
+        var emptyResponse = await client.PostAsJsonAsync("api/students", new { StudentNo = "2026-0903", FirstName = "BORA", LastName = "KAYA" });
+        var empty = (await emptyResponse.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+        var emptySummary = await client.GetFromJsonAsync<StudentPaymentSummary>($"api/tuition/students/{empty:D}/payment-summary");
+        Assert.Equal(0, emptySummary!.PaymentCount);
+        Assert.Null(emptySummary.LastPaidAt);
+    }
+
+    /// <summary>
     /// Takvimden ogrenciye ozel tatil UCTAN UCA: toplu izin ucu secili ogrencilere izin acar, aralik
     /// listesi adiyla doner, "Keep" izin silinir, hak etkisi uygulanmis izin silinemez (404).
     /// </summary>

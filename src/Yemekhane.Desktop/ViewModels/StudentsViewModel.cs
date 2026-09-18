@@ -12,6 +12,7 @@ using Yemekhane.Application.Organization;
 using Yemekhane.Application.Parents;
 using Yemekhane.Application.Settings;
 using Yemekhane.Application.Students;
+using Yemekhane.Application.Tuition;
 using Yemekhane.Desktop.Services;
 
 namespace Yemekhane.Desktop.ViewModels;
@@ -138,6 +139,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private StudentListItem? selectedStudent;
     private StudentDetails? details;
     private StudentDetailTabViewModel? selectedTab;
+    private StudentPaymentHeadline? paymentHeadline;
     private Guid? routeClassId, routeGroupId;
     /// <summary>
     /// Fotograf durumu: <c>photoBytes</c> sunucudaki (Details.PhotoPath) dosyanin icerigi;
@@ -218,6 +220,20 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<StudentListItem> Students { get; } = [];
     public ObservableCollection<StudentDetailTabViewModel> Tabs { get; } = [];
+
+    /// <summary>
+    /// SAHA: "Ogrencinin uzerine tikladigim zaman simdiye kadar kac kez odeme yapmis gormem
+    /// gerekiyor -- benden ziyade PATRONUN gormesi gerekiyor." Sekmeye girmeden, detay
+    /// basliginin altinda gorunur. Yetki yoksa ya da yuklenemediyse null kalir ve serit
+    /// cizilmez: ozet bir kolayliktir, ogrenci detayini engellememeli.
+    /// </summary>
+    public StudentPaymentHeadline? PaymentHeadline
+    {
+        get => paymentHeadline;
+        private set { if (Set(ref paymentHeadline, value)) Raise(nameof(HasPaymentHeadline)); }
+    }
+
+    public bool HasPaymentHeadline => PaymentHeadline is not null;
 
     /// <summary>
     /// Gecmis sekmelerinin (Hakedisler, Gecis Gecmisi) PAYLASTIGI tarih araligi.
@@ -794,6 +810,8 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         foreach (var name in new[] { "Cards", "Parents", "Entitlements", "Access History", "Leaves", "Holiday/Transfer", "Payments", "Balance", "SMS History", "Audit" })
             Tabs.Add(new StudentDetailTabViewModel(name, () => LoadTabAsync(name, id)));
         SelectedTab = Tabs[0];
+        // Odeme seridi detayi BEKLETMEZ: ayri cagri, geldiginde ekrana duser.
+        _ = LoadPaymentHeadlineAsync(id, version);
     }
 
     /// <summary>
@@ -828,6 +846,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         FillFormFromDetails(fresh);
         FormNotes = fresh.Notes; Raise(nameof(FormNotes));
         Raise(nameof(ShowRestore));
+        _ = LoadPaymentHeadlineAsync(id, detailRequestVersion);
         await LoadPhotoAsync(fresh);
     }
 
@@ -874,6 +893,21 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
                 new StudentDetailCell("Yenileme", period.RenewFrom.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture)),
                 new StudentDetailCell("Hak Durumu", period.DaysLeftText),
             ])).ToArray();
+    }
+
+    /// <summary>
+    /// Odeme ozetini ceker. Hata YUTULUR: yetkisiz kullanicida ya da eski sunucuda serit
+    /// gorunmez, ogrenci detayi normal calismaya devam eder.
+    /// </summary>
+    private async Task LoadPaymentHeadlineAsync(Guid id, int version)
+    {
+        PaymentHeadline = null;
+        StudentPaymentSummary? summary;
+        try { summary = await api.PaymentSummaryAsync(id); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException) { return; }
+        // Kullanici bu arada baska ogrenciye gectiyse eski ozet yazilmamali.
+        if (version != detailRequestVersion || summary is null) return;
+        PaymentHeadline = new StudentPaymentHeadline(summary);
     }
 
     /// <summary>
@@ -1278,7 +1312,7 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         {
             var deleted = Details;
             await api.DeactivateAsync(deleted.Id);
-            IsDeleteArmed = false; IsFormOpen = false; Details = null; Tabs.Clear(); SelectedTab = null;
+            IsDeleteArmed = false; IsFormOpen = false; Details = null; Tabs.Clear(); SelectedTab = null; PaymentHeadline = null;
             await LoadAsync(Page);
             SelectedStudent = null; ClearForm(); ResetPhotoState(null); photoBytes = null; ErrorMessage = null;
             InfoMessage = $"{deleted.FirstName} {deleted.LastName} silindi; kart zimmeti kaldırıldı ve kart numarası yeniden kullanılabilir. "

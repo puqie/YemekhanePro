@@ -211,6 +211,17 @@ public static class AiUserGuidePrompt
           demek de kartı geri açar. Başka öğrencinin kartı olan numara -- pasif
           olsa bile -- verilemez ("Kart No daha önce sisteme tanımlanmış").
 
+        ÖDEME ÖZETİ: detay başlığının yanında, sekmeye girmeden görünen tek
+        satır. "3 kez ödeme · Toplam ₺2.250,00 · 2'i taksite sayıldı · son ödeme
+        07 Eki 2026" biçiminde; ücret planı olan öğrencide ayrıca "2/10 taksit ·
+        kalan ₺8.000,00 · sonraki vade 05 Ara 2026" eklenir. Plan yoksa taksit
+        kısmı hiç yazılmaz -- ilkokul öğrencisinde de sayım ve toplam görünür.
+        Sayım kasadaki ÖĞRENCİYE BAĞLI tüm tahsilatları kapsar (taksit, yemek
+        ücreti, bakiye yüklemesi); İPTAL edilen sayılmaz, varsa "2 iptal" diye
+        ayrıca yazılır. Hiç ödeme yoksa "Henüz ödeme yok · Tahsilat Kasa > Gelir
+        Ekle ile girilir" der. Özet cash.read yetkisi ister; yetki yoksa şerit
+        hiç çizilmez ve detay normal açılır. Tek tek döküm "Ödemeler" sekmesinde.
+
         Detay sekmeleri (sabit sıralı şerit): "Genel", "Kartlar", "Veliler",
         "Hakedişler", "Geçiş Geçmişi", "İzinler", "Tatil/Aktarım", "Ödemeler",
         "Bakiye" ("GÜNCEL BAKİYE" başlığıyla tutar gösterir), "SMS Geçmişi",

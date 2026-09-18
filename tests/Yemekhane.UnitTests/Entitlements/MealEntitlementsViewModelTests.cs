@@ -22,6 +22,25 @@ public sealed class MealEntitlementsViewModelTests
         Assert.Single(vm.Items);
     }
 
+    /// <summary>
+    /// SAHA: "Hakedis verirken YARIN gozukuyor, bugunu gostersin ilk tarih olarak."
+    /// Cekmece BUGUNLE acilir; kullanici ileri tarih isterse kendisi degistirir. Cekmece
+    /// her kapanip acildiginda da bugune doner (onceki secim sonraki ogrenciye tasinmaz).
+    /// </summary>
+    [Fact]
+    public async Task HakedisCekmecesiBUGUNLEAcilirVeHerAcilistaBuguneDoner()
+    {
+        var api = new FakeApi(); var vm = Create(api); await vm.InitializeAsync();
+        Assert.Equal(DateTime.Today, vm.GrantStartsOn.Date);
+        Assert.Equal(DateTime.Today, vm.GrantEndsOn.Date);
+
+        vm.OpenGrantCommand.Execute(null);
+        Assert.Equal(DateTime.Today, vm.GrantStartsOn.Date);
+        vm.GrantStartsOn = DateTime.Today.AddDays(30); vm.CloseGrantCommand.Execute(null);
+        vm.OpenGrantCommand.Execute(null);
+        Assert.Equal(DateTime.Today, vm.GrantStartsOn.Date);
+    }
+
     [Fact]
     public async Task StudentRoutePreselectsTargetAndPreviewAppliesRealRequest()
     {

@@ -33,6 +33,18 @@ public sealed class TuitionController(TuitionService service) : ControllerBase
     public Task<StudentTuitionSummary> ForStudent(Guid studentId, CancellationToken cancellationToken) =>
         service.ForStudentAsync(studentId, cancellationToken);
 
+    /// <summary>
+    /// Ogrenci detayindaki odeme ozeti: kac tahsilat, kaci taksite sayilmis, toplam, son odeme
+    /// ve (plan varsa) taksit ilerlemesi. Plan olmayan ogrencide de calisir.
+    /// </summary>
+    [HttpGet("students/{studentId:guid}/payment-summary")]
+    [PermissionAuthorize(Permissions.CashRead)]
+    public async Task<ActionResult<StudentPaymentSummary>> PaymentSummary(Guid studentId, CancellationToken cancellationToken)
+    {
+        var summary = await service.PaymentSummaryAsync(studentId, cancellationToken);
+        return summary is null ? NotFound() : Ok(summary);
+    }
+
     /// <summary>Ayni sinif/ogrenci ve donem icin plan varsa GUNCELLENIR; taksitler yeniden uretilir.</summary>
     [HttpPost("plans")]
     [PermissionAuthorize(Permissions.CashManage)]

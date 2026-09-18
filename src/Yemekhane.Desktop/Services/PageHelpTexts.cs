@@ -35,6 +35,8 @@ public static class PageHelpTexts
             "Turnike \"Kart pasif\" diyorsa kart yanlışlıkla değiştirilmiş ya da pasifleştirilmiştir: öğrenciyi seçip \"Eski Kartı Geri Aç\" düğmesine basın (aktif kartı yokken görünür). Kartın numarasını yazıp \"Kart Ata\" demek de aynı öğrencinin pasif kartını yeniden aktif eder.",
             "F2 arama kutusuna odaklanır. F3 \"Kartla Öğrenci Bul\" penceresini açar; bunun için kart yetkisi (cards.manage) ve bağlı bir kart okuyucu gerekir.",
             "Bir öğrenciye tıklayınca detay panelinde hakediş, ödeme ve geçiş geçmişi görünür.",
+            "Detay başlığının yanında ÖDEME ÖZETİ çıkar: \"3 kez ödeme · Toplam ₺2.250,00 · 2'i taksite sayıldı · son ödeme 07 Eki 2026\". Ücret planı olan öğrencide ayrıca \"2/10 taksit · kalan ... · sonraki vade ...\" yazar. Sekmeye girmeden, öğrencinin şimdiye kadar kaç kez ödeme yaptığı buradan okunur (kasa yetkisi gerekir).",
+            "Özetteki sayı İPTAL EDİLEN tahsilatları saymaz; iptal varsa ayrıca \"2 iptal\" diye belirtilir. Ödemelerin tek tek dökümü \"Ödemeler\" sekmesindedir.",
             "Detay panelinde her öğün için dönem kutusu vardır: kalan öğün, dönemin ilk/son günü ve yenilemenin başlaması gereken gün. Veli \"kaç öğün kaldı, ne zaman bitiyor\" diye sorduğunda buraya bakın.",
             "Kalan öğün BUGÜNDEN itibaren sayılır; geçmişte kullanılmadan geçen günler ayrıca \"kullanılmadan geçti\" olarak yazılır.",
             "Detay sekmelerinden \"Hakedişler\" geçmiş yüklemeleri, \"Geçiş Geçmişi\" ise hangi gün yemekhaneye girdiğini gösterir.",
