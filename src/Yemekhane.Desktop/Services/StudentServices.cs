@@ -11,6 +11,7 @@ using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Organization;
 using Yemekhane.Application.Parents;
 using Yemekhane.Application.Entitlements;
+using Yemekhane.Application.Settings;
 using Yemekhane.Application.Students;
 using Yemekhane.Application.Tuition;
 using Yemekhane.Devices.Abstractions;
@@ -48,8 +49,25 @@ public interface IStudentApiClient
     /// </summary>
     Task<StudentPaymentSummary?> PaymentSummaryAsync(Guid studentId, CancellationToken cancellationToken = default) =>
         Task.FromResult<StudentPaymentSummary?>(null);
+    /// <summary>
+    /// Ayarlardaki varsayilan kart ucreti. Tanimli degilse (ya da yetki yoksa) bos ayar doner
+    /// ve kart degisiminde ucret kutusu hic gorunmez.
+    /// </summary>
+    Task<CardFeeSettings> CardFeeAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(new CardFeeSettings());
     Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default);
     Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Kart degisimi; KART UCRETI istenmisse sunucu ucreti kasaya yazar ve sonucu doner
+    /// (islenen tutar ya da islenemediyse uyari). Varsayilan govde ucretsiz degisime duser:
+    /// yalnizca kart degistiren sahte istemciler bunu uygulamak zorunda kalmasin.
+    /// </summary>
+    async Task<ReplaceCardResult> ReplaceCardWithFeeAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
+    {
+        await ReplaceCardAsync(studentId, request, cancellationToken);
+        return new ReplaceCardResult(new CardDetails(Guid.Empty, studentId, "", "", request?.CardNumber ?? "",
+            DateTimeOffset.MinValue, null, null, true));
+    }
     /// <summary>
     /// Aktif kartin on yuzundeki baski numarasini gunceller (PUT .../cards/printed-number).
     /// Varsayilan govde AssignCardAsync ile ayni gerekceyle: yalnizca arama icin kullanan sahte
@@ -145,6 +163,14 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         catch (LoginRequiredException) { return null; }
     }
 
+    /// <summary>Ayar okunamazsa (yetki yok / eski sunucu) ucret kutusu gorunmez; ekran calismaya devam eder.</summary>
+    public async Task<CardFeeSettings> CardFeeAsync(CancellationToken cancellationToken = default)
+    {
+        try { return await GetAsync<CardFeeSettings>("api/settings/card-fee", cancellationToken); }
+        catch (ApiRequestException) { return new CardFeeSettings(); }
+        catch (LoginRequiredException) { return new CardFeeSettings(); }
+    }
+
     public async Task<IReadOnlyList<object>> LoadTabAsync(string tab, Guid studentId, DateOnly? fromDate = null,
         DateOnly? toDate = null, CancellationToken cancellationToken = default)
     {
@@ -236,6 +262,13 @@ public sealed class StudentApiClient(HttpClient client, IJwtSession session) : I
         message.Content = JsonContent.Create(request);
         using var response = await client.SendAsync(message, cancellationToken);
         await EnsureAsync(response, cancellationToken);
+    }
+
+    public async Task<ReplaceCardResult> ReplaceCardWithFeeAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
+    {
+        using var message = Authorized(HttpMethod.Post, $"api/students/{studentId:D}/cards/replace");
+        message.Content = JsonContent.Create(request);
+        return await SendAsync<ReplaceCardResult>(message, cancellationToken);
     }
 
     public async Task<CardDetails> ReactivateCardAsync(Guid studentId, CancellationToken cancellationToken = default)

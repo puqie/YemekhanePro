@@ -23,6 +23,15 @@ public sealed class SettingsController(ISettingsService settings, BackupService 
     public async Task<StudentFormSettings> GetStudentForm(CancellationToken cancellationToken) =>
         (await settings.GetAsync(cancellationToken)).StudentForm;
 
+    /// <summary>
+    /// Yalnizca kart ucreti ayari. Kart degistiren memurda "settings.read" yetkisi olmayabilir;
+    /// tum ayar belgesini actirmadan bu tek deger KART yetkisiyle okunur.
+    /// </summary>
+    [HttpGet("card-fee")]
+    [PermissionAuthorize(Permissions.CardsManage)]
+    public async Task<CardFeeSettings> GetCardFee(CancellationToken cancellationToken) =>
+        (await settings.GetAsync(cancellationToken)).CardFee;
+
     [HttpPut]
     [PermissionAuthorize(Permissions.SettingsManage)]
     public Task<SaveSettingsResult> Save(SaveSettingsRequest request, CancellationToken cancellationToken) =>

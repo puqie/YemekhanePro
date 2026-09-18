@@ -407,6 +407,21 @@
                                         ToolTip="Öğrencinin en son pasife düşen kartını yeniden aktif eder; turnike o kartı yine tanır"/>
                             </WrapPanel>
                         </Grid>
+                        <!-- KART UCRETI. Saha: "ogrenci kartini tekrardan cikardiginda biz kart ucreti
+                             aliyoruz, bunun islenmesi gerekiyor." Yalnizca kart DEGISIMINDE cikar (ilk
+                             kart ucretsiz) ve ancak Ayarlar'da tutar + gelir turu tanimliysa gorunur. -->
+                        <StackPanel x:Name="CardFeeRow" Orientation="Horizontal" Margin="0,7,0,0"
+                                    Visibility="{Binding ShowCardFee, Converter={StaticResource BoolToVisibility}}">
+                            <CheckBox Content="Kart ücreti al" IsChecked="{Binding ChargeCardFee}" VerticalAlignment="Center"
+                                      AutomationProperties.Name="Kart değişiminde kart ücreti al"
+                                      ToolTip="İşaretlerseniz kart değişimiyle birlikte Kasa'ya öğrenciye bağlı gelir yazılır"/>
+                            <TextBox Text="{Binding CardFeeAmountText, UpdateSourceTrigger=PropertyChanged}" Width="90" Margin="8,0,0,0"
+                                     VerticalAlignment="Center" IsEnabled="{Binding ChargeCardFee}"
+                                     AutomationProperties.Name="Kart ücreti tutarı" ToolTip="Ayarlardaki varsayılan tutar; bu işlem için değiştirebilirsiniz"/>
+                            <TextBlock Text="₺" VerticalAlignment="Center" Margin="4,0,0,0" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Text="{Binding CardFeeHint}" VerticalAlignment="Center" Margin="10,0,0,0"
+                                       Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
                     </StackPanel>
 
 

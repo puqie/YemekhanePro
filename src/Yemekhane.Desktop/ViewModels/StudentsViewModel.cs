@@ -140,6 +140,10 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     private StudentDetails? details;
     private StudentDetailTabViewModel? selectedTab;
     private StudentPaymentHeadline? paymentHeadline;
+    private bool chargeCardFee;
+    private string? cardFeeAmountText;
+    private CardFeeSettings cardFee = new();
+    private bool cardFeeLoaded;
     private Guid? routeClassId, routeGroupId;
     /// <summary>
     /// Fotograf durumu: <c>photoBytes</c> sunucudaki (Details.PhotoPath) dosyanin icerigi;
@@ -605,6 +609,33 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
     public string NewPrintedNumber { get; set; } = "";
     public string CardReplacementReason { get; set; } = "Kayıp/hasarlı kart";
 
+    /// <summary>
+    /// KART UCRETI. Saha: "ogrenci kartini tekrardan cikardiginda biz kart ucreti aliyoruz,
+    /// bunun islenmesi gerekiyor." Yalnizca kart DEGISIMINDE (ogrencinin aktif karti varken)
+    /// gorunur; ilk kart ucretsizdir. Ayarlarda tutar ve gelir turu tanimli degilse hic cikmaz.
+    /// </summary>
+    public bool ShowCardFee => CanManageCards && cardFee.IsConfigured && HasActiveCard && Details is not null;
+
+    /// <summary>Isaretliyse kart degisimiyle BIRLIKTE kasaya gelir yazilir.</summary>
+    public bool ChargeCardFee
+    {
+        get => chargeCardFee;
+        set { if (Set(ref chargeCardFee, value)) Raise(nameof(CardFeeHint)); }
+    }
+
+    /// <summary>O islemdeki tutar; Ayarlar'daki varsayilanla dolu gelir, degistirilebilir.</summary>
+    public string? CardFeeAmountText
+    {
+        get => cardFeeAmountText;
+        set { if (Set(ref cardFeeAmountText, value)) Raise(nameof(CardFeeHint)); }
+    }
+
+    public string CardFeeHint => !ChargeCardFee
+        ? "Ücret alınmayacak."
+        : CashViewModel.TryParseAmount(CardFeeAmountText, out var amount) && amount > 0m
+            ? $"{amount.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"))} ₺ Kasa'ya işlenecek."
+            : "Tutar okunamadı; kart değişimi ücretsiz yapılacak.";
+
     public ICommand SearchCommand { get; }
     public ICommand NextPageCommand { get; }
     public ICommand PreviousPageCommand { get; }
@@ -812,6 +843,9 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         SelectedTab = Tabs[0];
         // Odeme seridi detayi BEKLETMEZ: ayri cagri, geldiginde ekrana duser.
         _ = LoadPaymentHeadlineAsync(id, version);
+        // Kart ucreti ayari bir kez okunur; sonraki ogrencilerde tekrar cekilmez.
+        if (!cardFeeLoaded) { cardFeeLoaded = true; _ = LoadCardFeeAsync(); }
+        Raise(nameof(ShowCardFee));
     }
 
     /// <summary>
@@ -893,6 +927,19 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
                 new StudentDetailCell("Yenileme", period.RenewFrom.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture)),
                 new StudentDetailCell("Hak Durumu", period.DaysLeftText),
             ])).ToArray();
+    }
+
+    /// <summary>
+    /// Ayarlardaki kart ucreti varsayilanini ceker. Hata YUTULUR: ayar okunamazsa ucret
+    /// kutusu hic gorunmez ve kart degisimi eskisi gibi ucretsiz calisir.
+    /// </summary>
+    private async Task LoadCardFeeAsync()
+    {
+        try { cardFee = await api.CardFeeAsync(); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException) { return; }
+        if (cardFee.Amount > 0m)
+            cardFeeAmountText = cardFee.Amount.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
+        Raise(nameof(CardFeeAmountText)); Raise(nameof(ShowCardFee)); Raise(nameof(CardFeeHint));
     }
 
     /// <summary>
@@ -1378,16 +1425,35 @@ public sealed class StudentsViewModel : ObservableObject, IDisposable
         {
             var id = Details.Id; var number = NewCardNumber.Trim();
             var printed = string.IsNullOrWhiteSpace(NewPrintedNumber) ? null : NewPrintedNumber.Trim();
+            // KART UCRETI yalnizca DEGISIMDE sorulur; ilk kart (atama) ucretsizdir. Tutar
+            // okunamazsa ucret gonderilmez: yanlis tutari sessizce tahsil etmektense hic etme.
+            var chargeFee = ShowCardFee && ChargeCardFee
+                && CashViewModel.TryParseAmount(CardFeeAmountText, out var feeAmount) && feeAmount > 0m;
+            string? feeMessage = null;
             if (HasActiveCard)
             {
-                try { await api.ReplaceCardAsync(id, new ReplaceCardRequest(number, CardReplacementReason.Trim(), printed)); }
+                try
+                {
+                    var result = await api.ReplaceCardWithFeeAsync(id,
+                        new ReplaceCardRequest(number, CardReplacementReason.Trim(), printed, chargeFee,
+                            chargeFee ? CashViewModel.TryParseAmount(CardFeeAmountText, out var sent) ? sent : null : null));
+                    feeMessage = result.FeeWarning ?? result.FeeNote;
+                }
                 // Liste eski kalmis olabilir (kart baska yerden pasiflestirilmis): atama ile devam.
-                catch (ApiRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound) { await api.AssignCardAsync(id, new AssignCardRequest(number, printed)); }
+                // Atamada ucret alinmaz; kullaniciya bunu SOYLERIZ, sessizce yutmayiz.
+                catch (ApiRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+                {
+                    await api.AssignCardAsync(id, new AssignCardRequest(number, printed));
+                    if (chargeFee) feeMessage = "Öğrencinin aktif kartı bulunamadığı için kart ATANDI ve kart ücreti alınmadı. Ücreti Kasa > Gelir Ekle'den girin.";
+                }
             }
             else await api.AssignCardAsync(id, new AssignCardRequest(number, printed));
             NewCardNumber = ""; Raise(nameof(NewCardNumber)); NewPrintedNumber = ""; Raise(nameof(NewPrintedNumber)); ErrorMessage = null;
+            ChargeCardFee = false;
             await RefreshAfterWriteAsync(id);
             await ReloadTabAsync("Cards");
+            // Tazelemeden SONRA yazilir: yenileme sirasinda secim degisir ve InfoMessage silinir.
+            if (feeMessage is not null) InfoMessage = feeMessage;
         }
         catch (Exception ex) when (IsWriteFailure(ex)) { ErrorMessage = Describe(ex, "Kart değiştirilemedi."); }
     }

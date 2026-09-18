@@ -211,6 +211,18 @@ public static class AiUserGuidePrompt
           demek de kartı geri açar. Başka öğrencinin kartı olan numara -- pasif
           olsa bile -- verilemez ("Kart No daha önce sisteme tanımlanmış").
 
+        KART ÜCRETİ: kart alanının altında "Kart ücreti al" kutusu + tutar kutusu.
+        YALNIZCA kart DEĞİŞİMİNDE görünür (öğrencinin aktif kartı varken); öğrenciye
+        İLK kart verilirken ücret sorulmaz. Kutu ancak Ayarlar → "Kart ücreti"
+        bölümünde hem tutar (>0) hem gelir türü tanımlıysa çıkar. İşaretlenip
+        "Kart Değiştir" denince kart değişir ve AYNI işlemde Kasa'ya öğrenciye
+        bağlı gelir yazılır; açıklaması "Kart ücreti · {kart no} · {neden}" olur.
+        Tutar o işlem için değiştirilebilir. Tutar okunamazsa ücret GÖNDERİLMEZ.
+        Ücret tahsilatı cash.write yetkisi ister. Ücret yazılamazsa kart geri
+        ALINMAZ; "Kart değişti ama kart ücreti kasaya işlenemedi ..." uyarısı çıkar
+        ve ücret Kasa > Gelir Ekle'den elle girilir. Tahsilat ödeme özetinde ve
+        "Ödemeler" sekmesinde görünür.
+
         ÖDEME ÖZETİ: detay başlığının yanında, sekmeye girmeden görünen tek
         satır. "3 kez ödeme · Toplam ₺2.250,00 · 2'i taksite sayıldı · son ödeme
         07 Eki 2026" biçiminde; ücret planı olan öğrencide ayrıca "2/10 taksit ·
@@ -894,6 +906,14 @@ public static class AiUserGuidePrompt
 
         - "Okul": okul adı, adres, iletişim, logo yolu; raporların ve
           fişlerin başlığında kullanılır.
+        - "Okul" sekmesinde ayrıca "Kart ücreti" kartı: "Varsayılan tutar (₺)" ve
+          "Gelir türü (tahsilat bu türe yazılır)". Kayıp/kırık kart yeniden
+          çıkarılırken Öğrenciler ekranında bu tutar hazır gelir; onaylanırsa
+          Kasa'ya öğrenciye bağlı gelir yazılır. Tutar 0 ise ya da gelir türü
+          seçilmemişse kart değişiminde ücret HİÇ sorulmaz; kartın altındaki
+          ipucu hangi durumda olduğunu yazar. Gelir türü listesi Kasa > Gelir
+          Türleri'ndeki aktif türlerdir ("Kart Ücreti" diye bir tür açmak yeterli).
+          Öğrenciye İLK kart verilirken ücret alınmaz.
         - "Bağlantılar" ("Yönetim ekranları"): "Cihazlar / Kart Okuyucular"
           (kayıt sayısı ve listesiyle), "Yemek Türleri" (aktif tür sayısıyla),
           "Tatiller / Takvim" düğmeleri. "Kullanıcılar / Roller" düğmesi

@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Globalization;
 using System.Windows.Input;
+using Yemekhane.Application.Income;
 using Yemekhane.Application.Maintenance;
 using Yemekhane.Application.Settings;
 using Yemekhane.Application.Sms;
@@ -58,6 +59,8 @@ public sealed class SettingsViewModel : ObservableObject
     private string smsProvider = "Http", testSmsPhone = "";
     private bool smsEnabled = true;
     private bool showDepartment = true, showJob = true, showAddress = true, showFingerprintId = true, showPid = true;
+    private string cardFeeAmountText = "0";
+    private Guid? cardFeeIncomeTypeId;
     private string? testSmsResultText, smsCreditText;
     private string autoIncomePhone = "", autoIncomeTemplate = "", autoCardTemplate = "", autoCardPhone = "";
     private string? entitlementRunText;
@@ -192,6 +195,34 @@ public sealed class SettingsViewModel : ObservableObject
     public bool ShowAddress { get => showAddress; set => Change(ref showAddress, value); }
     public bool ShowFingerprintId { get => showFingerprintId; set => Change(ref showFingerprintId, value); }
     public bool ShowPid { get => showPid; set => Change(ref showPid, value); }
+
+    /// <summary>
+    /// KART UCRETI. Saha: "ogrenci kartini tekrardan cikardiginda biz kart ucreti aliyoruz,
+    /// bunun islenmesi gerekiyor." Buradaki tutar kart DEGISIMINDE hazir gelir; ilk kart
+    /// (atama) ucretsizdir. Tutar 0 ise ya da gelir turu secilmemisse ucret hic sorulmaz.
+    /// </summary>
+    public string CardFeeAmountText
+    {
+        get => cardFeeAmountText;
+        set { Change(ref cardFeeAmountText, value); Raise(nameof(CardFeeHint)); }
+    }
+
+    /// <summary>Tahsilatin yazilacagi gelir turu; "Kart Ücreti" diye bir tur acmak yeterlidir.</summary>
+    public Guid? CardFeeIncomeTypeId
+    {
+        get => cardFeeIncomeTypeId;
+        set { Change(ref cardFeeIncomeTypeId, value); Raise(nameof(CardFeeHint)); }
+    }
+
+    /// <summary>Ayar ekranindaki acilir liste; Kasa > Gelir Türleri'ndeki AKTIF turler.</summary>
+    public ObservableCollection<IncomeTypeDetails> IncomeTypes { get; } = [];
+
+    /// <summary>Kullaniciya durumu tek satirda soyler: ucret alinacak mi, alinmayacak mi.</summary>
+    public string CardFeeHint => !CashViewModel.TryParseAmount(CardFeeAmountText, out var amount) || amount <= 0m
+        ? "Tutar 0 olduğu için kart değişiminde ücret sorulmaz."
+        : CardFeeIncomeTypeId is null
+            ? "Gelir türü seçilmedi; ücret tahsil edilemez. Kasa > Gelir Türleri'nden \"Kart Ücreti\" ekleyip burada seçin."
+            : $"Kart değişiminde {amount.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))} ₺ ücret sorulur. İlk kart ücretsizdir.";
     public string SmsEndpoint { get => smsEndpoint; set => Change(ref smsEndpoint, value); } public string SmsAuthType { get => smsAuthType; set => Change(ref smsAuthType, value); }
     public string SmsProvider
     {
@@ -293,7 +324,25 @@ public sealed class SettingsViewModel : ObservableObject
     public ICommand SyncNowCommand { get; } public ICommand RefreshLogsCommand { get; } public ICommand NavigateDevicesCommand { get; } public ICommand NavigateMealsCommand { get; } public ICommand NavigateHolidaysCommand { get; } public ICommand NavigateUsersCommand { get; }
 
     public Task InitializeAsync() => LoadAsync();
-    public async Task LoadAsync() => await Run(async () => { saveFailed = false; Apply(await api.GetAsync()); ApplyAutomation(await api.GetSmsAutomationAsync()); await LoadLogsCoreAsync(); await LoadConflictsAsync(); StatusMessage = null; });
+    public async Task LoadAsync() => await Run(async () =>
+    {
+        saveFailed = false;
+        // Gelir turleri AYARLARDAN ONCE yuklenir: Apply seciliyi yazar, liste hazir olmali
+        // yoksa acilir kutu bos gorunur ve kullanici "turu silmisim" saniyordu.
+        await LoadIncomeTypesAsync();
+        Apply(await api.GetAsync()); ApplyAutomation(await api.GetSmsAutomationAsync());
+        await LoadLogsCoreAsync(); await LoadConflictsAsync(); StatusMessage = null;
+    });
+
+    /// <summary>Kart ucreti acilir listesi. Hata YUTULUR: liste bos kalir, ayar ekrani acilir.</summary>
+    private async Task LoadIncomeTypesAsync()
+    {
+        IReadOnlyList<IncomeTypeDetails> types;
+        try { types = await api.IncomeTypesAsync(); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidDataException) { return; }
+        IncomeTypes.Clear();
+        foreach (var type in types.Where(x => x.IsActive)) IncomeTypes.Add(type);
+    }
     public async Task SaveAsync()
     {
         // Sunucuya gitmeden once yerel dogrulama: hata alan adiyla ve Turkce soylenir.
@@ -472,6 +521,9 @@ public sealed class SettingsViewModel : ObservableObject
         logLevel = x.Logs.Level; logRetentionText = x.Logs.RetentionDays.ToString(CultureInfo.InvariantCulture); logPath = x.Logs.Path ?? "";
         showDepartment = x.StudentForm.ShowDepartment; showJob = x.StudentForm.ShowJob; showAddress = x.StudentForm.ShowAddress;
         showFingerprintId = x.StudentForm.ShowFingerprintId; showPid = x.StudentForm.ShowPid;
+        // Tutar tr-TR gosterilir ("150,00"); kayitta TryParseAmount ile geri okunur.
+        cardFeeAmountText = x.CardFee.Amount.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"));
+        cardFeeIncomeTypeId = x.CardFee.IncomeTypeId;
         foreach (var name in GetType().GetProperties().Where(p => p.CanRead).Select(p => p.Name)) Raise(name); RefreshCommands();
     }
     private void ApplyAutomation(SmsAutomationStatus status)
@@ -490,12 +542,14 @@ public sealed class SettingsViewModel : ObservableObject
         new CardReplacementRule(AutoCardEnabled, AutoCardTemplate?.Trim() ?? "", EmptyToNull(AutoCardPhone)));
     private SaveSettingsRequest BuildRequest() => new SaveSettingsRequest(new(SchoolName, EmptyToNull(SchoolAddress), EmptyToNull(SchoolContact), EmptyToNull(LogoPath)), new(EmptyToNull(SmsEndpoint), SmsAuthType, EmptyToNull(SmsUsername), EmptyToNull(SmsSender), SmsTimeoutSeconds, EmptyToNull(SmsSecret), SmsProvider, SmsEnabled), new(BackupEnabled, BackupFrequency, BackupWeeklyDay, TryParseTime(BackupTime, out var time) ? time : original?.Backup.Time ?? TimeOnly.MinValue, BackupRetentionCount, EmptyToNull(BackupPath)), new(EmptyToNull(SyncEndpoint), EmptyToNull(SyncDeviceId), SyncIntervalMinutes, SyncEnabled, EmptyToNull(SyncSecret)), new(LogLevel, LogRetentionDays, EmptyToNull(LogPath)))
     {
-        StudentForm = new(ShowDepartment, ShowJob, ShowAddress, ShowFingerprintId, ShowPid)
+        StudentForm = new(ShowDepartment, ShowJob, ShowAddress, ShowFingerprintId, ShowPid),
+        CardFee = new(CashViewModel.TryParseAmount(CardFeeAmountText, out var cardFee) ? cardFee : 0m, CardFeeIncomeTypeId)
     };
     private static SaveSettingsRequest ToRequest(SettingsDocument x) => new SaveSettingsRequest(new(x.School.Name, x.School.Address, x.School.Contact, x.School.LogoPath), new(x.Sms.Endpoint, x.Sms.AuthType, x.Sms.Username, x.Sms.Sender, x.Sms.TimeoutSeconds, null, string.IsNullOrWhiteSpace(x.Sms.Provider) ? "Http" : x.Sms.Provider, x.Sms.Enabled), new(x.Backup.Enabled, x.Backup.Frequency, x.Backup.WeeklyDay, x.Backup.Time, x.Backup.RetentionCount, x.Backup.Path), new(x.Sync.Endpoint, x.Sync.DeviceId, x.Sync.IntervalMinutes, x.Sync.Enabled, null), new(x.Logs.Level, x.Logs.RetentionDays, x.Logs.Path))
     {
         StudentForm = new(x.StudentForm.ShowDepartment, x.StudentForm.ShowJob, x.StudentForm.ShowAddress,
-            x.StudentForm.ShowFingerprintId, x.StudentForm.ShowPid)
+            x.StudentForm.ShowFingerprintId, x.StudentForm.ShowPid),
+        CardFee = new(x.CardFee.Amount, x.CardFee.IncomeTypeId)
     };
     // Yerel dogrulama hatasi gosterildikten sonra kullanici alani duzeltirse mesaj kalkar;
     // aksi halde "abc" uyarisi, kutu "2" yazarken bile ekranda asili kaliyordu.

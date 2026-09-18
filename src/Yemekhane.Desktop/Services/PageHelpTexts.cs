@@ -32,6 +32,8 @@ public static class PageHelpTexts
             "Yeni kaydedilen bir öğrenciye kart atamak için kartı burada okutun; ekran hem ilk atamayı hem değişimi aynı akışla yönetir.",
             "Öğrenci numarası, kart no ve veli adı zorunlu değildir; yalnızca ad ve soyad gerekir. Kartsız öğrenci (anasınıfı gibi) kaydedilir, sayımlarda ve hakedişlerde görünür.",
             "Kartın iki numarası vardır: ARKA yüzdeki çip numarası turnikenin okuduğu \"Kart No\"dur, ÖN yüzdeki kısa basılı numara \"Baskı No\" kutusuna yazılır. Yanlış kutuya yazılan numara turnikede \"Kart tanımsız\" olur.",
+            "KART ÜCRETİ: kayıp/kırık kart yeniden çıkarılırken kart alanının altında \"Kart ücreti al\" kutusu çıkar; işaretleyip Kart Değiştir derseniz ücret aynı işlemde Kasa'ya öğrenciye bağlı gelir olarak yazılır. Tutar Ayarlar → Kart ücreti bölümündeki varsayılandır, o işlem için değiştirilebilir. Öğrenciye İLK kart verilirken ücret sorulmaz.",
+            "Kart ücreti kutusu yoksa Ayarlar → Kart ücreti bölümünde tutar ve gelir türü tanımlı değildir; Kasa → Gelir Türleri'nden \"Kart Ücreti\" ekleyip Ayarlar'da seçin.",
             "Turnike \"Kart pasif\" diyorsa kart yanlışlıkla değiştirilmiş ya da pasifleştirilmiştir: öğrenciyi seçip \"Eski Kartı Geri Aç\" düğmesine basın (aktif kartı yokken görünür). Kartın numarasını yazıp \"Kart Ata\" demek de aynı öğrencinin pasif kartını yeniden aktif eder.",
             "F2 arama kutusuna odaklanır. F3 \"Kartla Öğrenci Bul\" penceresini açar; bunun için kart yetkisi (cards.manage) ve bağlı bir kart okuyucu gerekir.",
             "Bir öğrenciye tıklayınca detay panelinde hakediş, ödeme ve geçiş geçmişi görünür.",

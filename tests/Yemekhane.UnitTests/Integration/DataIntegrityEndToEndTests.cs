@@ -3,9 +3,11 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Yemekhane.Application.Cards;
+using Yemekhane.Application.Common;
 using Yemekhane.Application.DailyTracking;
 using Yemekhane.Application.Income;
 using Yemekhane.Application.Leaves;
+using Yemekhane.Application.Settings;
 using Yemekhane.Application.Tuition;
 using Yemekhane.Domain.Entities;
 using Yemekhane.Infrastructure.Persistence;
@@ -316,6 +318,75 @@ public sealed class DataIntegrityEndToEndTests : IAsyncLifetime, IDisposable
         Assert.Equal("0/10", Assert.Single(reverted!.Students, x => x.StudentId == studentId).Progress);
         Assert.Equal(0, reverted.UnappliedIncomeCount);
     }
+    /// <summary>
+    /// KART UCRETI UCTAN UCA. Saha: "ogrenci kartini tekrardan cikardiginda biz kart ucreti
+    /// aliyoruz, bunun islenmesi gerekiyor." Kart DEGISIMINDE ucret kasaya ogrenciye bagli
+    /// gelir olarak yazilir; ILK kart (atama) ucretsizdir; ucret odeme ozetinde de gorunur.
+    /// </summary>
+    [Fact]
+    public async Task CardReplacementChargesTheCardFeeToCashOverHttp()
+    {
+        var created = await client.PostAsJsonAsync("api/students", new { StudentNo = "2026-0950", FirstName = "KEREM", LastName = "ATA" });
+        created.EnsureSuccessStatusCode();
+        var studentId = (await created.Content.ReadFromJsonAsync<StudentIdOnly>())!.Id;
+
+        var feeType = (await (await client.PostAsJsonAsync("api/income/types",
+            new SaveIncomeTypeRequest("Kart Ücreti", true, false))).Content.ReadFromJsonAsync<IncomeTypeDetails>())!;
+
+        // Ayarlar YONETICI yetkisi ister; kart ve kasa islemleri operator istemcisiyle kalir.
+        using var admin = factory.CreateAdminClient();
+        var current = await admin.GetFromJsonAsync<SettingsDocument>("api/settings");
+        var save = new SaveSettingsRequest(
+            new SaveSchoolSettings(current!.School.Name, current.School.Address, current.School.Contact, current.School.LogoPath),
+            new SaveSmsProviderSettings(current.Sms.Endpoint, current.Sms.AuthType, current.Sms.Username, current.Sms.Sender, current.Sms.TimeoutSeconds, null, current.Sms.Provider, current.Sms.Enabled),
+            new SaveBackupSettings(current.Backup.Enabled, current.Backup.Frequency, current.Backup.WeeklyDay, current.Backup.Time, current.Backup.RetentionCount, current.Backup.Path),
+            new SaveSyncSettings(current.Sync.Endpoint, current.Sync.DeviceId, current.Sync.IntervalMinutes, current.Sync.Enabled, null),
+            new SaveLogSettings(current.Logs.Level, current.Logs.RetentionDays, current.Logs.Path))
+        { CardFee = new SaveCardFeeSettings(150m, feeType.Id) };
+        (await admin.PutAsJsonAsync("api/settings", save)).EnsureSuccessStatusCode();
+        var saved = await admin.GetFromJsonAsync<SettingsDocument>("api/settings");
+        Assert.Equal(150m, saved!.CardFee.Amount);
+        Assert.Equal(feeType.Id, saved.CardFee.IncomeTypeId);
+        Assert.True(saved.CardFee.IsConfigured);
+
+        // ILK kart: atama, ucret alinmaz.
+        (await client.PostAsJsonAsync($"api/students/{studentId:D}/cards", new AssignCardRequest("KART-1"))).EnsureSuccessStatusCode();
+        var afterAssign = await client.GetFromJsonAsync<StudentPaymentSummary>($"api/tuition/students/{studentId:D}/payment-summary");
+        Assert.Equal(0, afterAssign!.PaymentCount);
+
+        // Kart DEGISIMI + ucret: varsayilan tutar kullanilir.
+        var replace = await client.PostAsJsonAsync($"api/students/{studentId:D}/cards/replace",
+            new ReplaceCardRequest("KART-2", "Kayboldu", null, ChargeFee: true));
+        replace.EnsureSuccessStatusCode();
+        var result = (await replace.Content.ReadFromJsonAsync<ReplaceCardResult>())!;
+        Assert.Equal("KART-2", result.Card.CardNumber);
+        Assert.Equal(150m, result.FeeCharged);
+        Assert.Contains("kasaya işlendi", result.FeeNote);
+        Assert.Null(result.FeeWarning);
+
+        // Tahsilat kasada, OGRENCIYE BAGLI ve aciklamasi kart numarasini tasiyor.
+        var income = await client.GetFromJsonAsync<PagedResult<IncomeTransactionDetails>>($"api/income/transactions?studentId={studentId:D}");
+        var row = Assert.Single(income!.Items);
+        Assert.Equal(150m, row.Amount);
+        Assert.Equal("Kart Ücreti", row.IncomeTypeName);
+        Assert.Contains("KART-2", row.Description);
+        Assert.Equal(studentId, row.StudentId);
+
+        // O islemde FARKLI tutar: ayardaki 150 yerine 200 alinir.
+        var second = await client.PostAsJsonAsync($"api/students/{studentId:D}/cards/replace",
+            new ReplaceCardRequest("KART-3", "Kırıldı", null, ChargeFee: true, FeeAmount: 200m));
+        second.EnsureSuccessStatusCode();
+        Assert.Equal(200m, (await second.Content.ReadFromJsonAsync<ReplaceCardResult>())!.FeeCharged);
+
+        // Ucret istenmeden yapilan degisim kasaya HIC yazmaz.
+        (await client.PostAsJsonAsync($"api/students/{studentId:D}/cards/replace",
+            new ReplaceCardRequest("KART-4", "Ücretsiz değişim"))).EnsureSuccessStatusCode();
+
+        var summary = await client.GetFromJsonAsync<StudentPaymentSummary>($"api/tuition/students/{studentId:D}/payment-summary");
+        Assert.Equal(2, summary!.PaymentCount);
+        Assert.Equal(350m, summary.TotalPaid);
+    }
+
     /// <summary>
     /// ODEME OZETI UCTAN UCA. Saha: "Ogrencinin uzerine tikladigim zaman simdiye kadar kac kez
     /// odeme yapmis gormem gerekiyor -- patronun gormesi gerekiyor." Ozet HEM anasinifi (plani

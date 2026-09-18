@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Yemekhane.Application.Common;
+using Yemekhane.Application.Income;
 using Yemekhane.Application.Maintenance;
 using Yemekhane.Application.Settings;
 using Yemekhane.Application.Sms;
@@ -36,6 +37,12 @@ public interface ISettingsApiClient
     Task<SmsTestResult> SendTestSmsAsync(string phone, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     /// <summary>Mutlucell kontor sorgusu (kayitli ayarlarla).</summary>
     Task<SmsCreditResult> QuerySmsCreditAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    /// <summary>
+    /// Kart ucreti ayarindaki gelir turu listesi. Yetki yoksa ya da uc yoksa BOS liste doner:
+    /// ayar ekrani acilmaya devam eder, yalnizca liste dolmaz.
+    /// </summary>
+    Task<IReadOnlyList<IncomeTypeDetails>> IncomeTypesAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<IncomeTypeDetails>>([]);
 }
 
 public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : ISettingsApiClient
@@ -57,6 +64,13 @@ public sealed class SettingsApiClient(HttpClient client, IJwtSession session) : 
         SendAsync<SmsTestResult>(HttpMethod.Post, "api/settings/sms/test", JsonContent.Create(new SmsTestRequest(phone)), cancellationToken);
     public Task<SmsCreditResult> QuerySmsCreditAsync(CancellationToken cancellationToken = default) =>
         SendAsync<SmsCreditResult>(HttpMethod.Get, "api/settings/sms/credit", null, cancellationToken);
+    public async Task<IReadOnlyList<IncomeTypeDetails>> IncomeTypesAsync(CancellationToken cancellationToken = default)
+    {
+        // Kasa yetkisi olmayan yonetici ayar ekranini yine acabilmeli; liste bos kalir.
+        try { return await SendAsync<IReadOnlyList<IncomeTypeDetails>>(HttpMethod.Get, "api/income/types", null, cancellationToken); }
+        catch (ApiRequestException) { return []; }
+        catch (LoginRequiredException) { return []; }
+    }
     public Task<SyncRunResult> RunSyncAsync(CancellationToken cancellationToken = default) =>
         SendAsync<SyncRunResult>(HttpMethod.Post, "api/settings/sync/run", null, cancellationToken);
 

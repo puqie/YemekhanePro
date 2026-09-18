@@ -163,7 +163,9 @@ public sealed partial class SettingsService(YemekhaneDbContext db, ISecretProtec
         ["Logs.Level"] = x.Logs.Level, ["Logs.RetentionDays"] = Number(x.Logs.RetentionDays), ["Logs.Path"] = Clean(x.Logs.Path),
         ["StudentForm.ShowDepartment"] = Bool(x.StudentForm.ShowDepartment), ["StudentForm.ShowJob"] = Bool(x.StudentForm.ShowJob),
         ["StudentForm.ShowAddress"] = Bool(x.StudentForm.ShowAddress), ["StudentForm.ShowFingerprintId"] = Bool(x.StudentForm.ShowFingerprintId),
-        ["StudentForm.ShowPid"] = Bool(x.StudentForm.ShowPid)
+        ["StudentForm.ShowPid"] = Bool(x.StudentForm.ShowPid),
+        ["CardFee.Amount"] = Money(x.CardFee.Amount),
+        ["CardFee.IncomeTypeId"] = x.CardFee.IncomeTypeId?.ToString("D") ?? ""
     };
 
     private static SettingsDocument Map(IReadOnlyDictionary<string, SystemSetting> v, SyncStatus status, List<string> devices, List<string> meals) => new(
@@ -178,7 +180,9 @@ public sealed partial class SettingsService(YemekhaneDbContext db, ISecretProtec
             StudentForm = new StudentFormSettings(
                 GetBool(v, "StudentForm.ShowDepartment", true), GetBool(v, "StudentForm.ShowJob", true),
                 GetBool(v, "StudentForm.ShowAddress", true), GetBool(v, "StudentForm.ShowFingerprintId", true),
-                GetBool(v, "StudentForm.ShowPid", true))
+                GetBool(v, "StudentForm.ShowPid", true)),
+            // Varsayilan 0/null: ayar girilmemis kurulumda kart ucreti SORULMAZ.
+            CardFee = new CardFeeSettings(GetMoney(v, "CardFee.Amount"), GetGuid(v, "CardFee.IncomeTypeId"))
         };
 
     private static string Get(IReadOnlyDictionary<string, SystemSetting> values, string key, string fallback = "") => values.TryGetValue(key, out var x) && !x.IsSecret ? x.Value : fallback;
@@ -188,6 +192,12 @@ public sealed partial class SettingsService(YemekhaneDbContext db, ISecretProtec
     private static string Clean(string? value) => value?.Trim() ?? "";
     private static string? Null(string value) => value.Length == 0 ? null : value;
     private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);
+    /// <summary>Tutar KULTURDEN BAGIMSIZ yazilir; "150.00" tr-TR'de 15.000 olarak okunmamali.</summary>
+    private static string Money(decimal value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+    private static decimal GetMoney(IReadOnlyDictionary<string, SystemSetting> values, string key) =>
+        decimal.TryParse(Get(values, key), NumberStyles.Number, CultureInfo.InvariantCulture, out var x) ? x : 0m;
+    private static Guid? GetGuid(IReadOnlyDictionary<string, SystemSetting> values, string key) =>
+        Guid.TryParse(Get(values, key), out var x) ? x : null;
     private static string Bool(bool value) => value.ToString(CultureInfo.InvariantCulture);
 
     private static readonly Action<ILogger, string, Exception?> SecretUnreadable = LoggerMessage.Define<string>(

@@ -22,6 +22,21 @@ public sealed record SyncStatus(string State, int Pending, int Failed, DateTimeO
 public sealed record SyncConflictItem(Guid OperationId, string EntityName, string? EntityId,
     string OperationType, DateTimeOffset Timestamp, int AttemptCount, string? LastError);
 public sealed record LogSettings(string Level, int RetentionDays, string? Path);
+/// <summary>
+/// KART UCRETI. Saha: "ogrenci kartini tekrardan cikardiginda biz kart ucreti aliyoruz,
+/// bunun islenmesi gerekiyor." Kart DEGISIMINDE (kayip/kirik) veliden alinan ucret; ilk kart
+/// ucretsizdir, bu yuzden yalnizca degisimde sorulur.
+/// </summary>
+/// <param name="Amount">Varsayilan tutar (₺). 0 ise ucret sorulmaz (okul kart ucreti almiyordur).</param>
+/// <param name="IncomeTypeId">Tahsilatin yazilacagi gelir turu; secilmemisse ucret sorulmaz.</param>
+public sealed record CardFeeSettings(decimal Amount = 0m, Guid? IncomeTypeId = null)
+{
+    /// <summary>Ucret ancak tutar ve gelir turu birlikte tanimliysa sorulur.</summary>
+    public bool IsConfigured => Amount > 0m && IncomeTypeId is not null;
+}
+
+public sealed record SaveCardFeeSettings(decimal Amount = 0m, Guid? IncomeTypeId = null);
+
 /// <summary>Öğrenci kartında kullanılmayan alanları veri kaybetmeden yalnızca arayüzde gizler.</summary>
 public sealed record StudentFormSettings(bool ShowDepartment = true, bool ShowJob = true,
     bool ShowAddress = true, bool ShowFingerprintId = true, bool ShowPid = true);
@@ -33,6 +48,7 @@ public sealed record SettingsDocument(SchoolSettings School, SmsProviderSettings
     SyncSettings Sync, LogSettings Logs, SettingsLinks Links, bool RestartRequired)
 {
     public StudentFormSettings StudentForm { get; init; } = new();
+    public CardFeeSettings CardFee { get; init; } = new();
 }
 
 public sealed record SaveSchoolSettings(string Name, string? Address, string? Contact, string? LogoPath);
@@ -46,6 +62,7 @@ public sealed record SaveSettingsRequest(SaveSchoolSettings School, SaveSmsProvi
     SaveBackupSettings Backup, SaveSyncSettings Sync, SaveLogSettings Logs)
 {
     public SaveStudentFormSettings StudentForm { get; init; } = new();
+    public SaveCardFeeSettings CardFee { get; init; } = new();
 }
 public sealed record SaveSettingsResult(SettingsDocument Settings, IReadOnlyList<string> ChangedCategories,
     bool RestartRequired);
@@ -88,6 +105,12 @@ public static class SettingsValidation
         OneOf(request.Logs.Level, LogLevels, "Log seviyesi"); Range(request.Logs.RetentionDays, 1, 3650, "Log saklama süresi");
         OptionalLocalDirectory(request.Logs.Path, "Log yolu");
         Optional(request.Sms.Secret, 4096, "SMS gizli bilgisi"); Optional(request.Sync.Secret, 4096, "Sync gizli bilgisi");
+        // Kart ucreti: eksi olamaz, kurus hassasiyetini asamaz ve makul bir tavani vardir
+        // (yanlislikla fazladan sifir yazilmasi veliye yansimadan burada yakalanir).
+        if (request.CardFee.Amount < 0m || decimal.Round(request.CardFee.Amount, 2) != request.CardFee.Amount)
+            throw new ArgumentException("Kart ücreti sıfır ya da en fazla iki ondalıklı bir tutar olmalıdır.");
+        if (request.CardFee.Amount > 100_000m)
+            throw new ArgumentException("Kart ücreti en fazla 100.000 ₺ olabilir.");
     }
 
     private static void Required(string? value, int max, string name)

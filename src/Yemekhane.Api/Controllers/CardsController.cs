@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Yemekhane.Application.Cards;
+using Yemekhane.Application.Common;
 using Yemekhane.Api.Authorization;
 
 namespace Yemekhane.Api.Controllers;
@@ -31,8 +33,24 @@ public sealed class CardsController(CardService service, ICardListQuery cards) :
     [HttpPut("students/{studentId:guid}/cards/printed-number")]
     public Task<CardDetails> SetPrintedNumber(Guid studentId, SetPrintedNumberRequest request, CancellationToken cancellationToken) => service.SetPrintedNumberAsync(studentId, request, cancellationToken);
 
+    /// <summary>
+    /// Kart degisimi; istenirse KART UCRETI de ayni islemde kasaya yazilir. Ucret tahsilati
+    /// AYRICA cash.write ister: kart yetkisi olan herkes kasaya gelir yazamamalidir.
+    /// </summary>
     [HttpPost("students/{studentId:guid}/cards/replace")]
-    public Task<CardDetails> Replace(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken) => service.ReplaceAsync(studentId, request, cancellationToken);
+    public async Task<ActionResult<ReplaceCardResult>> Replace(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.ChargeFee && !User.HasClaim(Permissions.ClaimType, Permissions.CashWrite))
+            throw new RequestValidationException("Kart ücreti tahsil etmek için kasa yazma yetkisi (cash.write) gerekiyor.");
+        return Ok(await service.ReplaceWithFeeAsync(studentId, request, ActorId(), cancellationToken));
+    }
+
+    private Guid ActorId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(value, out var id) ? id : throw new RequestValidationException("Operatör kimliği bulunamadı.");
+    }
 
     /// <summary>Ogrencinin en son pasife dusen kartini yeniden aktif eder; aktif karti varsa 409.</summary>
     [HttpPost("students/{studentId:guid}/cards/reactivate")]

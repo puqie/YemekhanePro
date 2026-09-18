@@ -3,6 +3,7 @@ using Yemekhane.Application.Cards;
 using Yemekhane.Application.Common;
 using Yemekhane.Application.Leaves;
 using Yemekhane.Application.Statements;
+using Yemekhane.Application.Settings;
 using Yemekhane.Application.Students;
 using Yemekhane.Application.Tuition;
 using Yemekhane.Desktop.Services;
@@ -719,6 +720,99 @@ public sealed class StudentsViewModelTests
         Assert.Equal("4 kez ödeme", vm.PaymentHeadline!.CountText);
     }
 
+    /// <summary>
+    /// KART UCRETI. Saha: "ogrenci kartini tekrardan cikardiginda biz kart ucreti aliyoruz."
+    /// Ayarda tutar+tur tanimliysa kutu cikar, varsayilan tutar HAZIR gelir ve isaretlenince
+    /// ucret kart degisimiyle birlikte gonderilir; sonuc kullaniciya yazilir.
+    /// </summary>
+    [Fact]
+    public async Task KartDegisimindeUcretIsaretlenirseTahsilatBirlikteGonderilir()
+    {
+        var typeId = Guid.NewGuid();
+        var api = new FakeApi { CardFee = new CardFeeSettings(150m, typeId) };
+        api.ReplaceResult = api.ReplaceResult with { FeeCharged = 150m, FeeNote = "Kart ücreti 150,00 ₺ kasaya işlendi." };
+        using var vm = Create(api, "students.read", "students.write", "cards.manage");
+        var row = Row();
+        vm.Students.Add(row); vm.SelectedStudent = row;
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.ShowCardFee);
+
+        Assert.Equal("150,00", vm.CardFeeAmountText);       // Ayardaki varsayilan hazir geldi
+        Assert.Equal("Ücret alınmayacak.", vm.CardFeeHint); // Isaretlenmeden once alinmaz
+        vm.ChargeCardFee = true;
+        Assert.Contains("150,00 ₺ Kasa'ya işlenecek", vm.CardFeeHint, StringComparison.Ordinal);
+
+        vm.NewCardNumber = "KART-2";
+        vm.ReplaceCardCommand.Execute(null);
+        await Until(() => api.LastReplace is not null);
+
+        Assert.True(api.LastReplace!.ChargeFee);
+        Assert.Equal(150m, api.LastReplace.FeeAmount);
+        await Until(() => vm.InfoMessage is not null);
+        Assert.Contains("kasaya işlendi", vm.InfoMessage, StringComparison.Ordinal);
+        Assert.False(vm.ChargeCardFee);                     // Sonraki ogrenciye tasinmaz
+    }
+
+    /// <summary>
+    /// ILK KART UCRETSIZ: ogrencinin aktif karti yokken (kart ATAMA) ucret kutusu hic cikmaz.
+    /// Ayarda ucret tanimli olsa bile.
+    /// </summary>
+    [Fact]
+    public async Task IlkKartVerilirkenUcretKutusuHicCikmaz()
+    {
+        var api = new FakeApi { CardFee = new CardFeeSettings(150m, Guid.NewGuid()) };
+        using var vm = Create(api, "students.read", "students.write", "cards.manage");
+        var row = Row() with { CardNumber = null };          // Aktif karti YOK
+        vm.Students.Add(row); vm.SelectedStudent = row;
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.IsDetailOpen);
+        await Task.Delay(50);
+
+        Assert.False(vm.ShowCardFee);
+    }
+
+    /// <summary>Ayarda ucret TANIMLI DEGILSE kutu cikmaz; kart degisimi eskisi gibi ucretsiz.</summary>
+    [Fact]
+    public async Task UcretAyariYoksaKutuCikmazVeDegisimUcretsizGider()
+    {
+        var api = new FakeApi { CardFee = new CardFeeSettings() };
+        using var vm = Create(api, "students.read", "students.write", "cards.manage");
+        var row = Row();
+        vm.Students.Add(row); vm.SelectedStudent = row;
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.IsDetailOpen);
+        await Task.Delay(50);
+        Assert.False(vm.ShowCardFee);
+
+        vm.NewCardNumber = "KART-9";
+        vm.ReplaceCardCommand.Execute(null);
+        await Until(() => api.LastReplace is not null);
+        Assert.False(api.LastReplace!.ChargeFee);
+    }
+
+    /// <summary>
+    /// TUTAR OKUNAMAZSA ucret GONDERILMEZ. Yanlis tutari sessizce tahsil etmektense hic
+    /// etmemek dogrudur; kullanici ipucunda bunu gorur.
+    /// </summary>
+    [Fact]
+    public async Task TutarOkunamazsaUcretGonderilmez()
+    {
+        var api = new FakeApi { CardFee = new CardFeeSettings(150m, Guid.NewGuid()) };
+        using var vm = Create(api, "students.read", "students.write", "cards.manage");
+        var row = Row();
+        vm.Students.Add(row); vm.SelectedStudent = row;
+        vm.OpenFullDetailCommand.Execute(row);
+        await Until(() => vm.ShowCardFee);
+
+        vm.ChargeCardFee = true; vm.CardFeeAmountText = "abc";
+        Assert.Contains("Tutar okunamadı", vm.CardFeeHint, StringComparison.Ordinal);
+        vm.NewCardNumber = "KART-2";
+        vm.ReplaceCardCommand.Execute(null);
+        await Until(() => api.LastReplace is not null);
+
+        Assert.False(api.LastReplace!.ChargeFee);
+    }
+
     private static StudentsViewModel Create(FakeApi api, params string[] permissions) =>
         new(api, new ShellNavigationService([ShellRoutes.Students, ShellRoutes.StudentDetail]), permissions);
     private static StudentListItem Row() => new(Guid.NewGuid(), "42", "CARD42", "Ada", "Yılmaz", "5", "A", "Ortaokul", "+905551234567", true, 1, true, DateTimeOffset.UtcNow);
@@ -770,7 +864,16 @@ public sealed class StudentsViewModelTests
         public CreateLeaveRequest? LastLeave;
         public Task GiveLeaveAsync(CreateLeaveRequest request, CancellationToken cancellationToken = default) { LeaveCount++; LastLeave = request; return Task.CompletedTask; }
         public Task ReplaceCardAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
-        { ReplaceCount++; return ReplaceFailure is null ? Task.CompletedTask : Task.FromException(ReplaceFailure); }
+        { ReplaceCount++; LastReplace = request; return ReplaceFailure is null ? Task.CompletedTask : Task.FromException(ReplaceFailure); }
+        public ReplaceCardRequest? LastReplace;
+        public CardFeeSettings CardFee { get; set; } = new();
+        public ReplaceCardResult ReplaceResult { get; set; } = new(new CardDetails(Guid.NewGuid(), Guid.NewGuid(), "42", "ADA", "KART-2", DateTimeOffset.UtcNow, null, null, true));
+        public Task<CardFeeSettings> CardFeeAsync(CancellationToken cancellationToken = default) => Task.FromResult(CardFee);
+        public Task<ReplaceCardResult> ReplaceCardWithFeeAsync(Guid studentId, ReplaceCardRequest request, CancellationToken cancellationToken = default)
+        {
+            ReplaceCount++; LastReplace = request;
+            return ReplaceFailure is null ? Task.FromResult(ReplaceResult) : Task.FromException<ReplaceCardResult>(ReplaceFailure);
+        }
         public Task AssignCardAsync(Guid studentId, AssignCardRequest request, CancellationToken cancellationToken = default) { AssignCount++; LastAssign = request; return Task.CompletedTask; }
         public AssignCardRequest? LastAssign { get; private set; }
         public SetPrintedNumberRequest? LastPrinted { get; private set; }

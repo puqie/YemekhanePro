@@ -9,7 +9,26 @@ public sealed record CardDetails(Guid Id, Guid StudentId, string StudentNo, stri
     DateTimeOffset ValidFrom, DateTimeOffset? ValidTo, string? ReplacementReason, bool IsActive, string? PrintedNumber = null);
 
 public sealed record AssignCardRequest(string CardNumber, string? PrintedNumber = null);
-public sealed record ReplaceCardRequest(string CardNumber, string Reason, string? PrintedNumber = null);
+
+/// <param name="ChargeFee">
+/// KART UCRETI. Saha: "ogrenci kartini tekrardan cikardiginda biz kart ucreti aliyoruz."
+/// true ise kart degisimiyle BIRLIKTE kasaya ogrenciye bagli gelir yazilir. Ilk kart
+/// (atama) ucretsizdir; ucret yalnizca DEGISIMDE sorulur.
+/// </param>
+/// <param name="FeeAmount">
+/// O islemdeki tutar. Verilmezse Ayarlar'daki varsayilan kart ucreti kullanilir; kayip karti
+/// ikinci kez cikaran veliden farkli tutar alinabilsin diye islem basina degistirilebilir.
+/// </param>
+public sealed record ReplaceCardRequest(string CardNumber, string Reason, string? PrintedNumber = null,
+    bool ChargeFee = false, decimal? FeeAmount = null);
+
+/// <summary>
+/// Kart degisiminin sonucu. <paramref name="FeeWarning"/> doluysa KART DEGISTI ama ucret
+/// kasaya YAZILAMADI: kart fiziksel olarak verildigi icin islem geri alinmaz, kullanici
+/// uyarilir ve ucreti Kasa'dan elle girer.
+/// </summary>
+public sealed record ReplaceCardResult(CardDetails Card, decimal? FeeCharged = null,
+    string? FeeNote = null, string? FeeWarning = null);
 public sealed record SetPrintedNumberRequest(string? PrintedNumber);
 
 public interface ICardRepository

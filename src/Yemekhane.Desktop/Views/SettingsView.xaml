@@ -66,6 +66,30 @@
                                 <CheckBox Content="PI ID alanını göster" IsChecked="{Binding ShowPid}" IsEnabled="{Binding CanManage}" Margin="0,0,22,8"/>
                             </WrapPanel>
                         </StackPanel></Border>
+                        <!-- KART UCRETI. Saha: "ogrenci kartini tekrardan cikardiginda biz kart ucreti
+                             aliyoruz, bunun islenmesi gerekiyor." Buradaki tutar kart DEGISIMINDE hazir
+                             gelir ve o islemde degistirilebilir; ILK kart ucretsizdir. -->
+                        <Border x:Name="CardFeeCard" Style="{StaticResource SettingsCard}"><StackPanel>
+                            <TextBlock Text="Kart ücreti" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="Kart kaybolduğunda ya da kırıldığında yeniden çıkarılan kart için veliden alınan ücret. Kart değiştirilirken bu tutar hazır gelir, o işlemde değiştirilebilir ve onaylarsanız Kasa'ya öğrenciye bağlı gelir olarak yazılır. Öğrenciye İLK kart verilirken ücret sorulmaz."
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,3,0,8" TextWrapping="Wrap"/>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource Label}" Text="Varsayılan tutar (₺)"/>
+                                    <TextBox Style="{StaticResource Field}" Text="{Binding CardFeeAmountText, UpdateSourceTrigger=PropertyChanged}"
+                                             IsReadOnly="{Binding CanManage, Converter={StaticResource InverseBool}}"
+                                             AutomationProperties.Name="Varsayılan kart ücreti" ToolTip="0 yazarsanız kart değişiminde ücret sorulmaz"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Style="{StaticResource Label}" Text="Gelir türü (tahsilat bu türe yazılır)"/>
+                                    <ComboBox ItemsSource="{Binding IncomeTypes}" DisplayMemberPath="Name" SelectedValuePath="Id"
+                                              SelectedValue="{Binding CardFeeIncomeTypeId}" IsEnabled="{Binding CanManage}"
+                                              AutomationProperties.Name="Kart ücreti gelir türü"
+                                              ToolTip="Kasa &gt; Gelir Türleri'nde tanımlı aktif türler"/>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="{Binding CardFeeHint}" Foreground="{StaticResource MutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                        </StackPanel></Border>
                     </StackPanel></ScrollViewer>
                 </TabItem>
                 <TabItem Header="Bağlantılar">
